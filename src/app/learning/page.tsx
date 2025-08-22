@@ -1,29 +1,13 @@
 import {
   Activity,
   BookOpen,
-  Briefcase,
-  Code,
   FilePlus2,
   Home,
   LayoutPanelLeft,
-  Paintbrush,
-  Search,
+  Lock,
   Settings,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -32,17 +16,16 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { currentUser, projectCategories, projects } from "@/lib/data";
+import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import ProjectCard from "@/components/project-card";
-import { SuggestSteps } from "@/components/ai/suggest-steps";
+import { currentUser, learningPaths } from "@/lib/data";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-export default function DashboardPage() {
+export default function LearningPage() {
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">
@@ -57,7 +40,7 @@ export default function DashboardPage() {
         <SidebarContent className="p-4 pt-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/" isActive>
+              <SidebarMenuButton href="/">
                 <Home />
                 Home
               </SidebarMenuButton>
@@ -69,7 +52,7 @@ export default function DashboardPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/learning">
+              <SidebarMenuButton href="/learning" isActive>
                 <BookOpen />
                 Learning Paths
               </SidebarMenuButton>
@@ -102,56 +85,38 @@ export default function DashboardPage() {
       </Sidebar>
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="md:hidden" />
-            <h1 className="hidden text-lg font-semibold md:block">
-              Project Discovery
-            </h1>
-          </div>
-          <div className="flex w-full max-w-sm items-center gap-4 md:max-w-md lg:max-w-lg">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search projects..."
-                className="w-full rounded-full bg-muted pl-10"
-              />
-            </div>
-          </div>
+          <h1 className="text-lg font-semibold md:text-xl">
+            Learning Paths
+          </h1>
           <UserNav />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mb-6">
-            <SuggestSteps />
+            <h2 className="text-2xl font-bold tracking-tight">Unlock Your Potential</h2>
+            <p className="text-muted-foreground">Gain new skills by contributing to real projects. As you reach milestones, new paths unlock.</p>
           </div>
-
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
-            <h2 className="text-2xl font-bold tracking-tight">All Projects</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              {projectCategories.map(({ name, icon: Icon }) => (
-                <Button key={name} variant="outline" className="gap-2">
-                  <Icon className="h-4 w-4" />
-                  {name}
-                </Button>
-              ))}
-            </div>
-            <div className="ml-auto flex items-center gap-4">
-              <Select defaultValue="latest">
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="latest">Latest</SelectItem>
-                  <SelectItem value="popular">Most Popular</SelectItem>
-                  <SelectItem value="ending-soon">Ending Soon</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {learningPaths.map((path) => (
+              <Card key={path.id} className={cn("flex flex-col", path.isLocked && "bg-muted/50")}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                        <path.Icon className="h-6 w-6 text-primary" />
+                     </div>
+                     {path.isLocked && <Badge variant="secondary"> <Lock className="mr-1 h-3 w-3" /> Locked</Badge>}
+                  </div>
+                  <CardTitle className="pt-4">{path.title}</CardTitle>
+                   <Badge variant="outline" className="w-fit">{path.category}</Badge>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-muted-foreground">{path.description}</p>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{path.duration}</span>
+                  <Button disabled={path.isLocked}>Start Path</Button>
+                </CardFooter>
+              </Card>
             ))}
           </div>
         </main>
