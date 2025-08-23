@@ -37,10 +37,6 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummarizeProgress } from "@/components/ai/summarize-progress";
 import { HighlightBlockers } from "@/components/ai/highlight-blockers";
-import { useAuth } from "@/components/auth-provider";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
-import { useToast } from "@/hooks/use-toast";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -64,27 +60,12 @@ function TaskCard({ task }: { task: (typeof tasks)[0] }) {
 }
 
 export default function ProjectDetailPage() {
-  const { user } = useAuth();
   const params = useParams();
   const project = projects.find((p) => p.id === params.id);
-  const { toast } = useToast();
 
   if (!project) {
     notFound();
   }
-
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Error signing in with Google", error);
-       toast({
-        title: "Authentication Error",
-        description: "Could not sign in. Please try again.",
-        variant: "destructive",
-      })
-    }
-  };
 
   const taskColumns = {
     'To Do': tasks.filter(t => t.status === 'To Do'),
@@ -156,7 +137,7 @@ export default function ProjectDetailPage() {
             <p className="text-sm text-muted-foreground">{project.tagline}</p>
           </div>
           <div className="flex items-center gap-4">
-             {user ? <Button>Join Project</Button> : <Button onClick={handleLogin}>Sign in to Join</Button>}
+             <Button>Join Project</Button>
              <UserNav />
           </div>
         </header>

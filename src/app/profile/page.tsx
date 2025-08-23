@@ -1,6 +1,4 @@
 
-"use client";
-
 import {
   Activity,
   BookOpen,
@@ -30,9 +28,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import ProjectCard from "@/components/project-card";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/components/auth-provider";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 const badges = [
     { name: 'First Contribution', icon: Award },
@@ -43,20 +38,8 @@ const badges = [
 ]
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/');
-    }
-  }, [user, loading, router]);
-  
-  if (loading || !user) {
-    return null; // Or a loading spinner
-  }
-
-  const userProjects = projects.filter(p => p.team.some(member => member.id === currentUser.id));
+  const user = currentUser;
+  const userProjects = projects.filter(p => p.team.some(member => member.id === user.id));
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -98,9 +81,9 @@ export default function ProfilePage() {
             <SidebarMenuItem>
               <SidebarMenuButton href="/profile" isActive>
                 <Avatar className="size-5">
-                  <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ""} />
+                  <AvatarImage src={user.avatarUrl} alt={user.name} />
                   <AvatarFallback>
-                    {user.displayName?.charAt(0)}
+                    {user.name?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 Profile
@@ -120,15 +103,15 @@ export default function ProfilePage() {
           <div className="relative h-48 w-full bg-primary/10">
             <div className="absolute -bottom-16 left-6">
                 <Avatar className="h-32 w-32 rounded-full border-4 border-background">
-                    <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ""} data-ai-hint="woman smiling"/>
-                    <AvatarFallback className="text-4xl">{user.displayName?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="woman smiling"/>
+                    <AvatarFallback className="text-4xl">{user.name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                 </Avatar>
             </div>
           </div>
           <div className="p-6 pt-20 flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold">{user.displayName}</h1>
-              <p className="text-muted-foreground max-w-xl">{currentUser.bio}</p>
+              <h1 className="text-3xl font-bold">{user.name}</h1>
+              <p className="text-muted-foreground max-w-xl">{user.bio}</p>
             </div>
             <div className="flex gap-2">
                 <Button><Mail className="mr-2 h-4 w-4" /> Message</Button>
