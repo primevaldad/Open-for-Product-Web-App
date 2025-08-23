@@ -2,7 +2,7 @@ import type { Project, User, Task, LearningPath, ProjectCategory } from './types
 import { Paintbrush, Code, Users, Briefcase, BookOpenCheck } from 'lucide-react';
 
 export const users: User[] = [
-  { id: 'u1', name: 'Alex Doe', avatarUrl: 'https://placehold.co/40x40.png', bio: 'Full-stack developer with a passion for open source and community projects.' },
+  { id: 'u1', name: 'Favor Prime', avatarUrl: 'https://placehold.co/40x40.png', bio: 'Full-stack developer with a passion for open source and community projects.' },
   { id: 'u2', name: 'Sam Smith', avatarUrl: 'https://placehold.co/40x40.png', bio: 'UI/UX designer focused on creating accessible and user-friendly interfaces.' },
   { id: 'u3', name: 'Jordan Lee', avatarUrl: 'https://placehold.co/40x40.png', bio: 'Community manager and outreach specialist. Loves to connect people with opportunities.' },
   { id: 'u4', name: 'Casey Brown', avatarUrl: 'https://placehold.co/40x40.png', bio: 'Project manager and strategist with a background in sustainable business models.' },

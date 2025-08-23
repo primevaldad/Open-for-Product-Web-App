@@ -76,7 +76,7 @@ export default function DashboardPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/activity">
                 <Activity />
                 Activity
               </SidebarMenuButton>

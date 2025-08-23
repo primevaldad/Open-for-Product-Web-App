@@ -60,7 +60,7 @@ export default function CreateProjectPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/activity">
                 <Activity />
                 Activity
               </SidebarMenuButton>

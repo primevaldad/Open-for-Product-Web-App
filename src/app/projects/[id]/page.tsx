@@ -105,7 +105,7 @@ export default function ProjectDetailPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/activity">
                 <Activity />
                 Activity
               </SidebarMenuButton>

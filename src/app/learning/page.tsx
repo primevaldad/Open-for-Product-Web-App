@@ -59,7 +59,7 @@ export default function LearningPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/activity">
                 <Activity />
                 Activity
               </SidebarMenuButton>
