@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from "lucide-react";
 
 export type User = {
@@ -5,6 +6,8 @@ export type User = {
   name: string;
   avatarUrl: string;
   bio?: string;
+  interests?: string[];
+  onboarded: boolean;
 };
 
 export type UserRole = 'lead' | 'participant';
@@ -76,4 +79,9 @@ export type UserLearningProgress = {
   userId: string;
   pathId: string;
   completedModules: string[]; // array of module ids
+};
+
+export type Interest = {
+  id: string;
+  name: string;
 };

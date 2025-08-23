@@ -3,7 +3,9 @@
 
 import {
   Award,
+  Lock,
   Pencil,
+  Rocket,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
@@ -13,11 +15,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import ProjectCard from '@/components/project-card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const badges = [
   { name: 'First Contribution', icon: Award },
@@ -41,6 +46,8 @@ export default function UserProfilePage() {
     p =>
       p.status === 'published' && p.team.some(member => member.user.id === user.id)
   );
+
+  const hasContributed = userProjects.length > 0;
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -66,6 +73,13 @@ export default function UserProfilePage() {
           <div>
             <h1 className="text-3xl font-bold">{user.name}</h1>
             <p className="text-muted-foreground max-w-xl">{user.bio}</p>
+             <div className="mt-4 flex flex-wrap gap-2">
+              {user.interests?.map((interest) => (
+                <Badge key={interest} variant="secondary">
+                  {interest}
+                </Badge>
+              ))}
+            </div>
           </div>
           {isCurrentUser && (
             <div className="flex gap-2">
@@ -86,17 +100,30 @@ export default function UserProfilePage() {
               Badges & Certificates
             </h2>
             <div className="flex flex-wrap gap-4">
-              {badges.map((badge, index) => (
-                <Card
-                  key={index}
-                  className="p-4 flex flex-col items-center justify-center gap-2 w-36 h-36 bg-accent/50"
-                >
-                  <badge.icon className="h-8 w-8 text-primary" />
-                  <span className="text-sm font-medium text-center">
-                    {badge.name}
-                  </span>
-                </Card>
-              ))}
+              {badges.map((badge, index) => {
+                const isFirstBadge = badge.name === 'First Contribution';
+                const isLocked = isFirstBadge && !hasContributed;
+
+                return (
+                  <Card
+                    key={index}
+                    className={cn(
+                        "p-4 flex flex-col items-center justify-center gap-2 w-36 h-36 relative", 
+                        isLocked ? "bg-muted/50 text-muted-foreground" : "bg-accent/50"
+                    )}
+                  >
+                    {isLocked && (
+                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg">
+                            <Lock className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                    )}
+                    <badge.icon className={cn("h-8 w-8", !isLocked && "text-primary")} />
+                    <span className="text-sm font-medium text-center">
+                      {badge.name}
+                    </span>
+                  </Card>
+                )
+              })}
             </div>
           </div>
 
@@ -104,11 +131,28 @@ export default function UserProfilePage() {
             <h2 className="text-2xl font-bold tracking-tight mb-4">
               Contribution Portfolio
             </h2>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {userProjects.map(project => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
+            {hasContributed ? (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {userProjects.map(project => (
+                        <ProjectCard key={project.id} project={project} />
+                    ))}
+                </div>
+            ) : (
+                <Card className="flex flex-col items-center justify-center text-center p-8 border-dashed">
+                    <CardHeader>
+                        <CardTitle>Let's Get Started!</CardTitle>
+                        <CardDescription>Your portfolio is ready to be filled with amazing projects.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Link href="/">
+                            <Button size="lg">
+                                <Rocket className="mr-2 h-5 w-5" />
+                                Find your first contribution
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            )}
           </div>
         </div>
       </main>
