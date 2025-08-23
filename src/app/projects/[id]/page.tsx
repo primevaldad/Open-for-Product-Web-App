@@ -14,7 +14,8 @@ import {
   Target,
   FileText,
   DollarSign,
-  UserPlus
+  UserPlus,
+  Pencil
 } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
@@ -81,6 +82,7 @@ export default function ProjectDetailPage() {
   }
 
   const isCurrentUserMember = project.team.some(member => member.user.id === currentUser.id);
+  const isCurrentUserLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead');
 
   const handleJoinProject = () => {
     startTransition(async () => {
@@ -196,12 +198,20 @@ export default function ProjectDetailPage() {
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
         <Tabs defaultValue="overview">
-            <TabsList className="mb-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="discussions">Discussions</TabsTrigger>
-              <TabsTrigger value="governance">Governance</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between mb-4">
+                <TabsList>
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                  <TabsTrigger value="discussions">Discussions</TabsTrigger>
+                  <TabsTrigger value="governance">Governance</TabsTrigger>
+                </TabsList>
+                {isCurrentUserLead && (
+                    <Button variant="outline" size="sm">
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Project
+                    </Button>
+                )}
+            </div>
 
             <TabsContent value="overview" className="space-y-6">
               <Card>
