@@ -256,7 +256,7 @@ export default function ProjectDetailPage() {
                                 {project.team.map(member => (
                                   <Tooltip key={member.user.id}>
                                     <TooltipTrigger asChild>
-                                        <Link href="/profile">
+                                        <Link href={`/profile/${member.user.id}`}>
                                             <Avatar className="h-8 w-8 border-2 border-background">
                                                 <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
                                                 <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
