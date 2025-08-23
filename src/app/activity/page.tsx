@@ -6,6 +6,7 @@ import {
   FolderKanban,
   Home,
   LayoutPanelLeft,
+  Pencil,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -25,6 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { EditTaskDialog } from "@/components/edit-task-dialog";
 
 export default function ActivityPage() {
   const myTasks = tasks.filter(task => task.assignedTo?.id === currentUser.id);
@@ -119,30 +121,37 @@ export default function ActivityPage() {
             <CardHeader>
               <CardTitle>Assigned to You</CardTitle>
               <CardDescription>
-                Here's a list of tasks that require your attention across all projects.
+                Here's a list of tasks that require your attention across all projects. Click a task to edit.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {myTasks.length > 0 ? (
-                <ul className="space-y-4">
+                <ul className="space-y-1">
                   {myTasks.map(task => {
                     const project = projects.find(p => p.id === task.projectId);
+                    if (!project) return null;
+
                     return (
                       <li key={task.id}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-semibold">{task.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              In project: <Link href={`/projects/${project?.id}`} className="font-medium text-primary hover:underline">{project?.name}</Link>
-                            </p>
-                          </div>
-                          <Badge variant={
-                            task.status === 'Done' ? 'secondary' :
-                            task.status === 'In Progress' ? 'default' :
-                            'outline'
-                          }>{task.status}</Badge>
-                        </div>
-                        <Separator className="mt-4" />
+                        <EditTaskDialog task={task} isTeamMember={true} projectTeam={project.team}>
+                           <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                            <div className="flex-grow">
+                              <p className="font-semibold">{task.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                In project: <Link href={`/projects/${project?.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{project?.name}</Link>
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <Badge variant={
+                                    task.status === 'Done' ? 'secondary' :
+                                    task.status === 'In Progress' ? 'default' :
+                                    'outline'
+                                }>{task.status}</Badge>
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                           </div>
+                        </EditTaskDialog>
+                        <Separator />
                       </li>
                     );
                   })}
