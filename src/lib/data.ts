@@ -1,4 +1,4 @@
-import type { Project, User, Task, LearningPath, ProjectCategory } from './types';
+import type { Project, User, Task, LearningPath, ProjectCategory, ProjectMember } from './types';
 import { Paintbrush, Code, Users, Briefcase, BookOpenCheck } from 'lucide-react';
 
 export const users: User[] = [
@@ -17,7 +17,7 @@ export const projects: Project[] = [  {
     timeline: 'TBD',
     contributionNeeds: ['artistry', 'marketing', 'storytelling'],
     progress: 0,
-    team: [users.find(u => u.id === 'u1')!],
+    team: [{ user: users.find(u => u.id === 'u1')!, role: 'lead' }],
     votes: 0,
     discussions: 0,
     status: 'draft',
@@ -30,7 +30,7 @@ export const projects: Project[] = [  {
     timeline: 'TBD',
     contributionNeeds: ['artistry', 'marketing', 'storytelling'],
     progress: 0,
-    team: [users.find(u => u.id === 'u1')!],
+    team: [{ user: users.find(u => u.id === 'u1')!, role: 'lead' }],
     votes: 0,
     discussions: 0,
     status: 'draft',
@@ -44,7 +44,10 @@ export const projects: Project[] = [  {
     timeline: '3 Months',
     contributionNeeds: ['Gardening', 'Community Outreach', 'Logistics'],
     progress: 60,
-    team: [users[0], users[2]],
+    team: [
+        { user: users[0], role: 'lead' },
+        { user: users[2], role: 'participant' }
+    ],
     votes: 128,
     discussions: 12,
     isExpertReviewed: true,
@@ -59,7 +62,11 @@ export const projects: Project[] = [  {
     timeline: '6 Months',
     contributionNeeds: ['React Native', 'UI/UX Design', 'Firebase'],
     progress: 35,
-    team: [users[1], users[3], users[0]],
+    team: [
+        { user: users[1], role: 'lead' },
+        { user: users[3], role: 'participant' },
+        { user: users[0], role: 'participant' }
+    ],
     votes: 256,
     discussions: 45,
     status: 'published',
@@ -73,7 +80,7 @@ export const projects: Project[] = [  {
     timeline: '1 Year',
     contributionNeeds: ['2D Animation', 'Storyboarding', 'Sound Design'],
     progress: 15,
-    team: [users[1]],
+    team: [{ user: users[1], role: 'lead' }],
     votes: 95,
     discussions: 8,
     status: 'published',
@@ -87,7 +94,10 @@ export const projects: Project[] = [  {
     timeline: '8 Months',
     contributionNeeds: ['Web3', 'Solidity', 'Marketing'],
     progress: 20,
-    team: [users[3], users[2]],
+    team: [
+        { user: users[3], role: 'lead' },
+        { user: users[2], role: 'participant' }
+    ],
     votes: 150,
     discussions: 22,
     isExpertReviewed: true,
@@ -102,7 +112,12 @@ export const projects: Project[] = [  {
     timeline: '2 Months',
     contributionNeeds: ['Research', 'Technical Writing', 'Ethics'],
     progress: 75,
-    team: [users[0], users[1], users[2], users[3]],
+    team: [
+        { user: users[0], role: 'lead' },
+        { user: users[1], role: 'participant' },
+        { user: users[2], role: 'participant' },
+        { user: users[3], role: 'participant' }
+    ],
     votes: 180,
     discussions: 30,
     status: 'published',
@@ -116,7 +131,10 @@ export const projects: Project[] = [  {
     timeline: '4 Months',
     contributionNeeds: ['Web Development', 'UX Research', 'Translation'],
     progress: 45,
-    team: [users[2], users[0]],
+    team: [
+        { user: users[2], role: 'lead' },
+        { user: users[0], role: 'participant' }
+    ],
     votes: 210,
     discussions: 18,
     status: 'published',

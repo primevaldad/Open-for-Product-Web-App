@@ -7,6 +7,13 @@ export type User = {
   bio?: string;
 };
 
+export type UserRole = 'lead' | 'participant';
+
+export type ProjectMember = {
+  user: User;
+  role: UserRole;
+};
+
 export type ProjectCategory = 'Creative' | 'Technical' | 'Community' | 'Business & Enterprise' | 'Learning & Research';
 
 export type ProjectStatus = 'published' | 'draft';
@@ -20,7 +27,7 @@ export type Project = {
   timeline: string;
   contributionNeeds: string[];
   progress: number;
-  team: User[];
+  team: ProjectMember[];
   votes: number;
   discussions: number;
   isExpertReviewed?: boolean;

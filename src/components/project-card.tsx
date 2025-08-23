@@ -82,17 +82,17 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div className="flex -space-x-2">
-          {project.team.map((member, index) => (
-            <TooltipProvider key={member.id}>
+          {project.team.map((member) => (
+            <TooltipProvider key={member.user.id}>
               <Tooltip>
                 <TooltipTrigger>
                   <Avatar className="h-8 w-8 border-2 border-background">
-                    <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person portrait" />
-                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                    <AvatarImage src={member.user.avatarUrl} alt={member.user.name} data-ai-hint="person portrait" />
+                    <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
                   </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{member.name}</p>
+                  <p>{member.user.name}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

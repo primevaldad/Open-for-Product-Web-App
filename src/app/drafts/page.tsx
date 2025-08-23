@@ -26,7 +26,7 @@ import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function DraftsPage() {
-  const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.id === currentUser.id));
+  const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.user.id === currentUser.id));
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">

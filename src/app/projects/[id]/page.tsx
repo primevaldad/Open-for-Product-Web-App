@@ -13,10 +13,12 @@ import {
   Clock,
   Target,
   FileText,
-  DollarSign
+  DollarSign,
+  UserPlus
 } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
+import { useTransition } from "react";
 
 import {
   Sidebar,
@@ -38,6 +40,14 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummarizeProgress } from "@/components/ai/summarize-progress";
 import { HighlightBlockers } from "@/components/ai/highlight-blockers";
+import { joinProject } from "@/app/actions/projects";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -62,11 +72,27 @@ function TaskCard({ task }: { task: (typeof tasks)[0] }) {
 
 export default function ProjectDetailPage() {
   const params = useParams();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
   const project = projects.find((p) => p.id === params.id);
 
   if (!project) {
     notFound();
   }
+
+  const isCurrentUserMember = project.team.some(member => member.user.id === currentUser.id);
+
+  const handleJoinProject = () => {
+    startTransition(async () => {
+      if (typeof params.id !== 'string') return;
+      const result = await joinProject(params.id);
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      } else {
+        toast({ title: 'Welcome!', description: `You've successfully joined ${project.name}.` });
+      }
+    });
+  };
 
   const taskColumns = {
     'To Do': tasks.filter(t => t.status === 'To Do'),
@@ -158,7 +184,12 @@ export default function ProjectDetailPage() {
             <p className="text-sm text-muted-foreground">{project.tagline}</p>
           </div>
           <div className="flex items-center gap-4">
-             <Button>Join Project</Button>
+             {!isCurrentUserMember && (
+              <Button onClick={handleJoinProject} disabled={isPending}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                {isPending ? 'Joining...' : 'Join Project'}
+              </Button>
+             )}
              <UserNav />
           </div>
         </header>
@@ -188,12 +219,22 @@ export default function ProjectDetailPage() {
                         <div className="flex items-center">
                             <Users className="h-5 w-5 mr-3 text-primary" />
                             <div className="flex -space-x-2">
+                              <TooltipProvider>
                                 {project.team.map(member => (
-                                    <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                                        <AvatarImage src={member.avatarUrl} alt={member.name} />
-                                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                                    </Avatar>
+                                  <Tooltip key={member.user.id}>
+                                    <TooltipTrigger>
+                                      <Avatar className="h-8 w-8 border-2 border-background">
+                                          <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
+                                          <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
+                                      </Avatar>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="font-semibold">{member.user.name}</p>
+                                      <p className="capitalize text-muted-foreground">{member.role}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 ))}
+                              </TooltipProvider>
                             </div>
                         </div>
                          <div className="space-y-2">

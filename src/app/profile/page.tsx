@@ -40,7 +40,7 @@ const badges = [
 
 export default function ProfilePage() {
   const user = currentUser;
-  const userProjects = projects.filter(p => p.status === 'published' && p.team.some(member => member.id === user.id));
+  const userProjects = projects.filter(p => p.status === 'published' && p.team.some(member => member.user.id === user.id));
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
