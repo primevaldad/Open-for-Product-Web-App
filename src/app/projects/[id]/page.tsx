@@ -247,7 +247,7 @@ export default function ProjectDetailPage() {
                         <p className="text-muted-foreground">{project.description}</p>
                     </div>
                     <div className="space-y-4">
-                        <div className="flex items-center"><Target className="h-5 w-5 mr-3 text-primary" /> <span>Goal: {project.contributionNeeds.join(', ')}</span></div>
+                        <div className="flex items-center"><Target className="h-5 w-5 mr-3 text-primary" /> <span>Skills Needed: {project.contributionNeeds.join(', ')}</span></div>
                         <div className="flex items-center"><Clock className="h-5 w-5 mr-3 text-primary" /> <span>Timeline: {project.timeline}</span></div>
                         <div className="flex items-center">
                             <Users className="h-5 w-5 mr-3 text-primary" />

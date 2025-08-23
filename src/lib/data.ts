@@ -192,7 +192,7 @@ export const projects: Project[] = [
 ];
 
 export let tasks: Task[] = [
-    { id: 't1', projectId: 'p2', title: 'Draft project proposal & community guidelines', description: `Flesh out the full proposal and establish rules for engagement.`, status: 'Done', assignedTo: users.find(u => u.id === 'u1'), estimatedHours: 8 },
+    { id: 't1', projectId: 'p2', title: 'Draft project proposal & community guidelines', description: `Flesh out the full proposal and establish rules for engagement.`, status: 'In Progress', assignedTo: users.find(u => u.id === 'u1'), estimatedHours: 8 },
     { id: 't2', projectId: 'p2', title: 'Set up development environment and CI/CD pipeline', description: `Configure the repository, build scripts, and deployment workflow.`, status: 'In Progress', assignedTo: users.find(u => u.id === 'u2'), estimatedHours: 12 },
     { id: 't3', projectId: 'p2', title: 'Design initial UI mockups and user flow diagrams', description: `Create visual designs for the main screens and map out user journeys.`, status: 'In Progress', assignedTo: users.find(u => u.id === 'u4'), estimatedHours: 20 },
     { id: 't4', projectId: 'p2', title: 'Create database schema for projects and users', description: `Define the data models and relationships for the application.`, status: 'To Do', assignedTo: undefined, estimatedHours: 6 },
