@@ -1,3 +1,6 @@
+
+"use client";
+
 import {
   Activity,
   BookOpen,
@@ -34,6 +37,9 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummarizeProgress } from "@/components/ai/summarize-progress";
 import { HighlightBlockers } from "@/components/ai/highlight-blockers";
+import { useAuth } from "@/components/auth-provider";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebase";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -57,11 +63,20 @@ function TaskCard({ task }: { task: (typeof tasks)[0] }) {
 }
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const { user } = useAuth();
   const project = projects.find((p) => p.id === params.id);
 
   if (!project) {
     notFound();
   }
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Error signing in with Google", error);
+    }
+  };
 
   const taskColumns = {
     'To Do': tasks.filter(t => t.status === 'To Do'),
@@ -133,7 +148,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             <p className="text-sm text-muted-foreground">{project.tagline}</p>
           </div>
           <div className="flex items-center gap-4">
-             <Button>Join Project</Button>
+             {user ? <Button>Join Project</Button> : <Button onClick={handleLogin}>Sign in to Join</Button>}
              <UserNav />
           </div>
         </header>
