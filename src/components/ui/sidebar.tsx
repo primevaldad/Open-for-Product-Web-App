@@ -69,6 +69,7 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const [isMounted, setIsMounted] = React.useState(false)
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
@@ -89,6 +90,10 @@ const SidebarProvider = React.forwardRef<
       [setOpenProp, open]
     )
 
+    React.useEffect(() => {
+        setIsMounted(true)
+    }, [])
+    
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
       return isMobile
@@ -114,7 +119,7 @@ const SidebarProvider = React.forwardRef<
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
-    const state = open ? "expanded" : "collapsed"
+    const state = open && isMounted ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
@@ -176,12 +181,6 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
-    const [isMounted, setIsMounted] = React.useState(false);
-
-    React.useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
 
     if (collapsible === "none") {
       return (
@@ -197,25 +196,6 @@ const Sidebar = React.forwardRef<
         </div>
       )
     }
-
-    if (!isMounted) {
-        if (collapsible === 'icon') {
-            return (
-                 <div
-                    className={cn(
-                        "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
-                        "group-data-[collapsible=offcanvas]:w-0",
-                        "group-data-[side=right]:rotate-180",
-                        variant === "floating" || variant === "inset"
-                        ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-                        : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
-                    )}
-                 />
-            )
-        }
-        return null;
-    }
-
 
     if (isMobile) {
       return (
