@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Activity,
   BookOpen,
@@ -120,25 +122,29 @@ export default function LearningPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {learningPaths.map((path) => (
-              <Card key={path.id} className={cn("flex flex-col", path.isLocked && "bg-muted/50")}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                        <path.Icon className="h-6 w-6 text-primary" />
-                     </div>
-                     {path.isLocked && <Badge variant="secondary"> <Lock className="mr-1 h-3 w-3" /> Locked</Badge>}
-                  </div>
-                  <CardTitle className="pt-4">{path.title}</CardTitle>
-                   <Badge variant="outline" className="w-fit">{path.category}</Badge>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-muted-foreground">{path.description}</p>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{path.duration}</span>
-                  <Button disabled={path.isLocked}>Start Path</Button>
-                </CardFooter>
-              </Card>
+              <Link key={path.id} href={path.isLocked ? '#' : `/learning/${path.id}`} className={cn(path.isLocked && "pointer-events-none")}>
+                <Card className={cn("flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1", path.isLocked && "bg-muted/50")}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                          <path.Icon className="h-6 w-6 text-primary" />
+                      </div>
+                      {path.isLocked && <Badge variant="secondary"> <Lock className="mr-1 h-3 w-3" /> Locked</Badge>}
+                    </div>
+                    <CardTitle className="pt-4">{path.title}</CardTitle>
+                    <Badge variant="outline" className="w-fit">{path.category}</Badge>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <p className="text-muted-foreground">{path.description}</p>
+                  </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">{path.duration}</span>
+                    <Button asChild disabled={path.isLocked}>
+                        <span>Start Path</span>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </Link>
             ))}
           </div>
         </main>
