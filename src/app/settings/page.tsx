@@ -29,16 +29,40 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useRef, useState } from "react";
 
 export default function SettingsPage() {
   const user = currentUser;
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const handleSaveChanges = () => {
     toast({
       title: "Settings Saved",
       description: "Your changes have been successfully saved.",
     })
+  }
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setAvatarPreview(reader.result as string);
+        }
+        reader.readAsDataURL(file);
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Invalid File Type",
+            description: "Please select a valid image file.",
+        });
+    }
+  };
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
   }
 
   return (
@@ -118,10 +142,17 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-20 w-20">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarImage src={avatarPreview || user.avatarUrl} alt={user.name} />
                     <AvatarFallback className="text-2xl">{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                   </Avatar>
-                  <Button variant="outline">Change Photo</Button>
+                  <Button variant="outline" onClick={triggerFileSelect}>Change Photo</Button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                    accept="image/*"
+                  />
                 </div>
                  <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
