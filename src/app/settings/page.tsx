@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Activity,
   BookOpen,
@@ -26,9 +28,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
   const user = currentUser;
+  const { toast } = useToast();
+
+  const handleSaveChanges = () => {
+    toast({
+      title: "Settings Saved",
+      description: "Your changes have been successfully saved.",
+    })
+  }
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -166,7 +177,7 @@ export default function SettingsPage() {
 
             <div className="flex justify-end gap-2">
                 <Button variant="outline">Discard</Button>
-                <Button>Save Changes</Button>
+                <Button onClick={handleSaveChanges}>Save Changes</Button>
             </div>
           </div>
         </main>
