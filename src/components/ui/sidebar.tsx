@@ -176,6 +176,12 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const [isMounted, setIsMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
 
     if (collapsible === "none") {
       return (
@@ -191,6 +197,25 @@ const Sidebar = React.forwardRef<
         </div>
       )
     }
+
+    if (!isMounted) {
+        if (collapsible === 'icon') {
+            return (
+                 <div
+                    className={cn(
+                        "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
+                        "group-data-[collapsible=offcanvas]:w-0",
+                        "group-data-[side=right]:rotate-180",
+                        variant === "floating" || variant === "inset"
+                        ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
+                        : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+                    )}
+                 />
+            )
+        }
+        return null;
+    }
+
 
     if (isMobile) {
       return (
