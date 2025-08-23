@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectCategory, ProjectStatus } from '@/lib/types';
 import { currentUser } from '@/lib/data';
+import { projects as allProjects, users } from '@/lib/data';
 
 const dataFilePath = path.join(process.cwd(), 'src', 'lib', 'data.ts');
 
@@ -19,68 +20,50 @@ const ProjectSchema = z.object({
   contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
 });
 
+function serializeProjects(projects: Project[]): string {
+    const projectStrings = projects.map(p => {
+        const teamString = p.team.map(m => `{ user: users.find(u => u.id === '${m.user.id}')!, role: '${m.role}' }`).join(',\n        ');
+        const contributionNeedsString = p.contributionNeeds.map(n => `'${n}'`).join(', ');
+
+        return `  {
+    id: '${p.id}',
+    name: '${p.name.replace(/'/g, "\\'")}',
+    tagline: '${p.tagline.replace(/'/g, "\\'")}',
+    description: \`${p.description.replace(/`/g, "\\`")}\`,
+    category: '${p.category}',
+    timeline: '${p.timeline}',
+    contributionNeeds: [${contributionNeedsString}],
+    progress: ${p.progress},
+    team: [
+        ${teamString}
+    ],
+    votes: ${p.votes},
+    discussions: ${p.discussions},
+    ${p.isExpertReviewed ? `isExpertReviewed: ${p.isExpertReviewed},` : ''}
+    status: '${p.status}',
+  }`;
+    });
+
+    return `export const projects: Project[] = [\n${projectStrings.join(',\n')}\n];`;
+}
+
+
 // This is a simplified example. In a real app, you'd use a database.
 async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
   try {
-    const fileContent = await fs.readFile(dataFilePath, 'utf-8');
-    
-    // This is a very brittle way to update the projects array.
-    // It relies on a simple regex and string replacement.
-    // A real app would use a more robust method like parsing the AST.
-    const projectsRegex = /export const projects: Project\[\] = (\[[\s\S]*?\]);/;
-    const match = fileContent.match(projectsRegex);
-
-    if (!match) {
-      throw new Error("Could not find projects array in data file.");
-    }
-
-    // WARNING: This uses eval, which is dangerous with untrusted input.
-    // We are using it here for simplicity in a prototyping context.
-    const currentProjects: Project[] = eval(match[1]);
+    const currentProjects = allProjects;
     const updatedProjects = updater(currentProjects);
+
+    const fileContent = await fs.readFile(dataFilePath, 'utf-8');
+    const projectsRegex = /export const projects: Project\[\] = \[[\s\S]*?\];/;
     
-    // We need to carefully serialize the projects back into a string.
-    // This is also very fragile.
-    const updatedProjectsString = JSON.stringify(updatedProjects, (key, value) => {
-        // Custom replacer to handle functions and circular references if any
-        if (key === 'user' && value.id) {
-            return `users.find(u => u.id === '${value.id}')`;
-        }
-        return value;
-    }, 2)
-    .replace(/"user": "users.find\(u => u.id === '(.*)'\)"/g, 'user: users.find(u => u.id === \'$1\')!')
-    .replace(/"role":/g, 'role:')
-    .replace(/"/g, "'");
-
-
-    const updatedContent = fileContent.replace(projectsRegex, `export const projects: Project[] = ${updatedProjectsString};`);
+    const updatedContent = fileContent.replace(projectsRegex, serializeProjects(updatedProjects));
+    
     await fs.writeFile(dataFilePath, updatedContent, 'utf-8');
 
   } catch (error) {
     console.error("Error updating data file:", error);
     throw new Error("Could not update projects.");
-  }
-}
-
-
-async function appendToProjects(newProject: Project) {
-  try {
-    const fileContent = await fs.readFile(dataFilePath, 'utf-8');
-    const newProjectString = `,\n  {\n    id: '${newProject.id}',\n    name: '${newProject.name}',\n    tagline: '${newProject.tagline}',\n    description: \`${newProject.description}\`,\n    category: '${newProject.category}',\n    timeline: '${newProject.timeline}',\n    contributionNeeds: [${newProject.contributionNeeds.map(n => `'${n}'`).join(', ')}],\n    progress: ${newProject.progress},\n    team: [{ user: users.find(u => u.id === '${newProject.team[0].user.id}'), role: '${newProject.team[0].role}' }],\n    votes: ${newProject.votes},\n    discussions: ${newProject.discussions},\n    status: '${newProject.status}',\n  }`;
-
-    const projectsRegex = /export const projects: Project\[\] = \[([\s\S]*?)\];/;
-    const match = fileContent.match(projectsRegex);
-    if (match) {
-        const existingProjects = match[1];
-        const updatedProjects = `${newProjectString.slice(2)}${existingProjects ? ',' : ''}${existingProjects}`;
-        const finalContent = fileContent.replace(projectsRegex, `export const projects: Project[] = [${updatedProjects}];`);
-        await fs.writeFile(dataFilePath, finalContent, 'utf-8');
-    } else {
-         throw new Error("Could not find projects array in data file.");
-    }
-  } catch (error) {
-    console.error("Error updating data file:", error);
-    throw new Error("Could not add new project.");
   }
 }
 
@@ -115,7 +98,7 @@ async function handleProjectSubmission(
   };
 
   try {
-    await appendToProjects(newProject);
+    await updateProjectsFile((projects) => [newProject, ...projects]);
     revalidatePath('/');
     revalidatePath('/create');
     if (status === 'draft') {
@@ -152,8 +135,6 @@ export async function joinProject(projectId: string) {
         await updateProjectsFile((projects) => {
             const projectIndex = projects.findIndex(p => p.id === projectId);
             if (projectIndex === -1) {
-                // This won't be caught by the caller, but will prevent file corruption.
-                // A proper implementation would handle this better.
                 console.error("Project not found in joinProject updater");
                 return projects; 
             }
