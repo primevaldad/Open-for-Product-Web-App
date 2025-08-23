@@ -255,11 +255,13 @@ export default function ProjectDetailPage() {
                               <TooltipProvider>
                                 {project.team.map(member => (
                                   <Tooltip key={member.user.id}>
-                                    <TooltipTrigger>
-                                      <Avatar className="h-8 w-8 border-2 border-background">
-                                          <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
-                                          <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
-                                      </Avatar>
+                                    <TooltipTrigger asChild>
+                                        <Link href="/profile">
+                                            <Avatar className="h-8 w-8 border-2 border-background">
+                                                <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
+                                                <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
+                                            </Avatar>
+                                        </Link>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       <p className="font-semibold">{member.user.name}</p>

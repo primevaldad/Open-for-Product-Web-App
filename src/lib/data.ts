@@ -8,7 +8,7 @@ export const users: User[] = [
   { id: 'u4', name: 'Casey Brown', avatarUrl: 'https://placehold.co/40x40.png', bio: 'Project manager and strategist with a background in sustainable business models.' },
 ];
 
-export let currentUser: User = users[0];
+export let currentUser: User = users[1];
 
 export const projects: Project[] = [
   {
