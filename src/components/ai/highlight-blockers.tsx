@@ -68,10 +68,12 @@ export function HighlightBlockers() {
             </div>
         )}
         {!blockers && !loading && (
+          <div className="flex justify-center">
             <Button onClick={getBlockers} disabled={loading}>
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Highlight Blockers
+              <AlertTriangle className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="truncate">Highlight <span className="hidden sm:inline">Blockers</span></span>
             </Button>
+          </div>
         )}
       </CardContent>
     </Card>
