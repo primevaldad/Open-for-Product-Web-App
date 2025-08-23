@@ -21,15 +21,22 @@ import Link from "next/link"
 import { useAuth } from "./auth-provider"
 import { auth, googleProvider } from "@/lib/firebase"
 import { signInWithPopup, signOut } from "firebase/auth"
+import { useToast } from "@/hooks/use-toast"
 
 export function UserNav() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Error signing in with Google", error);
+      toast({
+        title: "Authentication Error",
+        description: "Could not sign in. Please try again.",
+        variant: "destructive",
+      })
     }
   };
 
@@ -38,6 +45,11 @@ export function UserNav() {
       await signOut(auth);
     } catch (error) {
       console.error("Error signing out", error);
+       toast({
+        title: "Error",
+        description: "Could not sign out. Please try again.",
+        variant: "destructive",
+      })
     }
   };
 

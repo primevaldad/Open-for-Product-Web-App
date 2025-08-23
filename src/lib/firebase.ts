@@ -2,7 +2,7 @@
 "use client";
 
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, Auth, connectAuthEmulator } from "firebase/auth";
 
 const firebaseConfig = {
   projectId: 'open-for-product',
@@ -13,10 +13,26 @@ const firebaseConfig = {
   messagingSenderId: '36569631324',
 };
 
+function getFirebaseApp(): FirebaseApp {
+    if (!getApps().length) {
+        return initializeApp(firebaseConfig);
+    }
+    return getApp();
+}
 
-// Initialize Firebase
-const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth: Auth = getAuth(app);
+function getFirebaseAuth(): Auth {
+    const app = getFirebaseApp();
+    const auth = getAuth(app);
+    if (process.env.NODE_ENV === 'development' && !(auth as any).emulatorConfig) {
+        // Point to the Auth emulator running on localhost.
+        // This is automatically wired up by Firebase Studio.
+        connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    }
+    return auth;
+}
+
+const app = getFirebaseApp();
+const auth = getFirebaseAuth();
 const googleProvider = new GoogleAuthProvider();
 
 export { app, auth, googleProvider };
