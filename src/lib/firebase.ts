@@ -14,13 +14,10 @@ const firebaseConfig = {
 };
 
 function getFirebaseApp(): FirebaseApp {
-    if (!getApps().length) {
-        return initializeApp(firebaseConfig);
-    }
-    return getApp();
+    return getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 }
 
-function getFirebaseAuth(): Auth {
+export function getFirebaseAuth(): Auth {
     const app = getFirebaseApp();
     const auth = getAuth(app);
     if (process.env.NODE_ENV === 'development' && !(auth as any).emulatorConfig) {
@@ -31,8 +28,5 @@ function getFirebaseAuth(): Auth {
     return auth;
 }
 
-const app = getFirebaseApp();
-const auth = getFirebaseAuth();
-const googleProvider = new GoogleAuthProvider();
-
-export { app, auth, googleProvider };
+export const app = getFirebaseApp();
+export const googleProvider = new GoogleAuthProvider();

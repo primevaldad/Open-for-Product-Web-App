@@ -39,7 +39,7 @@ import { SummarizeProgress } from "@/components/ai/summarize-progress";
 import { HighlightBlockers } from "@/components/ai/highlight-blockers";
 import { useAuth } from "@/components/auth-provider";
 import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
+import { getFirebaseAuth, googleProvider } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
@@ -68,6 +68,7 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const project = projects.find((p) => p.id === params.id);
   const { toast } = useToast();
+  const auth = getFirebaseAuth();
 
   if (!project) {
     notFound();

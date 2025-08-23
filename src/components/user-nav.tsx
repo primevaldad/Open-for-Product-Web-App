@@ -19,13 +19,14 @@ import {
 import { CreditCard, LogOut, Settings, User as UserIcon } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "./auth-provider"
-import { auth, googleProvider } from "@/lib/firebase"
+import { getFirebaseAuth, googleProvider } from "@/lib/firebase"
 import { signInWithPopup, signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 
 export function UserNav() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const auth = getFirebaseAuth();
 
   const handleLogin = async () => {
     try {
