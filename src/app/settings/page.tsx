@@ -29,19 +29,44 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
+import { updateUserSettings } from "../actions/settings";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function SettingsPage() {
   const user = currentUser;
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isPending, startTransition] = useTransition();
+
+  // Initialize state with current user data
+  const [name, setName] = useState(user.name);
+  const [bio, setBio] = useState(user.bio);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
+
   const handleSaveChanges = () => {
-    toast({
-      title: "Settings Saved",
-      description: "Your changes have been successfully saved.",
-    })
+    startTransition(async () => {
+      const result = await updateUserSettings({
+        name,
+        bio,
+        avatarDataUrl: avatarPreview
+      });
+
+      if (result.success) {
+        toast({
+          title: "Settings Saved",
+          description: "Your changes have been successfully saved.",
+        });
+        // Optionally refresh the page or update state to reflect changes globally
+      } else {
+         toast({
+          variant: "destructive",
+          title: "Error Saving Settings",
+          description: result.error,
+        });
+      }
+    });
   }
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,8 +167,8 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-20 w-20">
-                    <AvatarImage src={avatarPreview || user.avatarUrl} alt={user.name} />
-                    <AvatarFallback className="text-2xl">{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarImage src={avatarPreview || user.avatarUrl} alt={name} />
+                    <AvatarFallback className="text-2xl">{name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                   </Avatar>
                   <Button variant="outline" onClick={triggerFileSelect}>Change Photo</Button>
                   <input 
@@ -156,11 +181,11 @@ export default function SettingsPage() {
                 </div>
                  <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue={user.name} />
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
-                  <Input id="bio" defaultValue={user.bio} />
+                  <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} />
                 </div>
               </CardContent>
             </Card>
@@ -175,9 +200,9 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                  <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="alex.doe@example.com" />
+                  <Input id="email" type="email" defaultValue="alex.doe@example.com" disabled />
                 </div>
-                 <Button variant="outline">Change Password</Button>
+                 <Button variant="outline" disabled>Change Password</Button>
               </CardContent>
             </Card>
             
@@ -208,7 +233,9 @@ export default function SettingsPage() {
 
             <div className="flex justify-end gap-2">
                 <Button variant="outline">Discard</Button>
-                <Button onClick={handleSaveChanges}>Save Changes</Button>
+                <Button onClick={handleSaveChanges} disabled={isPending}>
+                  {isPending ? "Saving..." : "Save Changes"}
+                </Button>
             </div>
           </div>
         </main>
