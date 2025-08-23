@@ -43,12 +43,13 @@ export default function SettingsPage() {
   // Initialize state with current user data
   const [name, setName] = useState(user.name);
   const [bio, setBio] = useState(user.bio);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl);
 
 
   const handleSaveChanges = () => {
     startTransition(async () => {
       const result = await updateUserSettings({
+        id: user.id,
         name,
         bio,
         avatarDataUrl: avatarPreview
@@ -206,7 +207,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
-                  <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} />
+                  <Textarea id="bio" value={bio ?? ''} onChange={(e) => setBio(e.target.value)} />
                 </div>
               </CardContent>
             </Card>

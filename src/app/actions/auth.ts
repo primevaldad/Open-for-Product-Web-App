@@ -24,7 +24,7 @@ async function updateCurrentUser(userId: string) {
 
         // Replace the currentUser export
         const updatedContent = fileContent.replace(
-            /export let currentUser: User = users\[\d\];/,
+            /export let currentUser: User = users\[\d+\];/,
             `export let currentUser: User = users[${users.indexOf(newCurrentUser)}];`
         );
         
