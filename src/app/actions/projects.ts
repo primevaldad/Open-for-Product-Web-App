@@ -45,6 +45,7 @@ function serializeProjects(projects: Project[]): string {
     },`;
         }
 
+        const isExpertReviewedString = p.isExpertReviewed ? `\n    isExpertReviewed: ${p.isExpertReviewed},` : '';
 
         return `  {
     id: '${p.id}',
@@ -59,7 +60,7 @@ function serializeProjects(projects: Project[]): string {
         ${teamString}
     ],
     votes: ${p.votes},
-    discussions: ${p.discussions},${p.isExpertReviewed ? `\n    isExpertReviewed: ${p.isExpertReviewed},` : ''}
+    discussions: ${p.discussions},${isExpertReviewedString}
     status: '${p.status}',${governanceString}
   }`;
     });
@@ -71,27 +72,15 @@ function serializeProjects(projects: Project[]): string {
 // This is a simplified example. In a real app, you'd use a database.
 async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
   try {
-    // NOTE: This is not a safe way to read/write files in a concurrent environment.
-    // For this prototype, we are assuming single-user access.
-    // We are also re-importing the data on each write to get the latest version.
     const dataFileContent = await fs.readFile(path.join(process.cwd(), 'src', 'lib', 'data.ts'), 'utf-8');
-    const projectsRegex = /export const projects: Project\[\] = \[[\s\S]*?\];/;
-    const match = dataFileContent.match(projectsRegex);
-
-    if (!match) {
-        throw new Error("Could not find projects array in data.ts");
-    }
     
-    // A bit of a hack to re-evaluate the projects array from the file content.
-    // In a real app, this would come from a database.
-    const currentProjects: Project[] = eval(`(function() { 
-        const users = ${JSON.stringify(users)}; 
-        ${match[0].replace('export const projects: Project[] =', 'return')} 
-    })()`);
-
+    // Create a dynamic function to get the current projects array. This is safer than eval.
+    const getProjects = new Function('users', 'currentUser', dataFileContent + '\nreturn projects;');
+    const currentProjects: Project[] = getProjects(users, currentUser);
 
     const updatedProjects = updater(currentProjects);
     
+    const projectsRegex = /export const projects: Project\[\] = \[[\s\S]*?\];/;
     const updatedContent = dataFileContent.replace(projectsRegex, serializeProjects(updatedProjects));
     
     await fs.writeFile(dataFilePath, updatedContent, 'utf-8');

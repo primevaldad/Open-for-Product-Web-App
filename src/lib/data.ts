@@ -23,8 +23,12 @@ export const projects: Project[] = [
     ],
     votes: 0,
     discussions: 0,
-    
     status: 'draft',
+    governance: {
+      contributorsShare: 75,
+      communityShare: 10,
+      sustainabilityShare: 15,
+    },
   },
   {
     id: 'p271',
@@ -40,8 +44,12 @@ export const projects: Project[] = [
     ],
     votes: 0,
     discussions: 0,
-    
     status: 'draft',
+    governance: {
+      contributorsShare: 75,
+      communityShare: 10,
+      sustainabilityShare: 15,
+    },
   },
   {
     id: 'p1',
@@ -105,6 +113,11 @@ export const projects: Project[] = [
     votes: 95,
     discussions: 8,
     status: 'published',
+    governance: {
+        contributorsShare: 70,
+        communityShare: 20,
+        sustainabilityShare: 10,
+    }
   },
   {
     id: 'p4',
@@ -123,6 +136,11 @@ export const projects: Project[] = [
     discussions: 22,
     isExpertReviewed: true,
     status: 'published',
+    governance: {
+        contributorsShare: 60,
+        communityShare: 25,
+        sustainabilityShare: 15,
+    }
   },
   {
     id: 'p5',
@@ -142,6 +160,11 @@ export const projects: Project[] = [
     votes: 180,
     discussions: 30,
     status: 'published',
+    governance: {
+        contributorsShare: 90,
+        communityShare: 5,
+        sustainabilityShare: 5,
+    }
   },
   {
     id: 'p6',
@@ -159,6 +182,11 @@ export const projects: Project[] = [
     votes: 210,
     discussions: 18,
     status: 'published',
+    governance: {
+        contributorsShare: 75,
+        communityShare: 15,
+        sustainabilityShare: 10,
+    }
   }
 ];
 
