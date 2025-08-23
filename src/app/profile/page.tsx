@@ -10,6 +10,7 @@ import {
   Award,
   Share2,
   Settings,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -135,8 +136,9 @@ export default function ProfilePage() {
               <p className="text-muted-foreground max-w-xl">{user.bio}</p>
             </div>
             <div className="flex gap-2">
-                <Button><Mail className="mr-2 h-4 w-4" /> Message</Button>
-                <Button variant="outline"><Share2 className="mr-2 h-4 w-4" /> Share Profile</Button>
+                <Link href="/settings">
+                  <Button variant="outline"><Pencil className="mr-2 h-4 w-4" /> Edit Profile</Button>
+                </Link>
             </div>
           </div>
 
