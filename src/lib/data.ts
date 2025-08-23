@@ -60,6 +60,11 @@ export const projects: Project[] = [
     discussions: 12,
     isExpertReviewed: true,
     status: 'published',
+     governance: {
+      contributorsShare: 75,
+      communityShare: 10,
+      sustainabilityShare: 15,
+    }
   },
   {
     id: 'p2',
@@ -77,8 +82,12 @@ export const projects: Project[] = [
     ],
     votes: 256,
     discussions: 45,
-    
     status: 'published',
+     governance: {
+      contributorsShare: 80,
+      communityShare: 10,
+      sustainabilityShare: 10,
+    }
   },
   {
     id: 'p3',
@@ -95,7 +104,6 @@ export const projects: Project[] = [
     ],
     votes: 95,
     discussions: 8,
-    
     status: 'published',
   },
   {
@@ -133,7 +141,6 @@ export const projects: Project[] = [
     ],
     votes: 180,
     discussions: 30,
-    
     status: 'published',
   },
   {
@@ -151,7 +158,6 @@ export const projects: Project[] = [
     ],
     votes: 210,
     discussions: 18,
-    
     status: 'published',
   }
 ];

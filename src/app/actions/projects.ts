@@ -6,7 +6,7 @@ import path from 'path';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { Project, ProjectCategory, ProjectStatus } from '@/lib/types';
+import type { Project, ProjectCategory, ProjectStatus, Governance } from '@/lib/types';
 import { currentUser } from '@/lib/data';
 import { projects as allProjects, users } from '@/lib/data';
 
@@ -20,10 +20,31 @@ const ProjectSchema = z.object({
   contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
 });
 
+const EditProjectSchema = ProjectSchema.extend({
+  id: z.string(),
+  timeline: z.string().min(1, "Timeline is required."),
+  governance: z.object({
+    contributorsShare: z.number(),
+    communityShare: z.number(),
+    sustainabilityShare: z.number(),
+  }),
+});
+
+
 function serializeProjects(projects: Project[]): string {
     const projectStrings = projects.map(p => {
         const teamString = p.team.map(m => `{ user: users.find(u => u.id === '${m.user.id}')!, role: '${m.role}' }`).join(',\n        ');
-        const contributionNeedsString = p.contributionNeeds.map(n => `'${n}'`).join(', ');
+        const contributionNeedsString = p.contributionNeeds.map(n => `'${n.replace(/'/g, "\\'")}'`).join(', ');
+        
+        let governanceString = '';
+        if (p.governance) {
+            governanceString = `\n    governance: {
+      contributorsShare: ${p.governance.contributorsShare},
+      communityShare: ${p.governance.communityShare},
+      sustainabilityShare: ${p.governance.sustainabilityShare},
+    },`;
+        }
+
 
         return `  {
     id: '${p.id}',
@@ -31,16 +52,15 @@ function serializeProjects(projects: Project[]): string {
     tagline: '${p.tagline.replace(/'/g, "\\'")}',
     description: \`${p.description.replace(/`/g, "\\`")}\`,
     category: '${p.category}',
-    timeline: '${p.timeline}',
+    timeline: '${p.timeline.replace(/'/g, "\\'")}',
     contributionNeeds: [${contributionNeedsString}],
     progress: ${p.progress},
     team: [
         ${teamString}
     ],
     votes: ${p.votes},
-    discussions: ${p.discussions},
-    ${p.isExpertReviewed ? `isExpertReviewed: ${p.isExpertReviewed},` : ''}
-    status: '${p.status}',
+    discussions: ${p.discussions},${p.isExpertReviewed ? `\n    isExpertReviewed: ${p.isExpertReviewed},` : ''}
+    status: '${p.status}',${governanceString}
   }`;
     });
 
@@ -51,13 +71,28 @@ function serializeProjects(projects: Project[]): string {
 // This is a simplified example. In a real app, you'd use a database.
 async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
   try {
-    const currentProjects = allProjects;
-    const updatedProjects = updater(currentProjects);
-
-    const fileContent = await fs.readFile(dataFilePath, 'utf-8');
+    // NOTE: This is not a safe way to read/write files in a concurrent environment.
+    // For this prototype, we are assuming single-user access.
+    // We are also re-importing the data on each write to get the latest version.
+    const dataFileContent = await fs.readFile(path.join(process.cwd(), 'src', 'lib', 'data.ts'), 'utf-8');
     const projectsRegex = /export const projects: Project\[\] = \[[\s\S]*?\];/;
+    const match = dataFileContent.match(projectsRegex);
+
+    if (!match) {
+        throw new Error("Could not find projects array in data.ts");
+    }
     
-    const updatedContent = fileContent.replace(projectsRegex, serializeProjects(updatedProjects));
+    // A bit of a hack to re-evaluate the projects array from the file content.
+    // In a real app, this would come from a database.
+    const currentProjects: Project[] = eval(`(function() { 
+        const users = ${JSON.stringify(users)}; 
+        ${match[0].replace('export const projects: Project[] =', 'return')} 
+    })()`);
+
+
+    const updatedProjects = updater(currentProjects);
+    
+    const updatedContent = dataFileContent.replace(projectsRegex, serializeProjects(updatedProjects));
     
     await fs.writeFile(dataFilePath, updatedContent, 'utf-8');
 
@@ -168,4 +203,59 @@ export async function joinProject(projectId: string) {
             error: error instanceof Error ? error.message : "An unknown error occurred." 
         };
     }
+}
+
+export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
+    const validatedFields = EditProjectSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return {
+            success: false,
+            error: 'Invalid data provided.',
+        };
+    }
+
+    const { id, ...projectData } = validatedFields.data;
+
+    try {
+        await updateProjectsFile((projects) => {
+            const projectIndex = projects.findIndex(p => p.id === id);
+            if (projectIndex === -1) {
+                throw new Error("Project not found");
+            }
+            const project = projects[projectIndex];
+
+            // Ensure only the lead can edit
+            const lead = project.team.find(m => m.role === 'lead');
+            if (!lead || lead.user.id !== currentUser.id) {
+                throw new Error("Only the project lead can edit the project.");
+            }
+
+            const updatedProject: Project = {
+                ...project,
+                name: projectData.name,
+                tagline: projectData.tagline,
+                description: projectData.description,
+                category: projectData.category,
+                timeline: projectData.timeline,
+                contributionNeeds: projectData.contributionNeeds.split(',').map(item => item.trim()),
+                governance: projectData.governance,
+            };
+
+            const updatedProjects = [...projects];
+            updatedProjects[projectIndex] = updatedProject;
+            return updatedProjects;
+        });
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "An unknown error occurred."
+        };
+    }
+
+    revalidatePath(`/projects/${id}`);
+    revalidatePath(`/projects/${id}/edit`);
+    redirect(`/projects/${id}`);
+    
+    return { success: true };
 }

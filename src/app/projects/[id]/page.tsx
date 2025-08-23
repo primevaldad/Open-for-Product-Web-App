@@ -206,10 +206,12 @@ export default function ProjectDetailPage() {
                   <TabsTrigger value="governance">Governance</TabsTrigger>
                 </TabsList>
                 {isCurrentUserLead && (
-                    <Button variant="outline" size="sm">
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit Project
-                    </Button>
+                    <Link href={`/projects/${project.id}/edit`}>
+                        <Button variant="outline" size="sm">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Project
+                        </Button>
+                    </Link>
                 )}
             </div>
 
@@ -294,21 +296,21 @@ export default function ProjectDetailPage() {
                                 <DollarSign className="h-6 w-6 text-green-500" />
                                 <span className="font-medium">Contributors Share</span>
                             </div>
-                            <span className="text-2xl font-bold">75%</span>
+                            <span className="text-2xl font-bold">{project.governance?.contributorsShare ?? 75}%</span>
                         </div>
                          <div className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-3">
                                 <Users className="h-6 w-6 text-blue-500" />
                                 <span className="font-medium">Community Growth Stake</span>
                             </div>
-                            <span className="text-2xl font-bold">10%</span>
+                            <span className="text-2xl font-bold">{project.governance?.communityShare ?? 10}%</span>
                         </div>
                          <div className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-3">
                                 <FileText className="h-6 w-6 text-purple-500" />
                                 <span className="font-medium">Sustainability (Burn)</span>
                             </div>
-                            <span className="text-2xl font-bold">15%</span>
+                            <span className="text-2xl font-bold">{project.governance?.sustainabilityShare ?? 15}%</span>
                         </div>
                     </CardContent>
                 </Card>

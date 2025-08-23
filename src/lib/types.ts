@@ -18,6 +18,12 @@ export type ProjectCategory = 'Creative' | 'Technical' | 'Community' | 'Business
 
 export type ProjectStatus = 'published' | 'draft';
 
+export type Governance = {
+    contributorsShare: number;
+    communityShare: number;
+    sustainabilityShare: number;
+}
+
 export type Project = {
   id: string;
   name: string;
@@ -32,6 +38,7 @@ export type Project = {
   discussions: number;
   isExpertReviewed?: boolean;
   status: ProjectStatus;
+  governance?: Governance;
 };
 
 export type Task = {
