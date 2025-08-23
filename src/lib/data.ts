@@ -1,4 +1,4 @@
-import type { Project, User, Task, LearningPath, ProjectCategory, ProjectMember } from './types';
+import type { Project, User, Task, LearningPath, ProjectCategory, ProjectMember, UserLearningProgress } from './types';
 import { Paintbrush, Code, Users, Briefcase, BookOpenCheck } from 'lucide-react';
 
 export const users: User[] = [
@@ -203,10 +203,48 @@ export let tasks: Task[] = [
 ];
 
 export const learningPaths: LearningPath[] = [
-  { id: 'lp1', title: 'From Designer to Frontend Dev', description: 'Leverage your UI/UX skills to build interactive web components people love to use.', category: 'Technical', duration: '12 Weeks', Icon: Code },
-  { id: 'lp2', title: 'Creative Project Management', description: 'Learn to lead creative teams and deliver ambitious projects on time and on budget.', category: 'Business & Enterprise', duration: '8 Weeks', Icon: Briefcase, isLocked: true },
-  { id: 'lp3', title: 'Community Organizing 101', description: 'Master the art of bringing people together for a common cause and creating lasting change.', category: 'Community', duration: '6 Weeks', Icon: Users },
-  { id: 'lp4', title: 'Ethical Product Design', description: 'Dive deep into designing products that are inclusive, fair, and responsible by default.', category: 'Learning & Research', duration: '10 Weeks', Icon: BookOpenCheck, isLocked: true },
+  { 
+    id: 'lp1', 
+    title: 'From Designer to Frontend Dev', 
+    description: 'Leverage your UI/UX skills to build interactive web components people love to use.', 
+    category: 'Technical', 
+    duration: '12 Weeks', 
+    Icon: Code,
+    modules: [
+        { id: 'm1_1', title: 'Intro to HTML & CSS', description: 'The building blocks of the web.', videoUrl: 'https://www.youtube.com/embed/gQojMIh7K_c', content: 'In this module, we will cover the absolute basics of HTML and CSS, which are the fundamental technologies for creating web pages.' },
+        { id: 'm1_2', title: 'JavaScript Fundamentals', description: 'Making web pages interactive.', videoUrl: 'https://www.youtube.com/embed/PkZNo7MFNFg', content: 'Learn the core concepts of JavaScript, including variables, data types, functions, and control flow.' },
+        { id: 'm1_3', title: 'Intro to React', description: 'Building modern UIs with components.', videoUrl: 'https://www.youtube.com/embed/bMknfKXIFA8', content: 'Discover how React can help you build powerful, reusable user interface components.' },
+    ]
+  },
+  { 
+    id: 'lp2', 
+    title: 'Creative Project Management', 
+    description: 'Learn to lead creative teams and deliver ambitious projects on time and on budget.', 
+    category: 'Business & Enterprise', 
+    duration: '8 Weeks', 
+    Icon: Briefcase, 
+    isLocked: true,
+    modules: []
+  },
+  { 
+    id: 'lp3', 
+    title: 'Community Organizing 101', 
+    description: 'Master the art of bringing people together for a common cause and creating lasting change.', 
+    category: 'Community', 
+    duration: '6 Weeks', 
+    Icon: Users,
+    modules: []
+  },
+  { 
+    id: 'lp4', 
+    title: 'Ethical Product Design', 
+    description: 'Dive deep into designing products that are inclusive, fair, and responsible by default.', 
+    category: 'Learning & Research', 
+    duration: '10 Weeks', 
+    Icon: BookOpenCheck, 
+    isLocked: true,
+    modules: []
+  },
 ];
 
 export const projectCategories: { name: ProjectCategory; icon: React.FC<any> }[] = [
@@ -218,3 +256,11 @@ export const projectCategories: { name: ProjectCategory; icon: React.FC<any> }[]
 ];
 
 export const currentUser: User = users[0];
+
+export let currentUserLearningProgress: UserLearningProgress[] = [
+    {
+        userId: 'u1',
+        pathId: 'lp1',
+        completedModules: ['m1_1'],
+    }
+];

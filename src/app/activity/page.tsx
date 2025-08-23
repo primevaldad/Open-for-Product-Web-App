@@ -4,6 +4,7 @@
 import {
   Activity,
   BookOpen,
+  CheckCircle,
   FilePlus2,
   FolderKanban,
   Home,
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser, projects, tasks } from "@/lib/data";
+import { currentUser, projects, tasks, learningPaths, currentUserLearningProgress } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,15 @@ import { EditTaskDialog } from "@/components/edit-task-dialog";
 
 export default function ActivityPage() {
   const myTasks = tasks.filter(task => task.assignedTo?.id === currentUser.id);
+
+  const completedModulesData = currentUserLearningProgress.flatMap(progress => 
+    progress.completedModules.map(moduleId => {
+      const path = learningPaths.find(p => p.id === progress.pathId);
+      const module = path?.modules.find(m => m.id === moduleId);
+      return { path, module };
+    })
+  ).filter(item => item.path && item.module);
+
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -113,17 +123,17 @@ export default function ActivityPage() {
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
           <h1 className="text-lg font-semibold md:text-xl">
-            My Tasks
+            My Activity
           </h1>
           <UserNav />
         </header>
 
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          <Card className="mx-auto max-w-3xl">
+        <main className="flex-1 overflow-auto p-4 md:p-6 grid md:grid-cols-2 gap-6">
+          <Card className="mx-auto max-w-3xl md:col-span-1">
             <CardHeader>
-              <CardTitle>Assigned to You</CardTitle>
+              <CardTitle>Assigned Tasks</CardTitle>
               <CardDescription>
-                Here's a list of tasks that require your attention across all projects. Click a task to edit.
+                Here's a list of tasks that require your attention.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -162,6 +172,40 @@ export default function ActivityPage() {
                 <div className="h-48 flex flex-col items-center justify-center text-center text-muted-foreground">
                   <p className="font-semibold">All clear!</p>
                   <p className="text-sm">You have no tasks assigned to you right now.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="mx-auto max-w-3xl md:col-span-1">
+            <CardHeader>
+              <CardTitle>Completed Modules</CardTitle>
+              <CardDescription>
+                A log of your recent learning achievements.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {completedModulesData.length > 0 ? (
+                <ul className="space-y-1">
+                  {completedModulesData.map(({ path, module }) => (
+                    <li key={`${path!.id}-${module!.id}`}>
+                      <div className="flex items-center gap-4 p-3">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <div>
+                          <p className="font-semibold">{module!.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            From path: <Link href={`/learning/${path!.id}`} className="font-medium text-primary hover:underline">{path!.title}</Link>
+                          </p>
+                        </div>
+                      </div>
+                      <Separator />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="h-48 flex flex-col items-center justify-center text-center text-muted-foreground">
+                  <p className="font-semibold">No modules completed yet.</p>
+                  <p className="text-sm">Start a learning path to see your progress here.</p>
                 </div>
               )}
             </CardContent>

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { currentUserLearningProgress } from '@/lib/data';
+import { Progress } from '@/components/ui/progress';
 
 export default function LearningPathDetailPage() {
   const params = useParams();
@@ -16,6 +18,12 @@ export default function LearningPathDetailPage() {
   if (!path) {
     notFound();
   }
+
+  const userProgress = currentUserLearningProgress.find(p => p.pathId === path.id);
+  const completedModules = userProgress?.completedModules.length ?? 0;
+  const totalModules = path.modules.length;
+  const progressPercentage = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;
+  const firstModuleId = path.modules[0]?.id;
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
@@ -44,6 +52,14 @@ export default function LearningPathDetailPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
+              <h3 className="text-xl font-semibold mb-2">Progress</h3>
+              <div className="flex items-center gap-4">
+                  <Progress value={progressPercentage} className="h-2" />
+                  <span className="text-sm text-muted-foreground">{completedModules} / {totalModules} Modules</span>
+              </div>
+            </div>
+
+            <div>
               <h3 className="text-xl font-semibold mb-2">What you'll learn</h3>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>Core concepts of the learning path topic.</li>
@@ -58,7 +74,13 @@ export default function LearningPathDetailPage() {
                 You will join a relevant project and contribute to tasks that align with this learning path. As you complete tasks and reach milestones, you'll unlock new modules and gain certificates to showcase your skills. Our AI assistant will help guide you and suggest relevant opportunities along the way.
               </p>
             </div>
-            <Button size="lg" className="w-full">Enroll in Path</Button>
+             {firstModuleId && (
+              <Link href={`/learning/${path.id}/${firstModuleId}`}>
+                <Button size="lg" className="w-full">
+                  {completedModules > 0 ? "Continue Path" : "Enroll in Path"}
+                </Button>
+              </Link>
+            )}
           </CardContent>
          </Card>
       </main>

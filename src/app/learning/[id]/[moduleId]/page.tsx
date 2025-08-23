@@ -1,0 +1,140 @@
+
+'use client';
+
+import { notFound, useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { learningPaths, currentUserLearningProgress, currentUser } from '@/lib/data';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { useTransition } from 'react';
+import { completeModule } from '@/app/actions/learning';
+import { useToast } from '@/hooks/use-toast';
+
+export default function LearningModulePage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+  
+  const pathId = params.id as string;
+  const moduleId = params.moduleId as string;
+
+  const path = learningPaths.find((p) => p.id === pathId);
+  const module = path?.modules.find((m) => m.id === moduleId);
+
+  if (!path || !module) {
+    notFound();
+  }
+
+  const userProgress = currentUserLearningProgress.find(p => p.pathId === pathId);
+  const isCompleted = userProgress?.completedModules.includes(module.id) ?? false;
+  
+  const currentModuleIndex = path.modules.findIndex(m => m.id === module.id);
+  const prevModule = currentModuleIndex > 0 ? path.modules[currentModuleIndex - 1] : null;
+  const nextModule = currentModuleIndex < path.modules.length - 1 ? path.modules[currentModuleIndex + 1] : null;
+
+  const handleCompletionToggle = (checked: boolean) => {
+    startTransition(async () => {
+      const result = await completeModule({ 
+        userId: currentUser.id, 
+        pathId: path.id, 
+        moduleId: module.id, 
+        completed: checked 
+      });
+
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    });
+  };
+
+  const handleNextModule = () => {
+    if (!isCompleted) {
+        handleCompletionToggle(true);
+    }
+    if (nextModule) {
+        router.push(`/learning/${path.id}/${nextModule.id}`);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+        <div className='flex items-center gap-4'>
+            <Link href={`/learning/${path.id}`}>
+                <Button variant="outline" size="icon">
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+            </Link>
+            <div>
+                <Link href={`/learning/${path.id}`} className="text-sm text-primary hover:underline">{path.title}</Link>
+                <h1 className="text-lg font-semibold md:text-xl">
+                    {module.title}
+                </h1>
+            </div>
+        </div>
+        <div className="flex items-center gap-2">
+            {prevModule && (
+                <Link href={`/learning/${path.id}/${prevModule.id}`}>
+                    <Button variant="outline">Previous</Button>
+                </Link>
+            )}
+            {nextModule ? (
+                <Button onClick={handleNextModule}>
+                    Next Module <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+            ) : (
+                <Link href="/learning">
+                    <Button>
+                        Finish Path <CheckCircle className="ml-2 h-4 w-4" />
+                    </Button>
+                </Link>
+            )}
+        </div>
+      </header>
+      <main className="flex-1 overflow-auto p-4 md:p-6">
+         <div className="mx-auto max-w-3xl space-y-6">
+            {module.videoUrl && (
+                <div className="aspect-video w-full overflow-hidden rounded-lg border">
+                    <iframe 
+                        src={module.videoUrl}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={module.title}
+                    ></iframe>
+                </div>
+            )}
+             <Card>
+                <CardHeader>
+                    <CardTitle className="text-2xl">{module.title}</CardTitle>
+                    <CardDescription>{module.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="prose prose-sm max-w-none text-foreground">
+                    <p>{module.content}</p>
+                </CardContent>
+             </Card>
+             <Card>
+                <CardContent className="p-4 flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                        <Checkbox 
+                            id="completion" 
+                            checked={isCompleted} 
+                            onCheckedChange={handleCompletionToggle}
+                            disabled={isPending}
+                        />
+                        <Label htmlFor="completion" className={isCompleted ? "text-muted-foreground line-through" : ""}>
+                            Mark as Complete
+                        </Label>
+                    </div>
+                    {isPending && <span className="text-sm text-muted-foreground">Saving...</span>}
+                </CardContent>
+            </Card>
+         </div>
+      </main>
+    </div>
+  );
+}

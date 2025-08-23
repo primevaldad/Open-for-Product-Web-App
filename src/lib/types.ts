@@ -53,6 +53,14 @@ export type Task = {
   estimatedHours?: number;
 };
 
+export type Module = {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  content: string;
+};
+
 export type LearningPath = {
   id: string;
   title: string;
@@ -61,4 +69,11 @@ export type LearningPath = {
   duration: string;
   Icon: LucideIcon;
   isLocked?: boolean;
+  modules: Module[];
+};
+
+export type UserLearningProgress = {
+  userId: string;
+  pathId: string;
+  completedModules: string[]; // array of module ids
 };
