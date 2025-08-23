@@ -15,7 +15,7 @@ import {
   DollarSign
 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 
 import {
   Sidebar,
@@ -62,8 +62,9 @@ function TaskCard({ task }: { task: (typeof tasks)[0] }) {
   );
 }
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailPage() {
   const { user } = useAuth();
+  const params = useParams();
   const project = projects.find((p) => p.id === params.id);
 
   if (!project) {
