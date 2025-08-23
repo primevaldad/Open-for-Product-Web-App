@@ -8,6 +8,8 @@ export const users: User[] = [
   { id: 'u4', name: 'Casey Brown', avatarUrl: 'https://placehold.co/40x40.png', bio: 'Project manager and strategist with a background in sustainable business models.' },
 ];
 
+export let currentUser: User = users[0];
+
 export const projects: Project[] = [
   {
     id: 'p497',
@@ -255,12 +257,10 @@ export const projectCategories: { name: ProjectCategory; icon: React.FC<any> }[]
     { name: 'Learning & Research', icon: BookOpenCheck },
 ];
 
-export const currentUser: User = users[0];
-
 export let currentUserLearningProgress: UserLearningProgress[] = [
     {
         userId: 'u1',
         pathId: 'lp1',
-        completedModules: ['m1_1'],
+        completedModules: ['m1_1', 'm1_2'],
     }
 ];
