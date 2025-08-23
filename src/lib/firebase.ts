@@ -13,20 +13,24 @@ const firebaseConfig = {
   messagingSenderId: '36569631324',
 };
 
-function getFirebaseApp(): FirebaseApp {
-    return getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+let app: FirebaseApp;
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
 }
 
-export function getFirebaseAuth(): Auth {
-    const app = getFirebaseApp();
-    const auth = getAuth(app);
-    if (process.env.NODE_ENV === 'development' && !(auth as any).emulatorConfig) {
-        // Point to the Auth emulator running on localhost.
-        // This is automatically wired up by Firebase Studio.
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+// In development, connect to the emulator
+if (process.env.NODE_ENV === 'development') {
+    // This is a check to prevent HMR from re-running this
+    if (!('_emulatorConnected' in auth)) {
         connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+        (auth as any)._emulatorConnected = true;
     }
-    return auth;
 }
 
-export const app = getFirebaseApp();
-export const googleProvider = new GoogleAuthProvider();
+
+export { app, auth, googleProvider };
