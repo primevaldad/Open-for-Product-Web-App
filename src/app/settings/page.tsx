@@ -5,6 +5,7 @@ import {
   Activity,
   BookOpen,
   FilePlus2,
+  FolderKanban,
   Home,
   LayoutPanelLeft,
   Settings,
@@ -116,6 +117,14 @@ export default function SettingsPage() {
                 <SidebarMenuButton>
                   <FilePlus2 />
                   Create Project
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/drafts">
+                <SidebarMenuButton>
+                  <FolderKanban />
+                  Drafts
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>

@@ -22,6 +22,7 @@ export const projects: Project[] = [
     votes: 128,
     discussions: 12,
     isExpertReviewed: true,
+    status: 'published',
   },
   {
     id: 'p2',
@@ -35,6 +36,7 @@ export const projects: Project[] = [
     team: [users[1], users[3], users[0]],
     votes: 256,
     discussions: 45,
+    status: 'published',
   },
   {
     id: 'p3',
@@ -48,6 +50,7 @@ export const projects: Project[] = [
     team: [users[1]],
     votes: 95,
     discussions: 8,
+    status: 'published',
   },
   {
     id: 'p4',
@@ -62,6 +65,7 @@ export const projects: Project[] = [
     votes: 150,
     discussions: 22,
     isExpertReviewed: true,
+    status: 'published',
   },
   {
     id: 'p5',
@@ -75,6 +79,7 @@ export const projects: Project[] = [
     team: [users[0], users[1], users[2], users[3]],
     votes: 180,
     discussions: 30,
+    status: 'published',
   },
   {
     id: 'p6',
@@ -88,6 +93,7 @@ export const projects: Project[] = [
     team: [users[2], users[0]],
     votes: 210,
     discussions: 18,
+    status: 'published',
   },
 ];
 

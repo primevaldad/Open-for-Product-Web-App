@@ -9,6 +9,8 @@ export type User = {
 
 export type ProjectCategory = 'Creative' | 'Technical' | 'Community' | 'Business & Enterprise' | 'Learning & Research';
 
+export type ProjectStatus = 'published' | 'draft';
+
 export type Project = {
   id: string;
   name: string;
@@ -22,6 +24,7 @@ export type Project = {
   votes: number;
   discussions: number;
   isExpertReviewed?: boolean;
+  status: ProjectStatus;
 };
 
 export type Task = {

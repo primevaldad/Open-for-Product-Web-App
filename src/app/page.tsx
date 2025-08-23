@@ -5,6 +5,7 @@ import {
   Briefcase,
   Code,
   FilePlus2,
+  FolderKanban,
   Home,
   LayoutPanelLeft,
   Paintbrush,
@@ -44,6 +45,8 @@ import ProjectCard from "@/components/project-card";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
 
 export default function DashboardPage() {
+  const publishedProjects = projects.filter(p => p.status === 'published');
+  
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">
@@ -70,6 +73,14 @@ export default function DashboardPage() {
                 <SidebarMenuButton>
                   <FilePlus2 />
                   Create Project
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/drafts">
+                <SidebarMenuButton>
+                  <FolderKanban />
+                  Drafts
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -163,7 +174,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {projects.map((project) => (
+            {publishedProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>

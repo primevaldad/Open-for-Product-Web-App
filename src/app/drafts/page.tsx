@@ -6,9 +6,6 @@ import {
   FolderKanban,
   Home,
   LayoutPanelLeft,
-  Mail,
-  Award,
-  Share2,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -25,22 +22,11 @@ import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { currentUser, projects } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import ProjectCard from "@/components/project-card";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const badges = [
-    { name: 'First Contribution', icon: Award },
-    { name: 'Community Helper', icon: Award },
-    { name: 'Project Starter', icon: Award },
-    { name: 'Bug Squasher', icon: Award },
-    { name: 'Creative Spark', icon: Award },
-]
-
-export default function ProfilePage() {
-  const user = currentUser;
-  const userProjects = projects.filter(p => p.status === 'published' && p.team.some(member => member.id === user.id));
+export default function DraftsPage() {
+  const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.id === currentUser.id));
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -73,7 +59,7 @@ export default function ProfilePage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <Link href="/drafts">
-                <SidebarMenuButton>
+                <SidebarMenuButton isActive>
                   <FolderKanban />
                   Drafts
                 </SidebarMenuButton>
@@ -97,18 +83,18 @@ export default function ProfilePage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <Link href="/profile">
-                <SidebarMenuButton isActive>
+                <SidebarMenuButton>
                   <Avatar className="size-5">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                     <AvatarFallback>
-                      {user.name?.charAt(0)}
+                      {currentUser.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   Profile
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-             <SidebarMenuItem>
+            <SidebarMenuItem>
               <Link href="/settings">
                 <SidebarMenuButton>
                   <Settings />
@@ -120,49 +106,32 @@ export default function ProfilePage() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset className="flex flex-col">
-        <main className="flex-1 overflow-auto">
-          <div className="relative h-48 w-full bg-primary/10">
-            <div className="absolute -bottom-16 left-6">
-                <Avatar className="h-32 w-32 rounded-full border-4 border-background">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="woman smiling"/>
-                    <AvatarFallback className="text-4xl">{user.name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
-            </div>
-          </div>
-          <div className="p-6 pt-20 flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold">{user.name}</h1>
-              <p className="text-muted-foreground max-w-xl">{user.bio}</p>
-            </div>
-            <div className="flex gap-2">
-                <Button><Mail className="mr-2 h-4 w-4" /> Message</Button>
-                <Button variant="outline"><Share2 className="mr-2 h-4 w-4" /> Share Profile</Button>
-            </div>
-          </div>
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+          <h1 className="text-lg font-semibold md:text-xl">
+            My Drafts
+          </h1>
+          <UserNav />
+        </header>
 
-          <div className="p-6">
-            <Separator className="my-6" />
-
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold tracking-tight mb-4">Badges & Certificates</h2>
-                <div className="flex flex-wrap gap-4">
-                    {badges.map((badge, index) => (
-                        <Card key={index} className="p-4 flex flex-col items-center justify-center gap-2 w-36 h-36 bg-accent/50">
-                            <badge.icon className="h-8 w-8 text-primary" />
-                            <span className="text-sm font-medium text-center">{badge.name}</span>
-                        </Card>
-                    ))}
-                </div>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight mb-4">Contribution Portfolio</h2>
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {userProjects.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
-            </div>
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {draftProjects.length > 0 ? (
+                draftProjects.map((project) => (
+                    <ProjectCard key={project.id} project={project} />
+                ))
+            ) : (
+                <Card className="col-span-full">
+                    <CardHeader>
+                        <CardTitle>No Drafts Found</CardTitle>
+                        <CardDescription>You haven't saved any project drafts yet.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Link href="/create">
+                            <Button>Create a New Project</Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            )}
           </div>
         </main>
       </SidebarInset>
