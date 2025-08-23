@@ -1,22 +1,20 @@
 
+'use client';
+
 import {
   Activity,
   BookOpen,
-  Briefcase,
-  Code,
   FilePlus2,
   FolderKanban,
   Home,
   LayoutPanelLeft,
-  Paintbrush,
   Search,
   Settings,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,18 +32,46 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { currentUser, projectCategories, projects } from "@/lib/data";
 import { UserNav } from "@/components/user-nav";
 import ProjectCard from "@/components/project-card";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
+import { cn } from "@/lib/utils";
+import type { Project, ProjectCategory } from "@/lib/types";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function DashboardPage() {
-  const publishedProjects = projects.filter(p => p.status === 'published');
+  const allPublishedProjects = projects.filter(p => p.status === 'published');
+  
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>(allPublishedProjects);
+  const [selectedCategories, setSelectedCategories] = useState<ProjectCategory[]>([]);
+  const [showMyProjects, setShowMyProjects] = useState(false);
+
+  useEffect(() => {
+    let tempProjects = allPublishedProjects;
+
+    if (showMyProjects) {
+      tempProjects = tempProjects.filter(p => p.team.some(member => member.user.id === currentUser.id));
+    }
+
+    if (selectedCategories.length > 0) {
+      tempProjects = tempProjects.filter(p => selectedCategories.includes(p.category));
+    }
+    
+    setFilteredProjects(tempProjects);
+
+  }, [selectedCategories, showMyProjects]);
+
+  const toggleCategory = (category: ProjectCategory) => {
+    setSelectedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
   
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -149,32 +175,43 @@ export default function DashboardPage() {
             <SuggestSteps />
           </div>
 
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
-            <h2 className="text-2xl font-bold tracking-tight">All Projects</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              {projectCategories.map(({ name, icon: Icon }) => (
-                <Button key={name} variant="outline" className="gap-2">
-                  <Icon className="h-4 w-4" />
-                  {name}
-                </Button>
-              ))}
-            </div>
-            <div className="ml-auto flex items-center gap-4">
-              <Select defaultValue="latest">
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="latest">Latest</SelectItem>
-                  <SelectItem value="popular">Most Popular</SelectItem>
-                  <SelectItem value="ending-soon">Ending Soon</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="mb-6 flex flex-col gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <h2 className="text-2xl font-bold tracking-tight">All Projects</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {projectCategories.map(({ name, icon: Icon }) => (
+                  <Button 
+                    key={name} 
+                    variant={selectedCategories.includes(name) ? "default" : "outline"} 
+                    className="gap-2"
+                    onClick={() => toggleCategory(name)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {name}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-4 md:ml-auto">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="my-projects" checked={showMyProjects} onCheckedChange={(checked) => setShowMyProjects(!!checked)} />
+                  <Label htmlFor="my-projects">My Projects</Label>
+                </div>
+                <Select defaultValue="latest">
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">Latest</SelectItem>
+                    <SelectItem value="popular">Most Popular</SelectItem>
+                    <SelectItem value="ending-soon">Ending Soon</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {publishedProjects.map((project) => (
+            {filteredProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>
@@ -183,3 +220,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
