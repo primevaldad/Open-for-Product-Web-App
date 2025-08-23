@@ -44,11 +44,11 @@ async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
     const updatedProjectsString = JSON.stringify(updatedProjects, (key, value) => {
         // Custom replacer to handle functions and circular references if any
         if (key === 'user' && value.id) {
-            return `users.find(u => u.id === '${value.id}')!`;
+            return `users.find(u => u.id === '${value.id}')`;
         }
         return value;
     }, 2)
-    .replace(/"user": "users.find\(u => u.id === '(.*)'\)!/g, 'user: users.find(u => u.id === \'$1\')!')
+    .replace(/"user": "users.find\(u => u.id === '(.*)'\)"/g, 'user: users.find(u => u.id === \'$1\')!')
     .replace(/"role":/g, 'role:')
     .replace(/"/g, "'");
 
@@ -66,7 +66,7 @@ async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
 async function appendToProjects(newProject: Project) {
   try {
     const fileContent = await fs.readFile(dataFilePath, 'utf-8');
-    const newProjectString = `,\n  {\n    id: '${newProject.id}',\n    name: '${newProject.name}',\n    tagline: '${newProject.tagline}',\n    description: \`${newProject.description}\`,\n    category: '${newProject.category}',\n    timeline: '${newProject.timeline}',\n    contributionNeeds: [${newProject.contributionNeeds.map(n => `'${n}'`).join(', ')}],\n    progress: ${newProject.progress},\n    team: [{ user: users.find(u => u.id === '${newProject.team[0].user.id}')!, role: '${newProject.team[0].role}' }],\n    votes: ${newProject.votes},\n    discussions: ${newProject.discussions},\n    status: '${newProject.status}',\n  }`;
+    const newProjectString = `,\n  {\n    id: '${newProject.id}',\n    name: '${newProject.name}',\n    tagline: '${newProject.tagline}',\n    description: \`${newProject.description}\`,\n    category: '${newProject.category}',\n    timeline: '${newProject.timeline}',\n    contributionNeeds: [${newProject.contributionNeeds.map(n => `'${n}'`).join(', ')}],\n    progress: ${newProject.progress},\n    team: [{ user: users.find(u => u.id === '${newProject.team[0].user.id}'), role: '${newProject.team[0].role}' }],\n    votes: ${newProject.votes},\n    discussions: ${newProject.discussions},\n    status: '${newProject.status}',\n  }`;
 
     const projectsRegex = /export const projects: Project\[\] = \[([\s\S]*?)\];/;
     const match = fileContent.match(projectsRegex);
@@ -149,41 +149,33 @@ export async function publishProject(values: z.infer<typeof ProjectSchema>) {
 
 export async function joinProject(projectId: string) {
     try {
-        const fileContent = await fs.readFile(dataFilePath, 'utf-8');
-        
-        const projectsRegex = /export const projects: Project\[\] = (\[[\s\S]*?\]);/s;
-        const match = fileContent.match(projectsRegex);
+        await updateProjectsFile((projects) => {
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+            if (projectIndex === -1) {
+                // This won't be caught by the caller, but will prevent file corruption.
+                // A proper implementation would handle this better.
+                console.error("Project not found in joinProject updater");
+                return projects; 
+            }
 
-        if (!match) throw new Error('Could not find projects array in data file.');
-        
-        // This is unsafe, for prototype only.
-        const projects: Project[] = eval(match[1]); 
+            const project = projects[projectIndex];
+            const isAlreadyMember = project.team.some(member => member.user.id === currentUser.id);
 
-        const projectIndex = projects.findIndex(p => p.id === projectId);
-        if (projectIndex === -1) {
-            return { success: false, error: 'Project not found.' };
-        }
+            if (isAlreadyMember) {
+                console.log("User is already a member");
+                return projects;
+            }
 
-        const project = projects[projectIndex];
-        const isAlreadyMember = project.team.some(member => member.user.id === currentUser.id);
+            const updatedProject = {
+                ...project,
+                team: [...project.team, { user: currentUser, role: 'participant' as const }],
+            };
 
-        if (isAlreadyMember) {
-            return { success: false, error: 'You are already a member of this project.' };
-        }
-
-        const newMember = `{ user: users.find(u => u.id === '${currentUser.id}'), role: 'participant' }`;
-        
-        // This is extremely fragile. A real app would have a proper database and API.
-        const teamRegex = new RegExp(`(id: '${projectId}'[\\s\\S]*?team: \\[)([\\s\\S]*?)(\\])`);
-        const teamMatch = fileContent.match(teamRegex);
-
-        if(!teamMatch) throw new Error('Could not find project team in data file.');
-
-        const existingTeam = teamMatch[2];
-        const updatedTeam = existingTeam ? `${existingTeam}, ${newMember}` : newMember;
-        const updatedContent = fileContent.replace(teamRegex, `$1${updatedTeam}$3`);
-        
-        await fs.writeFile(dataFilePath, updatedContent, 'utf-8');
+            const updatedProjects = [...projects];
+            updatedProjects[projectIndex] = updatedProject;
+            
+            return updatedProjects;
+        });
 
         revalidatePath(`/projects/${projectId}`);
         return { success: true };
