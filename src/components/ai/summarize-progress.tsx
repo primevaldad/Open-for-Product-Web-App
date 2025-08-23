@@ -56,10 +56,12 @@ export function SummarizeProgress({ project }: SummarizeProgressProps) {
         )}
         {error && <p className="text-destructive text-sm">{error}</p>}
         {!summary && !loading && (
-          <Button onClick={getSummary} disabled={loading}>
-            <FileText className="mr-2 h-4 w-4" />
-            Summarize Progress
-          </Button>
+          <div className="flex justify-center">
+            <Button onClick={getSummary} disabled={loading}>
+              <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="truncate">Summarize <span className="hidden sm:inline">Progress</span></span>
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

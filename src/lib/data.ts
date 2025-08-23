@@ -8,7 +8,33 @@ export const users: User[] = [
   { id: 'u4', name: 'Casey Brown', avatarUrl: 'https://placehold.co/40x40.png', bio: 'Project manager and strategist with a background in sustainable business models.' },
 ];
 
-export const projects: Project[] = [
+export const projects: Project[] = [  {
+    id: 'p497',
+    name: 'Smocktails',
+    tagline: 'Artisinal drink ware art for adult craft night!',
+    description: `Artisinal drink ware art for adult craft night!`,
+    category: 'Creative',
+    timeline: 'TBD',
+    contributionNeeds: ['artistry', 'marketing', 'storytelling'],
+    progress: 0,
+    team: [users.find(u => u.id === 'u1')!],
+    votes: 0,
+    discussions: 0,
+    status: 'draft',
+  },  {
+    id: 'p271',
+    name: 'Smocktails',
+    tagline: 'Artisinal drink ware art for adult craft night!',
+    description: `Art and mixology come together with these create-your-own glasses where the drink inside the glass completes the scene outside the glass.`,
+    category: 'Creative',
+    timeline: 'TBD',
+    contributionNeeds: ['artistry', 'marketing', 'storytelling'],
+    progress: 0,
+    team: [users.find(u => u.id === 'u1')!],
+    votes: 0,
+    discussions: 0,
+    status: 'draft',
+  },
   {
     id: 'p1',
     name: 'Community Garden Initiative',
