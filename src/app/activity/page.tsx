@@ -20,11 +20,15 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser } from "@/lib/data";
+import { currentUser, projects, tasks } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default function ActivityPage() {
+  const myTasks = tasks.filter(task => task.assignedTo?.id === currentUser.id);
+
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">
@@ -105,7 +109,7 @@ export default function ActivityPage() {
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
           <h1 className="text-lg font-semibold md:text-xl">
-            Activity Feed
+            My Tasks
           </h1>
           <UserNav />
         </header>
@@ -113,13 +117,42 @@ export default function ActivityPage() {
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <Card className="mx-auto max-w-3xl">
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle>Assigned to You</CardTitle>
               <CardDescription>
-                This is a placeholder for the activity feed.
+                Here's a list of tasks that require your attention across all projects.
               </CardDescription>
             </CardHeader>
-            <CardContent className="h-64 flex items-center justify-center text-muted-foreground">
-              <p>Activity feed coming soon!</p>
+            <CardContent>
+              {myTasks.length > 0 ? (
+                <ul className="space-y-4">
+                  {myTasks.map(task => {
+                    const project = projects.find(p => p.id === task.projectId);
+                    return (
+                      <li key={task.id}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold">{task.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              In project: <Link href={`/projects/${project?.id}`} className="font-medium text-primary hover:underline">{project?.name}</Link>
+                            </p>
+                          </div>
+                          <Badge variant={
+                            task.status === 'Done' ? 'secondary' :
+                            task.status === 'In Progress' ? 'default' :
+                            'outline'
+                          }>{task.status}</Badge>
+                        </div>
+                        <Separator className="mt-4" />
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="h-48 flex flex-col items-center justify-center text-center text-muted-foreground">
+                  <p className="font-semibold">All clear!</p>
+                  <p className="text-sm">You have no tasks assigned to you right now.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </main>
