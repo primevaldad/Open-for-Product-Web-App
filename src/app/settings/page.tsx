@@ -104,45 +104,57 @@ export default function SettingsPage() {
         <SidebarContent className="p-4 pt-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/">
-                <Home />
-                Home
-              </SidebarMenuButton>
+              <Link href="/">
+                <SidebarMenuButton>
+                  <Home />
+                  Home
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/create">
-                <FilePlus2 />
-                Create Project
-              </SidebarMenuButton>
+              <Link href="/create">
+                <SidebarMenuButton>
+                  <FilePlus2 />
+                  Create Project
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/learning">
-                <BookOpen />
-                Learning Paths
-              </SidebarMenuButton>
+              <Link href="/learning">
+                <SidebarMenuButton>
+                  <BookOpen />
+                  Learning Paths
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/activity">
-                <Activity />
-                Activity
-              </SidebarMenuButton>
+              <Link href="/activity">
+                <SidebarMenuButton>
+                  <Activity />
+                  Activity
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/profile">
-                <Avatar className="size-5">
-                  <AvatarImage src={user.avatarUrl} alt={user.name} />
-                  <AvatarFallback>
-                    {user.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                Profile
-              </SidebarMenuButton>
+              <Link href="/profile">
+                <SidebarMenuButton>
+                  <Avatar className="size-5">
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarFallback>
+                      {user.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  Profile
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/settings" isActive>
-                <Settings />
-                Settings
-              </SidebarMenuButton>
+              <Link href="/settings">
+                <SidebarMenuButton isActive>
+                  <Settings />
+                  Settings
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
