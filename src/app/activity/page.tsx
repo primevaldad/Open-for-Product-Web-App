@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Activity,
   BookOpen,
