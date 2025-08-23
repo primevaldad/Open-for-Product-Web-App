@@ -1,3 +1,4 @@
+
 import {
   Activity,
   BookOpen,
@@ -76,7 +77,7 @@ export default function CreateProjectPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/settings">
                 <Settings />
                 Settings
               </SidebarMenuButton>

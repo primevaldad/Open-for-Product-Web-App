@@ -1,3 +1,4 @@
+
 import {
   Activity,
   BookOpen,
@@ -92,7 +93,7 @@ export default function DashboardPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/settings">
                 <Settings />
                 Settings
               </SidebarMenuButton>

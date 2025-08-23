@@ -1,3 +1,4 @@
+
 import {
   Activity,
   BookOpen,
@@ -75,7 +76,7 @@ export default function LearningPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/settings">
                 <Settings />
                 Settings
               </SidebarMenuButton>

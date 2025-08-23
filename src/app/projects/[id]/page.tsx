@@ -122,7 +122,7 @@ export default function ProjectDetailPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton>
+              <SidebarMenuButton href="/settings">
                 <Settings />
                 Settings
               </SidebarMenuButton>
