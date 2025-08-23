@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectCategory, ProjectStatus, Governance } from '@/lib/types';
 import { currentUser } from '@/lib/data';
-import { projects as allProjects, users } from '@/lib/data';
+import { users } from '@/lib/data';
 
 const dataFilePath = path.join(process.cwd(), 'src', 'lib', 'data.ts');
 
@@ -29,7 +29,6 @@ const EditProjectSchema = ProjectSchema.extend({
     sustainabilityShare: z.number(),
   }),
 });
-
 
 function serializeProjects(projects: Project[]): string {
     const projectStrings = projects.map(p => {
@@ -72,16 +71,19 @@ function serializeProjects(projects: Project[]): string {
 // This is a simplified example. In a real app, you'd use a database.
 async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
   try {
-    const dataFileContent = await fs.readFile(path.join(process.cwd(), 'src', 'lib', 'data.ts'), 'utf-8');
-    
-    // Create a dynamic function to get the current projects array. This is safer than eval.
-    const getProjects = new Function('users', 'currentUser', dataFileContent + '\nreturn projects;');
-    const currentProjects: Project[] = getProjects(users, currentUser);
+    // Because we can't reliably parse the TS file, we'll re-import it dynamically.
+    // This is a hack for prototyping and would be replaced by a database call.
+    const dataFileModule = await import(`@/lib/data.ts?timestamp=${new Date().getTime()}`);
+    const currentProjects: Project[] = dataFileModule.projects;
 
     const updatedProjects = updater(currentProjects);
     
+    // Read the original file content to preserve other exports
+    const originalContent = await fs.readFile(dataFilePath, 'utf-8');
+    
+    // Replace only the projects array
     const projectsRegex = /export const projects: Project\[\] = \[[\s\S]*?\];/;
-    const updatedContent = dataFileContent.replace(projectsRegex, serializeProjects(updatedProjects));
+    const updatedContent = originalContent.replace(projectsRegex, serializeProjects(updatedProjects));
     
     await fs.writeFile(dataFilePath, updatedContent, 'utf-8');
 
@@ -90,6 +92,7 @@ async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
     throw new Error("Could not update projects.");
   }
 }
+
 
 async function handleProjectSubmission(
   values: z.infer<typeof ProjectSchema>,
@@ -219,7 +222,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
             if (!lead || lead.user.id !== currentUser.id) {
                 throw new Error("Only the project lead can edit the project.");
             }
-
+            
             const updatedProject: Project = {
                 ...project,
                 name: projectData.name,
@@ -230,6 +233,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
                 contributionNeeds: projectData.contributionNeeds.split(',').map(item => item.trim()),
                 governance: projectData.governance,
             };
+            
 
             const updatedProjects = [...projects];
             updatedProjects[projectIndex] = updatedProject;
