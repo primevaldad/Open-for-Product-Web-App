@@ -49,25 +49,44 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { Task, TaskStatus } from "@/lib/types";
+import { EditTaskDialog } from "@/components/edit-task-dialog";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
-function TaskCard({ task }: { task: (typeof tasks)[0] }) {
+function TaskCard({ task, isTeamMember, team }: { task: Task, isTeamMember: boolean, team: any[] }) {
   return (
-    <Card className="mb-2 bg-card/80">
-      <CardContent className="p-3">
-        <p className="text-sm font-medium mb-2">{task.title}</p>
-        {task.assignedTo && (
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={task.assignedTo.avatarUrl} alt={task.assignedTo.name} />
-              <AvatarFallback>{getInitials(task.assignedTo.name)}</AvatarFallback>
-            </Avatar>
-            <span className="text-xs text-muted-foreground">{task.assignedTo.name}</span>
+    <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team}>
+      <Card className="mb-2 bg-card/80 hover:bg-accent cursor-pointer">
+        <CardContent className="p-3">
+          <p className="text-sm font-medium mb-2">{task.title}</p>
+          <div className="flex items-center justify-between">
+            {task.assignedTo ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={task.assignedTo.avatarUrl} alt={task.assignedTo.name} />
+                      <AvatarFallback>{getInitials(task.assignedTo.name)}</AvatarFallback>
+                    </Avatar>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{task.assignedTo.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+                <div className="h-6 w-6" /> 
+            )}
+             {task.estimatedHours && (
+                <Badge variant="outline" className="text-xs">
+                    {task.estimatedHours}h
+                </Badge>
+             )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </EditTaskDialog>
   );
 }
 
@@ -80,6 +99,8 @@ export default function ProjectDetailPage() {
   if (!project) {
     notFound();
   }
+  
+  const projectTasks = tasks.filter(t => t.projectId === project.id);
 
   const isCurrentUserMember = project.team.some(member => member.user.id === currentUser.id);
   const isCurrentUserLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead');
@@ -96,10 +117,10 @@ export default function ProjectDetailPage() {
     });
   };
 
-  const taskColumns = {
-    'To Do': tasks.filter(t => t.status === 'To Do'),
-    'In Progress': tasks.filter(t => t.status === 'In Progress'),
-    'Done': tasks.filter(t => t.status === 'Done'),
+  const taskColumns: { [key in TaskStatus]: Task[] } = {
+    'To Do': projectTasks.filter(t => t.status === 'To Do'),
+    'In Progress': projectTasks.filter(t => t.status === 'In Progress'),
+    'Done': projectTasks.filter(t => t.status === 'Done'),
   }
 
   return (
@@ -266,11 +287,11 @@ export default function ProjectDetailPage() {
                 <Card>
                   <CardHeader><CardTitle>Task Board</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {Object.entries(taskColumns).map(([status, tasks]) => (
+                    {(Object.keys(taskColumns) as TaskStatus[]).map((status) => (
                         <div key={status} className="bg-muted/50 rounded-lg p-4">
-                            <h3 className="font-semibold mb-4">{status} ({tasks.length})</h3>
+                            <h3 className="font-semibold mb-4">{status} ({taskColumns[status].length})</h3>
                             <div>
-                                {tasks.map(task => <TaskCard key={task.id} task={task} />)}
+                                {taskColumns[status].map(task => <TaskCard key={task.id} task={task} isTeamMember={isCurrentUserMember} team={project.team} />)}
                             </div>
                         </div>
                     ))}

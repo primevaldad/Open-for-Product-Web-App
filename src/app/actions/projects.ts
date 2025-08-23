@@ -6,7 +6,7 @@ import path from 'path';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { Project, ProjectCategory, ProjectStatus, Governance } from '@/lib/types';
+import type { Project, ProjectCategory, ProjectStatus, Governance, Task, TaskStatus } from '@/lib/types';
 import { currentUser } from '@/lib/data';
 import { users } from '@/lib/data';
 
@@ -29,6 +29,17 @@ const EditProjectSchema = ProjectSchema.extend({
     sustainabilityShare: z.number(),
   }),
 });
+
+const TaskSchema = z.object({
+    id: z.string(),
+    projectId: z.string(),
+    title: z.string().min(1, "Title is required."),
+    description: z.string().optional(),
+    status: z.enum(['To Do', 'In Progress', 'Done']),
+    assignedToId: z.string().optional(),
+    estimatedHours: z.coerce.number().optional(),
+});
+
 
 function serializeProjects(projects: Project[]): string {
     const projectStrings = projects.map(p => {
@@ -67,29 +78,56 @@ function serializeProjects(projects: Project[]): string {
     return `export const projects: Project[] = [\n${projectStrings.join(',\n')}\n];`;
 }
 
+function serializeTasks(tasks: Task[]): string {
+    const taskStrings = tasks.map(t => {
+        const assignedToString = t.assignedTo ? `assignedTo: users.find(u => u.id === '${t.assignedTo!.id}')` : '';
+        const descriptionString = t.description ? `description: \`${t.description.replace(/`/g, "\\`")}\`` : '';
+        const estimatedHoursString = t.estimatedHours ? `estimatedHours: ${t.estimatedHours}` : '';
+
+        const fields = [
+            `id: '${t.id}'`,
+            `projectId: '${t.projectId}'`,
+            `title: '${t.title.replace(/'/g, "\\'")}'`,
+            descriptionString,
+            `status: '${t.status}'`,
+            assignedToString,
+            estimatedHoursString
+        ].filter(Boolean).join(', ');
+
+        return `    { ${fields} }`;
+    });
+
+    return `export let tasks: Task[] = [\n${taskStrings.join(',\n')}\n];`;
+}
+
 
 // This is a simplified example. In a real app, you'd use a database.
-async function updateProjectsFile(updater: (projects: Project[]) => Project[]) {
+async function updateDataFile(updater: (data: { projects: Project[], tasks: Task[] }) => { projects: Project[], tasks: Task[] }) {
   try {
     // Because we can't reliably parse the TS file, we'll re-import it dynamically.
     // This is a hack for prototyping and would be replaced by a database call.
     const dataFileModule = await import(`@/lib/data.ts?timestamp=${new Date().getTime()}`);
     const currentProjects: Project[] = dataFileModule.projects;
+    const currentTasks: Task[] = dataFileModule.tasks;
 
-    const updatedProjects = updater(currentProjects);
+    const { projects: updatedProjects, tasks: updatedTasks } = updater({ projects: currentProjects, tasks: currentTasks });
     
     // Read the original file content to preserve other exports
     const originalContent = await fs.readFile(dataFilePath, 'utf-8');
     
-    // Replace only the projects array
+    // Replace projects array
     const projectsRegex = /export const projects: Project\[\] = \[[\s\S]*?\];/;
-    const updatedContent = originalContent.replace(projectsRegex, serializeProjects(updatedProjects));
+    let updatedContent = originalContent.replace(projectsRegex, serializeProjects(updatedProjects));
+
+    // Replace tasks array
+    const tasksRegex = /export let tasks: Task\[\] = \[[\s\S]*?\];/;
+    updatedContent = updatedContent.replace(tasksRegex, serializeTasks(updatedTasks));
     
     await fs.writeFile(dataFilePath, updatedContent, 'utf-8');
 
   } catch (error) {
     console.error("Error updating data file:", error);
-    throw new Error("Could not update projects.");
+    throw new Error("Could not update data file.");
   }
 }
 
@@ -125,7 +163,7 @@ async function handleProjectSubmission(
   };
 
   try {
-    await updateProjectsFile((projects) => [newProject, ...projects]);
+    await updateDataFile(({ projects, tasks }) => ({ projects: [newProject, ...projects], tasks }));
     revalidatePath('/');
     revalidatePath('/create');
     if (status === 'draft') {
@@ -159,11 +197,11 @@ export async function publishProject(values: z.infer<typeof ProjectSchema>) {
 
 export async function joinProject(projectId: string) {
     try {
-        await updateProjectsFile((projects) => {
+        await updateDataFile(({ projects, tasks }) => {
             const projectIndex = projects.findIndex(p => p.id === projectId);
             if (projectIndex === -1) {
                 console.error("Project not found in joinProject updater");
-                return projects; 
+                return { projects, tasks }; 
             }
 
             const project = projects[projectIndex];
@@ -171,7 +209,7 @@ export async function joinProject(projectId: string) {
 
             if (isAlreadyMember) {
                 console.log("User is already a member");
-                return projects;
+                return { projects, tasks };
             }
 
             const updatedProject = {
@@ -182,7 +220,7 @@ export async function joinProject(projectId: string) {
             const updatedProjects = [...projects];
             updatedProjects[projectIndex] = updatedProject;
             
-            return updatedProjects;
+            return { projects: updatedProjects, tasks };
         });
 
         revalidatePath(`/projects/${projectId}`);
@@ -210,7 +248,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     const { id, ...projectData } = validatedFields.data;
 
     try {
-        await updateProjectsFile((projects) => {
+        await updateDataFile(({ projects, tasks }) => {
             const projectIndex = projects.findIndex(p => p.id === id);
             if (projectIndex === -1) {
                 throw new Error("Project not found");
@@ -237,7 +275,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
 
             const updatedProjects = [...projects];
             updatedProjects[projectIndex] = updatedProject;
-            return updatedProjects;
+            return { projects: updatedProjects, tasks };
         });
     } catch (error) {
         return {
@@ -250,5 +288,57 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     revalidatePath(`/projects/${id}/edit`);
     redirect(`/projects/${id}`);
     
+    return { success: true };
+}
+
+
+export async function updateTask(values: z.infer<typeof TaskSchema>) {
+    const validatedFields = TaskSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return {
+            success: false,
+            error: 'Invalid data provided.',
+        };
+    }
+
+    const { id, assignedToId, ...taskData } = validatedFields.data;
+
+    try {
+        await updateDataFile(({ projects, tasks }) => {
+            const taskIndex = tasks.findIndex(t => t.id === id);
+            if (taskIndex === -1) {
+                throw new Error("Task not found");
+            }
+            const task = tasks[taskIndex];
+            
+            const project = projects.find(p => p.id === task.projectId);
+            if (!project) {
+                throw new Error("Associated project not found");
+            }
+
+            const isMember = project.team.some(m => m.user.id === currentUser.id);
+            if (!isMember) {
+                throw new Error("Only team members can edit tasks.");
+            }
+
+            const updatedTask: Task = {
+                ...task,
+                ...taskData,
+                assignedTo: assignedToId ? users.find(u => u.id === assignedToId) : undefined,
+            };
+
+            const updatedTasks = [...tasks];
+            updatedTasks[taskIndex] = updatedTask;
+            return { projects, tasks: updatedTasks };
+        });
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "An unknown error occurred."
+        };
+    }
+
+    revalidatePath(`/projects/${taskData.projectId}`);
     return { success: true };
 }

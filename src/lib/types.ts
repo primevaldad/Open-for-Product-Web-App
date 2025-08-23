@@ -41,11 +41,16 @@ export type Project = {
   governance?: Governance;
 };
 
+export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
+
 export type Task = {
   id: string;
+  projectId: string;
   title: string;
-  status: 'To Do' | 'In Progress' | 'Done';
+  description?: string;
+  status: TaskStatus;
   assignedTo?: User;
+  estimatedHours?: number;
 };
 
 export type LearningPath = {

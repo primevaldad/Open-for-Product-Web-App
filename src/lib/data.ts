@@ -68,11 +68,11 @@ export const projects: Project[] = [
     discussions: 12,
     isExpertReviewed: true,
     status: 'published',
-     governance: {
+    governance: {
       contributorsShare: 75,
       communityShare: 10,
       sustainabilityShare: 15,
-    }
+    },
   },
   {
     id: 'p2',
@@ -91,11 +91,11 @@ export const projects: Project[] = [
     votes: 256,
     discussions: 45,
     status: 'published',
-     governance: {
+    governance: {
       contributorsShare: 80,
       communityShare: 10,
       sustainabilityShare: 10,
-    }
+    },
   },
   {
     id: 'p3',
@@ -114,10 +114,10 @@ export const projects: Project[] = [
     discussions: 8,
     status: 'published',
     governance: {
-        contributorsShare: 70,
-        communityShare: 20,
-        sustainabilityShare: 10,
-    }
+      contributorsShare: 70,
+      communityShare: 20,
+      sustainabilityShare: 10,
+    },
   },
   {
     id: 'p4',
@@ -130,17 +130,18 @@ export const projects: Project[] = [
     progress: 20,
     team: [
         { user: users.find(u => u.id === 'u4')!, role: 'lead' },
-        { user: users.find(u => u.id === 'u3')!, role: 'participant' }
+        { user: users.find(u => u.id === 'u3')!, role: 'participant' },
+        { user: users.find(u => u.id === 'u1')!, role: 'participant' }
     ],
     votes: 150,
     discussions: 22,
     isExpertReviewed: true,
     status: 'published',
     governance: {
-        contributorsShare: 60,
-        communityShare: 25,
-        sustainabilityShare: 15,
-    }
+      contributorsShare: 60,
+      communityShare: 25,
+      sustainabilityShare: 15,
+    },
   },
   {
     id: 'p5',
@@ -161,10 +162,10 @@ export const projects: Project[] = [
     discussions: 30,
     status: 'published',
     governance: {
-        contributorsShare: 90,
-        communityShare: 5,
-        sustainabilityShare: 5,
-    }
+      contributorsShare: 90,
+      communityShare: 5,
+      sustainabilityShare: 5,
+    },
   },
   {
     id: 'p6',
@@ -183,22 +184,22 @@ export const projects: Project[] = [
     discussions: 18,
     status: 'published',
     governance: {
-        contributorsShare: 75,
-        communityShare: 15,
-        sustainabilityShare: 10,
-    }
+      contributorsShare: 75,
+      communityShare: 15,
+      sustainabilityShare: 10,
+    },
   }
 ];
 
-export const tasks: Task[] = [
-    { id: 't1', title: 'Draft project proposal & community guidelines', status: 'Done', assignedTo: users[0] },
-    { id: 't2', title: 'Set up development environment and CI/CD pipeline', status: 'In Progress', assignedTo: users[1] },
-    { id: 't3', title: 'Design initial UI mockups and user flow diagrams', status: 'In Progress', assignedTo: users[3] },
-    { id: 't4', title: 'Create database schema for projects and users', status: 'To Do' },
-    { id: 't5', title: 'Develop authentication flow with social providers', status: 'To Do' },
-    { id: 't6', title: 'Create community outreach and onboarding plan', status: 'To Do' },
-    { id: 't7', title: 'Research and select a governance model', status: 'In Progress', assignedTo: users[2] },
-    { id: 't8', title: 'Write documentation for contributors', status: 'To Do' },
+export let tasks: Task[] = [
+    { id: 't1', projectId: 'p2', title: 'Draft project proposal & community guidelines', description: 'Flesh out the full proposal and establish rules for engagement.', status: 'Done', assignedTo: users[0], estimatedHours: 8 },
+    { id: 't2', projectId: 'p2', title: 'Set up development environment and CI/CD pipeline', description: 'Configure the repository, build scripts, and deployment workflow.', status: 'In Progress', assignedTo: users[1], estimatedHours: 12 },
+    { id: 't3', projectId: 'p2', title: 'Design initial UI mockups and user flow diagrams', description: 'Create visual designs for the main screens and map out user journeys.', status: 'In Progress', assignedTo: users[3], estimatedHours: 20 },
+    { id: 't4', projectId: 'p2', title: 'Create database schema for projects and users', description: 'Define the data models and relationships for the application.', status: 'To Do', estimatedHours: 6 },
+    { id: 't5', projectId: 'p2', title: 'Develop authentication flow with social providers', description: 'Implement user login and registration using Google and GitHub.', status: 'To Do', estimatedHours: 10 },
+    { id: 't6', projectId: 'p1', title: 'Create community outreach and onboarding plan', description: 'Plan for how to attract and welcome new contributors.', status: 'To Do' },
+    { id: 't7', projectId: 'p4', title: 'Research and select a governance model', description: 'Investigate different models for decision-making and value distribution.', status: 'In Progress', assignedTo: users[2], estimatedHours: 15 },
+    { id: 't8', projectId: 'p2', title: 'Write documentation for contributors', description: 'Create a getting started guide and contribution instructions.', status: 'To Do', estimatedHours: 8 },
 ];
 
 export const learningPaths: LearningPath[] = [
