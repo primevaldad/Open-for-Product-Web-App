@@ -73,14 +73,15 @@ function serializeProjects(projects: Project[]): string {
     discussions: ${p.discussions},${isExpertReviewedString}
     status: '${p.status}',${governanceString}
   }`;
-    });
+    }).join(',\n');
 
-    return `export const projects: Project[] = [\n${projectStrings.join(',\n')}\n];`;
+    return `export const projects: Project[] = [\n${projectStrings}\n];`;
 }
+
 
 function serializeTasks(tasks: Task[]): string {
     const taskStrings = tasks.map(t => {
-        const assignedToString = t.assignedTo ? `assignedTo: users.find(u => u.id === '${t.assignedTo!.id}')` : '';
+        const assignedToString = t.assignedTo ? `assignedTo: users.find(u => u.id === '${t.assignedTo!.id}')` : 'assignedTo: undefined';
         const descriptionString = t.description ? `description: \`${t.description.replace(/`/g, "\\`")}\`` : '';
         const estimatedHoursString = t.estimatedHours ? `estimatedHours: ${t.estimatedHours}` : '';
 
@@ -95,17 +96,15 @@ function serializeTasks(tasks: Task[]): string {
         ].filter(Boolean).join(', ');
 
         return `    { ${fields} }`;
-    });
+    }).join(',\n');
 
-    return `export let tasks: Task[] = [\n${taskStrings.join(',\n')}\n];`;
+    return `export let tasks: Task[] = [\n${taskStrings}\n];`;
 }
 
 
 // This is a simplified example. In a real app, you'd use a database.
 async function updateDataFile(updater: (data: { projects: Project[], tasks: Task[] }) => { projects: Project[], tasks: Task[] }) {
   try {
-    // Because we can't reliably parse the TS file, we'll re-import it dynamically.
-    // This is a hack for prototyping and would be replaced by a database call.
     const dataFileModule = await import(`@/lib/data.ts?timestamp=${new Date().getTime()}`);
     const currentProjects: Project[] = dataFileModule.projects;
     const currentTasks: Task[] = dataFileModule.tasks;
@@ -255,7 +254,6 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
             }
             const project = projects[projectIndex];
 
-            // Ensure only the lead can edit
             const lead = project.team.find(m => m.role === 'lead');
             if (!lead || lead.user.id !== currentUser.id) {
                 throw new Error("Only the project lead can edit the project.");
@@ -268,7 +266,9 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
                 description: projectData.description,
                 category: projectData.category,
                 timeline: projectData.timeline,
-                contributionNeeds: projectData.contributionNeeds.split(',').map(item => item.trim()),
+                contributionNeeds: typeof projectData.contributionNeeds === 'string'
+                    ? projectData.contributionNeeds.split(',').map(item => item.trim())
+                    : project.contributionNeeds,
                 governance: projectData.governance,
             };
             

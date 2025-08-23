@@ -56,7 +56,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: Ed
       title: task.title,
       description: task.description ?? '',
       status: task.status,
-      assignedToId: task.assignedTo?.id ?? '',
+      assignedToId: task.assignedTo?.id ?? 'unassigned',
       estimatedHours: task.estimatedHours ?? 0,
     },
   });
@@ -68,7 +68,13 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: Ed
     }
 
     startTransition(async () => {
-      const result = await updateTask(values);
+      // Handle "unassigned" case
+      const submissionValues = {
+        ...values,
+        assignedToId: values.assignedToId === 'unassigned' ? undefined : values.assignedToId,
+      };
+
+      const result = await updateTask(submissionValues);
       if (result?.error) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
@@ -154,7 +160,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: Ed
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {projectTeam.map(member => (
                             <SelectItem key={member.user.id} value={member.user.id}>{member.user.name}</SelectItem>
                         ))}

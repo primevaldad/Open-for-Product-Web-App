@@ -54,7 +54,7 @@ export const projects: Project[] = [
   {
     id: 'p1',
     name: 'Community Garden Initiative',
-    tagline: 'Growing food and community, one garden at a time.',
+    tagline: 'Growing food and community, one garden at a time!',
     description: `A project to build and maintain community gardens in urban spaces, promoting local food production and community engagement.`,
     category: 'Community',
     timeline: '3 Months',
@@ -192,14 +192,14 @@ export const projects: Project[] = [
 ];
 
 export let tasks: Task[] = [
-    { id: 't1', projectId: 'p2', title: 'Draft project proposal & community guidelines', description: 'Flesh out the full proposal and establish rules for engagement.', status: 'Done', assignedTo: users[0], estimatedHours: 8 },
-    { id: 't2', projectId: 'p2', title: 'Set up development environment and CI/CD pipeline', description: 'Configure the repository, build scripts, and deployment workflow.', status: 'In Progress', assignedTo: users[1], estimatedHours: 12 },
-    { id: 't3', projectId: 'p2', title: 'Design initial UI mockups and user flow diagrams', description: 'Create visual designs for the main screens and map out user journeys.', status: 'In Progress', assignedTo: users[3], estimatedHours: 20 },
-    { id: 't4', projectId: 'p2', title: 'Create database schema for projects and users', description: 'Define the data models and relationships for the application.', status: 'To Do', estimatedHours: 6 },
-    { id: 't5', projectId: 'p2', title: 'Develop authentication flow with social providers', description: 'Implement user login and registration using Google and GitHub.', status: 'To Do', estimatedHours: 10 },
-    { id: 't6', projectId: 'p1', title: 'Create community outreach and onboarding plan', description: 'Plan for how to attract and welcome new contributors.', status: 'To Do' },
-    { id: 't7', projectId: 'p4', title: 'Research and select a governance model', description: 'Investigate different models for decision-making and value distribution.', status: 'In Progress', assignedTo: users[2], estimatedHours: 15 },
-    { id: 't8', projectId: 'p2', title: 'Write documentation for contributors', description: 'Create a getting started guide and contribution instructions.', status: 'To Do', estimatedHours: 8 },
+    { id: 't1', projectId: 'p2', title: 'Draft project proposal & community guidelines', description: `Flesh out the full proposal and establish rules for engagement.`, status: 'Done', assignedTo: users.find(u => u.id === 'u1'), estimatedHours: 8 },
+    { id: 't2', projectId: 'p2', title: 'Set up development environment and CI/CD pipeline', description: `Configure the repository, build scripts, and deployment workflow.`, status: 'In Progress', assignedTo: users.find(u => u.id === 'u2'), estimatedHours: 12 },
+    { id: 't3', projectId: 'p2', title: 'Design initial UI mockups and user flow diagrams', description: `Create visual designs for the main screens and map out user journeys.`, status: 'In Progress', assignedTo: users.find(u => u.id === 'u4'), estimatedHours: 20 },
+    { id: 't4', projectId: 'p2', title: 'Create database schema for projects and users', description: `Define the data models and relationships for the application.`, status: 'To Do', estimatedHours: 6 },
+    { id: 't5', projectId: 'p2', title: 'Develop authentication flow with social providers', description: `Implement user login and registration using Google and GitHub.`, status: 'To Do', estimatedHours: 10 },
+    { id: 't6', projectId: 'p1', title: 'Create community outreach and onboarding plan', description: `Plan for how to attract and welcome new contributors.`, status: 'To Do' },
+    { id: 't7', projectId: 'p4', title: 'Research and select a governance model', description: `Investigate different models for decision-making and value distribution.`, status: 'In Progress', assignedTo: users.find(u => u.id === 'u3'), estimatedHours: 15 },
+    { id: 't8', projectId: 'p2', title: 'Write documentation for contributors', description: `Create a getting started guide and contribution instructions.`, status: 'To Do', estimatedHours: 8 }
 ];
 
 export const learningPaths: LearningPath[] = [
