@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { updateUserSettings } from "../actions/settings";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -40,11 +40,17 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Initialize state with current user data
   const [name, setName] = useState(user.name);
   const [bio, setBio] = useState(user.bio);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl);
 
+  // This effect ensures that if the currentUser changes (e.g., via the user switcher),
+  // the form fields are updated to reflect the new user's data.
+  useEffect(() => {
+    setName(user.name);
+    setBio(user.bio);
+    setAvatarPreview(user.avatarUrl);
+  }, [user]);
 
   const handleSaveChanges = () => {
     startTransition(async () => {
@@ -60,7 +66,6 @@ export default function SettingsPage() {
           title: "Settings Saved",
           description: "Your changes have been successfully saved.",
         });
-        // Optionally refresh the page or update state to reflect changes globally
       } else {
          toast({
           variant: "destructive",
@@ -189,7 +194,7 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-20 w-20">
-                    <AvatarImage src={avatarPreview || user.avatarUrl} alt={name} />
+                    <AvatarImage src={avatarPreview || ''} alt={name} />
                     <AvatarFallback className="text-2xl">{name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                   </Avatar>
                   <Button variant="outline" onClick={triggerFileSelect}>Change Photo</Button>

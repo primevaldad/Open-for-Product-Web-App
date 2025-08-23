@@ -22,10 +22,15 @@ async function updateCurrentUser(userId: string) {
             throw new Error("User not found");
         }
 
-        // Replace the currentUser export
+        const userIndex = users.findIndex(u => u.id === userId);
+        if (userIndex === -1) {
+            throw new Error("User not found in data array");
+        }
+
+        // Use a more robust regex to find and replace the currentUser export
         const updatedContent = fileContent.replace(
             /export let currentUser: User = users\[\d+\];/,
-            `export let currentUser: User = users[${users.indexOf(newCurrentUser)}];`
+            `export let currentUser: User = users[${userIndex}];`
         );
         
         await fs.writeFile(dataFilePath, updatedContent, 'utf-8');

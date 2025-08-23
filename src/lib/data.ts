@@ -4,48 +4,48 @@ import { Paintbrush, Code, Users, Briefcase, BookOpenCheck } from 'lucide-react'
 
 export const users: User[] = [
   { 
-    id: 'u1', 
-    name: 'Favor Prime', 
-    avatarUrl: 'https://placehold.co/200x200.png', 
-    bio: 'UI/UX designer focused on creating accessible and user-friendly interfaces.',
+    id: 'u1',
+    name: 'Favor Prime',
+    avatarUrl: 'https://placehold.co/200x200.png',
+    bio: 'With a passion for fostering creativity and collaboration, Favor Prime is dedicated to building products that not only serve a purpose but also spark imagination and connection.',
     interests: ['UI/UX Design', 'Branding', 'Frontend Development'],
     onboarded: true 
   },
   { 
-    id: 'u2', 
-    name: 'Sam Smith', 
-    avatarUrl: 'https://placehold.co/200x200.png', 
+    id: 'u2',
+    name: 'Sam Smith',
+    avatarUrl: 'https://placehold.co/200x200.png',
     bio: 'UI/UX designer focused on creating accessible and user-friendly interfaces.',
     interests: ['Animation', 'Illustration', 'Community Building'],
     onboarded: true 
   },
   { 
-    id: 'u3', 
-    name: 'Jordan Lee', 
-    avatarUrl: 'https://placehold.co/200x200.png', 
+    id: 'u3',
+    name: 'Jordan Lee',
+    avatarUrl: 'https://placehold.co/200x200.png',
     bio: 'Project manager and strategist with a background in sustainable business models.',
     interests: ['Web3', 'Project Management', 'Sustainability'],
     onboarded: true 
   },
   { 
-    id: 'u4', 
-    name: 'Casey Brown', 
-    avatarUrl: 'https://placehold.co/200x200.png', 
+    id: 'u4',
+    name: 'Casey Brown',
+    avatarUrl: 'https://placehold.co/200x200.png',
     bio: 'Project manager and strategist with a background in sustainable business models.',
     interests: ['React Native', 'Mobile Development', 'Product Strategy'],
     onboarded: true 
   },
   { 
-    id: 'u5', 
-    name: 'Newbie User', 
-    avatarUrl: 'https://placehold.co/200x200.png', 
+    id: 'u5',
+    name: 'Newbie User',
+    avatarUrl: 'https://placehold.co/200x200.png',
     bio: '',
     interests: [],
     onboarded: false 
   }
 ];
 
-export let currentUser: User = users[0];
+export let currentUser: User = users[4];
 
 export const projects: Project[] = [
   {
