@@ -23,13 +23,36 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser, learningPaths } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import type { LearningPath, User } from "@/lib/types";
 
 export default function LearningPage() {
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadData() {
+            const data = await import('@/lib/data');
+            setCurrentUser(data.currentUser);
+            setLearningPaths(data.learningPaths);
+            setIsLoading(false);
+        }
+        loadData();
+    }, []);
+
+    if (isLoading || !currentUser) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <p>Loading learning paths...</p>
+            </div>
+        );
+    }
+    
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">

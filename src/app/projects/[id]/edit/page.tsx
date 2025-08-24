@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateProject } from '@/app/actions/projects';
 import { Slider } from '@/components/ui/slider';
 import type { User, Project } from '@/lib/types';
+import { getData } from '@/lib/data-cache';
 
 const EditProjectSchema = z.object({
   id: z.string(),
@@ -44,22 +45,14 @@ const EditProjectSchema = z.object({
 
 type EditProjectFormValues = z.infer<typeof EditProjectSchema>;
 
+// Page must be a client component because it uses hooks
 export default function EditProjectPage() {
   const params = useParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [project, setProject] = useState<Project | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    async function loadData() {
-      const data = await import('@/lib/data');
-      setCurrentUser(data.currentUser);
-      const currentProject = data.projects.find((p) => p.id === params.id);
-      setProject(currentProject || null);
-    }
-    loadData();
-  }, [params.id]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<EditProjectFormValues>({
     resolver: zodResolver(EditProjectSchema),
@@ -67,39 +60,36 @@ export default function EditProjectPage() {
   });
 
   useEffect(() => {
-    if (project) {
+    async function loadData() {
+      // Because this is a client component, we fetch data on the client.
+      // In a real app, this would be an API call.
+      const data = await import('@/lib/data');
+      const currentProject = data.projects.find((p) => p.id === params.id);
+      
+      setProject(currentProject || null);
+      setCurrentUser(data.currentUser);
+      setIsLoading(false);
+
+      if (currentProject) {
         form.reset({
-            id: project.id,
-            name: project.name,
-            tagline: project.tagline,
-            description: project.description,
-            category: project.category,
-            contributionNeeds: project.contributionNeeds.join(', '),
-            timeline: project.timeline,
-            governance: project.governance ?? {
+            id: currentProject.id,
+            name: currentProject.name,
+            tagline: currentProject.tagline,
+            description: currentProject.description,
+            category: currentProject.category,
+            contributionNeeds: currentProject.contributionNeeds.join(', '),
+            timeline: currentProject.timeline,
+            governance: currentProject.governance ?? {
                 contributorsShare: 75,
                 communityShare: 10,
                 sustainabilityShare: 15,
             }
         });
+      }
     }
-  }, [project, form]);
+    loadData();
+  }, [params.id, form]);
 
-
-  if (!project) {
-    return null; // Or a loading spinner / not found component
-  }
-
-  if (!currentUser) {
-    return null; // Or a loading spinner
-  }
-
-  const isCurrentUserLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead');
-
-  if (!isCurrentUserLead) {
-    // Or redirect to project page with an error message
-    notFound(); 
-  }
   
   const handleUpdateProject = (values: EditProjectFormValues) => {
     startTransition(async () => {
@@ -111,7 +101,29 @@ export default function EditProjectPage() {
       }
     });
   };
+  
+  if (isLoading) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading project for editing...</p>
+        </div>
+    );
+  }
 
+  if (!project) {
+    notFound();
+  }
+
+  const isCurrentUserLead = project.team.some(member => member.user.id === currentUser?.id && member.role === 'lead');
+
+  if (!isCurrentUserLead) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>You do not have permission to edit this project.</p>
+        </div>
+    )
+  }
+  
   const governanceValues = form.watch("governance");
   const governanceTotal = governanceValues ? (governanceValues.contributorsShare + governanceValues.communityShare + governanceValues.sustainabilityShare) : 0;
 

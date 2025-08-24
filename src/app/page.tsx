@@ -38,7 +38,6 @@ import { projectCategories } from "@/lib/data";
 import { UserNav } from "@/components/user-nav";
 import ProjectCard from "@/components/project-card";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { cn } from "@/lib/utils";
 import type { Project, ProjectCategory, User } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,6 +45,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [allPublishedProjects, setAllPublishedProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<ProjectCategory[]>([]);
@@ -57,13 +57,15 @@ export default function DashboardPage() {
       setCurrentUser(data.currentUser);
       const published = data.projects.filter(p => p.status === 'published');
       setAllPublishedProjects(published);
-      setFilteredProjects(published);
+      setFilteredProjects(published); // Initially show all
+      setIsLoading(false);
     }
     loadData();
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    // This effect should only run after data is loaded and currentUser is set
+    if (isLoading || !currentUser) return;
 
     let tempProjects = allPublishedProjects;
 
@@ -77,7 +79,7 @@ export default function DashboardPage() {
     
     setFilteredProjects(tempProjects);
 
-  }, [selectedCategories, showMyProjects, currentUser, allPublishedProjects]);
+  }, [selectedCategories, showMyProjects, currentUser, allPublishedProjects, isLoading]);
 
   const toggleCategory = (category: ProjectCategory) => {
     setSelectedCategories(prev => 
@@ -87,8 +89,12 @@ export default function DashboardPage() {
     );
   };
 
-  if (!currentUser) {
-    return null; // Or a loading spinner
+  if (isLoading || !currentUser) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading projects...</p>
+        </div>
+    );
   }
   
   return (

@@ -1,6 +1,4 @@
 
-'use client';
-
 import {
   Activity,
   Award,
@@ -34,8 +32,8 @@ import {
 } from '@/components/ui/card';
 import ProjectCard from '@/components/project-card';
 import { Separator } from '@/components/ui/separator';
-import { useEffect, useState } from 'react';
 import type { User, Project } from '@/lib/types';
+import { getData } from '@/lib/data-cache';
 
 const badges = [
   { name: 'First Contribution', icon: Award },
@@ -45,22 +43,9 @@ const badges = [
   { name: 'Creative Spark', icon: Award },
 ];
 
-export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-
-  useEffect(() => {
-    async function loadData() {
-      const data = await import('@/lib/data');
-      setUser(data.currentUser);
-      setProjects(data.projects);
-    }
-    loadData();
-  }, []);
-
-  if (!user) {
-    return null; // Or a loading spinner
-  }
+// This is a Server Component
+export default async function ProfilePage() {
+  const { currentUser: user, projects } = await getData();
 
   const userProjects = projects.filter(
     p =>

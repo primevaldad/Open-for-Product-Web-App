@@ -1,7 +1,7 @@
 
+import type { Project, Task, User, UserLearningProgress, Interest } from '@/lib/types';
 import fs from 'fs/promises';
 import path from 'path';
-import type { Project, Task, User, UserLearningProgress, Interest } from '@/lib/types';
 
 // This is a server-side only file.
 // Do not import it into client components.
@@ -16,6 +16,7 @@ interface AppData {
     currentUserLearningProgress: UserLearningProgress[];
     interests: Interest[];
     currentUserIndex: number;
+    currentUser: User;
 }
 
 let dataCache: AppData | null = null;
@@ -157,7 +158,7 @@ export const interests: Interest[] = [\n${interestStrings}\n];
 }
 
 async function readData(): Promise<AppData> {
-    // Dynamically import the data file to get the latest version
+    // Dynamically import the data file to get the latest version, bypassing require cache
     const dataModule = await import(`./data.ts?timestamp=${Date.now()}`);
     
     const currentUserIndex = dataModule.users.findIndex((u: User) => u.id === dataModule.currentUser.id);
@@ -169,11 +170,14 @@ async function readData(): Promise<AppData> {
         currentUserLearningProgress: dataModule.currentUserLearningProgress,
         interests: dataModule.interests,
         currentUserIndex: currentUserIndex !== -1 ? currentUserIndex : 0,
+        currentUser: dataModule.currentUser,
     };
 }
 
 
 export async function getData(): Promise<AppData> {
+    // In a real app, you might fetch from a database. For this prototype, we'll read from our ts file.
+    // This function is intended for server-side use.
     if (!dataCache) {
         dataCache = await readData();
     }
@@ -193,6 +197,7 @@ export async function setData(newData: AppData): Promise<void> {
         try {
             const serializedData = serializeContent(dataCache!);
             await fs.writeFile(dataFilePath, serializedData, ENCODING);
+            console.log("Data written to file.");
         } catch (error) {
             console.error("Error writing data file:", error);
         }
@@ -202,6 +207,11 @@ export async function setData(newData: AppData): Promise<void> {
 
 export async function updateCurrentUser(index: number): Promise<void> {
     const data = await getData();
-    data.currentUserIndex = index;
-    await setData(data);
+    if (index >= 0 && index < data.users.length) {
+        data.currentUserIndex = index;
+        data.currentUser = data.users[index];
+        await setData(data);
+    } else {
+        console.error("Invalid user index provided for updateCurrentUser:", index);
+    }
 }

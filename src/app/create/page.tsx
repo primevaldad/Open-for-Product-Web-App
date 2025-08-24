@@ -25,7 +25,6 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -93,7 +92,11 @@ export default function CreateProjectPage() {
   };
 
   if (!currentUser) {
-    return null; // Or a loading spinner
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading form...</p>
+        </div>
+    );
   }
 
   return (

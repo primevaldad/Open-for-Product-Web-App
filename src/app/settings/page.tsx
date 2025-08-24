@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,29 +32,37 @@ import { useToast } from "@/hooks/use-toast";
 import { useRef, useState, useTransition, useEffect } from "react";
 import { updateUserSettings } from "../actions/settings";
 import { Textarea } from "@/components/ui/textarea";
+import type { User } from "@/lib/types";
 
 export default function SettingsPage() {
-  const user = currentUser;
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
 
-  const [name, setName] = useState(user.name);
-  const [bio, setBio] = useState(user.bio);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [name, setName] = useState('');
+  const [bio, setBio] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  // This effect ensures that if the currentUser changes (e.g., via the user switcher),
-  // the form fields are updated to reflect the new user's data.
   useEffect(() => {
-    setName(user.name);
-    setBio(user.bio);
-    setAvatarPreview(user.avatarUrl);
-  }, [user]);
+    async function loadUser() {
+        const data = await import('@/lib/data');
+        const user = data.currentUser;
+        setCurrentUser(user);
+        setName(user.name);
+        setBio(user.bio ?? '');
+        setAvatarPreview(user.avatarUrl);
+        setIsLoading(false);
+    }
+    loadUser();
+  }, []);
 
   const handleSaveChanges = () => {
+    if (!currentUser) return;
     startTransition(async () => {
       const result = await updateUserSettings({
-        id: user.id,
+        id: currentUser.id,
         name,
         bio,
         avatarDataUrl: avatarPreview
@@ -95,6 +102,14 @@ export default function SettingsPage() {
 
   const triggerFileSelect = () => {
     fileInputRef.current?.click();
+  }
+
+  if (isLoading || !currentUser) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading settings...</p>
+        </div>
+    );
   }
 
   return (
@@ -154,9 +169,9 @@ export default function SettingsPage() {
               <Link href="/profile">
                 <SidebarMenuButton>
                   <Avatar className="size-5">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                     <AvatarFallback>
-                      {user.name.charAt(0)}
+                      {currentUser.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   Profile

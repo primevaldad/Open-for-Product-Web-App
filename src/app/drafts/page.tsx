@@ -31,18 +31,24 @@ import type { User, Project } from "@/lib/types";
 export default function DraftsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       const data = await import('@/lib/data');
       setCurrentUser(data.currentUser);
       setProjects(data.projects);
+      setIsLoading(false);
     }
     loadData();
   }, []);
 
-  if (!currentUser) {
-    return null; // Or a loading spinner
+  if (isLoading || !currentUser) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading drafts...</p>
+        </div>
+    );
   }
   
   const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.user.id === currentUser.id));

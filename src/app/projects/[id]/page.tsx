@@ -36,7 +36,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummarizeProgress } from "@/components/ai/summarize-progress";
 import { HighlightBlockers } from "@/components/ai/highlight-blockers";
@@ -96,6 +95,7 @@ export default function ProjectDetailPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -103,16 +103,31 @@ export default function ProjectDetailPage() {
       setCurrentUser(data.currentUser);
       setProject(data.projects.find((p) => p.id === params.id) || null);
       setTasks(data.tasks);
+      setIsLoading(false);
     }
     loadData();
   }, [params.id]);
 
+  if (isLoading) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading project...</p>
+        </div>
+    );
+  }
+
   if (!project) {
-    return null; // or notFound();
+    notFound();
+    return null;
   }
 
   if (!currentUser) {
-    return null; // Or a loading spinner
+    // This can happen briefly while the user data is loading client-side
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading user...</p>
+        </div>
+    );
   }
   
   const projectTasks = tasks.filter(t => t.projectId === project.id);

@@ -32,29 +32,39 @@ import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { useEffect, useState } from "react";
 import type { User, Project, Task, LearningPath, UserLearningProgress } from "@/lib/types";
 
+// This page remains a client component because it uses hooks for state management.
+// However, data fetching needs to be robust.
+
 export default function ActivityPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [currentUserLearningProgress, setCurrentUserLearningProgress] = useState<UserLearningProgress[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
-      // Dynamically import data on the client
+      // Dynamically import data on the client. This is a temporary solution for the prototype.
+      // In a real app, this would be an API call.
       const data = await import('@/lib/data');
       setCurrentUser(data.currentUser);
       setProjects(data.projects);
       setTasks(data.tasks);
       setLearningPaths(data.learningPaths);
       setCurrentUserLearningProgress(data.currentUserLearningProgress);
+      setIsLoading(false);
     }
     loadData();
   }, []);
 
 
-  if (!currentUser) {
-    return null; // Or a loading spinner
+  if (isLoading || !currentUser) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Loading activity...</p>
+      </div>
+    );
   }
 
   const myTasks = tasks.filter(task => task.assignedTo?.id === currentUser.id);
@@ -212,8 +222,8 @@ export default function ActivityPage() {
             <CardContent>
               {completedModulesData.length > 0 ? (
                 <ul className="space-y-1">
-                  {completedModulesData.map(({ path, module }) => (
-                    <li key={`${path!.id}-${module!.id}`}>
+                  {completedModulesData.map(({ path, module }, index) => (
+                     <li key={`${path!.id}-${module!.id}-${index}`}>
                       <div className="flex items-center gap-4 p-3">
                         <CheckCircle className="h-5 w-5 text-green-500" />
                         <div>
