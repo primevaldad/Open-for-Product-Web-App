@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectStatus, Task } from '@/lib/types';
-import { currentUser, users } from '@/lib/data';
+import { users } from '@/lib/data';
 import { getData, setData } from '@/lib/data-cache';
 
 const ProjectSchema = z.object({
@@ -51,6 +51,9 @@ async function handleProjectSubmission(
   
   const { name, tagline, description, category, contributionNeeds } = validatedFields.data;
   
+  const data = await getData();
+  const currentUser = data.users[data.currentUserIndex];
+
   const newProject: Project = {
     id: `p${Math.floor(Math.random() * 1000)}`,
     name,
@@ -67,7 +70,6 @@ async function handleProjectSubmission(
   };
 
   try {
-    const data = await getData();
     data.projects.unshift(newProject);
     await setData(data);
     
@@ -103,6 +105,7 @@ export async function publishProject(values: z.infer<typeof ProjectSchema>) {
 export async function joinProject(projectId: string) {
     try {
         const data = await getData();
+        const currentUser = data.users[data.currentUserIndex];
         const project = data.projects.find(p => p.id === projectId);
 
         if (!project) {
@@ -146,6 +149,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
 
     try {
         const data = await getData();
+        const currentUser = data.users[data.currentUserIndex];
         const projectIndex = data.projects.findIndex(p => p.id === id);
         if (projectIndex === -1) {
             throw new Error("Project not found");
@@ -201,6 +205,7 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
 
     try {
         const data = await getData();
+        const currentUser = data.users[data.currentUserIndex];
         const taskIndex = data.tasks.findIndex(t => t.id === id);
         if (taskIndex === -1) {
             throw new Error("Task not found");

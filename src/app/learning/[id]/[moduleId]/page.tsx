@@ -3,21 +3,32 @@
 
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { learningPaths, currentUserLearningProgress, currentUser } from '@/lib/data';
+import { learningPaths, currentUserLearningProgress } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useTransition } from 'react';
+import { useTransition, useEffect, useState } from 'react';
 import { completeModule } from '@/app/actions/learning';
 import { useToast } from '@/hooks/use-toast';
+import { getData } from '@/lib/data-cache';
+import type { User } from '@/lib/types';
 
 export default function LearningModulePage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setCurrentUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
   
   const pathId = params.id as string;
   const moduleId = params.moduleId as string;
@@ -37,6 +48,7 @@ export default function LearningModulePage() {
   const nextModule = currentModuleIndex < path.modules.length - 1 ? path.modules[currentModuleIndex + 1] : null;
 
   const handleCompletionToggle = (checked: boolean) => {
+    if (!currentUser) return;
     startTransition(async () => {
       const result = await completeModule({ 
         userId: currentUser.id, 
@@ -59,6 +71,10 @@ export default function LearningModulePage() {
         router.push(`/learning/${path.id}/${nextModule.id}`);
     }
   };
+
+  if (!currentUser) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">

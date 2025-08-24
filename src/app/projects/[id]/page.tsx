@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 
 import {
   Sidebar,
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser, projects, tasks } from "@/lib/data";
+import { projects, tasks } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,8 +49,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Task, TaskStatus } from "@/lib/types";
+import type { Task, TaskStatus, User } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
+import { getData } from "@/lib/data-cache";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -94,10 +95,24 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setCurrentUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
+
   const project = projects.find((p) => p.id === params.id);
 
   if (!project) {
     notFound();
+  }
+
+  if (!currentUser) {
+    return null; // Or a loading spinner
   }
   
   const projectTasks = tasks.filter(t => t.projectId === project.id);

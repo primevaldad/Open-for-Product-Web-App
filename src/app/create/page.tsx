@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,7 +34,9 @@ import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { publishProject, saveProjectDraft } from "../actions/projects";
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
+import type { User } from "@/lib/types";
+import { getData } from "@/lib/data-cache";
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -52,6 +53,15 @@ type ProjectFormValues = z.infer<typeof ProjectSchema>;
 export default function CreateProjectPage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setCurrentUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(ProjectSchema),
@@ -82,6 +92,10 @@ export default function CreateProjectPage() {
       }
     });
   };
+
+  if (!currentUser) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">

@@ -6,10 +6,10 @@ import { notFound, useParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTransition } from 'react';
+import { useTransition, useEffect, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 
-import { projects, currentUser } from '@/lib/data';
+import { projects } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -19,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { updateProject } from '@/app/actions/projects';
 import { Slider } from '@/components/ui/slider';
+import { getData } from '@/lib/data-cache';
+import type { User } from '@/lib/types';
 
 const EditProjectSchema = z.object({
   id: z.string(),
@@ -49,9 +51,22 @@ export default function EditProjectPage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const project = projects.find((p) => p.id === params.id);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setCurrentUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
 
   if (!project) {
     notFound();
+  }
+
+  if (!currentUser) {
+    return null; // Or a loading spinner
   }
 
   const isCurrentUserLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead');

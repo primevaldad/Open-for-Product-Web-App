@@ -34,16 +34,18 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { currentUser, projectCategories, projects } from "@/lib/data";
+import { projectCategories, projects, users } from "@/lib/data";
 import { UserNav } from "@/components/user-nav";
 import ProjectCard from "@/components/project-card";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
 import { cn } from "@/lib/utils";
-import type { Project, ProjectCategory } from "@/lib/types";
+import type { Project, ProjectCategory, User } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getData } from "@/lib/data-cache";
 
 export default function DashboardPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const allPublishedProjects = projects.filter(p => p.status === 'published');
   
   const [filteredProjects, setFilteredProjects] = useState<Project[]>(allPublishedProjects);
@@ -51,6 +53,16 @@ export default function DashboardPage() {
   const [showMyProjects, setShowMyProjects] = useState(false);
 
   useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setCurrentUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
     let tempProjects = allPublishedProjects;
 
     if (showMyProjects) {
@@ -63,7 +75,7 @@ export default function DashboardPage() {
     
     setFilteredProjects(tempProjects);
 
-  }, [selectedCategories, showMyProjects]);
+  }, [selectedCategories, showMyProjects, currentUser]);
 
   const toggleCategory = (category: ProjectCategory) => {
     setSelectedCategories(prev => 
@@ -72,6 +84,10 @@ export default function DashboardPage() {
         : [...prev, category]
     );
   };
+
+  if (!currentUser) {
+    return null; // Or a loading spinner
+  }
   
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -220,5 +236,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

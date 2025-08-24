@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { UserNav } from '@/components/user-nav';
-import { currentUser, projects } from '@/lib/data';
+import { projects } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
@@ -35,6 +35,9 @@ import {
 } from '@/components/ui/card';
 import ProjectCard from '@/components/project-card';
 import { Separator } from '@/components/ui/separator';
+import { useEffect, useState } from 'react';
+import type { User } from '@/lib/types';
+import { getData } from '@/lib/data-cache';
 
 const badges = [
   { name: 'First Contribution', icon: Award },
@@ -45,7 +48,20 @@ const badges = [
 ];
 
 export default function ProfilePage() {
-  const user = currentUser;
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
+
+  if (!user) {
+    return null; // Or a loading spinner
+  }
+
   const userProjects = projects.filter(
     p =>
       p.status === 'published' && p.team.some(member => member.user.id === user.id)

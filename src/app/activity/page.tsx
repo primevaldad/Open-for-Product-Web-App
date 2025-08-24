@@ -24,14 +24,32 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser, projects, tasks, learningPaths, currentUserLearningProgress } from "@/lib/data";
+import { projects, tasks, learningPaths, currentUserLearningProgress } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
+import { useEffect, useState } from "react";
+import type { User } from "@/lib/types";
+import { getData } from "@/lib/data-cache";
 
 export default function ActivityPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setCurrentUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
+
+
+  if (!currentUser) {
+    return null; // Or a loading spinner
+  }
+
   const myTasks = tasks.filter(task => task.assignedTo?.id === currentUser.id);
 
   const completedModulesData = currentUserLearningProgress.flatMap(progress => 

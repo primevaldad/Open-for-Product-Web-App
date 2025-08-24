@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Activity,
   BookOpen,
@@ -20,12 +22,29 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { currentUser, projects } from "@/lib/data";
+import { projects } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import type { User } from "@/lib/types";
+import { getData } from "@/lib/data-cache";
 
 export default function DraftsPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const data = await getData();
+      setCurrentUser(data.users[data.currentUserIndex]);
+    }
+    loadUser();
+  }, []);
+
+  if (!currentUser) {
+    return null; // Or a loading spinner
+  }
+  
   const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.user.id === currentUser.id));
 
   return (
