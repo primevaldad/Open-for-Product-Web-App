@@ -15,13 +15,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { ProjectMember, Task, TaskStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateTask } from '@/app/actions/projects';
+import { deleteTask, updateTask } from '@/app/actions/projects';
+import { Trash } from 'lucide-react';
 
 interface EditTaskDialogProps extends PropsWithChildren {
   task: Task;
@@ -46,6 +58,7 @@ const taskStatuses: TaskStatus[] = ['To Do', 'In Progress', 'Done'];
 export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: EditTaskDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [isDeletePending, startDeleteTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
   const form = useForm<TaskFormValues>({
@@ -83,6 +96,18 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: Ed
       }
     });
   };
+
+  const handleDelete = () => {
+    startDeleteTransition(async () => {
+        const result = await deleteTask({ id: task.id, projectId: task.projectId });
+        if (result?.error) {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+        } else {
+            toast({ title: 'Task Deleted', description: 'The task has been removed.' });
+            setIsOpen(false);
+        }
+    });
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -184,11 +209,33 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: Ed
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
+            <DialogFooter className="sm:justify-between">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive" className="w-full sm:w-auto" disabled={isDeletePending}>
+                        <Trash className="mr-2 h-4 w-4" />
+                        {isDeletePending ? 'Deleting...' : 'Delete Task'}
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the task.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Continue</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <div className="flex gap-2 justify-end mt-2 sm:mt-0">
+                <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isPending}>
+                    {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>

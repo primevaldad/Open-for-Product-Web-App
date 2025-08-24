@@ -36,6 +36,10 @@ const TaskSchema = z.object({
     estimatedHours: z.coerce.number().optional(),
 });
 
+const CreateTaskSchema = TaskSchema.omit({ id: true });
+const DeleteTaskSchema = z.object({ id: z.string(), projectId: z.string() });
+
+
 async function handleProjectSubmission(
   values: z.infer<typeof ProjectSchema>,
   status: ProjectStatus
@@ -191,6 +195,53 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     return { success: true };
 }
 
+export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
+    const validatedFields = CreateTaskSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return {
+            success: false,
+            error: 'Invalid data provided.',
+        };
+    }
+
+    const { projectId, title, description, status } = validatedFields.data;
+
+    try {
+        const data = await getData();
+        const currentUser = data.users[data.currentUserIndex];
+        const project = data.projects.find(p => p.id === projectId);
+        if (!project) {
+            throw new Error("Associated project not found");
+        }
+
+        const isMember = project.team.some(m => m.user.id === currentUser.id);
+        if (!isMember) {
+            throw new Error("Only team members can add tasks.");
+        }
+
+        const newTask: Task = {
+            id: `t${Math.floor(Math.random() * 10000)}`,
+            projectId,
+            title,
+            description,
+            status,
+        };
+
+        data.tasks.unshift(newTask);
+        await setData(data);
+
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "An unknown error occurred."
+        };
+    }
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+}
+
 export async function updateTask(values: z.infer<typeof TaskSchema>) {
     const validatedFields = TaskSchema.safeParse(values);
 
@@ -239,5 +290,50 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     }
 
     revalidatePath(`/projects/${taskData.projectId}`);
+    return { success: true };
+}
+
+
+export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
+    const validatedFields = DeleteTaskSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return {
+            success: false,
+            error: 'Invalid data provided.',
+        };
+    }
+    
+    const { id, projectId } = validatedFields.data;
+    
+    try {
+        const data = await getData();
+        const currentUser = data.users[data.currentUserIndex];
+        const project = data.projects.find(p => p.id === projectId);
+        if (!project) {
+            throw new Error("Associated project not found");
+        }
+
+        const isMember = project.team.some(m => m.user.id === currentUser.id);
+        if (!isMember) {
+            throw new Error("Only team members can delete tasks.");
+        }
+
+        const taskIndex = data.tasks.findIndex(t => t.id === id);
+        if (taskIndex === -1) {
+            throw new Error("Task not found");
+        }
+
+        data.tasks.splice(taskIndex, 1);
+        await setData(data);
+
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "An unknown error occurred."
+        };
+    }
+
+    revalidatePath(`/projects/${projectId}`);
     return { success: true };
 }

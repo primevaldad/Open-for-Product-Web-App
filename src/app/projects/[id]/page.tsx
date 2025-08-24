@@ -15,7 +15,8 @@ import {
   FileText,
   DollarSign,
   UserPlus,
-  Pencil
+  Pencil,
+  PlusCircle
 } from "lucide-react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { Task, TaskStatus, User, Project } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
+import { AddTaskDialog } from "@/components/add-task-dialog";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -99,10 +101,11 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     async function loadData() {
-      const data = await import('@/lib/data');
-      setCurrentUser(data.currentUser);
-      setProject(data.projects.find((p) => p.id === params.id) || null);
-      setTasks(data.tasks);
+      const data = await import('@/lib/data-cache');
+      const { currentUser, projects, tasks } = await data.getData();
+      setCurrentUser(currentUser);
+      setProject(projects.find((p) => p.id === params.id) || null);
+      setTasks(tasks);
       setIsLoading(false);
     }
     loadData();
@@ -321,8 +324,17 @@ export default function ProjectDetailPage() {
                   <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {(Object.keys(taskColumns) as TaskStatus[]).map((status) => (
                         <div key={status} className="bg-muted/50 rounded-lg p-4">
-                            <h3 className="font-semibold mb-4">{status} ({taskColumns[status].length})</h3>
-                            <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-semibold">{status} ({taskColumns[status].length})</h3>
+                                {isCurrentUserMember && (
+                                    <AddTaskDialog projectId={project.id} status={status}>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                                            <PlusCircle className="h-4 w-4" />
+                                        </Button>
+                                    </AddTaskDialog>
+                                )}
+                            </div>
+                            <div className="space-y-2">
                                 {taskColumns[status].map(task => <TaskCard key={task.id} task={task} isTeamMember={isCurrentUserMember} team={project.team} />)}
                             </div>
                         </div>
