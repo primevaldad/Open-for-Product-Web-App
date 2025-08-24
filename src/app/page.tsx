@@ -34,7 +34,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { projectCategories, projects, users } from "@/lib/data";
+import { projectCategories } from "@/lib/data";
 import { UserNav } from "@/components/user-nav";
 import ProjectCard from "@/components/project-card";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
@@ -42,22 +42,24 @@ import { cn } from "@/lib/utils";
 import type { Project, ProjectCategory, User } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getData } from "@/lib/data-cache";
 
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const allPublishedProjects = projects.filter(p => p.status === 'published');
+  const [allPublishedProjects, setAllPublishedProjects] = useState<Project[]>([]);
   
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>(allPublishedProjects);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<ProjectCategory[]>([]);
   const [showMyProjects, setShowMyProjects] = useState(false);
 
   useEffect(() => {
-    async function loadUser() {
-      const data = await getData();
-      setCurrentUser(data.users[data.currentUserIndex]);
+    async function loadData() {
+      const data = await import('@/lib/data');
+      setCurrentUser(data.currentUser);
+      const published = data.projects.filter(p => p.status === 'published');
+      setAllPublishedProjects(published);
+      setFilteredProjects(published);
     }
-    loadUser();
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export default function DashboardPage() {
     
     setFilteredProjects(tempProjects);
 
-  }, [selectedCategories, showMyProjects, currentUser]);
+  }, [selectedCategories, showMyProjects, currentUser, allPublishedProjects]);
 
   const toggleCategory = (category: ProjectCategory) => {
     setSelectedCategories(prev => 

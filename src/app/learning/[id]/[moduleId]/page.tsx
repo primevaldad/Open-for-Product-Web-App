@@ -3,7 +3,6 @@
 
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { learningPaths, currentUserLearningProgress } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
@@ -12,8 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useTransition, useEffect, useState } from 'react';
 import { completeModule } from '@/app/actions/learning';
 import { useToast } from '@/hooks/use-toast';
-import { getData } from '@/lib/data-cache';
-import type { User } from '@/lib/types';
+import type { User, LearningPath, UserLearningProgress } from '@/lib/types';
 
 export default function LearningModulePage() {
   const params = useParams();
@@ -21,13 +19,17 @@ export default function LearningModulePage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
+  const [currentUserLearningProgress, setCurrentUserLearningProgress] = useState<UserLearningProgress[]>([]);
 
   useEffect(() => {
-    async function loadUser() {
-      const data = await getData();
-      setCurrentUser(data.users[data.currentUserIndex]);
+    async function loadData() {
+      const data = await import('@/lib/data');
+      setCurrentUser(data.currentUser);
+      setLearningPaths(data.learningPaths);
+      setCurrentUserLearningProgress(data.currentUserLearningProgress);
     }
-    loadUser();
+    loadData();
   }, []);
   
   const pathId = params.id as string;
@@ -37,7 +39,8 @@ export default function LearningModulePage() {
   const module = path?.modules.find((m) => m.id === moduleId);
 
   if (!path || !module) {
-    notFound();
+    // Return a loading state or null until data is available
+    return null;
   }
 
   const userProgress = currentUserLearningProgress.find(p => p.pathId === pathId);

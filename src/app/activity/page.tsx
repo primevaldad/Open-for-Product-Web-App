@@ -24,25 +24,32 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { projects, tasks, learningPaths, currentUserLearningProgress } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { useEffect, useState } from "react";
-import type { User } from "@/lib/types";
-import { getData } from "@/lib/data-cache";
+import type { User, Project, Task, LearningPath, UserLearningProgress } from "@/lib/types";
 
 export default function ActivityPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
+  const [currentUserLearningProgress, setCurrentUserLearningProgress] = useState<UserLearningProgress[]>([]);
 
   useEffect(() => {
-    async function loadUser() {
-      const data = await getData();
-      setCurrentUser(data.users[data.currentUserIndex]);
+    async function loadData() {
+      // Dynamically import data on the client
+      const data = await import('@/lib/data');
+      setCurrentUser(data.currentUser);
+      setProjects(data.projects);
+      setTasks(data.tasks);
+      setLearningPaths(data.learningPaths);
+      setCurrentUserLearningProgress(data.currentUserLearningProgress);
     }
-    loadUser();
+    loadData();
   }, []);
 
 

@@ -2,7 +2,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { Project, Task, User, UserLearningProgress, Interest } from '@/lib/types';
-import { users } from '@/lib/data';
+
+// This is a server-side only file.
+// Do not import it into client components.
 
 const dataFilePath = path.join(process.cwd(), 'src', 'lib', 'data.ts');
 const ENCODING = 'utf-8';
@@ -154,19 +156,18 @@ export const interests: Interest[] = [\n${interestStrings}\n];
 `;
 }
 
-
 async function readData(): Promise<AppData> {
-    const dataFileModule = await import(`@/lib/data.ts?timestamp=${new Date().getTime()}`);
+    // Dynamically import the data file to get the latest version
+    const dataModule = await import(`./data.ts?timestamp=${Date.now()}`);
     
-    // Find the current user index
-    const currentUserIndex = dataFileModule.users.findIndex((u: User) => u.id === dataFileModule.currentUser.id);
+    const currentUserIndex = dataModule.users.findIndex((u: User) => u.id === dataModule.currentUser.id);
     
     return {
-        users: dataFileModule.users,
-        projects: dataFileModule.projects,
-        tasks: dataFileModule.tasks,
-        currentUserLearningProgress: dataFileModule.currentUserLearningProgress,
-        interests: dataFileModule.interests,
+        users: dataModule.users,
+        projects: dataModule.projects,
+        tasks: dataModule.tasks,
+        currentUserLearningProgress: dataModule.currentUserLearningProgress,
+        interests: dataModule.interests,
         currentUserIndex: currentUserIndex !== -1 ? currentUserIndex : 0,
     };
 }
@@ -180,7 +181,6 @@ export async function getData(): Promise<AppData> {
     return JSON.parse(JSON.stringify(dataCache));
 }
 
-
 export async function setData(newData: AppData): Promise<void> {
     dataCache = JSON.parse(JSON.stringify(newData)); // Update cache with a deep copy
 
@@ -188,6 +188,7 @@ export async function setData(newData: AppData): Promise<void> {
         clearTimeout(writeTimeout);
     }
 
+    // Debounce writes to the file system
     writeTimeout = setTimeout(async () => {
         try {
             const serializedData = serializeContent(dataCache!);
@@ -196,7 +197,7 @@ export async function setData(newData: AppData): Promise<void> {
             console.error("Error writing data file:", error);
         }
         writeTimeout = null;
-    }, 500); // Debounce write for 500ms
+    }, 500);
 }
 
 export async function updateCurrentUser(index: number): Promise<void> {

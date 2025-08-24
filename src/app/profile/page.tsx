@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { UserNav } from '@/components/user-nav';
-import { projects } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
@@ -36,8 +35,7 @@ import {
 import ProjectCard from '@/components/project-card';
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
-import type { User } from '@/lib/types';
-import { getData } from '@/lib/data-cache';
+import type { User, Project } from '@/lib/types';
 
 const badges = [
   { name: 'First Contribution', icon: Award },
@@ -49,13 +47,15 @@ const badges = [
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    async function loadUser() {
-      const data = await getData();
-      setUser(data.users[data.currentUserIndex]);
+    async function loadData() {
+      const data = await import('@/lib/data');
+      setUser(data.currentUser);
+      setProjects(data.projects);
     }
-    loadUser();
+    loadData();
   }, []);
 
   if (!user) {

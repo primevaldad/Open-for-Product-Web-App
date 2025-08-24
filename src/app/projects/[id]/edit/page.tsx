@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { useTransition, useEffect, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 
-import { projects } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -19,8 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { updateProject } from '@/app/actions/projects';
 import { Slider } from '@/components/ui/slider';
-import { getData } from '@/lib/data-cache';
-import type { User } from '@/lib/types';
+import type { User, Project } from '@/lib/types';
 
 const EditProjectSchema = z.object({
   id: z.string(),
@@ -50,19 +48,46 @@ export default function EditProjectPage() {
   const params = useParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const project = projects.find((p) => p.id === params.id);
+  const [project, setProject] = useState<Project | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
-    async function loadUser() {
-      const data = await getData();
-      setCurrentUser(data.users[data.currentUserIndex]);
+    async function loadData() {
+      const data = await import('@/lib/data');
+      setCurrentUser(data.currentUser);
+      const currentProject = data.projects.find((p) => p.id === params.id);
+      setProject(currentProject || null);
     }
-    loadUser();
-  }, []);
+    loadData();
+  }, [params.id]);
+
+  const form = useForm<EditProjectFormValues>({
+    resolver: zodResolver(EditProjectSchema),
+    // Default values will be set in the useEffect below
+  });
+
+  useEffect(() => {
+    if (project) {
+        form.reset({
+            id: project.id,
+            name: project.name,
+            tagline: project.tagline,
+            description: project.description,
+            category: project.category,
+            contributionNeeds: project.contributionNeeds.join(', '),
+            timeline: project.timeline,
+            governance: project.governance ?? {
+                contributorsShare: 75,
+                communityShare: 10,
+                sustainabilityShare: 15,
+            }
+        });
+    }
+  }, [project, form]);
+
 
   if (!project) {
-    notFound();
+    return null; // Or a loading spinner / not found component
   }
 
   if (!currentUser) {
@@ -76,24 +101,6 @@ export default function EditProjectPage() {
     notFound(); 
   }
   
-  const form = useForm<EditProjectFormValues>({
-    resolver: zodResolver(EditProjectSchema),
-    defaultValues: {
-      id: project.id,
-      name: project.name,
-      tagline: project.tagline,
-      description: project.description,
-      category: project.category,
-      contributionNeeds: project.contributionNeeds.join(', '),
-      timeline: project.timeline,
-      governance: project.governance ?? {
-        contributorsShare: 75,
-        communityShare: 10,
-        sustainabilityShare: 15,
-      }
-    }
-  });
-
   const handleUpdateProject = (values: EditProjectFormValues) => {
     startTransition(async () => {
       const result = await updateProject(values);
@@ -106,7 +113,7 @@ export default function EditProjectPage() {
   };
 
   const governanceValues = form.watch("governance");
-  const governanceTotal = governanceValues.contributorsShare + governanceValues.communityShare + governanceValues.sustainabilityShare;
+  const governanceTotal = governanceValues ? (governanceValues.contributorsShare + governanceValues.communityShare + governanceValues.sustainabilityShare) : 0;
 
 
   return (

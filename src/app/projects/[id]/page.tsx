@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
-import { projects, tasks } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,9 +48,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Task, TaskStatus, User } from "@/lib/types";
+import type { Task, TaskStatus, User, Project } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
-import { getData } from "@/lib/data-cache";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -96,19 +94,21 @@ export default function ProjectDetailPage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    async function loadUser() {
-      const data = await getData();
-      setCurrentUser(data.users[data.currentUserIndex]);
+    async function loadData() {
+      const data = await import('@/lib/data');
+      setCurrentUser(data.currentUser);
+      setProject(data.projects.find((p) => p.id === params.id) || null);
+      setTasks(data.tasks);
     }
-    loadUser();
-  }, []);
-
-  const project = projects.find((p) => p.id === params.id);
+    loadData();
+  }, [params.id]);
 
   if (!project) {
-    notFound();
+    return null; // or notFound();
   }
 
   if (!currentUser) {

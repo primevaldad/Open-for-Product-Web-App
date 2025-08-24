@@ -36,7 +36,6 @@ import { useToast } from "@/hooks/use-toast";
 import { publishProject, saveProjectDraft } from "../actions/projects";
 import { useTransition, useState, useEffect } from "react";
 import type { User } from "@/lib/types";
-import { getData } from "@/lib/data-cache";
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -57,8 +56,8 @@ export default function CreateProjectPage() {
 
   useEffect(() => {
     async function loadUser() {
-      const data = await getData();
-      setCurrentUser(data.users[data.currentUserIndex]);
+      const data = await import('@/lib/data');
+      setCurrentUser(data.currentUser);
     }
     loadUser();
   }, []);
