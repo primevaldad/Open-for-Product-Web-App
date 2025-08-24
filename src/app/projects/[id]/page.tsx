@@ -51,6 +51,7 @@ import {
 import type { Task, TaskStatus, User, Project } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { AddTaskDialog } from "@/components/add-task-dialog";
+import { getData } from "@/lib/data-cache";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -76,7 +77,7 @@ function TaskCard({ task, isTeamMember, team }: { task: Task, isTeamMember: bool
                 </Tooltip>
               </TooltipProvider>
             ) : (
-                <div className="h-6 w-6" /> 
+                <div className="h-6 w-6" />
             )}
              {task.estimatedHours && (
                 <Badge variant="outline" className="text-xs">
@@ -101,15 +102,18 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     async function loadData() {
-      const data = await import('@/lib/data-cache');
-      const { currentUser, projects, tasks } = await data.getData();
-      setCurrentUser(currentUser);
-      setProject(projects.find((p) => p.id === params.id) || null);
-      setTasks(tasks);
+      // Use dynamic import for client-side data fetching
+      const dataModule = await import('@/lib/data');
+      const projectData = dataModule.projects.find((p) => p.id === params.id);
+
+      setCurrentUser(dataModule.currentUser);
+      setProject(projectData || null);
+      setTasks(dataModule.tasks);
       setIsLoading(false);
     }
     loadData();
   }, [params.id]);
+
 
   if (isLoading) {
     return (
@@ -132,7 +136,7 @@ export default function ProjectDetailPage() {
         </div>
     );
   }
-  
+
   const projectTasks = tasks.filter(t => t.projectId === project.id);
 
   const isCurrentUserMember = project.team.some(member => member.user.id === currentUser.id);
