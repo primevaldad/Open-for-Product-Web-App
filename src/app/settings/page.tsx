@@ -26,7 +26,7 @@ import SettingsForm from "./settings-form";
 
 // This is now a server component that fetches the user and passes it to the form
 export default async function SettingsPage() {
-  const { currentUser } = await getData();
+  const { currentUser, users } = await getData();
 
   if (!currentUser) {
     return (
@@ -118,7 +118,7 @@ export default async function SettingsPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             Settings
           </h1>
-          <UserNav />
+          <UserNav currentUser={currentUser} allUsers={users} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

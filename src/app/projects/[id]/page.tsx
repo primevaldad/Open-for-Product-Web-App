@@ -28,7 +28,7 @@ import ProjectDetailClientPage from "./project-detail-client-page";
 
 // This is now a Server Component responsible for fetching data
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const { currentUser, projects, tasks } = await getData();
+  const { currentUser, projects, tasks, users } = await getData();
 
   const project = projects.find((p) => p.id === params.id);
   
@@ -129,6 +129,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         project={project} 
         projectTasks={projectTasks}
         currentUser={currentUser}
+        allUsers={users}
       />
     </div>
   );

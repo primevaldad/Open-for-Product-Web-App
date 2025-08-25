@@ -33,8 +33,9 @@ import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { publishProject, saveProjectDraft } from "../actions/projects";
-import { useTransition, useState, useEffect } from "react";
+import { useTransition } from "react";
 import type { User } from "@/lib/types";
+import { getData } from "@/lib/data-cache";
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -48,49 +49,10 @@ const ProjectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
 
-export default function CreateProjectPage() {
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    async function loadUser() {
-      // Dynamic import remains for client-side data needs, but this is not the source of the build error.
-      const data = await import('@/lib/data');
-      setCurrentUser(data.currentUser);
-    }
-    loadUser();
-  }, []);
-
-  const form = useForm<ProjectFormValues>({
-    resolver: zodResolver(ProjectSchema),
-    defaultValues: {
-      name: "",
-      tagline: "",
-      description: "",
-      contributionNeeds: "",
-    }
-  });
-
-  const handleSaveDraft = (values: ProjectFormValues) => {
-    startTransition(async () => {
-      const result = await saveProjectDraft(values);
-      if (result?.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      } else {
-        toast({ title: 'Draft Saved!', description: 'Your project has been saved as a draft.' });
-      }
-    });
-  };
-
-  const handlePublish = (values: ProjectFormValues) => {
-    startTransition(async () => {
-      const result = await publishProject(values);
-       if (result?.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      }
-    });
-  };
+// This page must be a server component to fetch data.
+// We can wrap the form in a client component if needed, but for now this is simpler.
+export default async function CreateProjectPage() {
+  const { currentUser, users } = await getData();
 
   if (!currentUser) {
     return (
@@ -182,113 +144,152 @@ export default function CreateProjectPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             Publish a New Project
           </h1>
-          <UserNav />
+          <UserNav currentUser={currentUser} allUsers={users} />
         </header>
-
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          <Card className="mx-auto max-w-3xl">
-            <CardHeader>
-              <CardTitle>Let's build this together.</CardTitle>
-              <CardDescription>
-                Fill out the details of your project. Be clear and concise to attract the right contributors.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Project Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Community Garden Initiative" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="tagline"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tagline</FormLabel>
-                        <FormControl>
-                          <Input placeholder="A short, catchy phrase that describes your project." {...field} />
-                        </FormControl>
-                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Creative">Creative</SelectItem>
-                            <SelectItem value="Technical">Technical</SelectItem>
-                            <SelectItem value="Community">Community</SelectItem>
-                            <SelectItem value="Business & Enterprise">Business & Enterprise</SelectItem>
-                            <SelectItem value="Learning & Research">Learning & Research</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Description</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Describe the goals, timeline, and what makes your project unique." rows={6} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={form.control}
-                    name="contributionNeeds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contribution Needs</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter skills needed, separated by commas (e.g., UI/UX Design, React, Marketing)" {...field} />
-                        </FormControl>
-                         <FormDescription>
-                          What kind of help are you looking for?
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={form.handleSubmit(handleSaveDraft)} disabled={isPending}>
-                        {isPending ? "Saving..." : "Save Draft"}
-                      </Button>
-                      <Button onClick={form.handleSubmit(handlePublish)} disabled={isPending}>
-                        {isPending ? "Publishing..." : "Publish Project"}
-                      </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </main>
+        <CreateProjectForm />
       </SidebarInset>
     </div>
   );
+}
+
+// The form itself needs to be a Client Component
+function CreateProjectForm() {
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+
+  const form = useForm<ProjectFormValues>({
+    resolver: zodResolver(ProjectSchema),
+    defaultValues: {
+      name: "",
+      tagline: "",
+      description: "",
+      contributionNeeds: "",
+    }
+  });
+
+  const handleSaveDraft = (values: ProjectFormValues) => {
+    startTransition(async () => {
+      const result = await saveProjectDraft(values);
+      if (result?.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      } else {
+        toast({ title: 'Draft Saved!', description: 'Your project has been saved as a draft.' });
+      }
+    });
+  };
+
+  const handlePublish = (values: ProjectFormValues) => {
+    startTransition(async () => {
+      const result = await publishProject(values);
+       if (result?.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    });
+  };
+
+  return (
+    <main className="flex-1 overflow-auto p-4 md:p-6">
+      <Card className="mx-auto max-w-3xl">
+        <CardHeader>
+          <CardTitle>Let's build this together.</CardTitle>
+          <CardDescription>
+            Fill out the details of your project. Be clear and concise to attract the right contributors.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Community Garden Initiative" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tagline"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tagline</FormLabel>
+                    <FormControl>
+                      <Input placeholder="A short, catchy phrase that describes your project." {...field} />
+                    </FormControl>
+                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Creative">Creative</SelectItem>
+                        <SelectItem value="Technical">Technical</SelectItem>
+                        <SelectItem value="Community">Community</SelectItem>
+                        <SelectItem value="Business & Enterprise">Business & Enterprise</SelectItem>
+                        <SelectItem value="Learning & Research">Learning & Research</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Description</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Describe the goals, timeline, and what makes your project unique." rows={6} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="contributionNeeds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contribution Needs</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter skills needed, separated by commas (e.g., UI/UX Design, React, Marketing)" {...field} />
+                    </FormControl>
+                     <FormDescription>
+                      What kind of help are you looking for?
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={form.handleSubmit(handleSaveDraft)} disabled={isPending}>
+                    {isPending ? "Saving..." : "Save Draft"}
+                  </Button>
+                  <Button onClick={form.handleSubmit(handlePublish)} disabled={isPending}>
+                    {isPending ? "Publishing..." : "Publish Project"}
+                  </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </main>
+  )
 }

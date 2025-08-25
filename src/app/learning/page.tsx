@@ -30,7 +30,7 @@ import { getData } from "@/lib/data-cache";
 
 
 export default async function LearningPage() {
-    const { currentUser, learningPaths } = await getData();
+    const { currentUser, learningPaths, users } = await getData();
 
     if (!currentUser) {
         return (
@@ -122,7 +122,7 @@ export default async function LearningPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             Learning Paths
           </h1>
-          <UserNav />
+          <UserNav currentUser={currentUser} allUsers={users} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

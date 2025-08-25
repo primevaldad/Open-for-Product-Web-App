@@ -81,9 +81,10 @@ interface ProjectDetailClientPageProps {
     project: Project;
     projectTasks: Task[];
     currentUser: User;
+    allUsers: User[];
 }
 
-export default function ProjectDetailClientPage({ project, projectTasks, currentUser }: ProjectDetailClientPageProps) {
+export default function ProjectDetailClientPage({ project, projectTasks, currentUser, allUsers }: ProjectDetailClientPageProps) {
   const params = useParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -123,7 +124,7 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
                 {isPending ? 'Joining...' : 'Join Project'}
               </Button>
              )}
-             <UserNav />
+             <UserNav currentUser={currentUser} allUsers={allUsers} />
           </div>
         </header>
 

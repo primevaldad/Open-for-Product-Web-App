@@ -20,13 +20,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { CreditCard, LogOut, Settings, User as UserIcon, Users } from "lucide-react"
 import Link from "next/link"
-import { currentUser, users } from "@/lib/data"
 import { useTransition } from "react";
 import { switchUser } from "@/app/actions/auth";
 import { useToast } from "@/hooks/use-toast";
+import type { User } from "@/lib/types";
 
-export function UserNav() {
-  const user = currentUser;
+interface UserNavProps {
+  currentUser: User;
+  allUsers: User[];
+}
+
+export function UserNav({ currentUser, allUsers }: UserNavProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -53,15 +57,15 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border-2 border-primary/50">
-            <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="woman smiling" />
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} data-ai-hint="woman smiling" />
+            <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-sm font-medium leading-none">{currentUser.name}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -92,7 +96,7 @@ export function UserNav() {
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuRadioGroup value={currentUser.id} onValueChange={handleUserSwitch}>
-                 {users.map(u => (
+                 {allUsers.map(u => (
                     <DropdownMenuRadioItem key={u.id} value={u.id} disabled={isPending}>
                         {u.name}
                     </DropdownMenuRadioItem>

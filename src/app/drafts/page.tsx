@@ -28,7 +28,7 @@ import { getData } from "@/lib/data-cache";
 
 // This is now a Server Component
 export default async function DraftsPage() {
-  const { currentUser, projects } = await getData();
+  const { currentUser, projects, users } = await getData();
 
   if (!currentUser) {
     // This can be a loading component or a redirect in a real app
@@ -123,7 +123,7 @@ export default async function DraftsPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             My Drafts
           </h1>
-          <UserNav />
+          <UserNav currentUser={currentUser} allUsers={users} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

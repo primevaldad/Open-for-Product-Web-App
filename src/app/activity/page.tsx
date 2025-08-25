@@ -33,7 +33,7 @@ import ActivityClientPage from "./activity-client-page";
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
 export default async function ActivityPage() {
-  const { currentUser, projects, tasks, learningPaths, currentUserLearningProgress } = await getData();
+  const { currentUser, projects, tasks, learningPaths, currentUserLearningProgress, users } = await getData();
 
   if (!currentUser) {
     return (
@@ -136,7 +136,7 @@ export default async function ActivityPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             My Activity
           </h1>
-          <UserNav />
+          <UserNav currentUser={currentUser} allUsers={users} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6 grid md:grid-cols-2 gap-6">

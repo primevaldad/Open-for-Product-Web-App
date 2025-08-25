@@ -45,7 +45,7 @@ const badges = [
 
 // This is a Server Component
 export default async function ProfilePage() {
-  const { currentUser: user, projects } = await getData();
+  const { currentUser: user, projects, users } = await getData();
 
   const userProjects = projects.filter(
     p =>
@@ -136,7 +136,7 @@ export default async function ProfilePage() {
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
           <h1 className="text-lg font-semibold md:text-xl">My Profile</h1>
-          <UserNav />
+          <UserNav currentUser={user} allUsers={users} />
         </header>
         <main className="flex-1 overflow-auto">
           <div className="relative h-48 w-full bg-primary/10">

@@ -30,7 +30,7 @@ import HomeClientPage from "./home-client-page";
 
 // This is now a Server Component that fetches data and passes it to a client component.
 export default async function DashboardPage() {
-  const { currentUser, projects } = await getData();
+  const { currentUser, projects, users } = await getData();
   
   if (!currentUser) {
     return (
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
               />
             </div>
           </div>
-          <UserNav />
+          <UserNav currentUser={currentUser} allUsers={users} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
