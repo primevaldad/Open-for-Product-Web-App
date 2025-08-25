@@ -1,6 +1,4 @@
 
-'use client';
-
 import {
   Activity,
   BookOpen,
@@ -25,28 +23,18 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEffect, useState } from "react";
 import type { User, Project } from "@/lib/types";
+import { getData } from "@/lib/data-cache";
 
-export default function DraftsPage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+// This is now a Server Component
+export default async function DraftsPage() {
+  const { currentUser, projects } = await getData();
 
-  useEffect(() => {
-    async function loadData() {
-      const data = await import('@/lib/data');
-      setCurrentUser(data.currentUser);
-      setProjects(data.projects);
-      setIsLoading(false);
-    }
-    loadData();
-  }, []);
-
-  if (isLoading || !currentUser) {
+  if (!currentUser) {
+    // This can be a loading component or a redirect in a real app
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Loading drafts...</p>
+            <p>Loading user...</p>
         </div>
     );
   }

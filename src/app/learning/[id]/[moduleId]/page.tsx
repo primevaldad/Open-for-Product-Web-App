@@ -21,6 +21,7 @@ export default function LearningModulePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [currentUserLearningProgress, setCurrentUserLearningProgress] = useState<UserLearningProgress[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -28,9 +29,14 @@ export default function LearningModulePage() {
       setCurrentUser(data.currentUser);
       setLearningPaths(data.learningPaths);
       setCurrentUserLearningProgress(data.currentUserLearningProgress);
+      setIsLoading(false);
     }
     loadData();
   }, []);
+  
+  if (isLoading) {
+    return null;
+  }
   
   const pathId = params.id as string;
   const moduleId = params.moduleId as string;

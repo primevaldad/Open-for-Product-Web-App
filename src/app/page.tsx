@@ -1,6 +1,4 @@
 
-'use client';
-
 import {
   Activity,
   BookOpen,
@@ -12,18 +10,9 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -34,68 +23,24 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { projectCategories } from "@/lib/data";
 import { UserNav } from "@/components/user-nav";
-import ProjectCard from "@/components/project-card";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import type { Project, ProjectCategory, User } from "@/lib/types";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { getData } from '@/lib/data-cache';
+import HomeClientPage from "./home-client-page";
 
-export default function DashboardPage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [allPublishedProjects, setAllPublishedProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+// This is now a Server Component that fetches data and passes it to a client component.
+export default async function DashboardPage() {
+  const { currentUser, projects } = await getData();
   
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<ProjectCategory[]>([]);
-  const [showMyProjects, setShowMyProjects] = useState(false);
-
-  useEffect(() => {
-    async function loadData() {
-      const data = await import('@/lib/data');
-      setCurrentUser(data.currentUser);
-      const published = data.projects.filter(p => p.status === 'published');
-      setAllPublishedProjects(published);
-      setFilteredProjects(published); // Initially show all
-      setIsLoading(false);
-    }
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    // This effect should only run after data is loaded and currentUser is set
-    if (isLoading || !currentUser) return;
-
-    let tempProjects = allPublishedProjects;
-
-    if (showMyProjects) {
-      tempProjects = tempProjects.filter(p => p.team.some(member => member.user.id === currentUser.id));
-    }
-
-    if (selectedCategories.length > 0) {
-      tempProjects = tempProjects.filter(p => selectedCategories.includes(p.category));
-    }
-    
-    setFilteredProjects(tempProjects);
-
-  }, [selectedCategories, showMyProjects, currentUser, allPublishedProjects, isLoading]);
-
-  const toggleCategory = (category: ProjectCategory) => {
-    setSelectedCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
-  };
-
-  if (isLoading || !currentUser) {
+  if (!currentUser) {
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Loading projects...</p>
+            <p>Loading user...</p>
         </div>
     );
   }
+
+  const allPublishedProjects = projects.filter(p => p.status === 'published');
   
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -198,47 +143,7 @@ export default function DashboardPage() {
           <div className="mb-6">
             <SuggestSteps />
           </div>
-
-          <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <h2 className="text-2xl font-bold tracking-tight">All Projects</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                {projectCategories.map(({ name, icon: Icon }) => (
-                  <Button 
-                    key={name} 
-                    variant={selectedCategories.includes(name) ? "default" : "outline"} 
-                    className="gap-2"
-                    onClick={() => toggleCategory(name)}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {name}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex items-center gap-4 md:ml-auto">
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="my-projects" checked={showMyProjects} onCheckedChange={(checked) => setShowMyProjects(!!checked)} />
-                  <Label htmlFor="my-projects">My Projects</Label>
-                </div>
-                <Select defaultValue="latest">
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="latest">Latest</SelectItem>
-                    <SelectItem value="popular">Most Popular</SelectItem>
-                    <SelectItem value="ending-soon">Ending Soon</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+          <HomeClientPage allPublishedProjects={allPublishedProjects} currentUser={currentUser} />
         </main>
       </SidebarInset>
     </div>

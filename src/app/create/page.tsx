@@ -55,6 +55,7 @@ export default function CreateProjectPage() {
 
   useEffect(() => {
     async function loadUser() {
+      // Dynamic import remains for client-side data needs, but this is not the source of the build error.
       const data = await import('@/lib/data');
       setCurrentUser(data.currentUser);
     }

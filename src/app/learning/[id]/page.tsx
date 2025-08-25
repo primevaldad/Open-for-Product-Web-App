@@ -1,18 +1,16 @@
 
-'use client';
-
-import { notFound, useParams } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { learningPaths } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { currentUserLearningProgress } from '@/lib/data';
 import { Progress } from '@/components/ui/progress';
+import { getData } from '@/lib/data-cache';
 
-export default function LearningPathDetailPage() {
-  const params = useParams();
+// This is now a Server Component
+export default async function LearningPathDetailPage({ params }: { params: { id: string } }) {
+  const { learningPaths, currentUserLearningProgress } = await getData();
   const path = learningPaths.find((p) => p.id === params.id);
 
   if (!path) {

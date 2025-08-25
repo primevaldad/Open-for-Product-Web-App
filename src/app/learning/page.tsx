@@ -1,6 +1,4 @@
 
-'use client';
-
 import {
   Activity,
   BookOpen,
@@ -27,28 +25,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
 import type { LearningPath, User } from "@/lib/types";
+import { getData } from "@/lib/data-cache";
 
-export default function LearningPage() {
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        async function loadData() {
-            const data = await import('@/lib/data');
-            setCurrentUser(data.currentUser);
-            setLearningPaths(data.learningPaths);
-            setIsLoading(false);
-        }
-        loadData();
-    }, []);
+export default async function LearningPage() {
+    const { currentUser, learningPaths } = await getData();
 
-    if (isLoading || !currentUser) {
+    if (!currentUser) {
         return (
             <div className="flex h-screen items-center justify-center">
-                <p>Loading learning paths...</p>
+                <p>Loading user data...</p>
             </div>
         );
     }
