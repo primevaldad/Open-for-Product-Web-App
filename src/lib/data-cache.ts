@@ -26,7 +26,10 @@ let writeTimeout: NodeJS.Timeout | null = null;
 const iconMap: { [key: string]: LucideIcon } = {
     FlaskConical,
     Handshake,
-    // Add other icons used in learningPaths here
+    Code,
+    BookText,
+    UsersIcon,
+    Briefcase,
 };
 
 function serializeContent(data: AppData): string {
@@ -51,10 +54,13 @@ function serializeContent(data: AppData): string {
     
     // During serialization, convert the Icon component to its string name
     const learningPathsToSave = dataToSerialize.learningPaths.map((lp: LearningPath) => {
-        const iconName = Object.keys(iconMap).find(key => iconMap[key] === lp.Icon);
-        return { ...lp, Icon: iconName || 'FlaskConical' }; // a default icon
+        // Find the icon name from the map by finding the matching function reference
+        const iconName = Object.keys(iconMap).find(key => iconMap[key].render === lp.Icon.render) || 'FlaskConical';
+        const { Icon, ...rest } = lp;
+        return { ...rest, Icon: iconName };
     });
-    const learningPathsString = JSON.stringify(learningPathsToSave, null, 2);
+    const learningPathsString = JSON.stringify(learningPathsToSave, null, 2).replace(/"([^"]+)":/g, '$1:');
+
 
     return `
 import type { Project, Task, User, UserLearningProgress, ProjectCategory, Interest } from './types';
@@ -92,35 +98,13 @@ export const projectCategories = [
     { name: 'Learning & Research', icon: FlaskConical },
 ] as const;
 
-export const rawLearningPaths = ${learningPathsString.replace(/"([^"]+)":/g, '$1:')};
+export const rawLearningPaths: Omit<LearningPath, 'Icon'> & { Icon: string }[] = ${learningPathsString};
 
-export const learningPaths: LearningPath[] = [
-  {
-    id: 'lp1',
-    title: 'Foundations of Ethical AI',
-    description: 'Learn the core principles of ethical AI and apply them to real-world projects.',
-    category: 'Technical',
-    duration: '4 Weeks',
-    Icon: FlaskConical,
-    modules: [
-        { id: 'm1', title: 'Introduction to AI Ethics', description: 'What is ethical AI and why does it matter?', content: 'This module covers the basics of AI ethics...', videoUrl: 'https://www.youtube.com/embed/pS05iU_34x0' },
-        { id: 'm2', title: 'Fairness and Bias', description: 'Understanding and mitigating bias in AI systems.', content: 'This module dives deep into algorithmic bias...', videoUrl: 'https://www.youtube.com/embed/pS05iU_34x0' },
-    ]
-  },
-  {
-    id: 'lp2',
-    title: 'Community Management 101',
-    description: 'Master the art of building and nurturing online communities.',
-    category: 'Community',
-    duration: '2 Weeks',
-    Icon: Handshake,
-    isLocked: true,
-    modules: [
-        { id: 'm1', title: 'Community Engagement Strategies', description: 'Learn how to keep your community active.', content: 'Content for community engagement...' },
-    ]
-  },
-  // Add more learning paths...
-];
+export const learningPaths: LearningPath[] = rawLearningPaths.map(p => ({
+    ...p,
+    Icon: FlaskConical, // Default value, will be hydrated
+}));
+
 
 export let currentUserLearningProgress: UserLearningProgress[] = rawProgress;
 
@@ -147,10 +131,10 @@ async function readData(): Promise<AppData> {
         assignedTo: t.assignedTo ? users.find((u: User) => u.id === t.assignedTo.id) : undefined,
     }));
 
-    // Hydrate learning paths with actual Icon components
-    const learningPaths = JSON.parse(JSON.stringify(dataModule.learningPaths)).map((lp: any) => ({
+    // Hydrate learning paths with actual Icon components from the map
+    const learningPaths = dataModule.rawLearningPaths.map((lp: any) => ({
         ...lp,
-        Icon: iconMap[lp.Icon as string] || FlaskConical,
+        Icon: iconMap[lp.Icon as string] || FlaskConical, // Use map to get component
     }));
 
     return {
@@ -165,12 +149,12 @@ async function readData(): Promise<AppData> {
     };
 }
 
-
 export async function getData(): Promise<AppData> {
     if (!dataCache) {
         dataCache = await readData();
     }
-    return dataCache;
+    // Return a deep copy to prevent mutations of the cache
+    return JSON.parse(JSON.stringify(dataCache));
 }
 
 export async function setData(newData: AppData): Promise<void> {
@@ -182,12 +166,14 @@ export async function setData(newData: AppData): Promise<void> {
 
     writeTimeout = setTimeout(async () => {
         try {
-            const serializedData = serializeContent(dataCache!);
-            // We are not writing to file for now to avoid the serialization issue with icons
+            if (!dataCache) return;
+            const serializedData = serializeContent(dataCache);
+            // In a real app, this would write to data.ts.
+            // For this environment, we avoid writing to the file to prevent build issues.
             // await fs.writeFile(dataFilePath, serializedData, ENCODING);
-            // console.log("Data written to file.");
+            console.log("Data changes are cached in memory and prepared for serialization.");
         } catch (error) {
-            console.error("Error writing data file:", error);
+            console.error("Error serializing data:", error);
         }
         writeTimeout = null;
     }, 500);
