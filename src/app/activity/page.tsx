@@ -45,13 +45,13 @@ export default async function ActivityPage() {
 
   const myTasks = tasks.filter(task => task.assignedTo?.id === currentUser.id);
 
-  const completedModulesData = (currentUserLearningProgress || []).flatMap(progress => 
-    progress.completedModules.map(moduleId => {
-      const path = (learningPaths || []).find(p => p.id === progress.pathId);
+  const completedModulesData = (currentUserLearningProgress && learningPaths) ? currentUserLearningProgress.flatMap(progress => 
+    (progress.completedModules || []).map(moduleId => {
+      const path = learningPaths.find(p => p.id === progress.pathId);
       const module = path?.modules.find(m => m.id === moduleId);
       return { path, module };
     })
-  ).filter(item => item.path && item.module);
+  ).filter(item => item.path && item.module) : [];
 
 
   return (

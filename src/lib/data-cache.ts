@@ -2,6 +2,7 @@
 import type { Project, Task, User, UserLearningProgress, Interest } from '@/lib/types';
 import fs from 'fs/promises';
 import path from 'path';
+import * as dataModule from '@/lib/data';
 
 // This is a server-side only file.
 // Do not import it into client components.
@@ -13,7 +14,7 @@ interface AppData {
     users: User[];
     projects: Project[];
     tasks: Task[];
-    learningPaths: any[]; // Add this to your AppData interface
+    learningPaths: any[];
     currentUserLearningProgress: UserLearningProgress[];
     interests: Interest[];
     currentUserIndex: number;
@@ -24,27 +25,25 @@ let dataCache: AppData | null = null;
 let writeTimeout: NodeJS.Timeout | null = null;
 
 function serializeContent(data: AppData): string {
-    const usersString = JSON.stringify(data.users.map(u => ({...u, interests: u.interests || []})), null, 2);
-    
-    // When serializing projects, we store user IDs instead of full user objects.
-    const projectsToSave = data.projects.map(p => ({
+    // Make a deep copy to avoid modifying the original data during serialization
+    const dataToSerialize = JSON.parse(JSON.stringify(data));
+
+    const usersString = JSON.stringify(dataToSerialize.users.map((u: User) => ({...u, interests: u.interests || []})), null, 2);
+
+    const projectsToSave = dataToSerialize.projects.map((p: Project) => ({
         ...p,
         team: p.team.map(m => ({ user: m.user.id, role: m.role }))
     }));
     const projectsString = JSON.stringify(projectsToSave, null, 2);
 
-    // When serializing tasks, we store the assigned user's ID.
-    const tasksToSave = data.tasks.map(t => ({
+    const tasksToSave = dataToSerialize.tasks.map((t: Task) => ({
         ...t,
         assignedTo: t.assignedTo?.id
     }));
     const tasksString = JSON.stringify(tasksToSave, null, 2);
-    
-    const progressString = JSON.stringify(data.currentUserLearningProgress, null, 2);
-    const interestsString = JSON.stringify(data.interests, null, 2);
-    
-    // Learning paths are static and defined in the file, so we don't need to serialize them.
-    // They will be preserved.
+
+    const progressString = JSON.stringify(dataToSerialize.currentUserLearningProgress, null, 2);
+    const interestsString = JSON.stringify(dataToSerialize.interests, null, 2);
 
     return `
 import type { Project, Task, User, UserLearningProgress, ProjectCategory, Interest } from './types';
@@ -118,42 +117,64 @@ export const interests: Interest[] = ${interestsString.replace(/"([^"]+)":/g, '$
 
 
 async function readData(): Promise<AppData> {
-    // Dynamically import the data file to get the latest version, bypassing require cache
-    const dataModule = await import(`../lib/data.ts?timestamp=${Date.now()}`);
+    // This function now uses the statically imported module.
+    // It's mainly responsible for "hydrating" the data by resolving IDs to actual objects.
     
-    const currentUserIndex = dataModule.users.findIndex((u: User) => u.id === dataModule.currentUser.id);
+    // Create a fresh copy of users from the module to avoid direct mutation of module cache
+    const users = JSON.parse(JSON.stringify(dataModule.users)).map((u: any) => ({ ...u, onboarded: u.onboarded ?? false }));
+    const currentUser = JSON.parse(JSON.stringify(dataModule.currentUser));
+    
+    const currentUserIndex = users.findIndex((u: User) => u.id === currentUser.id);
+
+    const projects = JSON.parse(JSON.stringify(dataModule.projects)).map((p: any) => ({
+        ...p,
+        team: p.team.map((m: any) => {
+            const user = users.find((u: User) => u.id === m.user.id);
+            return {
+                user: user,
+                role: m.role
+            };
+        })
+    }));
+    
+    const tasks = JSON.parse(JSON.stringify(dataModule.tasks)).map((t: any) => ({
+        ...t,
+        assignedTo: t.assignedTo ? users.find((u: User) => u.id === t.assignedTo.id) : undefined,
+    }));
     
     return {
-        users: dataModule.users,
-        projects: dataModule.projects,
-        tasks: dataModule.tasks,
-        learningPaths: dataModule.learningPaths,
-        currentUserLearningProgress: dataModule.currentUserLearningProgress,
-        interests: dataModule.interests,
+        users: users,
+        projects: projects,
+        tasks: tasks,
+        learningPaths: JSON.parse(JSON.stringify(dataModule.learningPaths)),
+        currentUserLearningProgress: JSON.parse(JSON.stringify(dataModule.currentUserLearningProgress)),
+        interests: JSON.parse(JSON.stringify(dataModule.interests)),
         currentUserIndex: currentUserIndex !== -1 ? currentUserIndex : 0,
-        currentUser: dataModule.currentUser,
+        currentUser: users[currentUserIndex !== -1 ? currentUserIndex : 0],
     };
 }
 
 
 export async function getData(): Promise<AppData> {
-    // In a real app, you might fetch from a database. For this prototype, we'll read from our ts file.
-    // This function is intended for server-side use.
+    // If the cache is empty, read the data from the file.
     if (!dataCache) {
         dataCache = await readData();
     }
-    // Return a deep copy to prevent direct mutation of the cache
-    return JSON.parse(JSON.stringify(dataCache));
+    // Return the cache directly. This is much faster.
+    return dataCache;
 }
 
 export async function setData(newData: AppData): Promise<void> {
-    dataCache = JSON.parse(JSON.stringify(newData)); // Update cache with a deep copy
+    // Update the in-memory cache immediately. We make a deep copy here
+    // to ensure the cache itself is a new object, breaking references.
+    dataCache = JSON.parse(JSON.stringify(newData));
 
+    // Clear any pending write to ensure we only write the latest data.
     if (writeTimeout) {
         clearTimeout(writeTimeout);
     }
 
-    // Debounce writes to the file system
+    // Debounce writes to the file system to avoid excessive I/O operations.
     writeTimeout = setTimeout(async () => {
         try {
             const serializedData = serializeContent(dataCache!);
@@ -167,12 +188,18 @@ export async function setData(newData: AppData): Promise<void> {
 }
 
 export async function updateCurrentUser(index: number): Promise<void> {
-    const data = await getData();
-    if (index >= 0 && index < data.users.length) {
-        data.currentUserIndex = index;
-        data.currentUser = data.users[index];
-        await setData(data);
+    const currentData = await getData();
+    
+    if (index >= 0 && index < currentData.users.length) {
+        // Create a new object for the cache to ensure state updates
+        const newCacheState = {
+            ...currentData,
+            currentUserIndex: index,
+            currentUser: currentData.users[index],
+        };
+        // Set the new state, which will update the cache and trigger a debounced write.
+        await setData(newCacheState);
     } else {
-        console.error("Invalid user index provided for updateCurrentUser:", index);
+        console.error("Invalid user index provided for updateCurrentUser or cache not initialized:", index);
     }
 }
