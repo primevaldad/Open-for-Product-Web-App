@@ -24,9 +24,13 @@ export default async function LearningModulePage({ params }: { params: { id: str
   const prevModule = currentModuleIndex > 0 ? path.modules[currentModuleIndex - 1] : null;
   const nextModule = currentModuleIndex < path.modules.length - 1 ? path.modules[currentModuleIndex + 1] : null;
 
+  // We can't pass the whole `path` object because it contains the `Icon` component which is not serializable.
+  // Instead, we pass only the properties the client component needs.
+  const { Icon, ...serializablePath } = path;
+
   return (
     <LearningModuleClientPage
-        path={path}
+        path={serializablePath}
         module={module}
         userProgress={userProgress}
         currentUser={currentUser}
