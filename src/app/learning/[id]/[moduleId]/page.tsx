@@ -1,165 +1,37 @@
 
-'use client';
+import { notFound } from 'next/navigation';
+import { getData } from '@/lib/data-cache';
+import type { LearningPath, User, UserLearningProgress } from '@/lib/types';
+import LearningModuleClientPage from './learning-module-client-page';
 
-import { notFound, useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { useTransition, useEffect, useState } from 'react';
-import { completeModule } from '@/app/actions/learning';
-import { useToast } from '@/hooks/use-toast';
-import type { User, LearningPath, UserLearningProgress } from '@/lib/types';
-
-export default function LearningModulePage() {
-  const params = useParams();
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
-  const [currentUserLearningProgress, setCurrentUserLearningProgress] = useState<UserLearningProgress[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadData() {
-      const data = await import('@/lib/data');
-      setCurrentUser(data.currentUser);
-      setLearningPaths(data.learningPaths);
-      setCurrentUserLearningProgress(data.currentUserLearningProgress);
-      setIsLoading(false);
-    }
-    loadData();
-  }, []);
+// This is now a Server Component that fetches all necessary data
+export default async function LearningModulePage({ params }: { params: { id: string, moduleId: string } }) {
+  const { learningPaths, currentUser, currentUserLearningProgress } = await getData();
   
-  if (isLoading) {
-    return null;
-  }
-  
-  const pathId = params.id as string;
-  const moduleId = params.moduleId as string;
+  const pathId = params.id;
+  const moduleId = params.moduleId;
 
   const path = learningPaths.find((p) => p.id === pathId);
   const module = path?.modules.find((m) => m.id === moduleId);
 
   if (!path || !module) {
-    // Return a loading state or null until data is available
-    return null;
+    notFound();
   }
 
-  const userProgress = currentUserLearningProgress.find(p => p.pathId === pathId);
-  const isCompleted = userProgress?.completedModules.includes(module.id) ?? false;
+  const userProgress = (currentUserLearningProgress || []).find(p => p.userId === currentUser.id && p.pathId === pathId);
   
   const currentModuleIndex = path.modules.findIndex(m => m.id === module.id);
   const prevModule = currentModuleIndex > 0 ? path.modules[currentModuleIndex - 1] : null;
   const nextModule = currentModuleIndex < path.modules.length - 1 ? path.modules[currentModuleIndex + 1] : null;
 
-  const handleCompletionToggle = (checked: boolean) => {
-    if (!currentUser) return;
-    startTransition(async () => {
-      const result = await completeModule({ 
-        userId: currentUser.id, 
-        pathId: path.id, 
-        moduleId: module.id, 
-        completed: checked 
-      });
-
-      if (result.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      }
-    });
-  };
-
-  const handleNextModule = () => {
-    if (!isCompleted) {
-        handleCompletionToggle(true);
-    }
-    if (nextModule) {
-        router.push(`/learning/${path.id}/${nextModule.id}`);
-    }
-  };
-
-  if (!currentUser) {
-    return null; // Or a loading spinner
-  }
-
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-        <div className='flex items-center gap-4'>
-            <Link href={`/learning/${path.id}`}>
-                <Button variant="outline" size="icon">
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-            </Link>
-            <div>
-                <Link href={`/learning/${path.id}`} className="text-sm text-primary hover:underline">{path.title}</Link>
-                <h1 className="text-lg font-semibold md:text-xl">
-                    {module.title}
-                </h1>
-            </div>
-        </div>
-        <div className="flex items-center gap-2">
-            {prevModule && (
-                <Link href={`/learning/${path.id}/${prevModule.id}`}>
-                    <Button variant="outline">Previous</Button>
-                </Link>
-            )}
-            {nextModule ? (
-                <Button onClick={handleNextModule}>
-                    Next Module <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-            ) : (
-                <Link href="/learning">
-                    <Button>
-                        Finish Path <CheckCircle className="ml-2 h-4 w-4" />
-                    </Button>
-                </Link>
-            )}
-        </div>
-      </header>
-      <main className="flex-1 overflow-auto p-4 md:p-6">
-         <div className="mx-auto max-w-3xl space-y-6">
-            {module.videoUrl && (
-                <div className="aspect-video w-full overflow-hidden rounded-lg border">
-                    <iframe 
-                        src={module.videoUrl}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={module.title}
-                    ></iframe>
-                </div>
-            )}
-             <Card>
-                <CardHeader>
-                    <CardTitle className="text-2xl">{module.title}</CardTitle>
-                    <CardDescription>{module.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="prose prose-sm max-w-none text-foreground">
-                    <p>{module.content}</p>
-                </CardContent>
-             </Card>
-             <Card>
-                <CardContent className="p-4 flex items-center justify-between">
-                     <div className="flex items-center space-x-2">
-                        <Checkbox 
-                            id="completion" 
-                            checked={isCompleted} 
-                            onCheckedChange={handleCompletionToggle}
-                            disabled={isPending}
-                        />
-                        <Label htmlFor="completion" className={isCompleted ? "text-muted-foreground line-through" : ""}>
-                            Mark as Complete
-                        </Label>
-                    </div>
-                    {isPending && <span className="text-sm text-muted-foreground">Saving...</span>}
-                </CardContent>
-            </Card>
-         </div>
-      </main>
-    </div>
+    <LearningModuleClientPage
+        path={path}
+        module={module}
+        userProgress={userProgress}
+        currentUser={currentUser}
+        prevModule={prevModule}
+        nextModule={nextModule}
+    />
   );
 }

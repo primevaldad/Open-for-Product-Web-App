@@ -17,7 +17,7 @@ export default async function LearningPathDetailPage({ params }: { params: { id:
     notFound();
   }
 
-  const userProgress = currentUserLearningProgress.find(p => p.pathId === path.id);
+  const userProgress = (currentUserLearningProgress || []).find(p => p.pathId === path.id);
   const completedModules = userProgress?.completedModules.length ?? 0;
   const totalModules = path.modules.length;
   const progressPercentage = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;

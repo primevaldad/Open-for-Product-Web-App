@@ -35,7 +35,6 @@ export async function switchUser(values: z.infer<typeof SwitchUserSchema>) {
         }
 
         await updateCurrentUser(userIndex);
-        revalidatePath('/', 'layout'); // Revalidate all pages
     } catch (error) {
         return {
             success: false,

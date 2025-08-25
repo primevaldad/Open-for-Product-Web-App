@@ -13,6 +13,7 @@ interface AppData {
     users: User[];
     projects: Project[];
     tasks: Task[];
+    learningPaths: any[]; // Add this to your AppData interface
     currentUserLearningProgress: UserLearningProgress[];
     interests: Interest[];
     currentUserIndex: number;
@@ -23,97 +24,55 @@ let dataCache: AppData | null = null;
 let writeTimeout: NodeJS.Timeout | null = null;
 
 function serializeContent(data: AppData): string {
-    const userStrings = data.users.map(u => {
-        const interestsString = u.interests ? `interests: [${u.interests.map(i => `'${i.replace(/'/g, "\\'")}'`).join(', ')}]` : '';
-        const onboardedString = `onboarded: ${u.onboarded}`;
-        const bioString = u.bio ? `bio: \`${u.bio.replace(/`/g, "\\`")}\`` : '';
-        
-        const fields = [
-            `id: '${u.id}'`,
-            `name: '${u.name.replace(/'/g, "\\'")}'`,
-            `avatarUrl: '${u.avatarUrl}'`,
-            bioString,
-            interestsString,
-            onboardedString
-        ].filter(Boolean).join(',\n    ');
-
-        return `  { \n    ${fields} \n  }`;
-    }).join(',\n');
-
-    const projectStrings = data.projects.map(p => {
-        const teamString = p.team.map(m => `{ user: users.find(u => u.id === '${m.user.id}')!, role: '${m.role}' }`).join(',\n        ');
-        const contributionNeedsString = p.contributionNeeds.map(n => `'${n.replace(/'/g, "\\'")}'`).join(', ');
-        
-        let governanceString = '';
-        if (p.governance) {
-            governanceString = `\n    governance: {
-      contributorsShare: ${p.governance.contributorsShare},
-      communityShare: ${p.governance.communityShare},
-      sustainabilityShare: ${p.governance.sustainabilityShare},
-    },`;
-        }
-
-        const isExpertReviewedString = p.isExpertReviewed ? `\n    isExpertReviewed: ${p.isExpertReviewed},` : '';
-
-        return `  {
-    id: '${p.id}',
-    name: '${p.name.replace(/'/g, "\\'")}',
-    tagline: '${p.tagline.replace(/'/g, "\\'")}',
-    description: \`${p.description.replace(/`/g, "\\`")}\`,
-    category: '${p.category}',
-    timeline: '${p.timeline.replace(/'/g, "\\'")}',
-    contributionNeeds: [${contributionNeedsString}],
-    progress: ${p.progress},
-    team: [
-        ${teamString}
-    ],
-    votes: ${p.votes},
-    discussions: ${p.discussions},${isExpertReviewedString}
-    status: '${p.status}',${governanceString}
-  }`;
-    }).join(',\n');
-
-    const taskStrings = data.tasks.map(t => {
-        const assignedToString = t.assignedTo ? `assignedTo: users.find(u => u.id === '${t.assignedTo!.id}')` : 'assignedTo: undefined';
-        const descriptionString = t.description ? `description: \`${t.description.replace(/`/g, "\\`")}\`` : '';
-        const estimatedHoursString = t.estimatedHours ? `estimatedHours: ${t.estimatedHours}` : '';
-
-        const fields = [
-            `id: '${t.id}'`,
-            `projectId: '${t.projectId}'`,
-            `title: '${t.title.replace(/'/g, "\\'")}'`,
-            descriptionString,
-            `status: '${t.status}'`,
-            assignedToString,
-            estimatedHoursString
-        ].filter(Boolean).join(', ');
-
-        return `    { ${fields} }`;
-    }).join(',\n');
+    const usersString = JSON.stringify(data.users.map(u => ({...u, interests: u.interests || []})), null, 2);
     
-    const progressStrings = data.currentUserLearningProgress.map(p => {
-        const completedModulesString = p.completedModules.map(m => `'${m}'`).join(', ');
-        return `    {
-        userId: '${p.userId}',
-        pathId: '${p.pathId}',
-        completedModules: [${completedModulesString}],
-    }`;
-    }).join(',\n');
+    // When serializing projects, we store user IDs instead of full user objects.
+    const projectsToSave = data.projects.map(p => ({
+        ...p,
+        team: p.team.map(m => ({ user: m.user.id, role: m.role }))
+    }));
+    const projectsString = JSON.stringify(projectsToSave, null, 2);
 
-    const interestStrings = data.interests.map(i => `  { id: '${i.id}', name: '${i.name.replace(/'/g, "\\'")}' }`).join(',\n');
+    // When serializing tasks, we store the assigned user's ID.
+    const tasksToSave = data.tasks.map(t => ({
+        ...t,
+        assignedTo: t.assignedTo?.id
+    }));
+    const tasksString = JSON.stringify(tasksToSave, null, 2);
+    
+    const progressString = JSON.stringify(data.currentUserLearningProgress, null, 2);
+    const interestsString = JSON.stringify(data.interests, null, 2);
+    
+    // Learning paths are static and defined in the file, so we don't need to serialize them.
+    // They will be preserved.
 
     return `
 import type { Project, Task, User, UserLearningProgress, ProjectCategory, Interest } from './types';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LearningPath } from './types';
 
-export const users: User[] = [\n${userStrings}\n];
+// Raw data, to be hydrated by getData
+const rawUsers: Omit<User, 'onboarded'>[] = ${usersString.replace(/"([^"]+)":/g, '$1:')};
+const rawProjects = ${projectsString.replace(/"([^"]+)":/g, '$1:')};
+const rawTasks = ${tasksString.replace(/"([^"]+)":/g, '$1:')};
+const rawProgress: UserLearningProgress[] = ${progressString.replace(/"([^"]+)":/g, '$1:')};
+
+export const users: User[] = rawUsers.map(u => ({ ...u, onboarded: u.onboarded ?? false }));
 
 export let currentUser: User = users[${data.currentUserIndex}];
 
-export const projects: Project[] = [\n${projectStrings}\n];
+export const projects: Project[] = rawProjects.map((p: any) => ({
+    ...p,
+    team: p.team.map((m: any) => ({
+        user: users.find(u => u.id === m.user)!,
+        role: m.role
+    }))
+}));
 
-export let tasks: Task[] = [\n${taskStrings}\n];
+export let tasks: Task[] = rawTasks.map((t: any) => ({
+    ...t,
+    assignedTo: t.assignedTo ? users.find(u => u.id === t.assignedTo) : undefined,
+}));
 
 export const projectCategories = [
     { name: 'Creative', icon: Code },
@@ -151,15 +110,16 @@ export const learningPaths: LearningPath[] = [
   // Add more learning paths...
 ];
 
-export let currentUserLearningProgress: UserLearningProgress[] = [\n${progressStrings}\n];
+export let currentUserLearningProgress: UserLearningProgress[] = rawProgress;
 
-export const interests: Interest[] = [\n${interestStrings}\n];
+export const interests: Interest[] = ${interestsString.replace(/"([^"]+)":/g, '$1:')};
 `;
 }
 
+
 async function readData(): Promise<AppData> {
     // Dynamically import the data file to get the latest version, bypassing require cache
-    const dataModule = await import(`./data.ts?timestamp=${Date.now()}`);
+    const dataModule = await import(`../lib/data.ts?timestamp=${Date.now()}`);
     
     const currentUserIndex = dataModule.users.findIndex((u: User) => u.id === dataModule.currentUser.id);
     
@@ -167,6 +127,7 @@ async function readData(): Promise<AppData> {
         users: dataModule.users,
         projects: dataModule.projects,
         tasks: dataModule.tasks,
+        learningPaths: dataModule.learningPaths,
         currentUserLearningProgress: dataModule.currentUserLearningProgress,
         interests: dataModule.interests,
         currentUserIndex: currentUserIndex !== -1 ? currentUserIndex : 0,
