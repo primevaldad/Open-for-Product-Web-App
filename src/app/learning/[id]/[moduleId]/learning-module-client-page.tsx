@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useTransition } from 'react';
+import { useTransition, useState, useEffect } from 'react';
 import { completeModule } from '@/app/actions/learning';
 import { useToast } from '@/hooks/use-toast';
 import type { User, LearningPath, UserLearningProgress, Module } from '@/lib/types';
@@ -23,6 +23,44 @@ interface LearningModuleClientPageProps {
     nextModule: Module | null;
 }
 
+function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: LearningModuleClientPageProps & { onNextModule: () => void }) {
+    return (
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+            <div className='flex items-center gap-4'>
+                <Link href={`/learning/${path.id}`}>
+                    <Button variant="outline" size="icon">
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                </Link>
+                <div>
+                    <Link href={`/learning/${path.id}`} className="text-sm text-primary hover:underline">{path.title}</Link>
+                    <h1 className="text-lg font-semibold md:text-xl">
+                        {module.title}
+                    </h1>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                {prevModule && (
+                    <Link href={`/learning/${path.id}/${prevModule.id}`}>
+                        <Button variant="outline">Previous</Button>
+                    </Link>
+                )}
+                {nextModule ? (
+                    <Button onClick={onNextModule}>
+                        Next Module <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                ) : (
+                    <Link href="/learning">
+                        <Button>
+                            Finish Path <CheckCircle className="ml-2 h-4 w-4" />
+                        </Button>
+                    </Link>
+                )}
+            </div>
+        </header>
+    );
+}
+
 export default function LearningModuleClientPage({ 
     path, 
     module, 
@@ -34,6 +72,11 @@ export default function LearningModuleClientPage({
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const isCompleted = userProgress?.completedModules.includes(module.id) ?? false;
   
@@ -63,39 +106,7 @@ export default function LearningModuleClientPage({
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
-      <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-        <div className='flex items-center gap-4'>
-            <Link href={`/learning/${path.id}`}>
-                <Button variant="outline" size="icon">
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-            </Link>
-            <div>
-                <Link href={`/learning/${path.id}`} className="text-sm text-primary hover:underline">{path.title}</Link>
-                <h1 className="text-lg font-semibold md:text-xl">
-                    {module.title}
-                </h1>
-            </div>
-        </div>
-        <div className="flex items-center gap-2">
-            {prevModule && (
-                <Link href={`/learning/${path.id}/${prevModule.id}`}>
-                    <Button variant="outline">Previous</Button>
-                </Link>
-            )}
-            {nextModule ? (
-                <Button onClick={handleNextModule}>
-                    Next Module <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-            ) : (
-                <Link href="/learning">
-                    <Button>
-                        Finish Path <CheckCircle className="ml-2 h-4 w-4" />
-                    </Button>
-                </Link>
-            )}
-        </div>
-      </header>
+      {isMounted && <ModuleHeader {...{ path, module, userProgress, currentUser, prevModule, nextModule, onNextModule: handleNextModule }} />}
       <main className="flex-1 overflow-auto p-4 md:p-6">
          <div className="mx-auto max-w-3xl space-y-6">
             {module.videoUrl && (
