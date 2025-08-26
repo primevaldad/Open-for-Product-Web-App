@@ -1,3 +1,4 @@
+
 "use client";
 
 import { summarizeProjectProgress } from "@/ai/flows/summarize-project-progress";
@@ -23,7 +24,7 @@ export function SummarizeProgress({ project }: SummarizeProgressProps) {
       setSummary(null);
       const res = await summarizeProjectProgress({
         projectName: project.name,
-        recentActivity: `The project is currently at ${project.progress}% completion. There are ${project.discussions} active discussion threads. Key recent activities include finalizing the initial design mockups and setting up the development environment.`
+        recentActivity: `The project is currently at ${project.progress}% completion. There are ${project.discussions.length} active discussion threads. Key recent activities include finalizing the initial design mockups and setting up the development environment.`
       });
       setSummary(res.summary);
     } catch (e) {

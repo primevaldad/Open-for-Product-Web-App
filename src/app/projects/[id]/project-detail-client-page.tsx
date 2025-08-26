@@ -9,11 +9,15 @@ import {
   DollarSign,
   UserPlus,
   Pencil,
-  PlusCircle
+  PlusCircle,
+  MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from 'zod';
 
 import {
   SidebarInset,
@@ -26,7 +30,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummarizeProgress } from "@/components/ai/summarize-progress";
 import { HighlightBlockers } from "@/components/ai/highlight-blockers";
-import { joinProject } from "@/app/actions/projects";
+import { addDiscussionComment, joinProject } from "@/app/actions/projects";
 import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
@@ -34,12 +38,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Task, TaskStatus, User, Project } from "@/lib/types";
+import type { Task, TaskStatus, User, Project, Discussion } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { formatDistanceToNow } from 'date-fns';
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+
+const DiscussionSchema = z.object({
+  content: z.string().min(1, "Comment cannot be empty."),
+});
+
+type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
+
 
 function TaskCard({ task, isTeamMember, team }: { task: Task, isTeamMember: boolean, team: any[] }) {
   return (
@@ -88,9 +102,17 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
   const params = useParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [isCommentPending, startCommentTransition] = useTransition();
 
   const isCurrentUserMember = project.team.some(member => member.user.id === currentUser.id);
   const isCurrentUserLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead');
+
+  const form = useForm<DiscussionFormValues>({
+    resolver: zodResolver(DiscussionSchema),
+    defaultValues: {
+      content: "",
+    },
+  });
 
   const handleJoinProject = () => {
     startTransition(async () => {
@@ -100,6 +122,24 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Welcome!', description: `You've successfully joined ${project.name}.` });
+      }
+    });
+  };
+
+  const handleAddComment = (values: DiscussionFormValues) => {
+    startCommentTransition(async () => {
+      if (typeof params.id !== 'string') return;
+      const result = await addDiscussionComment({
+        projectId: params.id,
+        userId: currentUser.id,
+        content: values.content,
+      });
+
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      } else {
+        toast({ title: 'Comment added!' });
+        form.reset();
       }
     });
   };
@@ -134,7 +174,10 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
                 <TabsList>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                  <TabsTrigger value="discussions">Discussions</TabsTrigger>
+                  <TabsTrigger value="discussions">
+                    Discussions
+                    <Badge className="ml-2">{project.discussions.length}</Badge>
+                  </TabsTrigger>
                   <TabsTrigger value="governance">Governance</TabsTrigger>
                 </TabsList>
                 {isCurrentUserLead && (
@@ -223,9 +266,71 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
 
             <TabsContent value="discussions">
                 <Card>
-                    <CardHeader><CardTitle>Discussions</CardTitle><CardDescription>Coming soon...</CardDescription></CardHeader>
-                    <CardContent className="h-64 flex items-center justify-center text-muted-foreground">
-                        <p>Real-time messaging is in the works!</p>
+                    <CardHeader>
+                        <CardTitle>Discussions</CardTitle>
+                        <CardDescription>Ask questions, share ideas, and collaborate with the project team.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {isCurrentUserMember ? (
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(handleAddComment)} className="flex items-start gap-4">
+                                <Avatar className="h-10 w-10 border">
+                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                    <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-grow space-y-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="content"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormControl>
+                                                    <Textarea {...field} placeholder="Add to the discussion..." className="min-h-[60px]" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="flex justify-end">
+                                        <Button type="submit" disabled={isCommentPending}>
+                                            {isCommentPending ? "Posting..." : "Post Comment"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </form>
+                        </Form>
+                        ) : (
+                            <div className="text-center text-muted-foreground text-sm p-4 border rounded-lg">
+                                <p>You must be a member of this project to join the discussion.</p>
+                            </div>
+                        )}
+
+                        <div className="space-y-4">
+                           {project.discussions && project.discussions.length > 0 ? (
+                                [...project.discussions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(comment => (
+                                <div key={comment.id} className="flex items-start gap-4">
+                                    <Avatar className="h-10 w-10 border">
+                                        <AvatarImage src={comment.user.avatarUrl} alt={comment.user.name} />
+                                        <AvatarFallback>{getInitials(comment.user.name)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-grow rounded-lg border p-3">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <p className="font-semibold">{comment.user.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true })}
+                                            </p>
+                                        </div>
+                                        <p className="text-sm text-foreground">{comment.content}</p>
+                                    </div>
+                                </div>
+                                ))
+                           ) : (
+                             <div className="text-center text-muted-foreground text-sm py-8">
+                                <MessageSquare className="h-8 w-8 mx-auto mb-2" />
+                                <p>No discussions yet. Be the first to start the conversation!</p>
+                             </div>
+                           )}
+                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>
@@ -264,3 +369,5 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
       </SidebarInset>
   )
 }
+
+    

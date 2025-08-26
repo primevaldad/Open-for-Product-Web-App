@@ -1,5 +1,5 @@
 
-import type { Project, Task, User, UserLearningProgress, Interest, LearningPath } from './types';
+import type { Project, Task, User, UserLearningProgress, Interest, LearningPath, Discussion } from './types';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { rawUsers, rawProjects, rawTasks, rawLearningPaths as rawLPs, rawProgress, rawInterests } from './raw-data';
@@ -21,6 +21,10 @@ export const projects: Project[] = rawProjects.map((p: any) => ({
     team: p.team.map((m: any) => ({
         user: users.find(u => u.id === m.user)!,
         role: m.role
+    })),
+    discussions: (p.discussions || []).map((d: any) => ({
+        ...d,
+        user: users.find(u => u.id === d.user)!,
     }))
 }));
 
@@ -51,3 +55,5 @@ export const projectCategories = [
 
 // This will be managed by the data-cache
 export let currentUser: User = users[0];
+
+    

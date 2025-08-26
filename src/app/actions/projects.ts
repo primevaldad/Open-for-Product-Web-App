@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { Project, ProjectStatus, Task } from '@/lib/types';
+import type { Project, ProjectStatus, Task, Discussion } from '@/lib/types';
 import { users } from '@/lib/data';
 import { getData, setData } from '@/lib/data-cache';
 
@@ -39,6 +39,12 @@ const TaskSchema = z.object({
 const CreateTaskSchema = TaskSchema.omit({ id: true });
 const DeleteTaskSchema = z.object({ id: z.string(), projectId: z.string() });
 
+const DiscussionCommentSchema = z.object({
+    projectId: z.string(),
+    userId: z.string(),
+    content: z.string().min(1, "Comment cannot be empty."),
+});
+
 
 async function handleProjectSubmission(
   values: z.infer<typeof ProjectSchema>,
@@ -69,7 +75,7 @@ async function handleProjectSubmission(
     progress: 0,
     team: [{ user: currentUser, role: 'lead' }],
     votes: 0,
-    discussions: 0,
+    discussions: [],
     status,
   };
 
@@ -337,3 +343,56 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
 }
+
+export async function addDiscussionComment(values: z.infer<typeof DiscussionCommentSchema>) {
+    const validatedFields = DiscussionCommentSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data provided." };
+    }
+
+    const { projectId, userId, content } = validatedFields.data;
+
+    try {
+        const data = await getData();
+        const project = data.projects.find(p => p.id === projectId);
+        if (!project) {
+            throw new Error("Project not found");
+        }
+        
+        const user = data.users.find(u => u.id === userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        const isMember = project.team.some(m => m.user.id === userId);
+        if (!isMember) {
+            throw new Error("Only team members can add comments.");
+        }
+        
+        const newComment: Discussion = {
+            id: `d${Math.floor(Math.random() * 10000)}`,
+            user,
+            content,
+            timestamp: new Date().toISOString(),
+        };
+
+        if (!project.discussions) {
+            project.discussions = [];
+        }
+        project.discussions.push(newComment);
+        
+        await setData(data);
+        
+        revalidatePath(`/projects/${projectId}`);
+        return { success: true };
+
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "An unknown error occurred."
+        };
+    }
+}
+
+    

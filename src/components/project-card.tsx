@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { ArrowUpRight, CheckCircle, MessageSquare, Sparkles, Users } from 'lucide-react';
 
@@ -98,7 +99,7 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
                 <Users className="h-4 w-4" /> {project.votes}
             </span>
             <span className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4" /> {project.discussions}
+                <MessageSquare className="h-4 w-4" /> {project.discussions.length}
             </span>
         </div>
       </CardFooter>

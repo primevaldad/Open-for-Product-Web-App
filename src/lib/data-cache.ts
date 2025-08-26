@@ -1,8 +1,7 @@
 
-import type { Project, Task, User, UserLearningProgress, Interest, LearningPath } from './types';
+import type { Project, Task, User, UserLearningProgress, Interest, LearningPath, Discussion } from './types';
 import fs from 'fs/promises';
 import path from 'path';
-import * as data from './data';
 import * as rawData from './raw-data';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -39,14 +38,21 @@ const iconNameMap: { [key: string]: string } = Object.fromEntries(
 
 function serializeContent(dataToSerialize: AppData): string {
     const usersToSave = dataToSerialize.users.map(u => ({...u, onboarded: u.onboarded ?? false, interests: u.interests || []}));
+    
     const projectsToSave = dataToSerialize.projects.map((p: Project) => ({
         ...p,
-        team: p.team.map(m => ({ user: m.user.id, role: m.role }))
+        team: p.team.map(m => ({ user: m.user.id, role: m.role })),
+        discussions: p.discussions.map(d => ({
+            ...d,
+            user: d.user.id,
+        })),
     }));
+
     const tasksToSave = dataToSerialize.tasks.map((t: Task) => ({
         ...t,
         assignedTo: t.assignedTo?.id
     }));
+
     const learningPathsToSave = dataToSerialize.learningPaths.map((lp: LearningPath) => {
         const iconName = iconNameMap[lp.Icon.displayName || ''] || 'FlaskConical';
         const { Icon, ...rest } = lp;
@@ -81,26 +87,35 @@ export const rawInterests: Interest[] = ${interestsString};
 
 
 async function readData(): Promise<AppData> {
-    // Use the already hydrated data from data.ts
-    const users = data.users.map(u => ({...u}));
-    const projects = data.projects.map(p => ({
+    const users = rawData.rawUsers.map(u => ({ ...u, onboarded: u.onboarded ?? true })) as User[];
+    
+    const projects = rawData.rawProjects.map((p: any) => ({
         ...p,
-        team: p.team.map(m => ({
-            user: { ...m.user },
+        team: p.team.map((m: any) => ({
+            user: users.find(u => u.id === m.user)!,
             role: m.role
+        })),
+        discussions: (p.discussions || []).map((d: any) => ({
+            ...d,
+            user: users.find(u => u.id === d.user)!,
         }))
-    }));
-    const tasks = data.tasks.map(t => ({
+    })) as Project[];
+    
+    const tasks = rawData.rawTasks.map((t: any) => ({
         ...t,
-        assignedTo: t.assignedTo ? { ...t.assignedTo } : undefined
-    }));
-    const learningPaths = data.learningPaths.map(p => ({...p}));
-    const currentUserLearningProgress = data.currentUserLearningProgress.map(p => ({...p}));
-    const interests = data.interests.map(i => ({...i}));
+        assignedTo: t.assignedTo ? users.find(u => u.id === t.assignedTo) : undefined,
+    })) as Task[];
+    
+    const learningPaths = rawData.rawLearningPaths.map(p => ({
+        ...p,
+        Icon: iconMap[p.Icon] || FlaskConical,
+    })) as LearningPath[];
 
-    // For currentUser, we need to find the one in our new copied array
-    const currentUserIndex = data.users.findIndex(u => u.id === data.currentUser.id);
-    const currentUser = users[currentUserIndex] || users[0];
+    const currentUserLearningProgress = rawData.rawProgress.map(p => ({...p}));
+    const interests = rawData.rawInterests.map(i => ({...i}));
+
+    const currentUserIndex = 0; // Default to first user
+    const currentUser = users[currentUserIndex];
 
     return {
         users,
@@ -165,3 +180,5 @@ export async function updateCurrentUser(index: number): Promise<void> {
         console.error("Invalid user index provided for updateCurrentUser or cache not initialized:", index);
     }
 }
+
+    

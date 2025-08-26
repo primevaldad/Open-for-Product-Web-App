@@ -27,6 +27,13 @@ export type Governance = {
     sustainabilityShare: number;
 }
 
+export type Discussion = {
+  id: string;
+  user: User;
+  content: string;
+  timestamp: string;
+};
+
 export type Project = {
   id: string;
   name: string;
@@ -38,7 +45,7 @@ export type Project = {
   progress: number;
   team: ProjectMember[];
   votes: number;
-  discussions: number;
+  discussions: Discussion[];
   isExpertReviewed?: boolean;
   status: ProjectStatus;
   governance?: Governance;
@@ -85,3 +92,5 @@ export type Interest = {
   id: string;
   name: string;
 };
+
+    
