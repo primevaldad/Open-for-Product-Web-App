@@ -81,18 +81,18 @@ export const rawProjects = [
     ],
     votes: 128,
     discussions: [
-        {
-            id: 'd1',
-            user: 'u2',
-            content: 'This is a great initiative! I was wondering what the plans are for mobile access?',
-            timestamp: '2024-07-28T10:00:00.000Z'
-        },
-        {
-            id: 'd2',
-            user: 'u1',
-            content: 'Thanks for the feedback! A mobile-responsive web app is the first priority. A native app could be a future goal if there\'s enough interest.',
-            timestamp: '2024-07-28T11:30:00.000Z'
-        }
+      {
+        id: "d1",
+        user: "u2",
+        content: "This is a great initiative! I was wondering what the plans are for mobile access?",
+        timestamp: "2024-07-28T10:00:00.000Z"
+      },
+      {
+        id: "d2",
+        user: "u1",
+        content: "Thanks for the feedback! A mobile-responsive web app is the first priority. A native app could be a future goal if there's enough interest.",
+        timestamp: "2024-07-28T11:30:00.000Z"
+      }
     ],
     status: "published",
     isExpertReviewed: true,
@@ -353,5 +353,3 @@ export const rawInterests: Interest[] = [
     name: "Technical"
   }
 ];
-
-    
