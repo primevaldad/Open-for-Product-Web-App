@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { getData } from '@/lib/data-cache';
+import { getHydratedData } from '@/lib/data-cache';
 
 // This is now a Server Component
 export default async function LearningPathDetailPage({ params }: { params: { id: string } }) {
-  const { learningPaths, currentUserLearningProgress } = await getData();
+  const { learningPaths, currentUserLearningProgress } = await getHydratedData();
   const path = learningPaths.find((p) => p.id === params.id);
 
   if (!path) {

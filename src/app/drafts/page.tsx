@@ -24,11 +24,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { User, Project } from "@/lib/types";
-import { getData } from "@/lib/data-cache";
+import { getHydratedData } from "@/lib/data-cache";
 
 // This is now a Server Component
 export default async function DraftsPage() {
-  const { currentUser, projects, users } = await getData();
+  const { currentUser, projects, users } = await getHydratedData();
 
   if (!currentUser) {
     // This can be a loading component or a redirect in a real app

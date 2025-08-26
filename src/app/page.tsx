@@ -25,12 +25,12 @@ import {
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { getData } from '@/lib/data-cache';
+import { getHydratedData } from '@/lib/data-cache';
 import HomeClientPage from "./home-client-page";
 
 // This is now a Server Component that fetches data and passes it to a client component.
 export default async function DashboardPage() {
-  const { currentUser, projects, users } = await getData();
+  const { currentUser, projects, users } = await getHydratedData();
   
   if (!currentUser) {
     return (

@@ -23,12 +23,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getData } from "@/lib/data-cache";
+import { getHydratedData } from "@/lib/data-cache";
 import ProjectDetailClientPage from "./project-detail-client-page";
 
 // This is now a Server Component responsible for fetching data
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const { currentUser, projects, tasks, users } = await getData();
+  const { currentUser, projects, tasks, users } = await getHydratedData();
 
   const project = projects.find((p) => p.id === params.id);
   

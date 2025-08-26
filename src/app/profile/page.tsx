@@ -33,7 +33,7 @@ import {
 import ProjectCard from '@/components/project-card';
 import { Separator } from '@/components/ui/separator';
 import type { User, Project } from '@/lib/types';
-import { getData } from '@/lib/data-cache';
+import { getHydratedData } from '@/lib/data-cache';
 
 const badges = [
   { name: 'First Contribution', icon: Award },
@@ -45,7 +45,7 @@ const badges = [
 
 // This is a Server Component
 export default async function ProfilePage() {
-  const { currentUser: user, projects, users } = await getData();
+  const { currentUser: user, projects, users } = await getHydratedData();
 
   const userProjects = projects.filter(
     p =>

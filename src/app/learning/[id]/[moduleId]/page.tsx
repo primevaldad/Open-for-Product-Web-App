@@ -1,12 +1,12 @@
 
 import { notFound } from 'next/navigation';
-import { getData } from '@/lib/data-cache';
+import { getHydratedData } from '@/lib/data-cache';
 import type { LearningPath, User, UserLearningProgress } from '@/lib/types';
 import LearningModuleClientPage from './learning-module-client-page';
 
 // This is now a Server Component that fetches all necessary data
 export default async function LearningModulePage({ params }: { params: { id: string, moduleId: string } }) {
-  const { learningPaths, currentUser, currentUserLearningProgress } = await getData();
+  const { learningPaths, currentUser, currentUserLearningProgress } = await getHydratedData();
   
   const pathId = params.id;
   const moduleId = params.moduleId;
@@ -39,5 +39,3 @@ export default async function LearningModulePage({ params }: { params: { id: str
     />
   );
 }
-
-    

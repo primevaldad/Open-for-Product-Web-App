@@ -1,8 +1,9 @@
 
-import type { Project, Task, User, UserLearningProgress, Interest, LearningPath } from '@/lib/types';
+import type { Project, Task, User, UserLearningProgress, Interest, LearningPath } from './types';
 import fs from 'fs/promises';
 import path from 'path';
-import * as data from '@/lib/data';
+import * as data from './data';
+import * as rawData from './raw-data';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -31,20 +32,22 @@ const iconMap: { [key: string]: LucideIcon } = {
     Briefcase,
     FlaskConical,
 };
-const iconNameMap = Object.fromEntries(Object.entries(iconMap).map(([name, comp]) => [comp.displayName, name]));
+const iconNameMap: { [key: string]: string } = Object.fromEntries(
+    Object.entries(iconMap).map(([name, comp]) => [comp.displayName || name, name])
+);
 
 
-function serializeContent(data: AppData): string {
-    const usersToSave = data.users.map(u => ({...u, onboarded: u.onboarded ?? false, interests: u.interests || []}));
-    const projectsToSave = data.projects.map((p: Project) => ({
+function serializeContent(dataToSerialize: AppData): string {
+    const usersToSave = dataToSerialize.users.map(u => ({...u, onboarded: u.onboarded ?? false, interests: u.interests || []}));
+    const projectsToSave = dataToSerialize.projects.map((p: Project) => ({
         ...p,
         team: p.team.map(m => ({ user: m.user.id, role: m.role }))
     }));
-    const tasksToSave = data.tasks.map((t: Task) => ({
+    const tasksToSave = dataToSerialize.tasks.map((t: Task) => ({
         ...t,
         assignedTo: t.assignedTo?.id
     }));
-    const learningPathsToSave = data.learningPaths.map((lp: LearningPath) => {
+    const learningPathsToSave = dataToSerialize.learningPaths.map((lp: LearningPath) => {
         const iconName = iconNameMap[lp.Icon.displayName || ''] || 'FlaskConical';
         const { Icon, ...rest } = lp;
         return { ...rest, Icon: iconName };
@@ -54,8 +57,8 @@ function serializeContent(data: AppData): string {
     const projectsString = JSON.stringify(projectsToSave, null, 2).replace(/"([^"]+)":/g, '$1:');
     const tasksString = JSON.stringify(tasksToSave, null, 2).replace(/"([^"]+)":/g, '$1:');
     const learningPathsString = JSON.stringify(learningPathsToSave, null, 2).replace(/"([^"]+)":/g, '$1:');
-    const progressString = JSON.stringify(data.currentUserLearningProgress, null, 2).replace(/"([^"]+)":/g, '$1:');
-    const interestsString = JSON.stringify(data.interests, null, 2).replace(/"([^"]+)":/g, '$1:');
+    const progressString = JSON.stringify(dataToSerialize.currentUserLearningProgress, null, 2).replace(/"([^"]+)":/g, '$1:');
+    const interestsString = JSON.stringify(dataToSerialize.interests, null, 2).replace(/"([^"]+)":/g, '$1:');
 
     return `
 import type { Project, Task, User, UserLearningProgress, ProjectCategory, Interest } from './types';
@@ -78,39 +81,55 @@ export const rawInterests: Interest[] = ${interestsString};
 
 
 async function readData(): Promise<AppData> {
+    // Use the already hydrated data from data.ts
     const users = data.users.map(u => ({...u}));
-    const currentUser = data.currentUser ? users.find(u => u.id === data.currentUser.id)! : users[0];
-    const currentUserIndex = users.findIndex(u => u.id === currentUser.id);
-
     const projects = data.projects.map(p => ({
         ...p,
         team: p.team.map(m => ({
-            user: users.find(u => u.id === m.user.id)!,
+            user: { ...m.user },
             role: m.role
         }))
     }));
-
     const tasks = data.tasks.map(t => ({
         ...t,
-        assignedTo: t.assignedTo ? users.find(u => u.id === t.assignedTo.id) : undefined
+        assignedTo: t.assignedTo ? { ...t.assignedTo } : undefined
     }));
-
     const learningPaths = data.learningPaths.map(p => ({...p}));
+    const currentUserLearningProgress = data.currentUserLearningProgress.map(p => ({...p}));
+    const interests = data.interests.map(i => ({...i}));
+
+    // For currentUser, we need to find the one in our new copied array
+    const currentUserIndex = data.users.findIndex(u => u.id === data.currentUser.id);
+    const currentUser = users[currentUserIndex] || users[0];
 
     return {
         users,
         projects,
         tasks,
         learningPaths,
-        currentUserLearningProgress: data.currentUserLearningProgress.map(p => ({...p})),
-        interests: data.interests.map(i => ({...i})),
-        currentUserIndex: currentUserIndex !== -1 ? currentUserIndex : 0,
-        currentUser: currentUser,
+        currentUserLearningProgress,
+        interests,
+        currentUserIndex,
+        currentUser,
     };
 }
 
 export async function getData(): Promise<AppData> {
     if (!dataCache) {
+        dataCache = await readData();
+    }
+    // Return a deep copy to prevent mutation of the cache
+    return JSON.parse(JSON.stringify(dataCache, (key, value) => {
+        // Functions cannot be stringified, so we handle Icons separately
+        if (key === 'Icon') {
+            return undefined;
+        }
+        return value;
+    }));
+}
+
+export async function getHydratedData(): Promise<AppData> {
+     if (!dataCache) {
         dataCache = await readData();
     }
     return dataCache;
@@ -127,25 +146,21 @@ export async function setData(newData: AppData): Promise<void> {
         try {
             if (!dataCache) return;
             const serializedData = serializeContent(dataCache);
-            // In a real app, this would write to data.ts.
-            // For this environment, we avoid writing to the file to prevent build issues.
-            // await fs.writeFile(dataFilePath, serializedData, ENCODING);
-            console.log("Data changes are cached in memory and prepared for serialization.");
+            await fs.writeFile(dataFilePath, serializedData, ENCODING);
+            console.log("Data changes written to raw-data.ts.");
         } catch (error) {
-            console.error("Error serializing data:", error);
+            console.error("Error writing data:", error);
         }
         writeTimeout = null;
     }, 500);
 }
 
 export async function updateCurrentUser(index: number): Promise<void> {
-    if (!dataCache) {
-        await getData();
-    }
-    if (dataCache && index >= 0 && index < dataCache.users.length) {
-        dataCache.currentUserIndex = index;
-        dataCache.currentUser = dataCache.users[index];
-        await setData(dataCache);
+    const cache = await getHydratedData();
+    if (index >= 0 && index < cache.users.length) {
+        cache.currentUserIndex = index;
+        cache.currentUser = cache.users[index];
+        await setData(cache);
     } else {
         console.error("Invalid user index provided for updateCurrentUser or cache not initialized:", index);
     }

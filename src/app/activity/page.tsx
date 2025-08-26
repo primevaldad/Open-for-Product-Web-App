@@ -28,12 +28,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import type { User, Project, Task, LearningPath, UserLearningProgress } from "@/lib/types";
-import { getData } from "@/lib/data-cache";
+import { getHydratedData } from "@/lib/data-cache";
 import ActivityClientPage from "./activity-client-page";
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
 export default async function ActivityPage() {
-  const { currentUser, projects, tasks, learningPaths, currentUserLearningProgress, users } = await getData();
+  const { currentUser, projects, tasks, learningPaths, currentUserLearningProgress, users } = await getHydratedData();
 
   if (!currentUser) {
     return (
