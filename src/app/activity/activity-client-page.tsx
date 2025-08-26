@@ -11,20 +11,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
-import type { Task, Project, LearningPath } from "@/lib/types";
+import type { Task, Project, LearningPath, Module } from "@/lib/types";
+
+// The path prop is now just a plain object, not the full LearningPath type
+interface CompletedModuleData {
+    path: { id: string; title: string; } | undefined;
+    module: Module | undefined;
+}
 
 interface ActivityClientPageProps {
     myTasks: Task[];
-    completedModulesData: {
-        path: LearningPath | undefined;
-        module: {
-            id: string;
-            title: string;
-            description: string;
-            videoUrl?: string;
-            content: string;
-        } | undefined;
-    }[];
+    completedModulesData: CompletedModuleData[];
     projects: Project[];
 }
 
