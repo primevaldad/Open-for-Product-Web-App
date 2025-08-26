@@ -1,19 +1,24 @@
+
 "use client";
 
 import { suggestNextSteps } from "@/ai/flows/suggest-next-steps";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { currentUser, projects } from "@/lib/data";
 import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { Project } from "@/lib/types";
 
 type Suggestion = {
   suggestedNextSteps: string[];
   matchingOpportunities: string[];
 };
 
-export function SuggestSteps() {
+interface SuggestStepsProps {
+    projects: Project[];
+}
+
+export function SuggestSteps({ projects }: SuggestStepsProps) {
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,3 +84,5 @@ export function SuggestSteps() {
     </Card>
   );
 }
+
+    

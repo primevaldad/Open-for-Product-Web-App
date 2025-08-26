@@ -33,7 +33,7 @@ import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { publishProject, saveProjectDraft } from "../actions/projects";
-import { useEffect, useState, useTransition } from "react";
+import { useTransition } from "react";
 import type { User } from "@/lib/types";
 import { getHydratedData } from "@/lib/data-cache";
 
@@ -50,22 +50,16 @@ const ProjectSchema = z.object({
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
 
 // This page must be a server component to fetch data.
-// We can wrap the form in a client component if needed, but for now this is simpler.
-export default function CreateProjectPage() {
-    const [data, setData] = useState<{currentUser: User, users: User[]} | null>(null);
+export default async function CreateProjectPage() {
+  const { currentUser, users } = await getHydratedData();
 
-    useEffect(() => {
-        getHydratedData().then(d => setData({currentUser: d.currentUser, users: d.users}));
-    }, []);
-
-  if (!data?.currentUser) {
+  if (!currentUser) {
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading form...</p>
         </div>
     );
   }
-  const { currentUser, users } = data;
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -298,3 +292,5 @@ function CreateProjectForm() {
     </main>
   )
 }
+
+    

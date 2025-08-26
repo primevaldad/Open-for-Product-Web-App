@@ -141,7 +141,7 @@ export default async function DashboardPage() {
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mb-6">
-            <SuggestSteps />
+            <SuggestSteps projects={projects} />
           </div>
           <HomeClientPage allPublishedProjects={allPublishedProjects} currentUser={currentUser} />
         </main>
@@ -149,3 +149,5 @@ export default async function DashboardPage() {
     </div>
   );
 }
+
+    
