@@ -206,7 +206,6 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
                         <div className="flex items-center">
                             <Users className="h-5 w-5 mr-3 text-primary" />
                             <div className="flex -space-x-2">
-                              <TooltipProvider>
                                 {project.team.map(member => (
                                   <Tooltip key={member.user.id}>
                                     <TooltipTrigger asChild>
@@ -223,7 +222,6 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
                                     </TooltipContent>
                                   </Tooltip>
                                 ))}
-                              </TooltipProvider>
                             </div>
                         </div>
                          <div className="space-y-2">
