@@ -16,7 +16,6 @@ import { Progress } from '@/components/ui/progress';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { projectCategories } from '@/lib/data';
@@ -52,16 +51,14 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
             </CardTitle>
           </div>
           {project.isExpertReviewed && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Expert Reviewed</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Expert Reviewed</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
         <CardDescription className="line-clamp-2 text-sm">{project.tagline}</CardDescription>
@@ -83,19 +80,17 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div className="flex -space-x-2">
           {project.team.map((member) => (
-            <TooltipProvider key={member.user.id}>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Avatar className="h-8 w-8 border-2 border-background">
-                    <AvatarImage src={member.user.avatarUrl} alt={member.user.name} data-ai-hint="person portrait" />
-                    <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
-                  </Avatar>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{member.user.name}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip key={member.user.id}>
+              <TooltipTrigger>
+                <Avatar className="h-8 w-8 border-2 border-background">
+                  <AvatarImage src={member.user.avatarUrl} alt={member.user.name} data-ai-hint="person portrait" />
+                  <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
+                </Avatar>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{member.user.name}</p>
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
         <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
