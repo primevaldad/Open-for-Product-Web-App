@@ -29,5 +29,4 @@ export default async function UserProfilePage({ params }: { params: { id: string
     />
   );
 }
-
     

@@ -139,5 +139,3 @@ export default function UserProfilePageClient({ user, userProjects, isCurrentUse
     </div>
   );
 }
-
-    
