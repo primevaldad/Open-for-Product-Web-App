@@ -56,7 +56,7 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
     
     return { success: true };
 
-  } catch (error) {
+  } catch (error)_ {
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "An unknown error occurred." 
