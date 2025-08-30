@@ -58,15 +58,15 @@ async function readDataFromFirestore(): Promise<AppData> {
 
     // Hydrate projects with user data
     const projects = rawProjects.map((p: any) => {
-        const team = (p.team || []).map((m: any) => ({
-            user: users.find(u => u.id === m.userId),
-            role: m.role,
-        })).filter((m: any) => m.user); // Filter out invalid team members
+        const team = (p.team || []).map((m: any) => {
+            const user = users.find(u => u.id === m.userId);
+            return user ? { user, role: m.role } : null;
+        }).filter((m: any): m is { user: User, role: string } => m !== null);
 
-        const discussions = (p.discussions || []).map((d: any) => ({
-            ...d,
-            user: users.find(u => u.id === d.userId),
-        })).filter((d: any) => d.user);
+        const discussions = (p.discussions || []).map((d: any) => {
+             const user = users.find(u => u.id === d.userId);
+             return user ? { ...d, user } : null;
+        }).filter((d: any): d is Discussion => d !== null);
 
         return { ...p, team, discussions };
     });
@@ -103,20 +103,26 @@ export async function setData(newData: AppData): Promise<void> {
         batch.set(doc(db, "users", id), data);
     });
      newData.projects.forEach(item => {
-        const { id, ...data } = item;
-        const plainTeam = data.team.map(m => ({ userId: m.user.id, role: m.role }));
-        const plainDiscussions = (data.discussions || []).map(d => ({ ...d, userId: d.user.id }));
+        const { id, team, discussions, ...data } = item;
+        const plainTeam = team.map(m => ({ userId: m.user.id, role: m.role }));
+        const plainDiscussions = (discussions || []).map(d => {
+            const { user, ...rest } = d;
+            return { ...rest, userId: user.id };
+        });
         batch.set(doc(db, "projects", id), { ...data, team: plainTeam, discussions: plainDiscussions });
     });
      newData.tasks.forEach(item => {
-        const { id, ...data } = item;
-        const plainTask = { ...data, assignedToId: data.assignedTo?.id };
-        delete (plainTask as any).assignedTo;
+        const { id, assignedTo, ...data } = item;
+        const plainTask: any = { ...data };
+        if (assignedTo) {
+            plainTask.assignedToId = assignedTo.id;
+        }
         batch.set(doc(db, "tasks", id), plainTask);
     });
     newData.learningPaths.forEach(item => {
         const { id, Icon, ...data } = item;
-        batch.set(doc(db, "learningPaths", id), { ...data, Icon: 'Code' /* Default Icon name */ });
+        const iconName = Object.keys(iconMap).find(key => iconMap[key] === Icon) || 'FlaskConical';
+        batch.set(doc(db, "learningPaths", id), { ...data, Icon: iconName });
     });
     newData.currentUserLearningProgress.forEach(item => {
         const id = `${item.userId}-${item.pathId}`;

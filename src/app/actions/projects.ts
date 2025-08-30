@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectStatus, Task, Discussion } from '@/lib/types';
 import { users } from '@/lib/data';
-import { getData, setData } from '@/lib/data-cache';
+import { getHydratedData, setData } from '@/lib/data-cache';
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -61,7 +61,7 @@ async function handleProjectSubmission(
   
   const { name, tagline, description, category, contributionNeeds } = validatedFields.data;
   
-  const data = await getData();
+  const data = await getHydratedData();
   const currentUser = data.users[data.currentUserIndex];
 
   const newProject: Project = {
@@ -114,7 +114,7 @@ export async function publishProject(values: z.infer<typeof ProjectSchema>) {
 
 export async function joinProject(projectId: string) {
     try {
-        const data = await getData();
+        const data = await getHydratedData();
         const currentUser = data.users[data.currentUserIndex];
         const project = data.projects.find(p => p.id === projectId);
 
@@ -158,7 +158,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     const { id, ...projectData } = validatedFields.data;
 
     try {
-        const data = await getData();
+        const data = await getHydratedData();
         const currentUser = data.users[data.currentUserIndex];
         const projectIndex = data.projects.findIndex(p => p.id === id);
         if (projectIndex === -1) {
@@ -214,7 +214,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
     const { projectId, title, description, status } = validatedFields.data;
 
     try {
-        const data = await getData();
+        const data = await getHydratedData();
         const currentUser = data.users[data.currentUserIndex];
         const project = data.projects.find(p => p.id === projectId);
         if (!project) {
@@ -261,7 +261,7 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     const { id, assignedToId, ...taskData } = validatedFields.data;
 
     try {
-        const data = await getData();
+        const data = await getHydratedData();
         const currentUser = data.users[data.currentUserIndex];
         const taskIndex = data.tasks.findIndex(t => t.id === id);
         if (taskIndex === -1) {
@@ -313,7 +313,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     const { id, projectId } = validatedFields.data;
     
     try {
-        const data = await getData();
+        const data = await getHydratedData();
         const currentUser = data.users[data.currentUserIndex];
         const project = data.projects.find(p => p.id === projectId);
         if (!project) {
@@ -354,7 +354,7 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
     const { projectId, userId, content } = validatedFields.data;
 
     try {
-        const data = await getData();
+        const data = await getHydratedData();
         const project = data.projects.find(p => p.id === projectId);
         if (!project) {
             throw new Error("Project not found");
@@ -394,5 +394,3 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
         };
     }
 }
-
-    

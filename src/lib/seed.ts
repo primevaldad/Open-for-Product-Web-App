@@ -2,7 +2,7 @@
 // Use with `npx tsx src/lib/seed.ts`
 import 'dotenv/config';
 import { db } from './firebase';
-import { collection, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import {
   rawUsers,
   rawProjects,
@@ -53,7 +53,10 @@ async function seedDatabase() {
        const plainProject = {
         ...project,
         team: project.team.map(m => ({ userId: m.user, role: m.role })),
-        discussions: (project.discussions || []).map(d => ({ ...d, userId: d.user })),
+        discussions: (project.discussions || []).map(d => {
+            const { id, user, content, timestamp } = d;
+            return { id, userId: user, content, timestamp };
+        }),
       };
       batch.set(docRef, plainProject);
     });
@@ -100,12 +103,5 @@ async function seedDatabase() {
     console.error('Error seeding database:', error);
   }
 }
-
-// Helper function to get a document reference, needed for standalone script
-function doc(db: any, path: string, ...pathSegments: string[]) {
-    const { doc } = require('firebase/firestore');
-    return doc(db, path, ...pathSegments);
-}
-
 
 seedDatabase();

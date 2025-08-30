@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getData, setData } from '@/lib/data-cache';
+import { getHydratedData, setData } from '@/lib/data-cache';
 
 const CompleteModuleSchema = z.object({
   userId: z.string(),
@@ -25,7 +25,7 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     const { userId, pathId, moduleId, completed } = validatedFields.data;
 
     try {
-        const data = await getData();
+        const data = await getHydratedData();
         let userProgress = data.currentUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
 
         if (!userProgress) {
