@@ -50,7 +50,6 @@ export default async function ActivityPage() {
       const path = learningPaths.find(p => p.id === progress.pathId);
       const module = path?.modules.find(m => m.id === moduleId);
       
-      // Don't pass the full path object with the Icon component
       const serializablePath = path ? { id: path.id, title: path.title } : undefined;
 
       return { path: serializablePath, module };
@@ -146,7 +145,7 @@ export default async function ActivityPage() {
         <main className="flex-1 overflow-auto p-4 md:p-6 grid md:grid-cols-2 gap-6">
             <ActivityClientPage
                 myTasks={myTasks}
-                completedModulesData={completedModulesData as any}
+                completedModulesData={completedModulesData}
                 projects={projects}
             />
         </main>

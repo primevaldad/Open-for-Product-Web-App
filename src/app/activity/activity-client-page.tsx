@@ -13,10 +13,9 @@ import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import type { Task, Project, Module } from "@/lib/types";
 
-// The path prop is now just a plain object, not the full LearningPath type
 interface CompletedModuleData {
-    path: { id: string; title: string; } | undefined;
-    module: Module | undefined;
+    path: { id: string; title: string; };
+    module: Module;
 }
 
 interface ActivityClientPageProps {
@@ -88,13 +87,13 @@ export default function ActivityClientPage({ myTasks, completedModulesData, proj
           {completedModulesData.length > 0 ? (
             <ul className="space-y-1">
               {completedModulesData.map(({ path, module }, index) => (
-                 <li key={`${path!.id}-${module!.id}-${index}`}>
+                 <li key={`${path.id}-${module.id}-${index}`}>
                   <div className="flex items-center gap-4 p-3">
                     <CheckCircle className="h-5 w-5 text-green-500" />
                     <div>
-                      <p className="font-semibold">{module!.title}</p>
+                      <p className="font-semibold">{module.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        From path: <Link href={`/learning/${path!.id}`} className="font-medium text-primary hover:underline">{path!.title}</Link>
+                        From path: <Link href={`/learning/${path.id}`} className="font-medium text-primary hover:underline">{path.title}</Link>
                       </p>
                     </div>
                   </div>

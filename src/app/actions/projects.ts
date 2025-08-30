@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectStatus, Task, Discussion } from '@/lib/types';
-import { users } from '@/lib/data';
 import { getHydratedData, setData } from '@/lib/data-cache';
 
 const ProjectSchema = z.object({
@@ -282,7 +281,7 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
         const updatedTask: Task = {
             ...task,
             ...taskData,
-            assignedTo: assignedToId ? users.find(u => u.id === assignedToId) : undefined,
+            assignedTo: assignedToId ? data.users.find(u => u.id === assignedToId) : undefined,
         };
 
         data.tasks[taskIndex] = updatedTask;
