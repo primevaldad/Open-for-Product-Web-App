@@ -55,12 +55,12 @@ async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUserIndex'
         const team = (p.team || []).map((m: any) => {
             const user = users.find(u => u.id === m.userId);
             return user ? { user, role: m.role } : null;
-        }).filter((m: any): m is { user: User, role: string } => m !== null);
+        }).filter((m): m is { user: User, role: string } => m !== null);
 
         const discussions = (p.discussions || []).map((d: any) => {
              const user = users.find(u => u.id === d.userId);
              return user ? { ...d, user } : null;
-        }).filter((d: any): d is Discussion => d !== null);
+        }).filter((d): d is Discussion => d !== null);
 
         return { ...p, team, discussions };
     });
@@ -102,7 +102,7 @@ export async function getHydratedData(): Promise<AppData> {
     };
 }
 
-export async function setData(newData: AppData): Promise<void> {
+export async function setData(newData: Omit<AppData, 'currentUser' | 'currentUserIndex'>): Promise<void> {
     const batch = writeBatch(db);
 
     newData.users.forEach(item => {

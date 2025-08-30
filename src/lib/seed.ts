@@ -2,7 +2,7 @@
 // Use with `npx tsx src/lib/seed.ts`
 import 'dotenv/config';
 import { db } from './firebase';
-import { collection, writeBatch, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import {
   rawUsers,
   rawProjects,
@@ -15,6 +15,10 @@ import {
 async function clearCollection(collectionName: string) {
   const collectionRef = collection(db, collectionName);
   const snapshot = await getDocs(collectionRef);
+  if (snapshot.empty) {
+    console.log(`Collection ${collectionName} is already empty.`);
+    return;
+  }
   const batch = writeBatch(db);
   snapshot.docs.forEach(doc => {
     batch.delete(doc.ref);

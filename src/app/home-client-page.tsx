@@ -30,7 +30,9 @@ export default function HomeClientPage({ allPublishedProjects, currentUser }: Ho
     let tempProjects = allPublishedProjects;
 
     if (showMyProjects) {
-      tempProjects = tempProjects.filter(p => p.team.some(member => member.user.id === currentUser.id));
+      tempProjects = tempProjects.filter(p => 
+        p.team.some(member => member.user && member.user.id === currentUser.id)
+      );
     }
 
     if (selectedCategories.length > 0) {

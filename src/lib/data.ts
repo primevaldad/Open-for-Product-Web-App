@@ -52,8 +52,3 @@ export const projectCategories = [
     { name: 'Business & Enterprise', icon: Briefcase },
     { name: 'Learning & Research', icon: FlaskConical },
 ] as const;
-
-// This will be managed by the data-cache
-export let currentUser: User = users[0];
-
-    
