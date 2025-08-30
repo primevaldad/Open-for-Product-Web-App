@@ -2,14 +2,10 @@
 import type { Project, Task, User, UserLearningProgress, Interest, LearningPath, Discussion } from './types';
 import fs from 'fs/promises';
 import path from 'path';
-import * as rawData from './raw-data';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { db } from './firebase';
 import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
-
-const dataFilePath = path.join(process.cwd(), 'src', 'lib', 'raw-data.ts');
-const ENCODING = 'utf-8';
 
 interface AppData {
     users: User[];
@@ -21,8 +17,6 @@ interface AppData {
     currentUserIndex: number;
     currentUser: User;
 }
-
-let dataCache: AppData | null = null;
 
 const iconMap: { [key: string]: LucideIcon } = {
     Code,
@@ -39,19 +33,19 @@ async function fetchCollection<T>(collectionName: string): Promise<T[]> {
 }
 
 
-async function readDataFromFirestore(): Promise<AppData> {
+async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUserIndex' | 'currentUser'>> {
     const [
         users, 
         rawProjects, 
-        tasks, 
-        learningPaths, 
+        tasksData, 
+        rawLearningPaths, 
         currentUserLearningProgress, 
         interests
     ] = await Promise.all([
         fetchCollection<User>('users'),
         fetchCollection<any>('projects'),
-        fetchCollection<Task>('tasks'),
-        fetchCollection<LearningPath>('learningPaths'),
+        fetchCollection<any>('tasks'),
+        fetchCollection<any>('learningPaths'),
         fetchCollection<UserLearningProgress>('currentUserLearningProgress'),
         fetchCollection<Interest>('interests'),
     ]);
@@ -70,9 +64,18 @@ async function readDataFromFirestore(): Promise<AppData> {
 
         return { ...p, team, discussions };
     });
-
-    const currentUserIndex = 0; // Or fetch this from a persistent source later
-    const currentUser = users[currentUserIndex];
+    
+    // Hydrate tasks with user data
+    const tasks = tasksData.map((t: any) => {
+        const assignedTo = t.assignedToId ? users.find(u => u.id === t.assignedToId) : undefined;
+        return { ...t, assignedTo };
+    });
+    
+    // Hydrate learning paths with icons
+    const learningPaths = rawLearningPaths.map((lp: any) => ({
+        ...lp,
+        Icon: iconMap[lp.Icon] || FlaskConical,
+    }));
 
     return {
         users,
@@ -81,20 +84,24 @@ async function readDataFromFirestore(): Promise<AppData> {
         learningPaths,
         currentUserLearningProgress,
         interests,
-        currentUserIndex,
-        currentUser,
     };
 }
 
 
 export async function getHydratedData(): Promise<AppData> {
-     if (!dataCache) {
-        dataCache = await readDataFromFirestore();
-    }
-    return dataCache;
+    const data = await readDataFromFirestore();
+    
+    // For now, always set the current user to the first user in the database.
+    const currentUserIndex = 0;
+    const currentUser = data.users[currentUserIndex];
+
+    return {
+        ...data,
+        currentUserIndex,
+        currentUser,
+    };
 }
 
-// The following functions are now for seeding/writing data, not for general use in the app
 export async function setData(newData: AppData): Promise<void> {
     const batch = writeBatch(db);
 
@@ -134,18 +141,4 @@ export async function setData(newData: AppData): Promise<void> {
     });
 
     await batch.commit();
-    dataCache = newData; // Update cache after write
-}
-
-export async function updateCurrentUser(index: number): Promise<void> {
-    const cache = await getHydratedData();
-    if (index >= 0 && index < cache.users.length) {
-        cache.currentUserIndex = index;
-        cache.currentUser = cache.users[index];
-        // In a real app, this user preference would be stored per-user in the DB
-        // For now, we are just updating the in-memory cache for the server's lifetime
-        dataCache = cache; 
-    } else {
-        console.error("Invalid user index provided for updateCurrentUser or cache not initialized:", index);
-    }
 }
