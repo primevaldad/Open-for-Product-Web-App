@@ -1,11 +1,8 @@
 
 import type { Project, Task, User, UserLearningProgress, Interest, LearningPath, Discussion } from './types';
-import fs from 'fs/promises';
-import path from 'path';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { db } from './firebase-admin';
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 
 interface AppData {
     users: User[];
@@ -28,7 +25,7 @@ const iconMap: { [key: string]: LucideIcon } = {
 };
 
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
-    const querySnapshot = await getDocs(collection(db, collectionName));
+    const querySnapshot = await db.collection(collectionName).get();
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
 

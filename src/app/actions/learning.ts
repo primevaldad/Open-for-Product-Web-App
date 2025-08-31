@@ -3,9 +3,8 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getHydratedData } from '@/lib/data-cache';
 import { db } from '@/lib/firebase-admin';
-import { doc, setDoc } from 'firebase/firestore';
+import type { UserLearningProgress } from '@/lib/types';
 
 
 const CompleteModuleSchema = z.object({
@@ -28,11 +27,15 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     const { userId, pathId, moduleId, completed } = validatedFields.data;
 
     try {
-        const data = await getHydratedData();
-        let userProgress = data.currentUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
+        const progressDocRef = db.collection('currentUserLearningProgress').doc(`${userId}-${pathId}`);
+        const progressDoc = await progressDocRef.get();
+        
+        let userProgress: UserLearningProgress;
 
-        if (!userProgress) {
+        if (!progressDoc.exists) {
             userProgress = { userId, pathId, completedModules: [] };
+        } else {
+            userProgress = progressDoc.data() as UserLearningProgress;
         }
 
         const moduleIndex = userProgress.completedModules.indexOf(moduleId);
@@ -43,8 +46,7 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
             userProgress.completedModules.splice(moduleIndex, 1);
         }
         
-        const progressDocRef = doc(db, 'currentUserLearningProgress', `${userId}-${pathId}`);
-        await setDoc(progressDocRef, userProgress);
+        await progressDocRef.set(userProgress, { merge: true });
 
         revalidatePath(`/learning/${pathId}/${moduleId}`);
         revalidatePath(`/learning/${pathId}`);

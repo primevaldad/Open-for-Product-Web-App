@@ -2,9 +2,8 @@
 'use server';
 
 import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getHydratedData } from '@/lib/data-cache';
+import { db } from '@/lib/firebase-admin';
 
 const SwitchUserSchema = z.object({
   userId: z.string(),
@@ -28,21 +27,16 @@ export async function switchUser(values: z.infer<typeof SwitchUserSchema>) {
     // For now, we simulate the "switch" by just redirecting, but the actual
     // user state won't change until a real auth system is built.
     
-    let userIndex = -1;
     try {
-        const { users } = await getHydratedData();
-        userIndex = users.findIndex(u => u.id === userId);
+        const userDoc = await db.collection('users').doc(userId).get();
 
-        if (userIndex === -1) {
+        if (!userDoc.exists) {
             return {
                 success: false,
                 error: "User not found",
             };
         }
         
-        // The flawed updateCurrentUser call is removed.
-        // await updateCurrentUser(userIndex);
-
     } catch (error) {
         return {
             success: false,

@@ -4,10 +4,10 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { Project, ProjectStatus, Task, Discussion } from '@/lib/types';
+import type { Project, ProjectStatus, Task } from '@/lib/types';
 import { getHydratedData } from '@/lib/data-cache';
 import { db } from '@/lib/firebase-admin';
-import { doc, setDoc, addDoc, collection, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -80,7 +80,7 @@ async function handleProjectSubmission(
   };
 
   try {
-    const docRef = await addDoc(collection(db, 'projects'), newProjectData);
+    const docRef = await db.collection('projects').add(newProjectData);
     
     revalidatePath('/');
     revalidatePath('/create');
@@ -129,9 +129,9 @@ export async function joinProject(projectId: string) {
             return { success: true };
         }
 
-        const projectDocRef = doc(db, 'projects', projectId);
-        await updateDoc(projectDocRef, {
-            team: arrayUnion({ userId: currentUser.id, role: 'participant' as const })
+        const projectDocRef = db.collection('projects').doc(projectId);
+        await projectDocRef.update({
+            team: FieldValue.arrayUnion({ userId: currentUser.id, role: 'participant' as const })
         });
 
 
@@ -184,8 +184,8 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
             governance: projectData.governance,
         };
 
-        const projectDocRef = doc(db, 'projects', id);
-        await updateDoc(projectDocRef, updatedData);
+        const projectDocRef = db.collection('projects').doc(id);
+        await projectDocRef.update(updatedData);
 
     } catch (error) {
         return {
@@ -233,7 +233,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
             status,
         };
 
-        await addDoc(collection(db, 'tasks'), newTaskData);
+        await db.collection('tasks').add(newTaskData);
 
     } catch (error) {
         return {
@@ -272,8 +272,8 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
             throw new Error("Only team members can edit tasks.");
         }
         
-        const taskDocRef = doc(db, 'tasks', id);
-        await updateDoc(taskDocRef, taskData);
+        const taskDocRef = db.collection('tasks').doc(id);
+        await taskDocRef.update({ ...taskData });
 
 
     } catch (error) {
@@ -313,7 +313,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
             throw new Error("Only team members can delete tasks.");
         }
 
-        await deleteDoc(doc(db, 'tasks', id));
+        await db.collection('tasks').doc(id).delete();
 
     } catch (error) {
         return {
@@ -329,9 +329,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
 export async function addDiscussionComment(values: z.infer<typeof DiscussionCommentSchema>) {
     const validatedFields = DiscussionCommentSchema.safeParse(values);
 
-    if (!validatedFields.success) {
-        return { success: false, error: "Invalid data provided." };
-    }
+    if (!validatedFields.success) { return { success: false, error: "Invalid data provided." }; }
 
     const { projectId, userId, content } = validatedFields.data;
 
@@ -358,9 +356,9 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
             timestamp: new Date().toISOString(),
         };
 
-        const projectDocRef = doc(db, 'projects', projectId);
-        await updateDoc(projectDocRef, {
-            discussions: arrayUnion(newComment)
+        const projectDocRef = db.collection('projects').doc(projectId);
+        await projectDocRef.update({
+            discussions: FieldValue.arrayUnion(newComment)
         });
         
         revalidatePath(`/projects/${projectId}`);
