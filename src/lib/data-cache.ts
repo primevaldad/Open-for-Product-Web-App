@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { db } from './firebase';
+import { db } from './firebase-admin';
 import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 
 interface AppData {
@@ -100,45 +100,4 @@ export async function getHydratedData(): Promise<AppData> {
         currentUserIndex,
         currentUser,
     };
-}
-
-export async function setData(newData: Omit<AppData, 'currentUser' | 'currentUserIndex'>): Promise<void> {
-    const batch = writeBatch(db);
-
-    newData.users.forEach(item => {
-        const { id, ...data } = item;
-        batch.set(doc(db, "users", id), data);
-    });
-     newData.projects.forEach(item => {
-        const { id, team, discussions, ...data } = item;
-        const plainTeam = team.map(m => ({ userId: m.user.id, role: m.role }));
-        const plainDiscussions = (discussions || []).map(d => {
-            const { user, ...rest } = d;
-            return { ...rest, userId: user.id };
-        });
-        batch.set(doc(db, "projects", id), { ...data, team: plainTeam, discussions: plainDiscussions });
-    });
-     newData.tasks.forEach(item => {
-        const { id, assignedTo, ...data } = item;
-        const plainTask: any = { ...data };
-        if (assignedTo) {
-            plainTask.assignedToId = assignedTo.id;
-        }
-        batch.set(doc(db, "tasks", id), plainTask);
-    });
-    newData.learningPaths.forEach(item => {
-        const { id, Icon, ...data } = item;
-        const iconName = Object.keys(iconMap).find(key => iconMap[key] === Icon) || 'FlaskConical';
-        batch.set(doc(db, "learningPaths", id), { ...data, Icon: iconName });
-    });
-    newData.currentUserLearningProgress.forEach(item => {
-        const id = `${item.userId}-${item.pathId}`;
-        batch.set(doc(db, "currentUserLearningProgress", id), item);
-    });
-    newData.interests.forEach(item => {
-        const { id, ...data } = item;
-        batch.set(doc(db, "interests", id), data);
-    });
-
-    await batch.commit();
 }

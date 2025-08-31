@@ -5,7 +5,8 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import type { User } from '@/lib/types';
 import { redirect } from 'next/navigation';
-import { getHydratedData, setData } from '@/lib/data-cache';
+import { db } from '@/lib/firebase-admin';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -34,20 +35,14 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   const { id, name, bio, avatarDataUrl } = validatedFields.data;
 
   try {
-     const data = await getHydratedData();
-     const userIndex = data.users.findIndex(u => u.id === id);
-     if (userIndex === -1) {
-         throw new Error("User not found");
-     }
-
-     const user = data.users[userIndex];
-     user.name = name;
-     user.bio = bio;
+     const userDocRef = doc(db, 'users', id);
+     
+     const updateData: any = { name, bio };
      if (avatarDataUrl) {
-       user.avatarUrl = avatarDataUrl;
+       updateData.avatarUrl = avatarDataUrl;
      }
      
-     await setData(data);
+     await updateDoc(userDocRef, updateData);
 
     // Revalidate paths to reflect changes immediately across the app
     revalidatePath('/settings');
@@ -74,19 +69,14 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   const { id, name, bio, interests } = validatedFields.data;
 
   try {
-    const data = await getHydratedData();
-    const userIndex = data.users.findIndex(u => u.id === id);
-    if (userIndex === -1) {
-      throw new Error('User not found');
-    }
+    const userDocRef = doc(db, 'users', id);
     
-    const user = data.users[userIndex];
-    user.name = name;
-    user.bio = bio;
-    user.interests = interests;
-    user.onboarded = true;
-
-    await setData(data);
+    await updateDoc(userDocRef, {
+      name,
+      bio,
+      interests,
+      onboarded: true,
+    });
 
     revalidatePath('/profile');
     revalidatePath('/onboarding');

@@ -3,7 +3,10 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getHydratedData, setData } from '@/lib/data-cache';
+import { getHydratedData } from '@/lib/data-cache';
+import { db } from '@/lib/firebase-admin';
+import { doc, setDoc } from 'firebase/firestore';
+
 
 const CompleteModuleSchema = z.object({
   userId: z.string(),
@@ -30,7 +33,6 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
 
         if (!userProgress) {
             userProgress = { userId, pathId, completedModules: [] };
-            data.currentUserLearningProgress.push(userProgress);
         }
 
         const moduleIndex = userProgress.completedModules.indexOf(moduleId);
@@ -41,7 +43,8 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
             userProgress.completedModules.splice(moduleIndex, 1);
         }
         
-        await setData(data);
+        const progressDocRef = doc(db, 'currentUserLearningProgress', `${userId}-${pathId}`);
+        await setDoc(progressDocRef, userProgress);
 
         revalidatePath(`/learning/${pathId}/${moduleId}`);
         revalidatePath(`/learning/${pathId}`);
