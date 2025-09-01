@@ -33,7 +33,7 @@ import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { publishProject, saveProjectDraft } from "../actions/projects";
-import { useTransition } from "react";
+import { useTransition, useEffect, useState } from "react";
 import type { User } from "@/lib/types";
 import { getHydratedData } from "@/lib/data-cache";
 
@@ -49,109 +49,6 @@ const ProjectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
 
-// This page must be a server component to fetch data.
-export default async function CreateProjectPage() {
-  const { currentUser, users } = await getHydratedData();
-
-  if (!currentUser) {
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <p>Loading form...</p>
-        </div>
-    );
-  }
-
-  return (
-    <div className="flex h-full min-h-screen w-full bg-background">
-      <Sidebar className="border-r" collapsible="icon">
-        <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="shrink-0 bg-primary/20 text-primary hover:bg-primary/30">
-                <LayoutPanelLeft className="h-5 w-5" />
-            </Button>
-            <span className="text-lg font-semibold text-foreground">Open for Product</span>
-          </Link>
-        </SidebarHeader>
-        <SidebarContent className="p-4 pt-0">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <Link href="/">
-                <SidebarMenuButton>
-                  <Home />
-                  Home
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <Link href="/create">
-                <SidebarMenuButton isActive>
-                  <FilePlus2 />
-                  Create Project
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/drafts">
-                <SidebarMenuButton>
-                  <FolderKanban />
-                  Drafts
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/learning">
-                <SidebarMenuButton>
-                  <BookOpen />
-                  Learning Paths
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/activity">
-                <SidebarMenuButton>
-                  <Activity />
-                  Activity
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/profile">
-                <SidebarMenuButton>
-                  <Avatar className="size-5">
-                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                    <AvatarFallback>
-                      {currentUser.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  Profile
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/settings">
-                <SidebarMenuButton>
-                  <Settings />
-                  Settings
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarContent>
-      </Sidebar>
-      <SidebarInset className="flex flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-          <h1 className="text-lg font-semibold md:text-xl">
-            Publish a New Project
-          </h1>
-          <UserNav currentUser={currentUser} allUsers={users} />
-        </header>
-        <CreateProjectForm />
-      </SidebarInset>
-    </div>
-  );
-}
-
-// The form itself needs to be a Client Component
 function CreateProjectForm() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -292,4 +189,116 @@ function CreateProjectForm() {
     </main>
   )
 }
-    
+
+// This page must be a server component to fetch data.
+export default function CreateProjectPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      const data = await getHydratedData();
+      setCurrentUser(data.currentUser);
+      setUsers(data.users);
+    }
+    fetchData();
+  }, []);
+
+
+  if (!currentUser) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading form...</p>
+        </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-screen w-full bg-background">
+      <Sidebar className="border-r" collapsible="icon">
+        <SidebarHeader className="p-4">
+          <Link href="/" className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="shrink-0 bg-primary/20 text-primary hover:bg-primary/30">
+                <LayoutPanelLeft className="h-5 w-5" />
+            </Button>
+            <span className="text-lg font-semibold text-foreground">Open for Product</span>
+          </Link>
+        </SidebarHeader>
+        <SidebarContent className="p-4 pt-0">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <Link href="/">
+                <SidebarMenuButton>
+                  <Home />
+                  Home
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <Link href="/create">
+                <SidebarMenuButton isActive>
+                  <FilePlus2 />
+                  Create Project
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/drafts">
+                <SidebarMenuButton>
+                  <FolderKanban />
+                  Drafts
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/learning">
+                <SidebarMenuButton>
+                  <BookOpen />
+                  Learning Paths
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/activity">
+                <SidebarMenuButton>
+                  <Activity />
+                  Activity
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/profile">
+                <SidebarMenuButton>
+                  <Avatar className="size-5">
+                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                    <AvatarFallback>
+                      {currentUser.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  Profile
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/settings">
+                <SidebarMenuButton>
+                  <Settings />
+                  Settings
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarContent>
+      </Sidebar>
+      <SidebarInset className="flex flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+          <h1 className="text-lg font-semibold md:text-xl">
+            Publish a New Project
+          </h1>
+          <UserNav currentUser={currentUser} allUsers={users} />
+        </header>
+        <CreateProjectForm />
+      </SidebarInset>
+    </div>
+  );
+}

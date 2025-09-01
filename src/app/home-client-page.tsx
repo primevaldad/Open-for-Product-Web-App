@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Project, ProjectCategory, User } from "@/lib/types";
 import {
   Select,
@@ -22,26 +22,8 @@ interface HomeClientPageProps {
 }
 
 export default function HomeClientPage({ allPublishedProjects, currentUser }: HomeClientPageProps) {
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>(allPublishedProjects);
   const [selectedCategories, setSelectedCategories] = useState<ProjectCategory[]>([]);
   const [showMyProjects, setShowMyProjects] = useState(false);
-
-  useEffect(() => {
-    let tempProjects = allPublishedProjects;
-
-    if (showMyProjects) {
-      tempProjects = tempProjects.filter(p => 
-        p.team.some(member => member.user && member.user.id === currentUser.id)
-      );
-    }
-
-    if (selectedCategories.length > 0) {
-      tempProjects = tempProjects.filter(p => selectedCategories.includes(p.category));
-    }
-    
-    setFilteredProjects(tempProjects);
-
-  }, [selectedCategories, showMyProjects, currentUser, allPublishedProjects]);
 
   const toggleCategory = (category: ProjectCategory) => {
     setSelectedCategories(prev => 
@@ -50,6 +32,12 @@ export default function HomeClientPage({ allPublishedProjects, currentUser }: Ho
         : [...prev, category]
     );
   };
+  
+  const filteredProjects = allPublishedProjects.filter(p => {
+    const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(p.category);
+    const myProjectsMatch = !showMyProjects || p.team.some(member => member.user && member.user.id === currentUser.id);
+    return categoryMatch && myProjectsMatch;
+  });
 
   return (
     <>
