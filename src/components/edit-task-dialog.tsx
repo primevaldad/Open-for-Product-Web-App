@@ -59,8 +59,8 @@ const taskStatuses: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
 export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, deleteTask, children }: EditTaskDialogProps) {
   const { toast } = useToast();
-  // const [isPending, startTransition] = useTransition();
-  // const [isDeletePending, startDeleteTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [isDeletePending, startDeleteTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
   const form = useForm<TaskFormValues>({
@@ -76,40 +76,40 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
     },
   });
 
-  // const onSubmit = (values: TaskFormValues) => {
-  //   if (!isTeamMember) {
-  //     toast({ variant: 'destructive', title: 'Error', description: 'Only team members can edit tasks.' });
-  //     return;
-  //   }
+  const onSubmit = (values: TaskFormValues) => {
+    if (!isTeamMember) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Only team members can edit tasks.' });
+      return;
+    }
 
-  //   startTransition(async () => {
-  //     // Handle "unassigned" case
-  //     const submissionValues = {
-  //       ...values,
-  //       assignedToId: values.assignedToId === 'unassigned' ? undefined : values.assignedToId,
-  //     };
+    startTransition(async () => {
+      // Handle "unassigned" case
+      const submissionValues = {
+        ...values,
+        assignedToId: values.assignedToId === 'unassigned' ? undefined : values.assignedToId,
+      };
 
-  //     const result = await updateTask(submissionValues);
-  //     if (result?.error) {
-  //       toast({ variant: 'destructive', title: 'Error', description: result.error });
-  //     } else {
-  //       toast({ title: 'Task Updated!', description: 'Your changes have been saved.' });
-  //       setIsOpen(false);
-  //     }
-  //   });
-  // };
+      const result = await updateTask(submissionValues);
+      if (result?.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      } else {
+        toast({ title: 'Task Updated!', description: 'Your changes have been saved.' });
+        setIsOpen(false);
+      }
+    });
+  };
 
-  // const handleDelete = () => {
-  //   startDeleteTransition(async () => {
-  //       const result = await deleteTask({ id: task.id, projectId: task.projectId });
-  //       if (result?.error) {
-  //           toast({ variant: 'destructive', title: 'Error', description: result.error });
-  //       } else {
-  //           toast({ title: 'Task Deleted', description: 'The task has been removed.' });
-  //           setIsOpen(false);
-  //       }
-  //   });
-  // };
+  const handleDelete = () => {
+    startDeleteTransition(async () => {
+        const result = await deleteTask({ id: task.id, projectId: task.projectId });
+        if (result?.error) {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+        } else {
+            toast({ title: 'Task Deleted', description: 'The task has been removed.' });
+            setIsOpen(false);
+        }
+    });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -125,7 +125,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
             </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-            <form className="space-y-4 pt-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
                 <FormField
                 control={form.control}
                 name="title"
@@ -177,7 +177,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Assigned To</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || 'unassigned'}>
                             <FormControl>
                             <SelectTrigger><SelectValue placeholder="Assign to a member" /></SelectTrigger>
                             </FormControl>
@@ -211,7 +211,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
 
                 <DialogFooter className="pt-4">
                 <div className="flex justify-between w-full">
-                    {/* <AlertDialog>
+                    <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button type="button" variant="destructive" disabled={isDeletePending}>
                         <Trash className="mr-2 h-4 w-4" />
@@ -230,12 +230,12 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                         <AlertDialogAction onClick={handleDelete}>Confirm</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
-                    </AlertDialog> */}
+                    </AlertDialog>
 
                     <div className="flex gap-2">
                     <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="submit" disabled={true}>
-                        {'Save Changes'}
+                    <Button type="submit" disabled={isPending}>
+                        {isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                     </div>
                 </div>
