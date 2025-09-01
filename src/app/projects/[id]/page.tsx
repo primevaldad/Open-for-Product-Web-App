@@ -25,6 +25,8 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getHydratedData } from "@/lib/data-cache";
 import ProjectDetailClientPage from "./project-detail-client-page";
+import { addTask, addDiscussionComment, deleteTask, joinProject, updateTask } from "@/app/actions/projects";
+import { switchUser } from "@/app/actions/auth";
 
 // This is now a Server Component responsible for fetching data
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
@@ -130,6 +132,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         projectTasks={projectTasks}
         currentUser={currentUser}
         allUsers={users}
+        switchUser={switchUser}
+        joinProject={joinProject}
+        addDiscussionComment={addDiscussionComment}
+        addTask={addTask}
+        updateTask={updateTask}
+        deleteTask={deleteTask}
       />
     </div>
   );

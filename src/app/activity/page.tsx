@@ -30,6 +30,7 @@ import { EditTaskDialog } from "@/components/edit-task-dialog";
 import type { User, Project, Task, LearningPath, UserLearningProgress } from "@/lib/types";
 import { getHydratedData } from "@/lib/data-cache";
 import ActivityClientPage from "./activity-client-page";
+import { switchUser } from "../actions/auth";
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
 export default async function ActivityPage() {
@@ -139,7 +140,7 @@ export default async function ActivityPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             My Activity
           </h1>
-          <UserNav currentUser={currentUser} allUsers={users} />
+          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6 grid md:grid-cols-2 gap-6">

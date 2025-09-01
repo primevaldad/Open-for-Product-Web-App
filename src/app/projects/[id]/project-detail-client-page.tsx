@@ -30,7 +30,6 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummarizeProgress } from "@/components/ai/summarize-progress";
 import { HighlightBlockers } from "@/components/ai/highlight-blockers";
-import { addDiscussionComment, joinProject } from "@/app/actions/projects";
 import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
@@ -45,6 +44,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { formatDistanceToNow } from 'date-fns';
+import type { addDiscussionComment, joinProject, addTask, updateTask, deleteTask } from "@/app/actions/projects";
+import type { switchUser } from "@/app/actions/auth";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -55,9 +56,9 @@ const DiscussionSchema = z.object({
 type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
 
 
-function TaskCard({ task, isTeamMember, team }: { task: Task, isTeamMember: boolean, team: any[] }) {
+function TaskCard({ task, isTeamMember, team, updateTask, deleteTask }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask }) {
   return (
-    <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team}>
+    <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>
       <Card className="mb-2 bg-card/80 hover:bg-accent cursor-pointer">
         <CardContent className="p-3">
           <p className="text-sm font-medium mb-2">{task.title}</p>
@@ -96,9 +97,26 @@ interface ProjectDetailClientPageProps {
     projectTasks: Task[];
     currentUser: User;
     allUsers: User[];
+    switchUser: typeof switchUser;
+    joinProject: typeof joinProject;
+    addDiscussionComment: typeof addDiscussionComment;
+    addTask: typeof addTask;
+    updateTask: typeof updateTask;
+    deleteTask: typeof deleteTask;
 }
 
-export default function ProjectDetailClientPage({ project, projectTasks, currentUser, allUsers }: ProjectDetailClientPageProps) {
+export default function ProjectDetailClientPage({ 
+    project, 
+    projectTasks, 
+    currentUser, 
+    allUsers,
+    switchUser,
+    joinProject,
+    addDiscussionComment,
+    addTask,
+    updateTask,
+    deleteTask
+}: ProjectDetailClientPageProps) {
   const params = useParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -164,7 +182,7 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
                 {isPending ? 'Joining...' : 'Join Project'}
               </Button>
              )}
-             <UserNav currentUser={currentUser} allUsers={allUsers} />
+             <UserNav currentUser={currentUser} allUsers={allUsers} switchUser={switchUser} />
           </div>
         </header>
 
@@ -246,7 +264,7 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-semibold">{status} ({taskColumns[status].length})</h3>
                                 {isCurrentUserMember && (
-                                    <AddTaskDialog projectId={project.id} status={status}>
+                                    <AddTaskDialog projectId={project.id} status={status} addTask={addTask}>
                                         <Button variant="ghost" size="icon" className="h-7 w-7">
                                             <PlusCircle className="h-4 w-4" />
                                         </Button>
@@ -254,7 +272,7 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
                                 )}
                             </div>
                             <div className="space-y-2">
-                                {taskColumns[status].map(task => <TaskCard key={task.id} task={task} isTeamMember={isCurrentUserMember} team={project.team} />)}
+                                {taskColumns[status].map(task => <TaskCard key={task.id} task={task} isTeamMember={isCurrentUserMember} team={project.team} updateTask={updateTask} deleteTask={deleteTask} />)}
                             </div>
                         </div>
                     ))}
@@ -367,5 +385,3 @@ export default function ProjectDetailClientPage({ project, projectTasks, current
       </SidebarInset>
   )
 }
-
-    

@@ -9,9 +9,9 @@ import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useTransition, useState, useEffect } from 'react';
-import { completeModule } from '@/app/actions/learning';
 import { useToast } from '@/hooks/use-toast';
 import type { User, LearningPath, UserLearningProgress, Module } from '@/lib/types';
+import type { completeModule } from '@/app/actions/learning';
 
 // The LearningPath prop is now Omit<LearningPath, 'Icon'> because the Icon is a non-serializable component
 interface LearningModuleClientPageProps {
@@ -21,6 +21,7 @@ interface LearningModuleClientPageProps {
     currentUser: User;
     prevModule: Module | null;
     nextModule: Module | null;
+    completeModule: typeof completeModule;
 }
 
 function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { path: any, module: any, prevModule: any, nextModule: any, onNextModule: () => void }) {
@@ -67,7 +68,8 @@ export default function LearningModuleClientPage({
     userProgress, 
     currentUser, 
     prevModule, 
-    nextModule 
+    nextModule,
+    completeModule
 }: LearningModuleClientPageProps) {
   const router = useRouter();
   const { toast } = useToast();

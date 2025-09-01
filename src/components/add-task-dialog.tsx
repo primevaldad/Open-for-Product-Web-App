@@ -20,11 +20,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { TaskStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addTask } from '@/app/actions/projects';
+import type { addTask } from '@/app/actions/projects';
 
 interface AddTaskDialogProps extends PropsWithChildren {
   projectId: string;
   status: TaskStatus;
+  addTask: typeof addTask;
 }
 
 const CreateTaskSchema = z.object({
@@ -36,7 +37,7 @@ const CreateTaskSchema = z.object({
 
 type CreateTaskFormValues = z.infer<typeof CreateTaskSchema>;
 
-export function AddTaskDialog({ projectId, status, children }: AddTaskDialogProps) {
+export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);

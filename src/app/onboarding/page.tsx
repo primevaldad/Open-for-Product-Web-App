@@ -4,6 +4,7 @@ import OnboardingForm from "./onboarding-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/firebase-admin";
 import type { User } from "@/lib/types";
+import { updateOnboardingInfo } from "../actions/settings";
 
 // This is now a Server Component that fetches data and passes it down.
 export default async function OnboardingPage() {
@@ -28,7 +29,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <OnboardingForm newUser={newUser} />
+        <OnboardingForm newUser={newUser} updateOnboardingInfo={updateOnboardingInfo} />
     </div>
   );
 }

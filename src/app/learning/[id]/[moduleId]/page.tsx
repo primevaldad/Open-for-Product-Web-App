@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getHydratedData } from '@/lib/data-cache';
 import type { LearningPath, User, UserLearningProgress } from '@/lib/types';
 import LearningModuleClientPage from './learning-module-client-page';
+import { completeModule } from '@/app/actions/learning';
 
 // This is now a Server Component that fetches all necessary data
 export default async function LearningModulePage({ params }: { params: { id: string, moduleId: string } }) {
@@ -36,6 +37,7 @@ export default async function LearningModulePage({ params }: { params: { id: str
         currentUser={currentUser}
         prevModule={prevModule}
         nextModule={nextModule}
+        completeModule={completeModule}
     />
   );
 }

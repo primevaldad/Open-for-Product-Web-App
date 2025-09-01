@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getHydratedData } from '@/lib/data-cache';
 import EditProjectForm from './edit-project-form';
+import { updateProject } from '@/app/actions/projects';
 
 // This is now a Server Component that fetches data and passes it to the form.
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
@@ -38,7 +39,7 @@ export default async function EditProjectPage({ params }: { params: { id: string
         </h1>
       </header>
       <main className="flex-1 overflow-auto p-4 md:p-6">
-        <EditProjectForm project={project} />
+        <EditProjectForm project={project} updateProject={updateProject} />
       </main>
     </div>
   );

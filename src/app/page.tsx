@@ -27,6 +27,7 @@ import { UserNav } from "@/components/user-nav";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
 import { getHydratedData } from '@/lib/data-cache';
 import HomeClientPage from "./home-client-page";
+import { switchUser } from "./actions/auth";
 
 // This is now a Server Component that fetches data and passes it to a client component.
 export default async function DashboardPage() {
@@ -136,7 +137,7 @@ export default async function DashboardPage() {
               />
             </div>
           </div>
-          <UserNav currentUser={currentUser} allUsers={users} />
+          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

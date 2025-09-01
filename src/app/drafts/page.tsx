@@ -25,6 +25,7 @@ import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { User, Project } from "@/lib/types";
 import { getHydratedData } from "@/lib/data-cache";
+import { switchUser } from "../actions/auth";
 
 // This is now a Server Component
 export default async function DraftsPage() {
@@ -123,7 +124,7 @@ export default async function DraftsPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             My Drafts
           </h1>
-          <UserNav currentUser={currentUser} allUsers={users} />
+          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

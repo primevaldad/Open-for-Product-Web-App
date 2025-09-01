@@ -13,9 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { updateProject } from '@/app/actions/projects';
 import { Slider } from '@/components/ui/slider';
 import type { Project } from '@/lib/types';
+import type { updateProject } from '@/app/actions/projects';
 
 const EditProjectSchema = z.object({
   id: z.string(),
@@ -43,9 +43,10 @@ type EditProjectFormValues = z.infer<typeof EditProjectSchema>;
 
 interface EditProjectFormProps {
     project: Project;
+    updateProject: typeof updateProject;
 }
 
-export default function EditProjectForm({ project }: EditProjectFormProps) {
+export default function EditProjectForm({ project, updateProject }: EditProjectFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 

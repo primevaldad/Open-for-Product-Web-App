@@ -21,17 +21,18 @@ import {
 import { CreditCard, LogOut, Settings, User as UserIcon, Users } from "lucide-react"
 import Link from "next/link"
 import { useTransition } from "react";
-import { switchUser } from "@/app/actions/auth";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
+import type { switchUser } from "@/app/actions/auth";
 
 interface UserNavProps {
   currentUser: User;
   allUsers: User[];
+  switchUser: typeof switchUser;
 }
 
-export function UserNav({ currentUser, allUsers }: UserNavProps) {
+export function UserNav({ currentUser, allUsers, switchUser }: UserNavProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 

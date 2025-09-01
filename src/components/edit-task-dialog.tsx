@@ -32,13 +32,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import type { ProjectMember, Task, TaskStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { deleteTask, updateTask } from '@/app/actions/projects';
+import type { deleteTask, updateTask } from '@/app/actions/projects';
 import { Trash } from 'lucide-react';
 
 interface EditTaskDialogProps extends PropsWithChildren {
   task: Task;
   isTeamMember: boolean;
   projectTeam: ProjectMember[];
+  updateTask: typeof updateTask;
+  deleteTask: typeof deleteTask;
 }
 
 const TaskSchema = z.object({
@@ -55,7 +57,7 @@ type TaskFormValues = z.infer<typeof TaskSchema>;
 
 const taskStatuses: TaskStatus[] = ['To Do', 'In Progress', 'Done'];
 
-export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: EditTaskDialogProps) {
+export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, deleteTask, children }: EditTaskDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
@@ -160,7 +162,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: Ed
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         {taskStatuses.map(status => (
@@ -182,7 +184,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, children }: Ed
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Unassigned" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="unassigned">Unassigned</SelectItem>

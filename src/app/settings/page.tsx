@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getHydratedData } from "@/lib/data-cache";
 import SettingsForm from "./settings-form";
 import { updateUserSettings } from "../actions/settings";
+import { switchUser } from "../actions/auth";
 
 // This is now a server component that fetches the user and passes it to the form
 export default async function SettingsPage() {
@@ -119,7 +120,7 @@ export default async function SettingsPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             Settings
           </h1>
-          <UserNav currentUser={currentUser} allUsers={users} />
+          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

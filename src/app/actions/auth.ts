@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -20,12 +19,6 @@ export async function switchUser(values: z.infer<typeof SwitchUserSchema>) {
     }
 
     const { userId } = validatedFields.data;
-    
-    // NOTE: The concept of a "current user" needs to be handled
-    // by a proper authentication system (e.g., storing session in a cookie).
-    // The previous implementation of updating a server-side cache was flawed.
-    // For now, we simulate the "switch" by just redirecting, but the actual
-    // user state won't change until a real auth system is built.
     
     try {
         const userDoc = await db.collection('users').doc(userId).get();
