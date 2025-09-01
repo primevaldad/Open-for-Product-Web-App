@@ -197,6 +197,8 @@ export default function CreateProjectPage() {
 
   useEffect(() => {
     async function fetchData() {
+      // We are fetching data on the client side here to avoid serialization issues
+      // with passing complex objects from server to client components.
       const data = await getHydratedData();
       setCurrentUser(data.currentUser);
       setUsers(data.users);

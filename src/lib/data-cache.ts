@@ -29,6 +29,14 @@ async function fetchCollection<T>(collectionName: string): Promise<T[]> {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
 
+export const projectCategories = [
+    { name: 'Creative', icon: Code },
+    { name: 'Technical', icon: BookText },
+    { name: 'Community', icon: UsersIcon },
+    { name: 'Business & Enterprise', icon: Briefcase },
+    { name: 'Learning & Research', icon: FlaskConical },
+] as const;
+
 
 async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUserIndex' | 'currentUser'>> {
     const [

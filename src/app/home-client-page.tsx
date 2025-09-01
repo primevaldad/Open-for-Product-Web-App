@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { projectCategories } from "@/lib/data";
+import { projectCategories } from "@/lib/data-cache";
 import { Button } from "@/components/ui/button";
 import ProjectCard from "@/components/project-card";
 
