@@ -49,7 +49,7 @@ const TaskSchema = z.object({
   title: z.string().min(1, "Title is required."),
   description: z.string().optional(),
   status: z.enum(['To Do', 'In Progress', 'Done']),
-  assignedToId: z.string().optional(),
+  assignedToId: z.string().optional().nullable(),
   estimatedHours: z.coerce.number().optional(),
 });
 
@@ -180,7 +180,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assign to</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value ?? 'unassigned'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Unassigned" />
