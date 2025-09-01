@@ -1,6 +1,4 @@
 
-'use client';
-
 import {
   Activity,
   BookOpen,
@@ -33,7 +31,7 @@ import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { publishProject, saveProjectDraft } from "../actions/projects";
-import { useTransition, useEffect, useState } from "react";
+import { useTransition, useEffect, useState, type FC } from "react";
 import type { User } from "@/lib/types";
 import { getHydratedData } from "@/lib/data-cache";
 
@@ -49,7 +47,8 @@ const ProjectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
 
-function CreateProjectForm() {
+
+const CreateProjectForm: FC = () => {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -191,21 +190,8 @@ function CreateProjectForm() {
 }
 
 // This page must be a server component to fetch data.
-export default function CreateProjectPage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-
-  useEffect(() => {
-    async function fetchData() {
-      // We are fetching data on the client side here to avoid serialization issues
-      // with passing complex objects from server to client components.
-      const data = await getHydratedData();
-      setCurrentUser(data.currentUser);
-      setUsers(data.users);
-    }
-    fetchData();
-  }, []);
-
+export default async function CreateProjectPage() {
+  const { currentUser, users } = await getHydratedData();
 
   if (!currentUser) {
     return (
