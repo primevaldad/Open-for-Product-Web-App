@@ -45,7 +45,8 @@ function getProjectPageData(projectId: string) {
         .filter(t => t.projectId === projectId)
         .map(t => {
             const assignedTo = t.assignedToId ? allUsers.find(u => u.id === t.assignedToId) : undefined;
-            return { ...t, assignedTo };
+            // Ensure every task object has a description property.
+            return { ...t, description: t.description ?? '', assignedTo };
         }) as Task[];
 
     return { project, projectTasks, currentUser, allUsers };
