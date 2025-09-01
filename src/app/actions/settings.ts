@@ -45,7 +45,7 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
 
     // Revalidate paths to reflect changes immediately across the app
     revalidatePath('/settings');
-    revalidatePath('/profile');
+    revalidatePath(`/profile/${id}`);
     revalidatePath('/', 'layout');
     
     return { success: true };
@@ -77,7 +77,7 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
       onboarded: true,
     });
 
-    revalidatePath('/profile');
+    revalidatePath(`/profile/${id}`);
     revalidatePath('/onboarding');
 
   } catch (error) {

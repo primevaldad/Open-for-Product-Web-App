@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Activity,
   BookOpen,
@@ -31,7 +33,7 @@ import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { publishProject, saveProjectDraft } from "../actions/projects";
-import { useTransition, useEffect, useState, type FC } from "react";
+import { useTransition, type FC, useEffect, useState } from "react";
 import type { User } from "@/lib/types";
 import { getHydratedData } from "@/lib/data-cache";
 
@@ -46,7 +48,6 @@ const ProjectSchema = z.object({
 });
 
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
-
 
 const CreateProjectForm: FC = () => {
   const { toast } = useToast();
@@ -190,16 +191,29 @@ const CreateProjectForm: FC = () => {
 }
 
 // This page must be a server component to fetch data.
-export default async function CreateProjectPage() {
-  const { currentUser, users } = await getHydratedData();
+export default function CreateProjectPage() {
+    const [data, setData] = useState<{currentUser: User, users: User[]} | null>(null);
 
-  if (!currentUser) {
+    useEffect(() => {
+        const fetchData = async () => {
+            const hydratedData = await getHydratedData();
+            setData({
+                currentUser: hydratedData.currentUser,
+                users: hydratedData.users,
+            });
+        };
+        fetchData();
+    }, []);
+
+  if (!data) {
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading form...</p>
         </div>
     );
   }
+
+  const { currentUser, users } = data;
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">

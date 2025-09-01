@@ -24,6 +24,7 @@ import { useTransition } from "react";
 import { switchUser } from "@/app/actions/auth";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/types";
+import { getInitials } from "@/lib/utils";
 
 interface UserNavProps {
   currentUser: User;
@@ -41,15 +42,6 @@ export function UserNav({ currentUser, allUsers }: UserNavProps) {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         }
     });
-  }
-
-  const getInitials = (name: string | null | undefined) => {
-    if (!name) return 'U';
-    const names = name.split(' ')
-    if (names.length === 0) return 'U'
-    const firstInitial = names[0][0]
-    const lastInitial = names.length > 1 ? names[names.length - 1][0] : ''
-    return `${firstInitial}${lastInitial}`.toUpperCase()
   }
 
   return (
@@ -70,7 +62,7 @@ export function UserNav({ currentUser, allUsers }: UserNavProps) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <Link href="/profile">
+          <Link href={`/profile/${currentUser.id}`}>
             <DropdownMenuItem>
               <UserIcon className="mr-2 h-4 w-4" />
               <span>Profile</span>
