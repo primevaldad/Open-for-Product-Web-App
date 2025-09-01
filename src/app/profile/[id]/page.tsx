@@ -1,19 +1,22 @@
 
 import { notFound } from 'next/navigation';
 import { getHydratedData } from '@/lib/data-cache';
-import type { User, Project } from '@/lib/types';
 import UserProfilePageClient from './profile-client-page';
+import { db } from '@/lib/firebase-admin';
+import type { User } from '@/lib/types';
+
 
 // This is now a Server Component that fetches all necessary data
 export default async function UserProfilePage({ params }: { params: { id: string } }) {
-  const { users, projects, currentUser } = await getHydratedData();
   
+  const { projects, currentUser } = await getHydratedData();
   const userId = params.id;
-  const user = users.find(u => u.id === userId);
 
-  if (!user) {
+  const userDoc = await db.collection('users').doc(userId).get();
+  if (!userDoc.exists) {
     notFound();
   }
+  const user = { id: userDoc.id, ...userDoc.data() } as User;
   
   const isCurrentUserProfile = currentUser.id === user.id;
 

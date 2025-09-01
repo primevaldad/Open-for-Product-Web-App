@@ -9,18 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { updateUserSettings } from "../actions/settings";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { getInitials } from '@/lib/utils';
 
 
 const SettingsSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
   bio: z.string().optional(),
+  avatarDataUrl: z.string().optional().nullable(),
 });
 
 type SettingsFormValues = z.infer<typeof SettingsSchema>;
@@ -34,15 +36,16 @@ export default function SettingsForm({ currentUser }: SettingsFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(currentUser.avatarUrl);
-
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(SettingsSchema),
     defaultValues: {
         name: currentUser.name || "",
         bio: currentUser.bio || "",
+        avatarDataUrl: currentUser.avatarUrl,
     }
   });
+
+  const avatarPreview = form.watch('avatarDataUrl');
 
 
   const handleSaveChanges = (values: SettingsFormValues) => {
@@ -51,7 +54,6 @@ export default function SettingsForm({ currentUser }: SettingsFormProps) {
       const result = await updateUserSettings({
         id: currentUser.id,
         ...values,
-        avatarDataUrl: avatarPreview
       });
 
       if (result.success) {
@@ -74,7 +76,7 @@ export default function SettingsForm({ currentUser }: SettingsFormProps) {
     if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onloadend = () => {
-            setAvatarPreview(reader.result as string);
+            form.setValue('avatarDataUrl', reader.result as string);
         }
         reader.readAsDataURL(file);
     } else {
@@ -105,7 +107,7 @@ export default function SettingsForm({ currentUser }: SettingsFormProps) {
                     <div className="flex items-center gap-4">
                         <Avatar className="h-20 w-20">
                             <AvatarImage src={avatarPreview || ''} alt={form.watch('name')} />
-                            <AvatarFallback className="text-2xl">{form.watch('name')?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            <AvatarFallback className="text-2xl">{getInitials(form.watch('name'))}</AvatarFallback>
                         </Avatar>
                         <Button type="button" variant="outline" onClick={triggerFileSelect}>Change Photo</Button>
                         <input 

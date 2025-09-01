@@ -3,7 +3,6 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import type { User } from '@/lib/types';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/firebase-admin';
 
@@ -46,7 +45,7 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
     // Revalidate paths to reflect changes immediately across the app
     revalidatePath('/settings');
     revalidatePath(`/profile/${id}`);
-    revalidatePath('/', 'layout');
+    revalidatePath('/', 'layout'); // Revalidate the whole layout to update UserNav avatar
     
     return { success: true };
 
@@ -88,6 +87,4 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   }
   
   redirect('/profile');
-
-  return { success: true };
 }

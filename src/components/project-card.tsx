@@ -19,9 +19,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { projectCategories } from '@/lib/data';
+import { projectCategories } from '@/lib/data-cache';
 import type { Project } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 
 interface ProjectCardProps {
   project: Project;
@@ -31,10 +31,6 @@ interface ProjectCardProps {
 export default function ProjectCard({ project, className }: ProjectCardProps) {
   const CategoryIcon =
     projectCategories.find((c) => c.name === project.category)?.icon ?? Users;
-
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('');
-  }
 
   return (
     <Card className={cn("flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1", className)}>

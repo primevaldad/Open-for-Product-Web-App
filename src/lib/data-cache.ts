@@ -11,7 +11,6 @@ interface AppData {
     learningPaths: LearningPath[];
     currentUserLearningProgress: UserLearningProgress[];
     interests: Interest[];
-    currentUserIndex: number;
     currentUser: User;
 }
 
@@ -38,7 +37,9 @@ export const projectCategories = [
 ] as const;
 
 
-async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUserIndex' | 'currentUser'>> {
+// This function reads all data from Firestore and hydrates it with necessary relationships.
+// It is intended to be called once per request on the server.
+async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUser'>> {
     const [
         users, 
         rawProjects, 
@@ -55,7 +56,7 @@ async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUserIndex'
         fetchCollection<Interest>('interests'),
     ]);
 
-    // Hydrate projects with user data
+    // Hydrate projects with user data for team members and discussions
     const projects = rawProjects.map((p: any) => {
         const team = (p.team || []).map((m: any) => {
             const user = users.find(u => u.id === m.userId);
@@ -70,13 +71,13 @@ async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUserIndex'
         return { ...p, team, discussions };
     });
     
-    // Hydrate tasks with user data
+    // Hydrate tasks with assigned user data
     const tasks = tasksData.map((t: any) => {
         const assignedTo = t.assignedToId ? users.find(u => u.id === t.assignedToId) : undefined;
         return { ...t, assignedTo };
     });
     
-    // Hydrate learning paths with icons
+    // Hydrate learning paths with icon components
     const learningPaths = rawLearningPaths.map((lp: any) => ({
         ...lp,
         Icon: iconMap[lp.Icon] || FlaskConical,
@@ -92,17 +93,33 @@ async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUserIndex'
     };
 }
 
+// A simple in-memory cache to avoid re-fetching data within the same request.
+// In a real-world scenario, you'd use a more robust caching solution like `unstable_cache` from Next.js.
+let dataCache: AppData | null = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 1000; // Cache for 1 second
 
 export async function getHydratedData(): Promise<AppData> {
-    const data = await readDataFromFirestore();
-    
-    // For now, always set the current user to the first user in the database.
-    const currentUserIndex = 0;
-    const currentUser = data.users[currentUserIndex];
+    const now = Date.now();
+    if (dataCache && (now - cacheTimestamp < CACHE_DURATION)) {
+        return dataCache;
+    }
 
-    return {
-        ...data,
-        currentUserIndex,
+    const { users, ...rest } = await readDataFromFirestore();
+    
+    // For this prototype, we'll hardcode the current user as the first one.
+    // In a real app, this would come from an authentication session.
+    const currentUser = users[0];
+    if (!currentUser) {
+        throw new Error("No users found in the database. Please seed the database.");
+    }
+
+    dataCache = {
+        users,
         currentUser,
+        ...rest,
     };
+    cacheTimestamp = now;
+
+    return dataCache;
 }
