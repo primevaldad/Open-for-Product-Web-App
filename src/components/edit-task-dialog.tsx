@@ -59,8 +59,8 @@ const taskStatuses: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
 export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, deleteTask, children }: EditTaskDialogProps) {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [isDeletePending, startDeleteTransition] = useTransition();
+  // const [isPending, startTransition] = useTransition();
+  // const [isDeletePending, startDeleteTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
   const form = useForm<TaskFormValues>({
@@ -116,132 +116,134 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
       <DialogTrigger asChild disabled={!isTeamMember} onClick={() => setIsOpen(true)}>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit Task</DialogTitle>
-          <DialogDescription>
-            Update task details, reassign, or change its status.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form className="space-y-4 pt-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="e.g., Design the homepage" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} placeholder="Add more details about the task..." />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
+      {isOpen && (
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+                Update task details, reassign, or change its status.
+            </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+            <form className="space-y-4 pt-4">
                 <FormField
                 control={form.control}
-                name="status"
+                name="title"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        {taskStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="assignedToId"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Assigned To</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
-                        <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Assign to a member" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                            {projectTeam.map(member => (
-                                <SelectItem key={member.user.id} value={member.user.id}>
-                                    {member.user.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            </div>
-             <FormField
-                control={form.control}
-                name="estimatedHours"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Estimated Hours</FormLabel>
+                    <FormLabel>Title</FormLabel>
                     <FormControl>
-                        <Input type="number" {...field} placeholder="0" />
+                        <Input {...field} placeholder="e.g., Design the homepage" />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
-            />
-
-            <DialogFooter className="pt-4">
-              <div className="flex justify-between w-full">
-                {/* <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button type="button" variant="destructive" disabled={isDeletePending}>
-                      <Trash className="mr-2 h-4 w-4" />
-                      {isDeletePending ? 'Deleting...' : 'Delete'}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the task.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete}>Confirm</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog> */}
-
-                <div className="flex gap-2">
-                  <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={true}>
-                    {isPending ? 'Saving...' : 'Save Changes'}
-                  </Button>
+                />
+                <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                        <Textarea {...field} placeholder="Add more details about the task..." />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {taskStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="assignedToId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Assigned To</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                            <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Assign to a member" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                {projectTeam.map(member => (
+                                    <SelectItem key={member.user.id} value={member.user.id}>
+                                        {member.user.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                 </div>
-              </div>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
+                <FormField
+                    control={form.control}
+                    name="estimatedHours"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Estimated Hours</FormLabel>
+                        <FormControl>
+                            <Input type="number" {...field} placeholder="0" />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <DialogFooter className="pt-4">
+                <div className="flex justify-between w-full">
+                    {/* <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button type="button" variant="destructive" disabled={isDeletePending}>
+                        <Trash className="mr-2 h-4 w-4" />
+                        {isDeletePending ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the task.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>Confirm</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                    </AlertDialog> */}
+
+                    <div className="flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={true}>
+                        {'Save Changes'}
+                    </Button>
+                    </div>
+                </div>
+                </DialogFooter>
+            </form>
+            </Form>
+        </DialogContent>
+      )}
     </Dialog>
   );
 }
