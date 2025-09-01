@@ -15,12 +15,12 @@ const SummarizeProjectProgressInputSchema = z.object({
   projectName: z.string().describe('The name of the project.'),
   recentActivity: z.string().describe('A summary of recent activity on the project, including discussions and progress updates.'),
 });
-export type SummarizeProjectProgressInput = z.infer<typeof SummarizeProjectProgressInputSchema>;
+type SummarizeProjectProgressInput = z.infer<typeof SummarizeProjectProgressInputSchema>;
 
 const SummarizeProjectProgressOutputSchema = z.object({
   summary: z.string().describe('A concise summary of the project progress.'),
 });
-export type SummarizeProjectProgressOutput = z.infer<typeof SummarizeProjectProgressOutputSchema>;
+type SummarizeProjectProgressOutput = z.infer<typeof SummarizeProjectProgressOutputSchema>;
 
 export async function summarizeProjectProgress(input: SummarizeProjectProgressInput): Promise<SummarizeProjectProgressOutput> {
   return summarizeProjectProgressFlow(input);

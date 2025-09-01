@@ -25,7 +25,7 @@ const SuggestNextStepsInputSchema = z.object({
     .string()
     .describe('A summary of the project progress and discussions.'),
 });
-export type SuggestNextStepsInput = z.infer<typeof SuggestNextStepsInputSchema>;
+type SuggestNextStepsInput = z.infer<typeof SuggestNextStepsInputSchema>;
 
 const SuggestNextStepsOutputSchema = z.object({
   suggestedNextSteps: z
@@ -35,7 +35,7 @@ const SuggestNextStepsOutputSchema = z.object({
     .array(z.string())
     .describe('A list of matching opportunities for the user.'),
 });
-export type SuggestNextStepsOutput = z.infer<typeof SuggestNextStepsOutputSchema>;
+type SuggestNextStepsOutput = z.infer<typeof SuggestNextStepsOutputSchema>;
 
 export async function suggestNextSteps(input: SuggestNextStepsInput): Promise<SuggestNextStepsOutput> {
   return suggestNextStepsFlow(input);

@@ -20,7 +20,7 @@ const HighlightProjectBlockersInputSchema = z.object({
     .describe('The text content of the task board activity.'),
 });
 
-export type HighlightProjectBlockersInput = z.infer<
+type HighlightProjectBlockersInput = z.infer<
   typeof HighlightProjectBlockersInputSchema
 >;
 
@@ -36,7 +36,7 @@ const HighlightProjectBlockersOutputSchema = z.object({
     .describe('A summary of the identified blockers and dependencies.'),
 });
 
-export type HighlightProjectBlockersOutput = z.infer<
+type HighlightProjectBlockersOutput = z.infer<
   typeof HighlightProjectBlockersOutputSchema
 >;
 
