@@ -3,9 +3,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import type { UserLearningProgress } from '@/lib/types';
+import { mockUserLearningProgress } from '@/lib/mock-data';
 
 
 const CompleteModuleSchema = z.object({
@@ -26,33 +24,31 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     }
 
     const { userId, pathId, moduleId, completed } = validatedFields.data;
+    
+    console.log("Updating mock learning progress (in-memory, will reset on server restart)");
 
-    try {
-        const progressDocRef = doc(db, 'currentUserLearningProgress', `${userId}-${pathId}`);
-        const progressDoc = await getDoc(progressDocRef);
-        
-        if (!progressDoc.exists()) {
-           if (completed) {
-                await setDoc(progressDocRef, { userId, pathId, completedModules: [moduleId] });
-           }
-        } else {
-            if (completed) {
-                await updateDoc(progressDocRef, { completedModules: arrayUnion(moduleId) });
-            } else {
-                await updateDoc(progressDocRef, { completedModules: arrayRemove(moduleId) });
-            }
+    let userProgress = mockUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
+
+    if (!userProgress) {
+        if (completed) {
+            mockUserLearningProgress.push({
+                userId,
+                pathId,
+                completedModules: [moduleId]
+            });
         }
-
-        revalidatePath(`/learning/${pathId}/${moduleId}`);
-        revalidatePath(`/learning/${pathId}`);
-        revalidatePath('/activity');
-
-        return { success: true };
-
-    } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "An unknown error occurred."
-        };
+    } else {
+        const moduleIndex = userProgress.completedModules.indexOf(moduleId);
+        if (completed && moduleIndex === -1) {
+            userProgress.completedModules.push(moduleId);
+        } else if (!completed && moduleIndex !== -1) {
+            userProgress.completedModules.splice(moduleIndex, 1);
+        }
     }
+
+    revalidatePath(`/learning/${pathId}/${moduleId}`);
+    revalidatePath(`/learning/${pathId}`);
+    revalidatePath('/activity');
+
+    return { success: true };
 }

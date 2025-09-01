@@ -5,8 +5,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectStatus, Task } from '@/lib/types';
-import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion, deleteDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { mockProjects, mockTasks } from '@/lib/mock-data';
 import { getCurrentUser } from '@/lib/data-cache';
 
 
@@ -68,8 +67,10 @@ async function handleProjectSubmission(
       return { success: false, error: "Could not find current user."};
   }
 
+  const newProjectId = `p${mockProjects.length + 1}`;
 
-  const newProjectData = {
+  const newProjectData: Project = {
+    id: newProjectId,
     name,
     tagline,
     description,
@@ -88,23 +89,16 @@ async function handleProjectSubmission(
     }
   };
 
-  try {
-    const docRef = await addDoc(collection(db, 'projects'), newProjectData);
-    
-    revalidatePath('/');
-    revalidatePath('/create');
-    if (status === 'draft') {
-        revalidatePath('/drafts');
-    }
+  mockProjects.push(newProjectData);
+  console.log("Added new project to mock data (in-memory, will reset on server restart)");
 
-    return { success: true, projectId: docRef.id };
-
-  } catch (error) {
-     return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "An unknown error occurred." 
-    };
+  revalidatePath('/');
+  revalidatePath('/create');
+  if (status === 'draft') {
+      revalidatePath('/drafts');
   }
+
+  return { success: true, projectId: newProjectId };
 }
 
 export async function saveProjectDraft(values: z.infer<typeof ProjectSchema>) {
@@ -124,40 +118,25 @@ export async function publishProject(values: z.infer<typeof ProjectSchema>) {
 }
 
 export async function joinProject(projectId: string) {
-    try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
 
-        const projectDocRef = doc(db, 'projects', projectId);
-        const projectDoc = await getDoc(projectDocRef);
-
-        if (!projectDoc.exists()) {
-          throw new Error("Project not found");
-        }
-
-        const project = projectDoc.data() as Project;
-        const isAlreadyMember = project.team.some(member => member.userId === currentUser.id);
-
-        if (isAlreadyMember) {
-            console.log("User is already a member");
-            return { success: true };
-        }
-
-        await updateDoc(projectDocRef, {
-            team: arrayUnion({ userId: currentUser.id, role: 'participant' as const })
-        });
-
-
-        revalidatePath(`/projects/${projectId}`);
-        return { success: true };
-
-    } catch (error) {
-        console.error("Error joining project:", error);
-        return { 
-            success: false, 
-            error: error instanceof Error ? error.message : "An unknown error occurred." 
-        };
+    const project = mockProjects.find(p => p.id === projectId);
+    if (!project) {
+        return { success: false, error: "Project not found" };
     }
+
+    const isAlreadyMember = project.team.some(member => member.userId === currentUser.id);
+    if (isAlreadyMember) {
+        console.log("User is already a member");
+        return { success: true };
+    }
+
+    project.team.push({ userId: currentUser.id, role: 'participant' as const });
+    console.log("Added user to project team in mock data (in-memory, will reset on server restart)");
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
 }
 
 export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
@@ -172,43 +151,35 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
 
     const { id, ...projectData } = validatedFields.data;
 
-    try {
-        const currentUser = await getCurrentUser();
-         if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
 
-        const projectDocRef = doc(db, 'projects', id);
-        const projectDoc = await getDoc(projectDocRef);
-
-        if (!projectDoc.exists()) {
-            throw new Error("Project not found");
-        }
-        
-        const project = projectDoc.data() as Project;
-        const lead = project.team.find(m => m.role === 'lead');
-        if (!lead || lead.userId !== currentUser.id) {
-            throw new Error("Only the project lead can edit the project.");
-        }
-        
-        const updatedData = {
-            name: projectData.name,
-            tagline: projectData.tagline,
-            description: projectData.description,
-            category: projectData.category,
-            timeline: projectData.timeline,
-            contributionNeeds: typeof projectData.contributionNeeds === 'string'
-                ? projectData.contributionNeeds.split(',').map(item => item.trim())
-                : project.contributionNeeds,
-            governance: projectData.governance,
-        };
-
-        await updateDoc(projectDocRef, updatedData);
-
-    } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "An unknown error occurred."
-        };
+    const projectIndex = mockProjects.findIndex(p => p.id === id);
+    if (projectIndex === -1) {
+        return { success: false, error: "Project not found" };
     }
+    
+    const project = mockProjects[projectIndex];
+    const lead = project.team.find(m => m.role === 'lead');
+    if (!lead || lead.userId !== currentUser.id) {
+        return { success: false, error: "Only the project lead can edit the project." };
+    }
+    
+    const updatedData = {
+        ...project,
+        name: projectData.name,
+        tagline: projectData.tagline,
+        description: projectData.description,
+        category: projectData.category,
+        timeline: projectData.timeline,
+        contributionNeeds: typeof projectData.contributionNeeds === 'string'
+            ? projectData.contributionNeeds.split(',').map(item => item.trim())
+            : project.contributionNeeds,
+        governance: projectData.governance,
+    };
+
+    mockProjects[projectIndex] = updatedData;
+    console.log("Updated project in mock data (in-memory, will reset on server restart)");
 
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
@@ -221,46 +192,35 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
     const validatedFields = CreateTaskSchema.safeParse(values);
 
     if (!validatedFields.success) {
-        return {
-            success: false,
-            error: 'Invalid data provided.',
-        };
+        return { success: false, error: 'Invalid data provided.' };
     }
 
     const { projectId, title, description, status } = validatedFields.data;
 
-    try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
 
-        const projectDocRef = doc(db, 'projects', projectId);
-        const projectDoc = await getDoc(projectDocRef);
-
-        if (!projectDoc.exists()) {
-            throw new Error("Associated project not found");
-        }
-        
-        const project = projectDoc.data() as Project;
-        const isMember = project.team.some(m => m.userId === currentUser.id);
-        if (!isMember) {
-            throw new Error("Only team members can add tasks.");
-        }
-
-        const newTaskData = {
-            projectId,
-            title,
-            description,
-            status,
-        };
-
-        await addDoc(collection(db, 'tasks'), newTaskData);
-
-    } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "An unknown error occurred."
-        };
+    const project = mockProjects.find(p => p.id === projectId);
+    if (!project) {
+      return { success: false, error: "Associated project not found" };
     }
+    
+    const isMember = project.team.some(m => m.userId === currentUser.id);
+    if (!isMember) {
+      return { success: false, error: "Only team members can add tasks." };
+    }
+
+    const newTaskId = `t${mockTasks.length + 1}`;
+    const newTaskData: Task = {
+        id: newTaskId,
+        projectId,
+        title,
+        description,
+        status,
+    };
+
+    mockTasks.push(newTaskData);
+    console.log("Added new task to mock data (in-memory, will reset on server restart)");
 
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
@@ -270,40 +230,30 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     const validatedFields = TaskSchema.safeParse(values);
 
     if (!validatedFields.success) {
-        return {
-            success: false,
-            error: 'Invalid data provided.',
-        };
+        return { success: false, error: 'Invalid data provided.' };
     }
 
     const { id, projectId, ...taskData } = validatedFields.data;
-
-    try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error("User not found");
-        
-        const projectDocRef = doc(db, 'projects', projectId);
-        const projectDoc = await getDoc(projectDocRef);
-
-        if (!projectDoc.exists()) {
-            throw new Error("Associated project not found");
-        }
-        const project = projectDoc.data() as Project;
-        const isMember = project.team.some(m => m.userId === currentUser.id);
-        if (!isMember) {
-            throw new Error("Only team members can edit tasks.");
-        }
-        
-        const taskDocRef = doc(db, 'tasks', id);
-        await updateDoc(taskDocRef, { ...taskData });
-
-
-    } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "An unknown error occurred."
-        };
+    
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+    
+    const project = mockProjects.find(p => p.id === projectId);
+    if (!project) {
+        return { success: false, error: "Associated project not found" };
     }
+    const isMember = project.team.some(m => m.userId === currentUser.id);
+    if (!isMember) {
+        return { success: false, error: "Only team members can edit tasks." };
+    }
+    
+    const taskIndex = mockTasks.findIndex(t => t.id === id);
+    if (taskIndex === -1) {
+        return { success: false, error: "Task not found" };
+    }
+        
+    mockTasks[taskIndex] = { ...mockTasks[taskIndex], ...taskData };
+    console.log("Updated task in mock data (in-memory, will reset on server restart)");
 
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
@@ -314,37 +264,28 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     const validatedFields = DeleteTaskSchema.safeParse(values);
 
     if (!validatedFields.success) {
-        return {
-            success: false,
-            error: 'Invalid data provided.',
-        };
+        return { success: false, error: 'Invalid data provided.' };
     }
     
     const { id, projectId } = validatedFields.data;
     
-    try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
 
-        const projectDocRef = doc(db, 'projects', projectId);
-        const projectDoc = await getDoc(projectDocRef);
-        if (!projectDoc.exists()) {
-            throw new Error("Associated project not found");
-        }
-        const project = projectDoc.data() as Project;
+    const project = mockProjects.find(p => p.id === projectId);
+    if (!project) {
+      return { success: false, error: "Associated project not found" };
+    }
 
-        const isMember = project.team.some(m => m.userId === currentUser.id);
-        if (!isMember) {
-            throw new Error("Only team members can delete tasks.");
-        }
+    const isMember = project.team.some(m => m.userId === currentUser.id);
+    if (!isMember) {
+      return { success: false, error: "Only team members can delete tasks." };
+    }
 
-        await deleteDoc(doc(db, 'tasks', id));
-
-    } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "An unknown error occurred."
-        };
+    const taskIndex = mockTasks.findIndex(t => t.id === id);
+    if (taskIndex !== -1) {
+        mockTasks.splice(taskIndex, 1);
+        console.log("Deleted task from mock data (in-memory, will reset on server restart)");
     }
 
     revalidatePath(`/projects/${projectId}`);
@@ -358,42 +299,26 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
 
     const { projectId, userId, content } = validatedFields.data;
 
-    try {
-        const projectDocRef = doc(db, 'projects', projectId);
-        const projectDoc = await getDoc(projectDocRef);
-        if (!projectDoc.exists()) {
-            throw new Error("Project not found");
-        }
-        const project = projectDoc.data() as Project;
-        
-        const userDocRef = doc(db, 'users', userId);
-        const userDoc = await getDoc(userDocRef);
-        if (!userDoc.exists()) {
-            throw new Error("User not found");
-        }
-
-        const isMember = project.team.some(m => m.userId === userId);
-        if (!isMember) {
-            throw new Error("Only team members can add comments.");
-        }
-        
-        const newComment = {
-            userId,
-            content,
-            timestamp: Timestamp.now(),
-        };
-
-        await updateDoc(projectDocRef, {
-            discussions: arrayUnion(newComment)
-        });
-        
-        revalidatePath(`/projects/${projectId}`);
-        return { success: true };
-
-    } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "An unknown error occurred."
-        };
+    const project = mockProjects.find(p => p.id === projectId);
+    if (!project) {
+      return { success: false, error: "Project not found" };
     }
+
+    const isMember = project.team.some(m => m.userId === userId);
+    if (!isMember) {
+      return { success: false, error: "Only team members can add comments." };
+    }
+    
+    const newComment = {
+        userId,
+        content,
+        timestamp: new Date().toISOString(),
+    };
+
+    project.discussions.push(newComment);
+    console.log("Added comment to mock project data (in-memory, will reset on server restart)");
+    
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+
 }

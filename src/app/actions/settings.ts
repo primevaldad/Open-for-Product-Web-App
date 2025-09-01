@@ -4,8 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { mockUsers } from '@/lib/mock-data';
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -33,29 +32,27 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
 
   const { id, name, bio, avatarDataUrl } = validatedFields.data;
 
-  try {
-     const userDocRef = doc(db, 'users', id);
-     
-     const updateData: any = { name, bio };
-     if (avatarDataUrl) {
-       updateData.avatarUrl = avatarDataUrl;
-     }
-     
-     await updateDoc(userDocRef, updateData);
-
-    // Revalidate paths to reflect changes immediately across the app
-    revalidatePath('/settings');
-    revalidatePath(`/profile/${id}`);
-    revalidatePath('/', 'layout'); // Revalidate the whole layout to update UserNav avatar
-    
-    return { success: true };
-
-  } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "An unknown error occurred." 
-    };
+  const userIndex = mockUsers.findIndex(u => u.id === id);
+  if (userIndex === -1) {
+      return { success: false, error: "User not found." };
   }
+
+  const user = mockUsers[userIndex];
+  user.name = name;
+  user.bio = bio;
+  if (avatarDataUrl) {
+    user.avatarUrl = avatarDataUrl;
+  }
+  
+  mockUsers[userIndex] = user;
+  console.log("Updated user settings in mock data (in-memory, will reset on server restart)");
+
+  // Revalidate paths to reflect changes immediately across the app
+  revalidatePath('/settings');
+  revalidatePath(`/profile/${id}`);
+  revalidatePath('/', 'layout'); // Revalidate the whole layout to update UserNav avatar
+  
+  return { success: true };
 }
 
 export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSchema>) {
@@ -67,25 +64,22 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
 
   const { id, name, bio, interests } = validatedFields.data;
 
-  try {
-    const userDocRef = doc(db, 'users', id);
-    
-    await updateDoc(userDocRef, {
-      name,
-      bio,
-      interests,
-      onboarded: true,
-    });
-
-    revalidatePath(`/profile/${id}`);
-    revalidatePath('/onboarding');
-
-  } catch (error) {
-    return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "An unknown error occurred." 
-    };
+  const userIndex = mockUsers.findIndex(u => u.id === id);
+  if (userIndex === -1) {
+    return { success: false, error: "User not found." };
   }
+
+  const user = mockUsers[userIndex];
+  user.name = name;
+  user.bio = bio;
+  user.interests = interests;
+  user.onboarded = true;
+  
+  mockUsers[userIndex] = user;
+  console.log("Updated onboarding info in mock data (in-memory, will reset on server restart)");
+
+  revalidatePath(`/profile/${id}`);
+  revalidatePath('/onboarding');
   
   redirect('/profile');
 }
