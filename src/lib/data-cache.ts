@@ -1,5 +1,5 @@
 
-import type { Project, Task, User, UserLearningProgress, Interest, LearningPath, Discussion } from './types';
+import type { Project, Task, User, UserLearningProgress, Interest, LearningPath } from './types';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { db } from './firebase-admin';
@@ -62,8 +62,14 @@ async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUser'>> {
 
         const discussions = (p.discussions || []).map((d: any) => {
              const user = users.find(u => u.id === d.userId);
-             return user ? { ...d, user } : null;
-        }).filter((d): d is Discussion => d !== null);
+             if (!user) return null;
+             return { 
+                id: d.id || `${d.userId}-${d.timestamp}`, // Add a fallback id
+                user, 
+                content: d.content, 
+                timestamp: d.timestamp 
+            };
+        }).filter((d): d is Project['discussions'][0] => d !== null);
 
         return { ...p, team, discussions };
     });

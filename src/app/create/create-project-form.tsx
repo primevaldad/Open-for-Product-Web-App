@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from "react-hook-form";
@@ -10,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { publishProject, saveProjectDraft } from "../actions/projects";
 import { useTransition, type FC } from "react";
 
 const ProjectSchema = z.object({
@@ -25,7 +25,12 @@ const ProjectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
 
-export const CreateProjectForm: FC = () => {
+interface CreateProjectFormProps {
+    saveProjectDraft: (values: ProjectFormValues) => Promise<any>;
+    publishProject: (values: ProjectFormValues) => Promise<any>;
+}
+
+export const CreateProjectForm: FC<CreateProjectFormProps> = ({ saveProjectDraft, publishProject }) => {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 

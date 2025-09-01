@@ -23,6 +23,7 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getHydratedData } from "@/lib/data-cache";
 import SettingsForm from "./settings-form";
+import { updateUserSettings } from "../actions/settings";
 
 // This is now a server component that fetches the user and passes it to the form
 export default async function SettingsPage() {
@@ -123,7 +124,10 @@ export default async function SettingsPage() {
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
           {/* The form is now a client component */}
-          <SettingsForm currentUser={currentUser} />
+          <SettingsForm 
+            currentUser={currentUser}
+            updateUserSettings={updateUserSettings}
+          />
         </main>
       </SidebarInset>
     </div>

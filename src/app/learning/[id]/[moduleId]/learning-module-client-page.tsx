@@ -23,7 +23,7 @@ interface LearningModuleClientPageProps {
     nextModule: Module | null;
 }
 
-function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: LearningModuleClientPageProps & { onNextModule: () => void }) {
+function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { path: any, module: any, prevModule: any, nextModule: any, onNextModule: () => void }) {
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
             <div className='flex items-center gap-4'>
@@ -72,11 +72,6 @@ export default function LearningModuleClientPage({
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   const isCompleted = userProgress?.completedModules.includes(module.id) ?? false;
   
@@ -106,7 +101,7 @@ export default function LearningModuleClientPage({
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
-      {isMounted && <ModuleHeader {...{ path, module, userProgress, currentUser, prevModule, nextModule, onNextModule: handleNextModule }} />}
+      <ModuleHeader {...{ path, module, userProgress, currentUser, prevModule, nextModule, onNextModule: handleNextModule }} />
       <main className="flex-1 overflow-auto p-4 md:p-6">
          <div className="mx-auto max-w-3xl space-y-6">
             {module.videoUrl && (

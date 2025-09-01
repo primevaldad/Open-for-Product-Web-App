@@ -23,6 +23,7 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getHydratedData } from "@/lib/data-cache";
 import { CreateProjectForm } from "./create-project-form";
+import { publishProject, saveProjectDraft } from "../actions/projects";
 
 // The page is a Server Component responsible for fetching data and rendering the layout.
 export default async function CreateProjectPage() {
@@ -120,7 +121,10 @@ export default async function CreateProjectPage() {
                 </h1>
                 <UserNav currentUser={currentUser} allUsers={users} />
                 </header>
-                <CreateProjectForm />
+                <CreateProjectForm 
+                    saveProjectDraft={saveProjectDraft}
+                    publishProject={publishProject}
+                />
             </SidebarInset>
         </div>
     );

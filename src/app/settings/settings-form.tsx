@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useRef, useTransition } from "react";
-import { updateUserSettings } from "../actions/settings";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,9 +28,10 @@ type SettingsFormValues = z.infer<typeof SettingsSchema>;
 
 interface SettingsFormProps {
     currentUser: User;
+    updateUserSettings: (values: SettingsFormValues & { id: string }) => Promise<any>;
 }
 
-export default function SettingsForm({ currentUser }: SettingsFormProps) {
+export default function SettingsForm({ currentUser, updateUserSettings }: SettingsFormProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
