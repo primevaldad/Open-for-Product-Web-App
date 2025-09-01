@@ -1,5 +1,7 @@
 
 import type { Interest } from './types';
+import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
+
 
 // This file contains static data that is safe to be shared between server and client components.
 
@@ -15,3 +17,11 @@ export const interests: Interest[] = [
     { "id": "i9", "name": "Content Writing" },
     { "id": "i10", "name": "Data Science" }
 ];
+
+export const projectCategories = [
+    { name: 'Creative', icon: Code },
+    { name: 'Technical', icon: BookText },
+    { name: 'Community', icon: UsersIcon },
+    { name: 'Business & Enterprise', icon: Briefcase },
+    { name: 'Learning & Research', icon: FlaskConical },
+] as const;

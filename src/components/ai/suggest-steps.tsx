@@ -15,10 +15,10 @@ type Suggestion = {
 };
 
 interface SuggestStepsProps {
-    projects: Project[];
+    suggestedProject: Project;
 }
 
-export function SuggestSteps({ projects }: SuggestStepsProps) {
+export function SuggestSteps({ suggestedProject }: SuggestStepsProps) {
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +44,6 @@ export function SuggestSteps({ projects }: SuggestStepsProps) {
     }
     getSuggestions();
   }, []);
-
-  const suggestedProject = projects[1];
 
   return (
     <Card className="bg-gradient-to-br from-primary/20 to-background">

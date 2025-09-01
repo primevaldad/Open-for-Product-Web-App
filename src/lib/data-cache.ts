@@ -27,14 +27,6 @@ async function fetchCollection<T>(collectionName: string): Promise<T[]> {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
 
-export const projectCategories = [
-    { name: 'Creative', icon: Code },
-    { name: 'Technical', icon: BookText },
-    { name: 'Community', icon: UsersIcon },
-    { name: 'Business & Enterprise', icon: Briefcase },
-    { name: 'Learning & Research', icon: FlaskConical },
-] as const;
-
 
 // This function reads all data from Firestore and hydrates it with necessary relationships.
 // It is intended to be called once per request on the server.

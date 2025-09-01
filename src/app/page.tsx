@@ -42,6 +42,7 @@ export default async function DashboardPage() {
   }
 
   const allPublishedProjects = projects.filter(p => p.status === 'published');
+  const suggestedProject = allPublishedProjects.length > 1 ? allPublishedProjects[1] : allPublishedProjects[0];
   
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -142,7 +143,7 @@ export default async function DashboardPage() {
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mb-6">
-            <SuggestSteps projects={projects} />
+            {suggestedProject && <SuggestSteps suggestedProject={suggestedProject} />}
           </div>
           <HomeClientPage allPublishedProjects={allPublishedProjects} currentUser={currentUser} />
         </main>

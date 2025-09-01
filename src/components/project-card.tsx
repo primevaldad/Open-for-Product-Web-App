@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { projectCategories } from '@/lib/data-cache';
+import { projectCategories } from '@/lib/static-data';
 import type { Project } from '@/lib/types';
 import { cn, getInitials } from '@/lib/utils';
 
