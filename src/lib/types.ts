@@ -47,7 +47,7 @@ export type Project = {
   progress: number;
   team: Omit<ProjectMember, 'user'>[];
   votes: number;
-  discussions: Omit<Discussion, 'user'>[];
+  discussions: Omit<Discussion, 'user' | 'id'>[];
   isExpertReviewed?: boolean;
   status: ProjectStatus;
   governance?: Governance;

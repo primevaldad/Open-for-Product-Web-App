@@ -26,26 +26,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { User, Project } from "@/lib/types";
 import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
 import { switchUser } from "../actions/auth";
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { mockProjects } from "@/lib/mock-data";
 
-async function getDraftsPageData() {
-    const currentUser = await getCurrentUser();
-    const allUsers = await getAllUsers();
+
+function getDraftsPageData() {
+    const currentUser = getCurrentUser();
+    const allUsers = getAllUsers();
     
-    const rawProjectsSnapshot = await getDocs(collection(db, 'projects'));
-    const rawProjects = rawProjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Project);
-
-    const projects = await Promise.all(
-        rawProjects.map(p => hydrateProjectTeam(p, allUsers))
-    );
+    const projects = mockProjects.map(p => hydrateProjectTeam(p));
 
     return { currentUser, projects, users: allUsers };
 }
 
 // This is now a Server Component
-export default async function DraftsPage() {
-  const { currentUser, projects, users } = await getDraftsPageData();
+export default function DraftsPage() {
+  const { currentUser, projects, users } = getDraftsPageData();
 
   if (!currentUser) {
     // This can be a loading component or a redirect in a real app

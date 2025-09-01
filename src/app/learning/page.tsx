@@ -28,23 +28,19 @@ import { cn } from "@/lib/utils";
 import type { LearningPath, User } from "@/lib/types";
 import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
 import { switchUser } from "../actions/auth";
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
+import { mockLearningPaths } from "@/lib/mock-data";
 
 
-async function getLearningPageData() {
-    const currentUser = await getCurrentUser();
-    const allUsers = await getAllUsers();
-
-    const rawLearningPathsSnapshot = await getDocs(collection(db, 'learningPaths'));
-    const learningPaths = rawLearningPathsSnapshot.docs.map((lp) => {
-        const lpData = lp.data();
+function getLearningPageData() {
+    const currentUser = getCurrentUser();
+    const allUsers = getAllUsers();
+    
+    const learningPaths = mockLearningPaths.map((lp) => {
         return {
-            ...lpData,
-            id: lp.id,
-            Icon: iconMap[lpData.Icon as string] || FlaskConical,
+            ...lp,
+            Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
         }
     }) as LearningPath[];
 
@@ -52,8 +48,8 @@ async function getLearningPageData() {
 }
 
 
-export default async function LearningPage() {
-    const { currentUser, learningPaths, users } = await getLearningPageData();
+export default function LearningPage() {
+    const { currentUser, learningPaths, users } = getLearningPageData();
 
     if (!currentUser) {
         return (

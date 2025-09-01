@@ -10,8 +10,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 import {
   Sidebar,
@@ -25,41 +23,38 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam, getAllUsers } from "@/lib/data-cache";
 import ProjectDetailClientPage from "./project-detail-client-page";
 import { addTask, addDiscussionComment, deleteTask, joinProject, updateTask } from "@/app/actions/projects";
 import { switchUser } from "@/app/actions/auth";
 import type { Project, Task, User } from "@/lib/types";
+import { mockProjects, mockTasks } from "@/lib/mock-data";
 
 
-async function getProjectPageData(projectId: string) {
-    const currentUser = await getCurrentUser();
+function getProjectPageData(projectId: string) {
+    const currentUser = getCurrentUser();
+    const allUsers = getAllUsers();
+
+    const projectData = mockProjects.find(p => p.id === projectId);
+
+    if (!projectData) return { project: null, projectTasks: [], currentUser, allUsers };
+
+    const project = hydrateProjectTeam(projectData);
     
-    const allUsersSnapshot = await getDocs(collection(db, 'users'));
-    const allUsers = allUsersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as User);
-
-    const projectDocRef = doc(db, 'projects', projectId);
-    const rawProjectDoc = await getDoc(projectDocRef);
-
-    if (!rawProjectDoc.exists()) return { project: null, projectTasks: [], currentUser, allUsers };
-
-    const project = await hydrateProjectTeam({ id: rawProjectDoc.id, ...rawProjectDoc.data() } as Project, allUsers);
-    
-    const tasksQuery = query(collection(db, 'tasks'), where('projectId', '==', projectId));
-    const tasksSnapshot = await getDocs(tasksQuery);
-    const projectTasks = tasksSnapshot.docs.map(doc => {
-        const taskData = doc.data();
-        const assignedTo = taskData.assignedToId ? allUsers.find(u => u.id === taskData.assignedToId) : undefined;
-        return { id: doc.id, ...taskData, assignedTo } as Task;
-    });
+    const projectTasks = mockTasks
+        .filter(t => t.projectId === projectId)
+        .map(t => {
+            const assignedTo = t.assignedToId ? allUsers.find(u => u.id === t.assignedToId) : undefined;
+            return { ...t, assignedTo };
+        }) as Task[];
 
     return { project, projectTasks, currentUser, allUsers };
 }
 
 
 // This is now a Server Component responsible for fetching data
-export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const { project, projectTasks, currentUser, allUsers } = await getProjectPageData(params.id);
+export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const { project, projectTasks, currentUser, allUsers } = getProjectPageData(params.id);
   
   if (!project) {
     notFound();

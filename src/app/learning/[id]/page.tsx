@@ -6,36 +6,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import type { LearningPath, UserLearningProgress } from '@/lib/types';
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
+import { mockLearningPaths, mockUserLearningProgress } from '@/lib/mock-data';
 
-async function getLearningPathDetailPageData(pathId: string) {
-    const pathDocRef = doc(db, 'learningPaths', pathId);
-    const rawPathDoc = await getDoc(pathDocRef);
+function getLearningPathDetailPageData(pathId: string) {
+    const pathData = mockLearningPaths.find(p => p.id === pathId);
 
-    if (!rawPathDoc.exists()) return { path: null, currentUserLearningProgress: [] };
-
-    const rawPathData = rawPathDoc.data();
-    const path = { 
-        ...rawPathData, 
-        id: rawPathDoc.id,
-        Icon: iconMap[rawPathData.Icon as string] || FlaskConical 
+    if (!pathData) return { path: null, currentUserLearningProgress: [] };
+    
+    const path = {
+        ...pathData,
+        Icon: iconMap[pathData.category as keyof typeof iconMap] || FlaskConical,
     } as LearningPath;
-
-    const progressQuery = query(collection(db, 'currentUserLearningProgress'), where('pathId', '==', pathId));
-    const progressSnapshot = await getDocs(progressQuery);
-    const currentUserLearningProgress = progressSnapshot.docs.map(doc => doc.data() as UserLearningProgress);
+    
+    const currentUserLearningProgress = mockUserLearningProgress.filter(p => p.pathId === pathId);
 
     return { path, currentUserLearningProgress };
 }
 
 
 // This is now a Server Component
-export default async function LearningPathDetailPage({ params }: { params: { id: string } }) {
-  const { path, currentUserLearningProgress } = await getLearningPathDetailPageData(params.id);
+export default function LearningPathDetailPage({ params }: { params: { id: string } }) {
+  const { path, currentUserLearningProgress } = getLearningPathDetailPageData(params.id);
 
   if (!path) {
     notFound();

@@ -1,18 +1,13 @@
 
 import OnboardingForm from "./onboarding-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { db } from "@/lib/firebase";
 import type { User } from "@/lib/types";
 import { updateOnboardingInfo } from "../actions/settings";
+import { mockUsers } from "@/lib/mock-data";
 
 // This is now a Server Component that fetches data and passes it down.
-export default async function OnboardingPage() {
-  const usersCollection = collection(db, 'users');
-  const q = query(usersCollection, where('onboarded', '==', false), limit(1));
-  const userDocs = await getDocs(q);
-  
-  const newUser = userDocs.docs[0] ? { id: userDocs.docs[0].id, ...userDocs.docs[0].data() } as User : null;
+export default function OnboardingPage() {
+  const newUser = mockUsers.find(u => !u.onboarded) || null;
 
   if (!newUser) {
     // In a real app, you might redirect to a dashboard if the user is already onboarded

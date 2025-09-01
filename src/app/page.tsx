@@ -10,8 +10,6 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import type { Project, User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -31,18 +29,15 @@ import { SuggestSteps } from "@/components/ai/suggest-steps";
 import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
 import HomeClientPage from "./home-client-page";
 import { switchUser } from "./actions/auth";
+import { mockProjects } from "@/lib/mock-data";
 
-async function getDashboardPageData() {
-    const currentUser = await getCurrentUser();
-    const allUsers = await getAllUsers();
-
-    const projectsQuery = query(collection(db, 'projects'), where('status', '==', 'published'));
-    const rawProjectsSnapshot = await getDocs(projectsQuery);
-    const rawProjects = rawProjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Project);
+function getDashboardPageData() {
+    const currentUser = getCurrentUser();
+    const allUsers = getAllUsers();
     
-    const projects = await Promise.all(
-        rawProjects.map(p => hydrateProjectTeam(p, allUsers))
-    );
+    const projects = mockProjects
+        .filter(p => p.status === 'published')
+        .map(p => hydrateProjectTeam(p));
 
     return {
         currentUser,
@@ -53,8 +48,8 @@ async function getDashboardPageData() {
 
 
 // This is now a Server Component that fetches data and passes it to a client component.
-export default async function DashboardPage() {
-  const { currentUser, projects, users } = await getDashboardPageData();
+export default function DashboardPage() {
+  const { currentUser, projects, users } = getDashboardPageData();
   
   if (!currentUser) {
     return (

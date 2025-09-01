@@ -3,29 +3,24 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import type { Project } from '@/lib/types';
 import { getCurrentUser } from '@/lib/data-cache';
 import EditProjectForm from './edit-project-form';
 import { updateProject } from '@/app/actions/projects';
+import { mockProjects } from '@/lib/mock-data';
 
-async function getEditProjectPageData(projectId: string) {
-    const currentUser = await getCurrentUser();
+function getEditProjectPageData(projectId: string) {
+    const currentUser = getCurrentUser();
+    const project = mockProjects.find(p => p.id === projectId);
     
-    const projectDocRef = doc(db, 'projects', projectId);
-    const projectDoc = await getDoc(projectDocRef);
-    
-    if (!projectDoc.exists()) return { project: null, currentUser };
-
-    const project = { id: projectDoc.id, ...projectDoc.data() } as Project;
+    if (!project) return { project: null, currentUser };
     
     return { project, currentUser };
 }
 
 // This is now a Server Component that fetches data and passes it to the form.
-export default async function EditProjectPage({ params }: { params: { id: string } }) {
-  const { project, currentUser } = await getEditProjectPageData(params.id);
+export default function EditProjectPage({ params }: { params: { id: string } }) {
+  const { project, currentUser } = getEditProjectPageData(params.id);
   
   if (!project || !currentUser) {
     notFound();

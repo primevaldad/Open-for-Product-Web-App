@@ -23,62 +23,44 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { EditTaskDialog } from "@/components/edit-task-dialog";
-import type { User, Project, Task, LearningPath, UserLearningProgress } from "@/lib/types";
+import type { User, Project, Task, LearningPath, UserLearningProgress, Module } from "@/lib/types";
 import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
 import ActivityClientPage from "./activity-client-page";
 import { switchUser } from "../actions/auth";
 import { updateTask, deleteTask } from "../actions/projects";
-import { completeModule } from "../actions/learning";
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
+import { mockProjects, mockTasks, mockUserLearningProgress, mockLearningPaths } from "@/lib/mock-data";
 
-async function getActivityPageData() {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return { currentUser: null, projects: [], tasks: [], learningPaths: [], currentUserLearningProgress: [], users: [] };
+function getActivityPageData() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return { currentUser: null, projects: [], myTasks: [], learningPaths: [], userProgress: [], allUsers: [] };
     
-    const allUsers = await getAllUsers();
+    const allUsers = getAllUsers();
     
-    const rawProjectsSnapshot = await getDocs(collection(db, 'projects'));
-    const rawProjects = rawProjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Project);
-    const projects = await Promise.all(
-        rawProjects.map(p => hydrateProjectTeam(p, allUsers))
-    );
+    const projects = mockProjects.map(p => hydrateProjectTeam(p));
 
-    const tasksQuery = query(collection(db, 'tasks'), where('assignedToId', '==', currentUser.id));
-    const myTasksSnapshot = await getDocs(tasksQuery);
-    const myTasks = myTasksSnapshot.docs.map(doc => {
-         const taskData = doc.data();
-         const assignedTo = allUsers.find(u => u.id === taskData.assignedToId); // Should always be currentUser
-         return { id: doc.id, ...taskData, assignedTo } as Task;
-    });
+    const myTasks = mockTasks
+        .filter(t => t.assignedToId === currentUser.id)
+        .map(t => {
+            const assignedTo = allUsers.find(u => u.id === t.assignedToId);
+            return { ...t, assignedTo };
+        }) as Task[];
+        
+    const userProgress = mockUserLearningProgress.filter(p => p.userId === currentUser.id);
 
-    const progressQuery = query(collection(db, 'currentUserLearningProgress'), where('userId', '==', currentUser.id));
-    const progressSnapshot = await getDocs(progressQuery);
-    const currentUserLearningProgress = progressSnapshot.docs.map(doc => doc.data() as UserLearningProgress);
+    const learningPaths = mockLearningPaths.map(lp => ({
+        ...lp,
+        Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
+    })) as LearningPath[];
 
-    const rawLearningPathsSnapshot = await getDocs(collection(db, 'learningPaths'));
-    const learningPaths = rawLearningPathsSnapshot.docs.map((lp) => {
-        const lpData = lp.data();
-        return {
-            ...lpData,
-            id: lp.id,
-            Icon: iconMap[lpData.Icon as string] || FlaskConical,
-        }
-    }) as LearningPath[];
-
-    return { currentUser, projects, tasks: myTasks, learningPaths, currentUserLearningProgress, users: allUsers };
+    return { currentUser, projects, myTasks, learningPaths, userProgress, allUsers };
 }
 
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
-export default async function ActivityPage() {
-  const { currentUser, projects, tasks, learningPaths, currentUserLearningProgress, users } = await getActivityPageData();
+export default function ActivityPage() {
+  const { currentUser, projects, myTasks, learningPaths, userProgress, allUsers } = getActivityPageData();
 
   if (!currentUser) {
     return (
@@ -88,7 +70,7 @@ export default async function ActivityPage() {
     );
   }
 
-  const completedModulesData = (currentUserLearningProgress || []).flatMap(progress => 
+  const completedModulesData = (userProgress || []).flatMap(progress => 
     (progress.completedModules || []).map(moduleId => {
       const path = learningPaths.find(p => p.id === progress.pathId);
       const module = path?.modules.find(m => m.id === moduleId);
@@ -97,7 +79,7 @@ export default async function ActivityPage() {
 
       return { path: serializablePath, module };
     })
-  ).filter((item): item is { path: { id: string; title: string; }; module: any; } => !!(item.path && item.module));
+  ).filter((item): item is { path: { id: string; title: string; }; module: Module; } => !!(item.path && item.module));
 
 
   return (
@@ -182,12 +164,12 @@ export default async function ActivityPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             My Activity
           </h1>
-          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
+          <UserNav currentUser={currentUser} allUsers={allUsers} switchUser={switchUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6 grid md:grid-cols-2 gap-6">
             <ActivityClientPage
-                myTasks={tasks}
+                myTasks={myTasks}
                 completedModulesData={completedModulesData}
                 projects={projects}
                 updateTask={updateTask}
