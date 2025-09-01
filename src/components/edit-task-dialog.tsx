@@ -48,14 +48,14 @@ const TaskSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1, "Title is required."),
   description: z.string().optional(),
-  status: z.enum(['To Do', 'In Progress', 'Done']),
+  status: z.enum(["To Do", "In Progress", "Done"]),
   assignedToId: z.string().optional().nullable(),
   estimatedHours: z.coerce.number().optional(),
 });
 
 type TaskFormValues = z.infer<typeof TaskSchema>;
 
-const taskStatuses: TaskStatus[] = ['To Do', 'In Progress', 'Done'];
+const taskStatuses: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
 export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, deleteTask, children }: EditTaskDialogProps) {
   const { toast } = useToast();
