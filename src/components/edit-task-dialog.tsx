@@ -109,7 +109,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
             setIsOpen(false);
         }
     });
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
