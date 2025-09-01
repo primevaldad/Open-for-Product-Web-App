@@ -2,12 +2,14 @@
 import { getHydratedData } from "@/lib/data-cache";
 import OnboardingForm from "./onboarding-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { db } from "@/lib/firebase-admin";
+import type { User } from "@/lib/types";
 
 // This is now a Server Component that fetches data and passes it down.
 export default async function OnboardingPage() {
-  const { users, interests } = await getHydratedData();
+  const userDocs = await db.collection('users').where('onboarded', '==', false).limit(1).get();
   
-  const newUser = users.find(u => !u.onboarded);
+  const newUser = userDocs.docs[0] ? { id: userDocs.docs[0].id, ...userDocs.docs[0].data() } as User : null;
 
   if (!newUser) {
     // In a real app, you might redirect to a dashboard if the user is already onboarded
@@ -26,7 +28,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <OnboardingForm newUser={newUser} interests={interests} />
+        <OnboardingForm newUser={newUser} />
     </div>
   );
 }

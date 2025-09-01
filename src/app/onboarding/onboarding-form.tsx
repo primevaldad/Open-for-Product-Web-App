@@ -39,6 +39,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { updateOnboardingInfo } from '../actions/settings';
 import type { User, Interest } from '@/lib/types';
+import { interests } from '@/lib/static-data';
 
 
 const onboardingSchema = z.object({
@@ -51,10 +52,9 @@ type OnboardingFormValues = z.infer<typeof onboardingSchema>;
 
 interface OnboardingFormProps {
     newUser: User;
-    interests: Interest[];
 }
 
-export default function OnboardingForm({ newUser, interests }: OnboardingFormProps) {
+export default function OnboardingForm({ newUser }: OnboardingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = React.useTransition();
@@ -157,7 +157,7 @@ export default function OnboardingForm({ newUser, interests }: OnboardingFormPro
                                         key={interest}
                                         className="mr-1"
                                     >
-                                        {interest}
+                                        {interests.find(i => i.name === interest)?.name || interest}
                                     </Badge>
                                     ))
                                 ) : (

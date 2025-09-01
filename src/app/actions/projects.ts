@@ -50,7 +50,7 @@ const DiscussionCommentSchema = z.object({
 async function handleProjectSubmission(
   values: z.infer<typeof ProjectSchema>,
   status: ProjectStatus
-) {
+): Promise<{ success: boolean; error?: string; projectId?: string; }> {
   const validatedFields = ProjectSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -88,11 +88,7 @@ async function handleProjectSubmission(
         revalidatePath('/drafts');
     }
 
-    if (status === 'published') {
-      redirect(`/projects/${docRef.id}`);
-    } else {
-      redirect('/drafts');
-    }
+    return { success: true, projectId: docRef.id };
 
   } catch (error) {
      return { 
@@ -100,16 +96,22 @@ async function handleProjectSubmission(
       error: error instanceof Error ? error.message : "An unknown error occurred." 
     };
   }
-
-  return { success: true };
 }
 
 export async function saveProjectDraft(values: z.infer<typeof ProjectSchema>) {
-    return handleProjectSubmission(values, 'draft');
+    const result = await handleProjectSubmission(values, 'draft');
+    if (result.success) {
+        redirect('/drafts');
+    }
+    return result;
 }
 
 export async function publishProject(values: z.infer<typeof ProjectSchema>) {
-    return handleProjectSubmission(values, 'published');
+    const result = await handleProjectSubmission(values, 'published');
+    if (result.success && result.projectId) {
+        redirect(`/projects/${result.projectId}`);
+    }
+    return result;
 }
 
 export async function joinProject(projectId: string) {

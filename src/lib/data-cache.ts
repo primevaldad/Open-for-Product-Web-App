@@ -10,7 +10,6 @@ interface AppData {
     tasks: Task[];
     learningPaths: LearningPath[];
     currentUserLearningProgress: UserLearningProgress[];
-    interests: Interest[];
     currentUser: User;
 }
 
@@ -46,14 +45,12 @@ async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUser'>> {
         tasksData, 
         rawLearningPaths, 
         currentUserLearningProgress, 
-        interests
     ] = await Promise.all([
         fetchCollection<User>('users'),
         fetchCollection<any>('projects'),
         fetchCollection<any>('tasks'),
         fetchCollection<any>('learningPaths'),
         fetchCollection<UserLearningProgress>('currentUserLearningProgress'),
-        fetchCollection<Interest>('interests'),
     ]);
 
     // Hydrate projects with user data for team members and discussions
@@ -89,7 +86,6 @@ async function readDataFromFirestore(): Promise<Omit<AppData, 'currentUser'>> {
         tasks,
         learningPaths,
         currentUserLearningProgress,
-        interests,
     };
 }
 
