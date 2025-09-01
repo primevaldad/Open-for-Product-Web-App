@@ -28,13 +28,15 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import type { User, Project, Task, LearningPath, UserLearningProgress } from "@/lib/types";
-import { getHydratedData } from "@/lib/data-cache";
+import { getActivityPageData } from "@/lib/data-cache";
 import ActivityClientPage from "./activity-client-page";
 import { switchUser } from "../actions/auth";
+import { updateTask, deleteTask } from "../actions/projects";
+import { completeModule } from "../actions/learning";
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
 export default async function ActivityPage() {
-  const { currentUser, projects, tasks, learningPaths, currentUserLearningProgress, users } = await getHydratedData();
+  const { currentUser, projects, tasks, learningPaths, currentUserLearningProgress, users } = await getActivityPageData();
 
   if (!currentUser) {
     return (
@@ -43,8 +45,6 @@ export default async function ActivityPage() {
       </div>
     );
   }
-
-  const myTasks = tasks.filter(task => task.assignedTo?.id === currentUser.id);
 
   const completedModulesData = (currentUserLearningProgress || []).flatMap(progress => 
     (progress.completedModules || []).map(moduleId => {
@@ -145,9 +145,11 @@ export default async function ActivityPage() {
 
         <main className="flex-1 overflow-auto p-4 md:p-6 grid md:grid-cols-2 gap-6">
             <ActivityClientPage
-                myTasks={myTasks}
+                myTasks={tasks}
                 completedModulesData={completedModulesData}
                 projects={projects}
+                updateTask={updateTask}
+                deleteTask={deleteTask}
             />
         </main>
       </SidebarInset>

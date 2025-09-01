@@ -21,14 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getHydratedData } from "@/lib/data-cache";
+import { getSettingsPageData } from "@/lib/data-cache";
 import SettingsForm from "./settings-form";
 import { updateUserSettings } from "../actions/settings";
 import { switchUser } from "../actions/auth";
 
 // This is now a server component that fetches the user and passes it to the form
 export default async function SettingsPage() {
-  const { currentUser, users } = await getHydratedData();
+  const { currentUser, users } = await getSettingsPageData();
 
   if (!currentUser) {
     return (

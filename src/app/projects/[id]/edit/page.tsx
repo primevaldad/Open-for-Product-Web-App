@@ -3,16 +3,15 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getHydratedData } from '@/lib/data-cache';
+import { getEditProjectPageData } from '@/lib/data-cache';
 import EditProjectForm from './edit-project-form';
 import { updateProject } from '@/app/actions/projects';
 
 // This is now a Server Component that fetches data and passes it to the form.
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
-  const { projects, currentUser } = await getHydratedData();
-  const project = projects.find((p) => p.id === params.id);
+  const { project, currentUser } = await getEditProjectPageData(params.id);
   
-  if (!project) {
+  if (!project || !currentUser) {
     notFound();
   }
 

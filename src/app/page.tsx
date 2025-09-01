@@ -25,13 +25,13 @@ import {
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { getHydratedData } from '@/lib/data-cache';
+import { getDashboardPageData } from '@/lib/data-cache';
 import HomeClientPage from "./home-client-page";
 import { switchUser } from "./actions/auth";
 
 // This is now a Server Component that fetches data and passes it to a client component.
 export default async function DashboardPage() {
-  const { currentUser, projects, users } = await getHydratedData();
+  const { currentUser, projects, users } = await getDashboardPageData();
   
   if (!currentUser) {
     return (
@@ -42,7 +42,7 @@ export default async function DashboardPage() {
   }
 
   const allPublishedProjects = projects.filter(p => p.status === 'published');
-  const suggestedProject = allPublishedProjects.length > 1 ? allPublishedProjects[1] : allPublishedProjects[0];
+  const suggestedProject = allPublishedProjects.length > 1 ? allPublishedProjects[1] : allPublishedProjects.length === 1 ? allPublishedProjects[0] : null;
   
   return (
     <div className="flex h-full min-h-screen w-full bg-background">

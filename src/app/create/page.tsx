@@ -21,14 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getHydratedData } from "@/lib/data-cache";
+import { getCreatePageData } from "@/lib/data-cache";
 import { CreateProjectForm } from "./create-project-form";
 import { publishProject, saveProjectDraft } from "../actions/projects";
 import { switchUser } from "../actions/auth";
 
 // The page is a Server Component responsible for fetching data and rendering the layout.
 export default async function CreateProjectPage() {
-    const { currentUser, users } = await getHydratedData();
+    const { currentUser, users } = await getCreatePageData();
 
     if (!currentUser) {
         return (

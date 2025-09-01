@@ -23,16 +23,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getHydratedData } from "@/lib/data-cache";
+import { getProjectPageData } from "@/lib/data-cache";
 import ProjectDetailClientPage from "./project-detail-client-page";
 import { addTask, addDiscussionComment, deleteTask, joinProject, updateTask } from "@/app/actions/projects";
 import { switchUser } from "@/app/actions/auth";
 
 // This is now a Server Component responsible for fetching data
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const { currentUser, projects, tasks, users } = await getHydratedData();
-
-  const project = projects.find((p) => p.id === params.id);
+  const { project, projectTasks, currentUser, allUsers } = await getProjectPageData(params.id);
   
   if (!project) {
     notFound();
@@ -46,8 +44,6 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         </div>
     );
   }
-  
-  const projectTasks = tasks.filter(t => t.projectId === project.id);
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -131,7 +127,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         project={project} 
         projectTasks={projectTasks}
         currentUser={currentUser}
-        allUsers={users}
+        allUsers={allUsers}
         switchUser={switchUser}
         joinProject={joinProject}
         addDiscussionComment={addDiscussionComment}

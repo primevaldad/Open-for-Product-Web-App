@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import type { Task, Project, Module } from "@/lib/types";
+import type { deleteTask, updateTask } from "@/app/actions/projects";
 
 interface CompletedModuleData {
     path: { id: string; title: string; };
@@ -22,9 +23,11 @@ interface ActivityClientPageProps {
     myTasks: Task[];
     completedModulesData: CompletedModuleData[];
     projects: Project[];
+    updateTask: typeof updateTask;
+    deleteTask: typeof deleteTask;
 }
 
-export default function ActivityClientPage({ myTasks, completedModulesData, projects }: ActivityClientPageProps) {
+export default function ActivityClientPage({ myTasks, completedModulesData, projects, updateTask, deleteTask }: ActivityClientPageProps) {
 
   return (
     <>
@@ -44,7 +47,7 @@ export default function ActivityClientPage({ myTasks, completedModulesData, proj
 
                 return (
                   <li key={task.id}>
-                    <EditTaskDialog task={task} isTeamMember={true} projectTeam={project.team}>
+                    <EditTaskDialog task={task} isTeamMember={true} projectTeam={project.team} updateTask={updateTask} deleteTask={deleteTask}>
                        <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                         <div className="flex-grow">
                           <p className="font-semibold">{task.title}</p>

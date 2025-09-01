@@ -26,12 +26,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { LearningPath, User } from "@/lib/types";
-import { getHydratedData } from "@/lib/data-cache";
+import { getLearningPageData } from "@/lib/data-cache";
 import { switchUser } from "../actions/auth";
 
 
 export default async function LearningPage() {
-    const { currentUser, learningPaths, users } = await getHydratedData();
+    const { currentUser, learningPaths, users } = await getLearningPageData();
 
     if (!currentUser) {
         return (
