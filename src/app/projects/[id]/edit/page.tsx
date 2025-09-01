@@ -3,9 +3,25 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getEditProjectPageData } from '@/lib/data-cache';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Project } from '@/lib/types';
+import { getCurrentUser } from '@/lib/data-cache';
 import EditProjectForm from './edit-project-form';
 import { updateProject } from '@/app/actions/projects';
+
+async function getEditProjectPageData(projectId: string) {
+    const currentUser = await getCurrentUser();
+    
+    const projectDocRef = doc(db, 'projects', projectId);
+    const projectDoc = await getDoc(projectDocRef);
+    
+    if (!projectDoc.exists()) return { project: null, currentUser };
+
+    const project = { id: projectDoc.id, ...projectDoc.data() } as Project;
+    
+    return { project, currentUser };
+}
 
 // This is now a Server Component that fetches data and passes it to the form.
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
@@ -15,7 +31,7 @@ export default async function EditProjectPage({ params }: { params: { id: string
     notFound();
   }
 
-  const isCurrentUserLead = project.team.some(member => member.user.id === currentUser?.id && member.role === 'lead');
+  const isCurrentUserLead = project.team.some(member => member.userId === currentUser?.id && member.role === 'lead');
 
   if (!isCurrentUserLead) {
     return (

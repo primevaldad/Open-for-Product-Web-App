@@ -21,10 +21,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCreatePageData } from "@/lib/data-cache";
+import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
 import { CreateProjectForm } from "./create-project-form";
 import { publishProject, saveProjectDraft } from "../actions/projects";
 import { switchUser } from "../actions/auth";
+
+async function getCreatePageData() {
+    const currentUser = await getCurrentUser();
+    const users = await getAllUsers();
+    return { currentUser, users };
+}
 
 // The page is a Server Component responsible for fetching data and rendering the layout.
 export default async function CreateProjectPage() {

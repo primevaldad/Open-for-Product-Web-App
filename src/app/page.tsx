@@ -10,6 +10,9 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Project, User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,9 +28,29 @@ import {
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { getDashboardPageData } from '@/lib/data-cache';
+import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
 import HomeClientPage from "./home-client-page";
 import { switchUser } from "./actions/auth";
+
+async function getDashboardPageData() {
+    const currentUser = await getCurrentUser();
+    const allUsers = await getAllUsers();
+
+    const projectsQuery = query(collection(db, 'projects'), where('status', '==', 'published'));
+    const rawProjectsSnapshot = await getDocs(projectsQuery);
+    const rawProjects = rawProjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Project);
+    
+    const projects = await Promise.all(
+        rawProjects.map(p => hydrateProjectTeam(p, allUsers))
+    );
+
+    return {
+        currentUser,
+        users: allUsers,
+        projects
+    }
+}
+
 
 // This is now a Server Component that fetches data and passes it to a client component.
 export default async function DashboardPage() {
@@ -41,8 +64,7 @@ export default async function DashboardPage() {
     );
   }
 
-  const allPublishedProjects = projects.filter(p => p.status === 'published');
-  const suggestedProject = allPublishedProjects.length > 1 ? allPublishedProjects[1] : allPublishedProjects.length === 1 ? allPublishedProjects[0] : null;
+  const suggestedProject = projects.length > 1 ? projects[1] : projects.length === 1 ? projects[0] : null;
   
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
@@ -145,10 +167,9 @@ export default async function DashboardPage() {
           <div className="mb-6">
             {suggestedProject && <SuggestSteps suggestedProject={suggestedProject} />}
           </div>
-          <HomeClientPage allPublishedProjects={allPublishedProjects} currentUser={currentUser} />
+          <HomeClientPage allPublishedProjects={projects} currentUser={currentUser} />
         </main>
       </SidebarInset>
     </div>
   );
 }
-    

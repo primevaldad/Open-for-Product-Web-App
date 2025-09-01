@@ -3,7 +3,8 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { db } from '@/lib/firebase-admin';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { UserLearningProgress } from '@/lib/types';
 
 
@@ -27,26 +28,20 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     const { userId, pathId, moduleId, completed } = validatedFields.data;
 
     try {
-        const progressDocRef = db.collection('currentUserLearningProgress').doc(`${userId}-${pathId}`);
-        const progressDoc = await progressDocRef.get();
+        const progressDocRef = doc(db, 'currentUserLearningProgress', `${userId}-${pathId}`);
+        const progressDoc = await getDoc(progressDocRef);
         
-        let userProgress: UserLearningProgress;
-
-        if (!progressDoc.exists) {
-            userProgress = { userId, pathId, completedModules: [] };
+        if (!progressDoc.exists()) {
+           if (completed) {
+                await setDoc(progressDocRef, { userId, pathId, completedModules: [moduleId] });
+           }
         } else {
-            userProgress = progressDoc.data() as UserLearningProgress;
+            if (completed) {
+                await updateDoc(progressDocRef, { completedModules: arrayUnion(moduleId) });
+            } else {
+                await updateDoc(progressDocRef, { completedModules: arrayRemove(moduleId) });
+            }
         }
-
-        const moduleIndex = userProgress.completedModules.indexOf(moduleId);
-
-        if (completed && moduleIndex === -1) {
-            userProgress.completedModules.push(moduleId);
-        } else if (!completed && moduleIndex !== -1) {
-            userProgress.completedModules.splice(moduleIndex, 1);
-        }
-        
-        await progressDocRef.set(userProgress, { merge: true });
 
         revalidatePath(`/learning/${pathId}/${moduleId}`);
         revalidatePath(`/learning/${pathId}`);

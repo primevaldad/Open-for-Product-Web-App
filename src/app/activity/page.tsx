@@ -28,11 +28,53 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import type { User, Project, Task, LearningPath, UserLearningProgress } from "@/lib/types";
-import { getActivityPageData } from "@/lib/data-cache";
+import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
 import ActivityClientPage from "./activity-client-page";
 import { switchUser } from "../actions/auth";
 import { updateTask, deleteTask } from "../actions/projects";
 import { completeModule } from "../actions/learning";
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { iconMap } from '@/lib/static-data';
+import { FlaskConical } from 'lucide-react';
+
+async function getActivityPageData() {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { currentUser: null, projects: [], tasks: [], learningPaths: [], currentUserLearningProgress: [], users: [] };
+    
+    const allUsers = await getAllUsers();
+    
+    const rawProjectsSnapshot = await getDocs(collection(db, 'projects'));
+    const rawProjects = rawProjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Project);
+    const projects = await Promise.all(
+        rawProjects.map(p => hydrateProjectTeam(p, allUsers))
+    );
+
+    const tasksQuery = query(collection(db, 'tasks'), where('assignedToId', '==', currentUser.id));
+    const myTasksSnapshot = await getDocs(tasksQuery);
+    const myTasks = myTasksSnapshot.docs.map(doc => {
+         const taskData = doc.data();
+         const assignedTo = allUsers.find(u => u.id === taskData.assignedToId); // Should always be currentUser
+         return { id: doc.id, ...taskData, assignedTo } as Task;
+    });
+
+    const progressQuery = query(collection(db, 'currentUserLearningProgress'), where('userId', '==', currentUser.id));
+    const progressSnapshot = await getDocs(progressQuery);
+    const currentUserLearningProgress = progressSnapshot.docs.map(doc => doc.data() as UserLearningProgress);
+
+    const rawLearningPathsSnapshot = await getDocs(collection(db, 'learningPaths'));
+    const learningPaths = rawLearningPathsSnapshot.docs.map((lp) => {
+        const lpData = lp.data();
+        return {
+            ...lpData,
+            id: lp.id,
+            Icon: iconMap[lpData.Icon as string] || FlaskConical,
+        }
+    }) as LearningPath[];
+
+    return { currentUser, projects, tasks: myTasks, learningPaths, currentUserLearningProgress, users: allUsers };
+}
+
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
 export default async function ActivityPage() {

@@ -26,8 +26,30 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { LearningPath, User } from "@/lib/types";
-import { getLearningPageData } from "@/lib/data-cache";
+import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
 import { switchUser } from "../actions/auth";
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { iconMap } from '@/lib/static-data';
+import { FlaskConical } from 'lucide-react';
+
+
+async function getLearningPageData() {
+    const currentUser = await getCurrentUser();
+    const allUsers = await getAllUsers();
+
+    const rawLearningPathsSnapshot = await getDocs(collection(db, 'learningPaths'));
+    const learningPaths = rawLearningPathsSnapshot.docs.map((lp) => {
+        const lpData = lp.data();
+        return {
+            ...lpData,
+            id: lp.id,
+            Icon: iconMap[lpData.Icon as string] || FlaskConical,
+        }
+    }) as LearningPath[];
+
+    return { currentUser, learningPaths, users: allUsers };
+}
 
 
 export default async function LearningPage() {

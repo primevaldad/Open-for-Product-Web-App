@@ -15,6 +15,7 @@ export type UserRole = 'lead' | 'participant';
 export type ProjectMember = {
   user: User;
   role: UserRole;
+  userId: string;
 };
 
 export type ProjectCategory = 'Creative' | 'Technical' | 'Community' | 'Business & Enterprise' | 'Learning & Research';
@@ -32,6 +33,7 @@ export type Discussion = {
   user: User;
   content: string;
   timestamp: string;
+  userId: string;
 };
 
 export type Project = {
@@ -43,9 +45,9 @@ export type Project = {
   timeline: string;
   contributionNeeds: string[];
   progress: number;
-  team: ProjectMember[];
+  team: Omit<ProjectMember, 'user'>[];
   votes: number;
-  discussions: Discussion[];
+  discussions: Omit<Discussion, 'user'>[];
   isExpertReviewed?: boolean;
   status: ProjectStatus;
   governance?: Governance;
@@ -60,6 +62,7 @@ export type Task = {
   description?: string;
   status: TaskStatus;
   assignedTo?: User;
+  assignedToId?: string;
   estimatedHours?: number;
 };
 

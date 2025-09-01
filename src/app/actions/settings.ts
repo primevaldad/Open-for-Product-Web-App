@@ -4,7 +4,8 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { db } from '@/lib/firebase-admin';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -33,14 +34,14 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   const { id, name, bio, avatarDataUrl } = validatedFields.data;
 
   try {
-     const userDocRef = db.collection('users').doc(id);
+     const userDocRef = doc(db, 'users', id);
      
      const updateData: any = { name, bio };
      if (avatarDataUrl) {
        updateData.avatarUrl = avatarDataUrl;
      }
      
-     await userDocRef.update(updateData);
+     await updateDoc(userDocRef, updateData);
 
     // Revalidate paths to reflect changes immediately across the app
     revalidatePath('/settings');
@@ -67,9 +68,9 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   const { id, name, bio, interests } = validatedFields.data;
 
   try {
-    const userDocRef = db.collection('users').doc(id);
+    const userDocRef = doc(db, 'users', id);
     
-    await userDocRef.update({
+    await updateDoc(userDocRef, {
       name,
       bio,
       interests,

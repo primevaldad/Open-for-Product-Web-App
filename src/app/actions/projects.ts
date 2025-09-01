@@ -5,9 +5,10 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectStatus, Task } from '@/lib/types';
-import { getHydratedData } from '@/lib/data-cache';
-import { db } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion, deleteDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { getCurrentUser } from '@/lib/data-cache';
+
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -62,8 +63,11 @@ async function handleProjectSubmission(
   
   const { name, tagline, description, category, contributionNeeds } = validatedFields.data;
   
-  const data = await getHydratedData();
-  const currentUser = data.users[data.currentUserIndex];
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+      return { success: false, error: "Could not find current user."};
+  }
+
 
   const newProjectData = {
     name,
@@ -77,10 +81,15 @@ async function handleProjectSubmission(
     votes: 0,
     discussions: [],
     status,
+    governance: {
+        contributorsShare: 75,
+        communityShare: 10,
+        sustainabilityShare: 15,
+    }
   };
 
   try {
-    const docRef = await db.collection('projects').add(newProjectData);
+    const docRef = await addDoc(collection(db, 'projects'), newProjectData);
     
     revalidatePath('/');
     revalidatePath('/create');
@@ -116,24 +125,26 @@ export async function publishProject(values: z.infer<typeof ProjectSchema>) {
 
 export async function joinProject(projectId: string) {
     try {
-        const data = await getHydratedData();
-        const currentUser = data.users[data.currentUserIndex];
-        const project = data.projects.find(p => p.id === projectId);
+        const currentUser = await getCurrentUser();
+        if (!currentUser) throw new Error("User not found");
 
-        if (!project) {
+        const projectDocRef = doc(db, 'projects', projectId);
+        const projectDoc = await getDoc(projectDocRef);
+
+        if (!projectDoc.exists()) {
           throw new Error("Project not found");
         }
 
-        const isAlreadyMember = project.team.some(member => member.user.id === currentUser.id);
+        const project = projectDoc.data() as Project;
+        const isAlreadyMember = project.team.some(member => member.userId === currentUser.id);
 
         if (isAlreadyMember) {
             console.log("User is already a member");
             return { success: true };
         }
 
-        const projectDocRef = db.collection('projects').doc(projectId);
-        await projectDocRef.update({
-            team: FieldValue.arrayUnion({ userId: currentUser.id, role: 'participant' as const })
+        await updateDoc(projectDocRef, {
+            team: arrayUnion({ userId: currentUser.id, role: 'participant' as const })
         });
 
 
@@ -162,15 +173,19 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     const { id, ...projectData } = validatedFields.data;
 
     try {
-        const data = await getHydratedData();
-        const currentUser = data.users[data.currentUserIndex];
-        const project = data.projects.find(p => p.id === id);
-        if (!project) {
+        const currentUser = await getCurrentUser();
+         if (!currentUser) throw new Error("User not found");
+
+        const projectDocRef = doc(db, 'projects', id);
+        const projectDoc = await getDoc(projectDocRef);
+
+        if (!projectDoc.exists()) {
             throw new Error("Project not found");
         }
-
+        
+        const project = projectDoc.data() as Project;
         const lead = project.team.find(m => m.role === 'lead');
-        if (!lead || lead.user.id !== currentUser.id) {
+        if (!lead || lead.userId !== currentUser.id) {
             throw new Error("Only the project lead can edit the project.");
         }
         
@@ -186,8 +201,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
             governance: projectData.governance,
         };
 
-        const projectDocRef = db.collection('projects').doc(id);
-        await projectDocRef.update(updatedData);
+        await updateDoc(projectDocRef, updatedData);
 
     } catch (error) {
         return {
@@ -216,14 +230,18 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
     const { projectId, title, description, status } = validatedFields.data;
 
     try {
-        const data = await getHydratedData();
-        const currentUser = data.users[data.currentUserIndex];
-        const project = data.projects.find(p => p.id === projectId);
-        if (!project) {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) throw new Error("User not found");
+
+        const projectDocRef = doc(db, 'projects', projectId);
+        const projectDoc = await getDoc(projectDocRef);
+
+        if (!projectDoc.exists()) {
             throw new Error("Associated project not found");
         }
-
-        const isMember = project.team.some(m => m.user.id === currentUser.id);
+        
+        const project = projectDoc.data() as Project;
+        const isMember = project.team.some(m => m.userId === currentUser.id);
         if (!isMember) {
             throw new Error("Only team members can add tasks.");
         }
@@ -235,7 +253,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
             status,
         };
 
-        await db.collection('tasks').add(newTaskData);
+        await addDoc(collection(db, 'tasks'), newTaskData);
 
     } catch (error) {
         return {
@@ -261,21 +279,23 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     const { id, projectId, ...taskData } = validatedFields.data;
 
     try {
-        const data = await getHydratedData();
-        const currentUser = data.users[data.currentUserIndex];
+        const currentUser = await getCurrentUser();
+        if (!currentUser) throw new Error("User not found");
         
-        const project = data.projects.find(p => p.id === projectId);
-        if (!project) {
+        const projectDocRef = doc(db, 'projects', projectId);
+        const projectDoc = await getDoc(projectDocRef);
+
+        if (!projectDoc.exists()) {
             throw new Error("Associated project not found");
         }
-
-        const isMember = project.team.some(m => m.user.id === currentUser.id);
+        const project = projectDoc.data() as Project;
+        const isMember = project.team.some(m => m.userId === currentUser.id);
         if (!isMember) {
             throw new Error("Only team members can edit tasks.");
         }
         
-        const taskDocRef = db.collection('tasks').doc(id);
-        await taskDocRef.update({ ...taskData });
+        const taskDocRef = doc(db, 'tasks', id);
+        await updateDoc(taskDocRef, { ...taskData });
 
 
     } catch (error) {
@@ -303,19 +323,22 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     const { id, projectId } = validatedFields.data;
     
     try {
-        const data = await getHydratedData();
-        const currentUser = data.users[data.currentUserIndex];
-        const project = data.projects.find(p => p.id === projectId);
-        if (!project) {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) throw new Error("User not found");
+
+        const projectDocRef = doc(db, 'projects', projectId);
+        const projectDoc = await getDoc(projectDocRef);
+        if (!projectDoc.exists()) {
             throw new Error("Associated project not found");
         }
+        const project = projectDoc.data() as Project;
 
-        const isMember = project.team.some(m => m.user.id === currentUser.id);
+        const isMember = project.team.some(m => m.userId === currentUser.id);
         if (!isMember) {
             throw new Error("Only team members can delete tasks.");
         }
 
-        await db.collection('tasks').doc(id).delete();
+        await deleteDoc(doc(db, 'tasks', id));
 
     } catch (error) {
         return {
@@ -336,18 +359,20 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
     const { projectId, userId, content } = validatedFields.data;
 
     try {
-        const data = await getHydratedData();
-        const project = data.projects.find(p => p.id === projectId);
-        if (!project) {
+        const projectDocRef = doc(db, 'projects', projectId);
+        const projectDoc = await getDoc(projectDocRef);
+        if (!projectDoc.exists()) {
             throw new Error("Project not found");
         }
+        const project = projectDoc.data() as Project;
         
-        const user = data.users.find(u => u.id === userId);
-        if (!user) {
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
             throw new Error("User not found");
         }
 
-        const isMember = project.team.some(m => m.user.id === userId);
+        const isMember = project.team.some(m => m.userId === userId);
         if (!isMember) {
             throw new Error("Only team members can add comments.");
         }
@@ -355,12 +380,11 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
         const newComment = {
             userId,
             content,
-            timestamp: new Date().toISOString(),
+            timestamp: Timestamp.now(),
         };
 
-        const projectDocRef = db.collection('projects').doc(projectId);
-        await projectDocRef.update({
-            discussions: FieldValue.arrayUnion(newComment)
+        await updateDoc(projectDocRef, {
+            discussions: arrayUnion(newComment)
         });
         
         revalidatePath(`/projects/${projectId}`);

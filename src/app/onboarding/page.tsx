@@ -1,14 +1,16 @@
 
-import { getHydratedData } from "@/lib/data-cache";
 import OnboardingForm from "./onboarding-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/lib/firebase-admin";
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from "@/lib/firebase";
 import type { User } from "@/lib/types";
 import { updateOnboardingInfo } from "../actions/settings";
 
 // This is now a Server Component that fetches data and passes it down.
 export default async function OnboardingPage() {
-  const userDocs = await db.collection('users').where('onboarded', '==', false).limit(1).get();
+  const usersCollection = collection(db, 'users');
+  const q = query(usersCollection, where('onboarded', '==', false), limit(1));
+  const userDocs = await getDocs(q);
   
   const newUser = userDocs.docs[0] ? { id: userDocs.docs[0].id, ...userDocs.docs[0].data() } as User : null;
 

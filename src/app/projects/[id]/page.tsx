@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 import {
   Sidebar,
@@ -23,10 +25,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getProjectPageData } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
 import ProjectDetailClientPage from "./project-detail-client-page";
 import { addTask, addDiscussionComment, deleteTask, joinProject, updateTask } from "@/app/actions/projects";
 import { switchUser } from "@/app/actions/auth";
+import type { Project, Task, User } from "@/lib/types";
+
+
+async function getProjectPageData(projectId: string) {
+    const currentUser = await getCurrentUser();
+    
+    const allUsersSnapshot = await getDocs(collection(db, 'users'));
+    const allUsers = allUsersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as User);
+
+    const projectDocRef = doc(db, 'projects', projectId);
+    const rawProjectDoc = await getDoc(projectDocRef);
+
+    if (!rawProjectDoc.exists()) return { project: null, projectTasks: [], currentUser, allUsers };
+
+    const project = await hydrateProjectTeam({ id: rawProjectDoc.id, ...rawProjectDoc.data() } as Project, allUsers);
+    
+    const tasksQuery = query(collection(db, 'tasks'), where('projectId', '==', projectId));
+    const tasksSnapshot = await getDocs(tasksQuery);
+    const projectTasks = tasksSnapshot.docs.map(doc => {
+        const taskData = doc.data();
+        const assignedTo = taskData.assignedToId ? allUsers.find(u => u.id === taskData.assignedToId) : undefined;
+        return { id: doc.id, ...taskData, assignedTo } as Task;
+    });
+
+    return { project, projectTasks, currentUser, allUsers };
+}
+
 
 // This is now a Server Component responsible for fetching data
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {

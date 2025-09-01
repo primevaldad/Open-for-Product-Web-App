@@ -24,8 +24,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { User, Project } from "@/lib/types";
-import { getDraftsPageData } from "@/lib/data-cache";
+import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
 import { switchUser } from "../actions/auth";
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+async function getDraftsPageData() {
+    const currentUser = await getCurrentUser();
+    const allUsers = await getAllUsers();
+    
+    const rawProjectsSnapshot = await getDocs(collection(db, 'projects'));
+    const rawProjects = rawProjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Project);
+
+    const projects = await Promise.all(
+        rawProjects.map(p => hydrateProjectTeam(p, allUsers))
+    );
+
+    return { currentUser, projects, users: allUsers };
+}
 
 // This is now a Server Component
 export default async function DraftsPage() {

@@ -6,7 +6,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { getLearningPathDetailPageData } from '@/lib/data-cache';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { LearningPath, UserLearningProgress } from '@/lib/types';
+import { iconMap } from '@/lib/static-data';
+import { FlaskConical } from 'lucide-react';
+
+async function getLearningPathDetailPageData(pathId: string) {
+    const pathDocRef = doc(db, 'learningPaths', pathId);
+    const rawPathDoc = await getDoc(pathDocRef);
+
+    if (!rawPathDoc.exists()) return { path: null, currentUserLearningProgress: [] };
+
+    const rawPathData = rawPathDoc.data();
+    const path = { 
+        ...rawPathData, 
+        id: rawPathDoc.id,
+        Icon: iconMap[rawPathData.Icon as string] || FlaskConical 
+    } as LearningPath;
+
+    const progressQuery = query(collection(db, 'currentUserLearningProgress'), where('pathId', '==', pathId));
+    const progressSnapshot = await getDocs(progressQuery);
+    const currentUserLearningProgress = progressSnapshot.docs.map(doc => doc.data() as UserLearningProgress);
+
+    return { path, currentUserLearningProgress };
+}
+
 
 // This is now a Server Component
 export default async function LearningPathDetailPage({ params }: { params: { id: string } }) {

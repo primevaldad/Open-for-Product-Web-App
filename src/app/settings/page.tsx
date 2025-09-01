@@ -21,10 +21,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getSettingsPageData } from "@/lib/data-cache";
+import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
 import SettingsForm from "./settings-form";
 import { updateUserSettings } from "../actions/settings";
 import { switchUser } from "../actions/auth";
+
+async function getSettingsPageData() {
+    const currentUser = await getCurrentUser();
+    const users = await getAllUsers();
+    return { currentUser, users };
+}
 
 // This is now a server component that fetches the user and passes it to the form
 export default async function SettingsPage() {
