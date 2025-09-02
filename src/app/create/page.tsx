@@ -21,20 +21,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
+import { getCurrentUser } from "@/lib/data-cache";
 import { CreateProjectForm } from "./create-project-form";
 import { publishProject, saveProjectDraft } from "../actions/projects";
-import { switchUser } from "../actions/auth";
 
 async function getCreatePageData() {
     const currentUser = await getCurrentUser();
-    const users = await getAllUsers();
-    return { currentUser, users };
+    return { currentUser };
 }
 
 // The page is a Server Component responsible for fetching data and rendering the layout.
 export default async function CreateProjectPage() {
-    const { currentUser, users } = await getCreatePageData();
+    const { currentUser } = await getCreatePageData();
 
     if (!currentUser) {
         return (
@@ -126,7 +124,7 @@ export default async function CreateProjectPage() {
                 <h1 className="text-lg font-semibold md:text-xl">
                     Publish a New Project
                 </h1>
-                <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
+                <UserNav currentUser={currentUser} />
                 </header>
                 <CreateProjectForm 
                     saveProjectDraft={saveProjectDraft}

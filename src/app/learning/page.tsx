@@ -27,8 +27,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { LearningPath, User, UserLearningProgress } from "@/lib/types";
-import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
-import { switchUser } from "../actions/auth";
+import { getCurrentUser } from "@/lib/data-cache";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
 import { mockLearningPaths, mockUserLearningProgress } from "@/lib/mock-data";
@@ -36,7 +35,6 @@ import { mockLearningPaths, mockUserLearningProgress } from "@/lib/mock-data";
 
 function getLearningPageData() {
     const currentUser = getCurrentUser();
-    const allUsers = getAllUsers();
     
     const learningPaths = mockLearningPaths.map((lp) => {
         return {
@@ -47,12 +45,12 @@ function getLearningPageData() {
 
     const userProgress = mockUserLearningProgress.filter(p => p.userId === currentUser?.id);
 
-    return { currentUser, learningPaths, users: allUsers, userProgress };
+    return { currentUser, learningPaths, userProgress };
 }
 
 
 export default function LearningPage() {
-    const { currentUser, learningPaths, users, userProgress } = getLearningPageData();
+    const { currentUser, learningPaths, userProgress } = getLearningPageData();
 
     if (!currentUser) {
         return (
@@ -144,7 +142,7 @@ export default function LearningPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             Learning Paths
           </h1>
-          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
+          <UserNav currentUser={currentUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

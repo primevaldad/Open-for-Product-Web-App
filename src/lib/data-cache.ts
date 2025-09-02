@@ -1,11 +1,13 @@
 
 import type { Project, User, Discussion, ProjectMember } from './types';
-import { mockUsers, mockProjects } from './mock-data';
+import { mockUsers } from './mock-data';
 
-// In a real app, the current user ID would be determined from the session.
-// For this prototype, we'll consistently use a hardcoded ID for stability.
+// In a real app, the current user ID would be determined from a session.
+// For this prototype, we'll consistently use a hardcoded ID to represent the logged-in user.
+// The user switcher is being removed, so we no longer need a function to get ALL users here.
 export function getCurrentUser(): User | null {
-    const user = mockUsers.find(u => u.id === 'u1');
+    // We will default to u1, but in a real app this would be dynamic based on the session
+    const user = mockUsers.find(u => u.id === 'u1'); 
     if (!user) {
         console.error("Could not find the default user (u1). Please ensure the mock data is correct.");
         return null;
@@ -13,12 +15,9 @@ export function getCurrentUser(): User | null {
     return user;
 }
 
-export function getAllUsers(): User[] {
-    return mockUsers;
-}
 
 export function hydrateProjectTeam(project: Project): Project {
-    const allUsers = getAllUsers();
+    const allUsers = mockUsers; // Still need all users to hydrate teams
 
     const team: ProjectMember[] = (project.team || []).map((m: any) => {
         const user = allUsers.find(u => u.id === m.userId);

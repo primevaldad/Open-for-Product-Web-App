@@ -24,23 +24,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { User, Project } from "@/lib/types";
-import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
-import { switchUser } from "../actions/auth";
+import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
 import { mockProjects } from "@/lib/mock-data";
 
 
 function getDraftsPageData() {
     const currentUser = getCurrentUser();
-    const allUsers = getAllUsers();
     
     const projects = mockProjects.map(p => hydrateProjectTeam(p));
 
-    return { currentUser, projects, users: allUsers };
+    return { currentUser, projects };
 }
 
 // This is now a Server Component
 export default function DraftsPage() {
-  const { currentUser, projects, users } = getDraftsPageData();
+  const { currentUser, projects } = getDraftsPageData();
 
   if (!currentUser) {
     // This can be a loading component or a redirect in a real app
@@ -135,7 +133,7 @@ export default function DraftsPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             My Drafts
           </h1>
-          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
+          <UserNav currentUser={currentUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

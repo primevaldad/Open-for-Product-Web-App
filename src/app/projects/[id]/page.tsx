@@ -23,21 +23,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser, hydrateProjectTeam, getAllUsers } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
 import ProjectDetailClientPage from "./project-detail-client-page";
 import { addTask, addDiscussionComment, deleteTask, joinProject, updateTask } from "@/app/actions/projects";
-import { switchUser } from "@/app/actions/auth";
 import type { Project, Task, User } from "@/lib/types";
-import { mockProjects, mockTasks } from "@/lib/mock-data";
+import { mockProjects, mockTasks, mockUsers } from "@/lib/mock-data";
 
 
 function getProjectPageData(projectId: string) {
     const currentUser = getCurrentUser();
-    const allUsers = getAllUsers();
+    const allUsers = mockUsers;
 
     const projectData = mockProjects.find(p => p.id === projectId);
 
-    if (!projectData) return { project: null, projectTasks: [], currentUser, allUsers };
+    if (!projectData) return { project: null, projectTasks: [], currentUser };
 
     const project = hydrateProjectTeam(projectData);
     
@@ -49,13 +48,13 @@ function getProjectPageData(projectId: string) {
             return { ...t, description: t.description ?? '', assignedTo };
         }) as Task[];
 
-    return { project, projectTasks, currentUser, allUsers };
+    return { project, projectTasks, currentUser };
 }
 
 
 // This is now a Server Component responsible for fetching data
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const { project, projectTasks, currentUser, allUsers } = getProjectPageData(params.id);
+  const { project, projectTasks, currentUser } = getProjectPageData(params.id);
   
   if (!project) {
     notFound();
@@ -152,8 +151,6 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         project={project} 
         projectTasks={projectTasks}
         currentUser={currentUser}
-        allUsers={allUsers}
-        switchUser={switchUser}
         joinProject={joinProject}
         addDiscussionComment={addDiscussionComment}
         addTask={addTask}

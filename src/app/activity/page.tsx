@@ -24,19 +24,18 @@ import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User, Project, Task, LearningPath, UserLearningProgress, Module } from "@/lib/types";
-import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
 import ActivityClientPage from "./activity-client-page";
-import { switchUser } from "../actions/auth";
 import { updateTask, deleteTask } from "../actions/projects";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
-import { mockProjects, mockTasks, mockUserLearningProgress, mockLearningPaths } from "@/lib/mock-data";
+import { mockProjects, mockTasks, mockUserLearningProgress, mockLearningPaths, mockUsers } from "@/lib/mock-data";
 
 function getActivityPageData() {
     const currentUser = getCurrentUser();
-    if (!currentUser) return { currentUser: null, projects: [], myTasks: [], learningPaths: [], userProgress: [], allUsers: [] };
+    if (!currentUser) return { currentUser: null, projects: [], myTasks: [], learningPaths: [], userProgress: [] };
     
-    const allUsers = getAllUsers();
+    const allUsers = mockUsers;
     
     const projects = mockProjects.map(p => hydrateProjectTeam(p));
 
@@ -54,13 +53,13 @@ function getActivityPageData() {
         Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
     })) as LearningPath[];
 
-    return { currentUser, projects, myTasks, learningPaths, userProgress, allUsers };
+    return { currentUser, projects, myTasks, learningPaths, userProgress };
 }
 
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
 export default function ActivityPage() {
-  const { currentUser, projects, myTasks, learningPaths, userProgress, allUsers } = getActivityPageData();
+  const { currentUser, projects, myTasks, learningPaths, userProgress } = getActivityPageData();
 
   if (!currentUser) {
     return (
@@ -164,7 +163,7 @@ export default function ActivityPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             My Activity
           </h1>
-          <UserNav currentUser={currentUser} allUsers={allUsers} switchUser={switchUser} />
+          <UserNav currentUser={currentUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6 grid md:grid-cols-2 gap-6">

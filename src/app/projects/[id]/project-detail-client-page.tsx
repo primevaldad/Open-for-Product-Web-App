@@ -45,7 +45,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { formatDistanceToNow } from 'date-fns';
 import type { addDiscussionComment, joinProject, addTask, updateTask, deleteTask } from "@/app/actions/projects";
-import type { switchUser } from "@/app/actions/auth";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -96,8 +95,6 @@ interface ProjectDetailClientPageProps {
     project: Project;
     projectTasks: Task[];
     currentUser: User;
-    allUsers: User[];
-    switchUser: typeof switchUser;
     joinProject: typeof joinProject;
     addDiscussionComment: typeof addDiscussionComment;
     addTask: typeof addTask;
@@ -108,9 +105,7 @@ interface ProjectDetailClientPageProps {
 export default function ProjectDetailClientPage({ 
     project, 
     projectTasks, 
-    currentUser, 
-    allUsers,
-    switchUser,
+    currentUser,
     joinProject,
     addDiscussionComment,
     addTask,
@@ -182,7 +177,7 @@ export default function ProjectDetailClientPage({
                 {isPending ? 'Joining...' : 'Join Project'}
               </Button>
              )}
-             <UserNav currentUser={currentUser} allUsers={allUsers} switchUser={switchUser} />
+             <UserNav currentUser={currentUser} />
           </div>
         </header>
 

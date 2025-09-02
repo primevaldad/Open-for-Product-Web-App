@@ -26,14 +26,12 @@ import {
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { getCurrentUser, getAllUsers, hydrateProjectTeam } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
 import HomeClientPage from "./home-client-page";
-import { switchUser } from "./actions/auth";
 import { mockProjects } from "@/lib/mock-data";
 
 function getDashboardPageData() {
     const currentUser = getCurrentUser();
-    const allUsers = getAllUsers();
     
     const projects = mockProjects
         .filter(p => p.status === 'published')
@@ -41,7 +39,6 @@ function getDashboardPageData() {
 
     return {
         currentUser,
-        users: allUsers,
         projects
     }
 }
@@ -49,7 +46,7 @@ function getDashboardPageData() {
 
 // This is now a Server Component that fetches data and passes it to a client component.
 export default function DashboardPage() {
-  const { currentUser, projects, users } = getDashboardPageData();
+  const { currentUser, projects } = getDashboardPageData();
   
   if (!currentUser) {
     return (
@@ -155,7 +152,7 @@ export default function DashboardPage() {
               />
             </div>
           </div>
-          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
+          <UserNav currentUser={currentUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

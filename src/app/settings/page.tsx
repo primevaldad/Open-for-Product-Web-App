@@ -21,20 +21,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
+import { getCurrentUser } from "@/lib/data-cache";
 import SettingsForm from "./settings-form";
 import { updateUserSettings } from "../actions/settings";
-import { switchUser } from "../actions/auth";
 
 async function getSettingsPageData() {
     const currentUser = await getCurrentUser();
-    const users = await getAllUsers();
-    return { currentUser, users };
+    return { currentUser };
 }
 
 // This is now a server component that fetches the user and passes it to the form
 export default async function SettingsPage() {
-  const { currentUser, users } = await getSettingsPageData();
+  const { currentUser } = await getSettingsPageData();
 
   if (!currentUser) {
     return (
@@ -126,7 +124,7 @@ export default async function SettingsPage() {
           <h1 className="text-lg font-semibold md:text-xl">
             Settings
           </h1>
-          <UserNav currentUser={currentUser} allUsers={users} switchUser={switchUser} />
+          <UserNav currentUser={currentUser} />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">

@@ -13,37 +13,19 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CreditCard, LogOut, Settings, User as UserIcon, Users } from "lucide-react"
+import { CreditCard, LogOut, Settings, User as UserIcon } from "lucide-react"
 import Link from "next/link"
-import { useTransition } from "react";
-import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
-import type { switchUser } from "@/app/actions/auth";
 
 interface UserNavProps {
   currentUser: User;
-  allUsers: User[];
-  switchUser: typeof switchUser;
 }
 
-export function UserNav({ currentUser, allUsers, switchUser }: UserNavProps) {
-  const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
-
-  const handleUserSwitch = (userId: string) => {
-    startTransition(async () => {
-        const result = await switchUser({ userId });
-        if (result?.error) {
-            toast({ variant: 'destructive', title: 'Error', description: result.error });
-        }
-    });
-  }
+export function UserNav({ currentUser }: UserNavProps) {
 
   return (
     <DropdownMenu>
@@ -79,22 +61,6 @@ export function UserNav({ currentUser, allUsers, switchUser }: UserNavProps) {
               <span>Settings</span>
             </DropdownMenuItem>
           </Link>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-         <DropdownMenuGroup>
-            <DropdownMenuLabel>
-                <div className="flex items-center">
-                    <Users className="mr-2 h-4 w-4" />
-                    <span>Switch User</span>
-                </div>
-            </DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={currentUser.id} onValueChange={handleUserSwitch}>
-                 {allUsers.map(u => (
-                    <DropdownMenuRadioItem key={u.id} value={u.id} disabled={isPending}>
-                        {u.name}
-                    </DropdownMenuRadioItem>
-                 ))}
-            </DropdownMenuRadioGroup>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
