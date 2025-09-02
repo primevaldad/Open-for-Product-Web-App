@@ -11,6 +11,17 @@ const UserSettingsSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
   bio: z.string().optional(),
   avatarDataUrl: z.string().optional().nullable(),
+  email: z.string().email({ message: "Please enter a valid email."}),
+  password: z.string().min(6, { message: "Password must be at least 6 characters."}).optional().or(z.literal('')),
+  passwordConfirmation: z.string().optional(),
+}).refine(data => {
+    if (data.password && data.password !== data.passwordConfirmation) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Passwords do not match",
+    path: ["passwordConfirmation"],
 });
 
 const OnboardingSchema = z.object({
@@ -24,13 +35,17 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   const validatedFields = UserSettingsSchema.safeParse(values);
 
   if (!validatedFields.success) {
+    // A bit of a hack to get the password confirmation error to show up
+    const zodError = validatedFields.error;
+    const confirmationError = zodError.errors.find(e => e.path.includes('passwordConfirmation'));
+
     return {
       success: false,
-      error: "Invalid data provided.",
+      error: confirmationError ? confirmationError.message : "Invalid data provided.",
     };
   }
 
-  const { id, name, bio, avatarDataUrl } = validatedFields.data;
+  const { id, name, bio, avatarDataUrl, email } = validatedFields.data;
 
   const userIndex = mockUsers.findIndex(u => u.id === id);
   if (userIndex === -1) {
@@ -40,6 +55,12 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   const user = mockUsers[userIndex];
   user.name = name;
   user.bio = bio;
+  user.email = email;
+
+  // In a real app, you would hash the password here.
+  // We are not storing passwords in the mock data for this prototype.
+  console.log("Password change requested, but not stored in mock data.");
+  
   if (avatarDataUrl) {
     user.avatarUrl = avatarDataUrl;
   }

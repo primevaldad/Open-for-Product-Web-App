@@ -7,6 +7,7 @@ export const mockUsers: User[] = [
     {
         id: 'u1',
         name: 'Alex Doe',
+        email: 'alex.doe@example.com',
         avatarUrl: 'https://picsum.photos/id/1005/100/100',
         bio: 'Creative full-stack developer with a passion for building beautiful and functional user experiences. Eager to contribute to open-source and learn from a diverse community.',
         interests: ['UI/UX Design', 'Frontend Development', 'Community Management'],
@@ -15,6 +16,7 @@ export const mockUsers: User[] = [
     {
         id: 'u2',
         name: 'Sam Smith',
+        email: 'sam.smith@example.com',
         avatarUrl: 'https://picsum.photos/id/1012/100/100',
         bio: 'Backend engineer focused on scalable systems and data architecture. Loves tackling complex problems and mentoring junior developers.',
         interests: ['Backend Development', 'Data Science', 'DevOps'],
@@ -23,6 +25,7 @@ export const mockUsers: User[] = [
     {
         id: 'u3',
         name: 'Jordan Lee',
+        email: 'jordan.lee@example.com',
         avatarUrl: 'https://picsum.photos/id/1027/100/100',
         bio: 'Product manager with a knack for turning great ideas into successful products. Believes in user-centric design and agile methodologies.',
         interests: ['Product Management', 'Marketing', 'UI/UX Design'],

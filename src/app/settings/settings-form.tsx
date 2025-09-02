@@ -22,7 +22,20 @@ const SettingsSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
   bio: z.string().optional(),
   avatarDataUrl: z.string().optional().nullable(),
+  email: z.string().email({ message: "Please enter a valid email."}),
+  password: z.string().min(6, { message: "Password must be at least 6 characters."}).optional().or(z.literal('')),
+  passwordConfirmation: z.string().optional(),
+}).refine(data => {
+    // Only require confirmation if password is being changed
+    if (data.password && data.password !== data.passwordConfirmation) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Passwords do not match",
+    path: ["passwordConfirmation"],
 });
+
 
 type SettingsFormValues = z.infer<typeof SettingsSchema>;
 
@@ -42,6 +55,9 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
         name: currentUser.name || "",
         bio: currentUser.bio || "",
         avatarDataUrl: currentUser.avatarUrl,
+        email: currentUser.email || 'user@example.com',
+        password: '',
+        passwordConfirmation: '',
     }
   });
 
@@ -61,6 +77,7 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
           title: "Settings Saved",
           description: "Your changes have been successfully saved.",
         });
+        form.reset({ ...values, password: '', passwordConfirmation: '' });
       } else {
          toast({
           variant: "destructive",
@@ -151,15 +168,49 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
                 <CardHeader>
                     <CardTitle>Account</CardTitle>
                     <CardDescription>
-                    Update your account settings.
+                    Update your account settings. Leave password fields blank to keep your current password.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" defaultValue={currentUser.id.includes('u1') ? 'alex.doe@example.com' : 'user@example.com'} disabled />
-                    </div>
-                    <Button variant="outline" disabled>Change Password</Button>
+                    <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                    <Input type="email" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>New Password</FormLabel>
+                                <FormControl>
+                                    <Input type="password" {...field} placeholder="••••••••" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="passwordConfirmation"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Confirm New Password</FormLabel>
+                                <FormControl>
+                                    <Input type="password" {...field} placeholder="••••••••" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </CardContent>
                 </Card>
                 
