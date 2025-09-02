@@ -3,42 +3,44 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronLeft } from 'lucide-react';
+import { CheckCircle, ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import type { LearningPath, UserLearningProgress } from '@/lib/types';
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
-import { mockLearningPaths, mockUserLearningProgress } from '@/lib/mock-data';
+import { mockLearningPaths, mockUserLearningProgress, mockUsers } from '@/lib/mock-data';
+import { getCurrentUser } from '@/lib/data-cache';
 
 function getLearningPathDetailPageData(pathId: string) {
+    const currentUser = getCurrentUser();
     const pathData = mockLearningPaths.find(p => p.id === pathId);
 
-    if (!pathData) return { path: null, currentUserLearningProgress: [] };
+    if (!pathData || !currentUser) return { path: null, userProgress: undefined };
     
     const path = {
         ...pathData,
         Icon: iconMap[pathData.category as keyof typeof iconMap] || FlaskConical,
     } as LearningPath;
     
-    const currentUserLearningProgress = mockUserLearningProgress.filter(p => p.pathId === pathId);
+    const userProgress = mockUserLearningProgress.find(p => p.userId === currentUser.id && p.pathId === pathId);
 
-    return { path, currentUserLearningProgress };
+    return { path, userProgress };
 }
 
 
 // This is now a Server Component
 export default function LearningPathDetailPage({ params }: { params: { id: string } }) {
-  const { path, currentUserLearningProgress } = getLearningPathDetailPageData(params.id);
+  const { path, userProgress } = getLearningPathDetailPageData(params.id);
 
   if (!path) {
     notFound();
   }
 
-  const userProgress = (currentUserLearningProgress || []).find(p => p.pathId === path.id);
   const completedModules = userProgress?.completedModules.length ?? 0;
   const totalModules = path.modules.length;
   const progressPercentage = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;
+  const isCompleted = totalModules > 0 && completedModules === totalModules;
   const firstModuleId = path.modules[0]?.id;
 
   return (
@@ -49,9 +51,17 @@ export default function LearningPathDetailPage({ params }: { params: { id: strin
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-lg font-semibold md:text-xl">
-          {path.title}
-        </h1>
+        <div className="flex-1">
+            <h1 className="text-lg font-semibold md:text-xl">
+                {path.title}
+            </h1>
+        </div>
+        {isCompleted && (
+            <div className="flex items-center gap-2 text-lg font-semibold text-green-600">
+                <CheckCircle className="h-6 w-6" />
+                <span>Path Completed!</span>
+            </div>
+        )}
       </header>
       <main className="flex-1 overflow-auto p-4 md:p-6">
          <Card className="mx-auto max-w-3xl">
@@ -93,7 +103,7 @@ export default function LearningPathDetailPage({ params }: { params: { id: strin
              {firstModuleId && (
               <Link href={`/learning/${path.id}/${firstModuleId}`}>
                 <Button size="lg" className="w-full">
-                  {completedModules > 0 ? "Continue Path" : "Enroll in Path"}
+                  {isCompleted ? "Review Path" : completedModules > 0 ? "Continue Path" : "Enroll in Path"}
                 </Button>
               </Link>
             )}

@@ -2,6 +2,7 @@
 import {
   Activity,
   BookOpen,
+  CheckCircle,
   FilePlus2,
   FolderKanban,
   Home,
@@ -25,12 +26,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { LearningPath, User } from "@/lib/types";
+import type { LearningPath, User, UserLearningProgress } from "@/lib/types";
 import { getCurrentUser, getAllUsers } from "@/lib/data-cache";
 import { switchUser } from "../actions/auth";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
-import { mockLearningPaths } from "@/lib/mock-data";
+import { mockLearningPaths, mockUserLearningProgress } from "@/lib/mock-data";
 
 
 function getLearningPageData() {
@@ -44,12 +45,14 @@ function getLearningPageData() {
         }
     }) as LearningPath[];
 
-    return { currentUser, learningPaths, users: allUsers };
+    const userProgress = mockUserLearningProgress.filter(p => p.userId === currentUser?.id);
+
+    return { currentUser, learningPaths, users: allUsers, userProgress };
 }
 
 
 export default function LearningPage() {
-    const { currentUser, learningPaths, users } = getLearningPageData();
+    const { currentUser, learningPaths, users, userProgress } = getLearningPageData();
 
     if (!currentUser) {
         return (
@@ -150,15 +153,22 @@ export default function LearningPage() {
             <p className="text-muted-foreground">Gain new skills by contributing to real projects. As you reach milestones, new paths unlock.</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {learningPaths.map((path) => (
+            {learningPaths.map((path) => {
+              const progress = userProgress.find(p => p.pathId === path.id);
+              const isCompleted = progress && progress.completedModules.length === path.modules.length && path.modules.length > 0;
+
+              return (
               <Link key={path.id} href={path.isLocked ? '#' : `/learning/${path.id}`} className={cn(path.isLocked && "pointer-events-none")}>
-                <Card className={cn("flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1", path.isLocked && "bg-muted/50")}>
+                <Card className={cn("flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1", path.isLocked && "bg-muted/50", isCompleted && "border-primary/50")}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                           <path.Icon className="h-6 w-6 text-primary" />
                       </div>
-                      {path.isLocked && <Badge variant="secondary"> <Lock className="mr-1 h-3 w-3" /> Locked</Badge>}
+                      <div className="flex gap-2">
+                        {isCompleted && <Badge variant="secondary" className="border-green-500/50 bg-green-500/10 text-green-700"> <CheckCircle className="mr-1 h-3 w-3" /> Completed</Badge>}
+                        {path.isLocked && <Badge variant="secondary"> <Lock className="mr-1 h-3 w-3" /> Locked</Badge>}
+                      </div>
                     </div>
                     <CardTitle className="pt-4">{path.title}</CardTitle>
                     <Badge variant="outline" className="w-fit">{path.category}</Badge>
@@ -169,12 +179,12 @@ export default function LearningPage() {
                   <CardFooter className="flex justify-between">
                     <span className="text-sm font-medium text-muted-foreground">{path.duration}</span>
                     <Button asChild disabled={path.isLocked}>
-                        <span>Start Path</span>
+                        <span>{isCompleted ? "Review Path" : "Start Path"}</span>
                     </Button>
                   </CardFooter>
                 </Card>
               </Link>
-            ))}
+            )})}
           </div>
         </main>
       </SidebarInset>
