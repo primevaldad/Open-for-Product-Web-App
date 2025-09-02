@@ -78,7 +78,7 @@ export type LearningPath = {
   id: string;
   title: string;
   description: string;
-  category: string;
+  category: ProjectCategory;
   duration: string;
   Icon: LucideIcon;
   isLocked?: boolean;

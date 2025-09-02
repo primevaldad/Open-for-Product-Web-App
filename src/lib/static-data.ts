@@ -1,6 +1,6 @@
 
-import type { Interest } from './types';
-import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
+import type { Interest, ProjectCategory } from './types';
+import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical, type LucideIcon } from 'lucide-react';
 
 
 // This file contains static data that is safe to be shared between server and client components.
@@ -25,3 +25,11 @@ export const projectCategories = [
     { name: 'Business & Enterprise', icon: Briefcase },
     { name: 'Learning & Research', icon: FlaskConical },
 ] as const;
+
+export const iconMap: Record<ProjectCategory, LucideIcon> = {
+    'Creative': Code,
+    'Technical': BookText,
+    'Community': UsersIcon,
+    'Business & Enterprise': Briefcase,
+    'Learning & Research': FlaskConical,
+};

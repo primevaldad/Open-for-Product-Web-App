@@ -1,6 +1,5 @@
 
-import type { User, Project, Task, LearningPath, UserLearningProgress, Interest, Module } from './types';
-import { iconMap } from './static-data';
+import type { User, Project, Task, LearningPath, UserLearningProgress, Interest, Module, ProjectCategory } from './types';
 import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical } from 'lucide-react';
 
 
