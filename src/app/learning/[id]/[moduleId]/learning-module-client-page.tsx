@@ -77,6 +77,22 @@ export default function LearningModuleClientPage({
 
   const isCompleted = userProgress?.completedModules.includes(module.id) ?? false;
   
+  // Effect to auto-enroll user if they visit a module without having any progress for the path.
+  useEffect(() => {
+    if (!userProgress && currentUser) {
+      // This creates the progress record, effectively "enrolling" them.
+      // We pass completed: false because they haven't completed this module yet.
+      startTransition(async () => {
+        await completeModule({ 
+          userId: currentUser.id, 
+          pathId: path.id, 
+          moduleId: module.id, 
+          completed: false 
+        });
+      });
+    }
+  }, [userProgress, currentUser, path.id, module.id, completeModule]);
+
   const handleCompletionToggle = (checked: boolean) => {
     startTransition(async () => {
       const result = await completeModule({ 
