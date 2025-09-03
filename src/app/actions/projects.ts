@@ -103,27 +103,18 @@ async function handleProjectSubmission(
   if (status === 'draft') {
       revalidatePath('/drafts');
   }
+  // Revalidate the new project path immediately after creation.
   revalidatePath(`/projects/${newProjectId}`);
 
   return { success: true, projectId: newProjectId };
 }
 
 export async function saveProjectDraft(values: z.infer<typeof ProjectSchema>) {
-    const result = await handleProjectSubmission(values, 'draft');
-    if (result.success) {
-        redirect('/drafts');
-    }
-    return result;
+    return await handleProjectSubmission(values, 'draft');
 }
 
 export async function publishProject(values: z.infer<typeof ProjectSchema>) {
-    const result = await handleProjectSubmission(values, 'published');
-    if (result.success && result.projectId) {
-        // Revalidate the new project path before redirecting
-        revalidatePath(`/projects/${result.projectId}`);
-        redirect(`/projects/${result.projectId}`);
-    }
-    return result;
+    return await handleProjectSubmission(values, 'published');
 }
 
 export async function joinProject(projectId: string) {
@@ -145,6 +136,7 @@ export async function joinProject(projectId: string) {
     console.log("Added user to project team in mock data (in-memory, will reset on server restart)");
 
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/', 'layout'); // To update project cards potentially seen by others
     return { success: true };
 }
 
@@ -169,7 +161,6 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     
     project.team.push({ userId, role });
     
-    // Add a notification for the invited user
     const invitedUser = mockUsers.find(u => u.id === userId);
     if (invitedUser) {
         if (!invitedUser.notifications) {
@@ -186,8 +177,7 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     console.log("Added new member to project and created notification (in-memory).");
 
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath('/', 'layout'); // Revalidate layout to show notification indicator
-
+    revalidatePath('/', 'layout'); // Revalidate layout to show notification indicator for the invited user
     return { success: true };
 }
 
@@ -233,9 +223,11 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     mockProjects[projectIndex] = updatedData;
     console.log("Updated project in mock data (in-memory, will reset on server restart)");
 
-    revalidatePath('/');
+    // Systemic Fix: Revalidate all paths where project data might be displayed.
+    revalidatePath('/'); // Home page project cards
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
+    revalidatePath('/drafts');
     
     return { success: true };
 }
@@ -308,6 +300,7 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     console.log("Updated task in mock data (in-memory, will reset on server restart)");
 
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/activity'); // Revalidate activity page as well
     return { success: true };
 }
 
@@ -341,6 +334,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     }
 
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/activity');
     return { success: true };
 }
 

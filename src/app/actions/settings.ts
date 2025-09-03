@@ -67,8 +67,8 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   mockUsers[userIndex] = user;
   console.log("Updated user settings in mock data (in-memory, will reset on server restart)");
 
-  // Revalidate all paths that might display user information to ensure data consistency.
-  // This is the systemic fix: revalidate the entire layout to catch all instances of user data.
+  // Systemic Fix: Revalidate the entire application layout to ensure user data (like name in the UserNav)
+  // is updated everywhere. This is the most robust way to handle globally-used data.
   revalidatePath('/', 'layout');
   
   return { success: true };
@@ -97,8 +97,9 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   mockUsers[userIndex] = user;
   console.log("Updated onboarding info in mock data (in-memory, will reset on server restart)");
 
-  revalidatePath(`/profile/${id}`);
-  revalidatePath('/onboarding');
+  // Revalidate the entire layout to ensure the user is no longer considered "new"
+  revalidatePath('/', 'layout');
   
-  redirect('/profile');
+  // No redirect from the server action. This will be handled by the client form.
+  return { success: true };
 }

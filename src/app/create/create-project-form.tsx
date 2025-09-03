@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useTransition, type FC } from "react";
+import { useRouter } from "next/navigation";
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -26,12 +27,13 @@ const ProjectSchema = z.object({
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
 
 interface CreateProjectFormProps {
-    saveProjectDraft: (values: ProjectFormValues) => Promise<any>;
-    publishProject: (values: ProjectFormValues) => Promise<any>;
+    saveProjectDraft: (values: ProjectFormValues) => Promise<{ success: boolean; error?: string; projectId?: string; }>;
+    publishProject: (values: ProjectFormValues) => Promise<{ success: boolean; error?: string; projectId?: string; }>;
 }
 
 export const CreateProjectForm: FC<CreateProjectFormProps> = ({ saveProjectDraft, publishProject }) => {
   const { toast } = useToast();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<ProjectFormValues>({
@@ -51,6 +53,7 @@ export const CreateProjectForm: FC<CreateProjectFormProps> = ({ saveProjectDraft
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Draft Saved!', description: 'Your project has been saved as a draft.' });
+        router.push('/drafts');
       }
     });
   };
@@ -58,7 +61,10 @@ export const CreateProjectForm: FC<CreateProjectFormProps> = ({ saveProjectDraft
   const handlePublish = (values: ProjectFormValues) => {
     startTransition(async () => {
       const result = await publishProject(values);
-       if (result?.error) {
+       if (result.success && result.projectId) {
+         toast({ title: 'Project Published!', description: 'Your project is now live.' });
+         router.push(`/projects/${result.projectId}`);
+      } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
     });
@@ -156,10 +162,10 @@ export const CreateProjectForm: FC<CreateProjectFormProps> = ({ saveProjectDraft
                 )}
               />
               <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={form.handleSubmit(handleSaveDraft)} disabled={isPending}>
+                  <Button type="button" variant="outline" onClick={form.handleSubmit(handleSaveDraft)} disabled={isPending}>
                     {isPending ? "Saving..." : "Save Draft"}
                   </Button>
-                  <Button onClick={form.handleSubmit(handlePublish)} disabled={isPending}>
+                  <Button type="button" onClick={form.handleSubmit(handlePublish)} disabled={isPending}>
                     {isPending ? "Publishing..." : "Publish Project"}
                   </Button>
               </div>

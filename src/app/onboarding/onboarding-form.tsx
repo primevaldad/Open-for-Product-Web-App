@@ -52,7 +52,7 @@ type OnboardingFormValues = z.infer<typeof onboardingSchema>;
 
 interface OnboardingFormProps {
     newUser: User;
-    updateOnboardingInfo: typeof updateOnboardingInfo;
+    updateOnboardingInfo: (values: OnboardingFormValues & { id: string }) => Promise<{ success: boolean; error?: string }>;
 }
 
 export default function OnboardingForm({ newUser, updateOnboardingInfo }: OnboardingFormProps) {
@@ -78,6 +78,8 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
                 title: "Welcome to Open for Product!",
                 description: "Your profile has been set up.",
             });
+            // Client-side navigation after successful server action
+            router.push('/profile');
         } else {
             toast({
                 variant: "destructive",
