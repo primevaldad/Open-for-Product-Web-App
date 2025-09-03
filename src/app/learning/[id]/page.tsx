@@ -13,6 +13,7 @@ import { mockLearningPaths, mockUserLearningProgress, mockUsers } from '@/lib/mo
 import { getCurrentUser } from '@/lib/data-cache';
 import LearningModuleListItem from '@/components/learning-module-list-item';
 import { Separator } from '@/components/ui/separator';
+import React from 'react';
 
 function getLearningPathDetailPageData(pathId: string) {
     const currentUser = getCurrentUser();
@@ -91,15 +92,14 @@ export default function LearningPathDetailPage({ params }: { params: { id: strin
                 <h3 className="text-xl font-semibold mb-4">Modules</h3>
                 <div className="space-y-2">
                     {path.modules.map((module, index) => (
-                        <>
+                        <React.Fragment key={module.id}>
                             <LearningModuleListItem 
-                                key={module.id}
                                 pathId={path.id}
                                 module={module}
                                 isCompleted={completedModules.includes(module.id)}
                             />
                             {index < path.modules.length - 1 && <Separator />}
-                        </>
+                        </React.Fragment>
                     ))}
                 </div>
             </div>
