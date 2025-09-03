@@ -11,6 +11,8 @@ import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
 import { mockLearningPaths, mockUserLearningProgress, mockUsers } from '@/lib/mock-data';
 import { getCurrentUser } from '@/lib/data-cache';
+import LearningModuleListItem from '@/components/learning-module-list-item';
+import { Separator } from '@/components/ui/separator';
 
 function getLearningPathDetailPageData(pathId: string) {
     const currentUser = getCurrentUser();
@@ -37,10 +39,10 @@ export default function LearningPathDetailPage({ params }: { params: { id: strin
     notFound();
   }
 
-  const completedModules = userProgress?.completedModules.length ?? 0;
+  const completedModules = userProgress?.completedModules ?? [];
   const totalModules = path.modules.length;
-  const progressPercentage = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;
-  const isCompleted = totalModules > 0 && completedModules === totalModules;
+  const progressPercentage = totalModules > 0 ? (completedModules.length / totalModules) * 100 : 0;
+  const isCompleted = totalModules > 0 && completedModules.length === totalModules;
   const firstModuleId = path.modules[0]?.id;
 
   return (
@@ -81,29 +83,31 @@ export default function LearningPathDetailPage({ params }: { params: { id: strin
               <h3 className="text-xl font-semibold mb-2">Progress</h3>
               <div className="flex items-center gap-4">
                   <Progress value={progressPercentage} className="h-2" />
-                  <span className="text-sm text-muted-foreground">{completedModules} / {totalModules} Modules</span>
+                  <span className="text-sm text-muted-foreground">{completedModules.length} / {totalModules} Modules</span>
               </div>
             </div>
 
             <div>
-              <h3 className="text-xl font-semibold mb-2">What you'll learn</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Core concepts of the learning path topic.</li>
-                <li>Practical skills through real-world project contributions.</li>
-                <li>How to collaborate effectively with a diverse team.</li>
-                <li>Industry best practices and modern tools.</li>
-              </ul>
+                <h3 className="text-xl font-semibold mb-4">Modules</h3>
+                <div className="space-y-2">
+                    {path.modules.map((module, index) => (
+                        <>
+                            <LearningModuleListItem 
+                                key={module.id}
+                                pathId={path.id}
+                                module={module}
+                                isCompleted={completedModules.includes(module.id)}
+                            />
+                            {index < path.modules.length - 1 && <Separator />}
+                        </>
+                    ))}
+                </div>
             </div>
-             <div>
-              <h3 className="text-xl font-semibold mb-2">How it works</h3>
-              <p className="text-muted-foreground">
-                You will join a relevant project and contribute to tasks that align with this learning path. As you complete tasks and reach milestones, you'll unlock new modules and gain certificates to showcase your skills. Our AI assistant will help guide you and suggest relevant opportunities along the way.
-              </p>
-            </div>
+
              {firstModuleId && (
               <Link href={`/learning/${path.id}/${firstModuleId}`}>
-                <Button size="lg" className="w-full">
-                  {isCompleted ? "Review Path" : completedModules > 0 ? "Continue Path" : "Enroll in Path"}
+                <Button size="lg" className="w-full mt-6">
+                  {isCompleted ? "Review Path" : completedModules.length > 0 ? "Continue Path" : "Enroll in Path"}
                 </Button>
               </Link>
             )}
