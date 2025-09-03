@@ -68,10 +68,13 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   mockUsers[userIndex] = user;
   console.log("Updated user settings in mock data (in-memory, will reset on server restart)");
 
-  // Revalidate paths to reflect changes immediately across the app
+  // Revalidate all paths that might display user information to ensure data consistency.
+  revalidatePath('/', 'layout'); // Revalidates all pages to update UserNav, Project Cards, etc.
   revalidatePath('/settings');
   revalidatePath(`/profile/${id}`);
-  revalidatePath('/', 'layout'); // Revalidate the whole layout to update UserNav avatar
+  revalidatePath('/activity');
+  // Revalidate the layout of the projects section to catch all project detail pages.
+  revalidatePath('/projects', 'layout');
   
   return { success: true };
 }

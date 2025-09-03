@@ -118,6 +118,7 @@ export async function saveProjectDraft(values: z.infer<typeof ProjectSchema>) {
 export async function publishProject(values: z.infer<typeof ProjectSchema>) {
     const result = await handleProjectSubmission(values, 'published');
     if (result.success && result.projectId) {
+        // Revalidate the new project path before redirecting
         revalidatePath(`/projects/${result.projectId}`);
         redirect(`/projects/${result.projectId}`);
     }
