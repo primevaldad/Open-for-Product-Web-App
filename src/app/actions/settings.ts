@@ -64,6 +64,7 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   mockUsers[userIndex] = user;
   console.log("Updated user settings in mock data (in-memory, will reset on server restart)");
 
+  // Revalidate all paths where user data could be displayed
   revalidatePath('/', 'layout');
   
   return { success: true };
