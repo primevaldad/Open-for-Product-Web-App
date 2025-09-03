@@ -182,6 +182,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     mockProjects[projectIndex] = updatedData;
     console.log("Updated project in mock data (in-memory, will reset on server restart)");
 
+    revalidatePath('/');
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
     redirect(`/projects/${id}`);
