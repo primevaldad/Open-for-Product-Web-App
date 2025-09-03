@@ -30,13 +30,13 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     let userProgress = mockUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
 
     if (!userProgress) {
-        if (completed) {
-            mockUserLearningProgress.push({
-                userId,
-                pathId,
-                completedModules: [moduleId]
-            });
-        }
+        // This case handles enrolling a user in a path for the first time
+        // when they visit a module page.
+        mockUserLearningProgress.push({
+            userId,
+            pathId,
+            completedModules: completed ? [moduleId] : []
+        });
     } else {
         const moduleIndex = userProgress.completedModules.indexOf(moduleId);
         if (completed && moduleIndex === -1) {
@@ -46,6 +46,7 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
         }
     }
 
+    // Revalidate all paths that display learning progress
     revalidatePath(`/learning/${pathId}/${moduleId}`);
     revalidatePath(`/learning/${pathId}`);
     revalidatePath('/activity');
