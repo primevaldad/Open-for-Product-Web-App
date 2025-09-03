@@ -9,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { projectCategories } from '@/lib/static-data';
+import { projectCategories, iconMap } from '@/lib/static-data';
 import { cn } from '@/lib/utils';
 import type { LearningPath, ProjectCategory, UserLearningProgress } from '@/lib/types';
+import { FlaskConical } from 'lucide-react';
 
 interface LearningClientPageProps {
-    learningPaths: LearningPath[];
+    learningPaths: Omit<LearningPath, 'Icon'>[];
     userProgress: UserLearningProgress[];
 }
 
@@ -73,6 +74,7 @@ export default function LearningClientPage({ learningPaths, userProgress }: Lear
                 {filteredPaths.map((path) => {
                     const progress = userProgress.find(p => p.pathId === path.id);
                     const isCompleted = progress && path.modules.length > 0 && progress.completedModules.length === path.modules.length;
+                    const Icon = iconMap[path.category as keyof typeof iconMap] || FlaskConical;
 
                     return (
                         <Link key={path.id} href={path.isLocked ? '#' : `/learning/${path.id}`} className={cn(path.isLocked && "pointer-events-none")}>
@@ -80,7 +82,7 @@ export default function LearningClientPage({ learningPaths, userProgress }: Lear
                                 <CardHeader>
                                     <div className="flex items-start justify-between">
                                         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                                            <path.Icon className="h-6 w-6 text-primary" />
+                                            <Icon className="h-6 w-6 text-primary" />
                                         </div>
                                         <div className="flex gap-2">
                                             {isCompleted && <Badge variant="secondary" className="border-green-500/50 bg-green-500/10 text-green-700"> <CheckCircle className="mr-1 h-3 w-3" /> Completed</Badge>}

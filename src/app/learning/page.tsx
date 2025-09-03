@@ -23,8 +23,6 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { LearningPath, User } from "@/lib/types";
 import { getCurrentUser } from "@/lib/data-cache";
-import { iconMap } from '@/lib/static-data';
-import { FlaskConical } from 'lucide-react';
 import { mockLearningPaths, mockUserLearningProgress } from "@/lib/mock-data";
 import LearningClientPage from "./learning-client-page";
 
@@ -32,12 +30,8 @@ import LearningClientPage from "./learning-client-page";
 function getLearningPageData() {
     const currentUser = getCurrentUser();
     
-    const learningPaths = mockLearningPaths.map((lp) => {
-        return {
-            ...lp,
-            Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
-        }
-    }) as LearningPath[];
+    // We remove the Icon mapping here, as it cannot be passed to a Client Component.
+    const learningPaths = mockLearningPaths;
 
     const userProgress = mockUserLearningProgress.filter(p => p.userId === currentUser?.id);
 
