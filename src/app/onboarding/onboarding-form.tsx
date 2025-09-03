@@ -79,7 +79,7 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
                 description: "Your profile has been set up.",
             });
             // Client-side navigation after successful server action
-            router.push('/profile');
+            router.push('/');
         } else {
             toast({
                 variant: "destructive",
