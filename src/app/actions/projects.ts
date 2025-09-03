@@ -186,8 +186,6 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
     
-    redirect(`/projects/${id}`);
-    
     return { success: true };
 }
 

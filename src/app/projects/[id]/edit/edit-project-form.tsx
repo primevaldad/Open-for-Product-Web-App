@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -47,6 +48,7 @@ interface EditProjectFormProps {
 }
 
 export default function EditProjectForm({ project, updateProject }: EditProjectFormProps) {
+  const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -75,6 +77,7 @@ export default function EditProjectForm({ project, updateProject }: EditProjectF
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Project Updated!', description: 'Your changes have been saved.' });
+        router.push(`/projects/${project.id}`);
       }
     });
   };
