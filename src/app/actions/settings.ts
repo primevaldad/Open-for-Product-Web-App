@@ -35,7 +35,6 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   const validatedFields = UserSettingsSchema.safeParse(values);
 
   if (!validatedFields.success) {
-    // A bit of a hack to get the password confirmation error to show up
     const zodError = validatedFields.error;
     const confirmationError = zodError.errors.find(e => e.path.includes('passwordConfirmation'));
 

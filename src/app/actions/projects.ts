@@ -103,6 +103,7 @@ async function handleProjectSubmission(
   if (status === 'draft') {
       revalidatePath('/drafts');
   }
+  revalidatePath(`/projects/${newProjectId}`);
 
   return { success: true, projectId: newProjectId };
 }
