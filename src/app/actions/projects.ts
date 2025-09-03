@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -103,7 +102,6 @@ async function handleProjectSubmission(
   if (status === 'draft') {
       revalidatePath('/drafts');
   }
-  // Revalidate the new project path immediately after creation.
   revalidatePath(`/projects/${newProjectId}`);
 
   return { success: true, projectId: newProjectId };
@@ -177,7 +175,7 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     console.log("Added new member to project and created notification (in-memory).");
 
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath('/', 'layout'); // Revalidate layout to show notification indicator for the invited user
+    revalidatePath('/', 'layout'); 
     return { success: true };
 }
 
@@ -223,8 +221,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     mockProjects[projectIndex] = updatedData;
     console.log("Updated project in mock data (in-memory, will reset on server restart)");
 
-    // Systemic Fix: Revalidate all paths where project data might be displayed.
-    revalidatePath('/'); // Home page project cards
+    revalidatePath('/'); 
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
     revalidatePath('/drafts');
@@ -300,7 +297,7 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     console.log("Updated task in mock data (in-memory, will reset on server restart)");
 
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath('/activity'); // Revalidate activity page as well
+    revalidatePath('/activity');
     return { success: true };
 }
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -78,7 +77,6 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
                 title: "Welcome to Open for Product!",
                 description: "Your profile has been set up.",
             });
-            // Client-side navigation after successful server action
             router.push('/');
         } else {
             toast({

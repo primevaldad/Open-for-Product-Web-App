@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -56,8 +55,6 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   user.bio = bio;
   user.email = email;
 
-  // In a real app, you would hash the password here.
-  // We are not storing passwords in the mock data for this prototype.
   console.log("Password change requested, but not stored in mock data.");
   
   if (avatarDataUrl) {
@@ -67,8 +64,6 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   mockUsers[userIndex] = user;
   console.log("Updated user settings in mock data (in-memory, will reset on server restart)");
 
-  // Systemic Fix: Revalidate the entire application layout to ensure user data (like name in the UserNav)
-  // is updated everywhere. This is the most robust way to handle globally-used data.
   revalidatePath('/', 'layout');
   
   return { success: true };
@@ -97,9 +92,7 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   mockUsers[userIndex] = user;
   console.log("Updated onboarding info in mock data (in-memory, will reset on server restart)");
 
-  // Revalidate the entire layout to ensure the user is no longer considered "new"
   revalidatePath('/', 'layout');
   
-  // No redirect from the server action. This will be handled by the client form.
   return { success: true };
 }
