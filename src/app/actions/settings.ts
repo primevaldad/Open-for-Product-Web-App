@@ -69,12 +69,8 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
   console.log("Updated user settings in mock data (in-memory, will reset on server restart)");
 
   // Revalidate all paths that might display user information to ensure data consistency.
-  revalidatePath('/', 'layout'); // Revalidates all pages to update UserNav, Project Cards, etc.
-  revalidatePath('/settings');
-  revalidatePath(`/profile/${id}`);
-  revalidatePath('/activity');
-  // Revalidate the layout of the projects section to catch all project detail pages.
-  revalidatePath('/projects', 'layout');
+  // This is the systemic fix: revalidate the entire layout to catch all instances of user data.
+  revalidatePath('/', 'layout');
   
   return { success: true };
 }
