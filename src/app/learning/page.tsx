@@ -21,20 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { LearningPath, User } from "@/lib/types";
-import { getCurrentUser } from "@/lib/data-cache";
-import { mockLearningPaths, mockUserLearningProgress } from "@/lib/mock-data";
+import { getCurrentUser, getAllLearningPaths, getAllUserLearningProgress } from "@/lib/data-cache";
 import LearningClientPage from "./learning-client-page";
 
 
 function getLearningPageData() {
     const currentUser = getCurrentUser();
-    
-    // We remove the Icon mapping here, as it cannot be passed to a Client Component.
-    const learningPaths = mockLearningPaths;
-
-    const userProgress = mockUserLearningProgress.filter(p => p.userId === currentUser?.id);
-
+    const learningPaths = getAllLearningPaths();
+    const userProgress = getAllUserLearningProgress().filter(p => p.userId === currentUser?.id);
     return { currentUser, learningPaths, userProgress };
 }
 
@@ -49,7 +43,7 @@ export default function LearningPage() {
             </div>
         );
     }
-    
+
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">

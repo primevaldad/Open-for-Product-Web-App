@@ -23,28 +23,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam, findProjectById, findTasksByProjectId, getAllUsers } from "@/lib/data-cache";
 import ProjectDetailClientPage from "./project-detail-client-page";
 import { addTask, addDiscussionComment, addTeamMember, deleteTask, joinProject, updateTask } from "@/app/actions/projects";
-import type { Project, Task, User } from "@/lib/types";
-import { mockProjects, mockTasks, mockUsers } from "@/lib/mock-data";
-
+import type { Task } from "@/lib/types";
 
 function getProjectPageData(projectId: string) {
     const currentUser = getCurrentUser();
-    const allUsers = mockUsers;
-
-    const projectData = mockProjects.find(p => p.id === projectId);
+    const allUsers = getAllUsers();
+    const projectData = findProjectById(projectId);
 
     if (!projectData) return { project: null, projectTasks: [], currentUser, allUsers: [] };
 
     const project = hydrateProjectTeam(projectData);
-    
-    const projectTasks = mockTasks
-        .filter(t => t.projectId === projectId)
+
+    const projectTasks = findTasksByProjectId(projectId)
         .map(t => {
             const assignedTo = t.assignedToId ? allUsers.find(u => u.id === t.assignedToId) : undefined;
-            // Ensure every task object has a description property.
             return { ...t, description: t.description ?? '', assignedTo };
         }) as Task[];
 
@@ -55,12 +50,12 @@ function getProjectPageData(projectId: string) {
 // This is now a Server Component responsible for fetching data
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const { project, projectTasks, currentUser, allUsers } = getProjectPageData(params.id);
-  
+
   if (!project) {
     notFound();
     return null;
   }
-  
+
   if (!currentUser) {
     return (
         <div className="flex h-screen items-center justify-center">
@@ -147,8 +142,8 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         </SidebarContent>
       </Sidebar>
       {/* The main content is now a client component that receives data as props */}
-      <ProjectDetailClientPage 
-        project={project} 
+      <ProjectDetailClientPage
+        project={project}
         projectTasks={projectTasks}
         currentUser={currentUser}
         allUsers={allUsers}

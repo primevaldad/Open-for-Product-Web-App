@@ -24,15 +24,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { User, Project } from "@/lib/types";
-import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
-import { mockProjects } from "@/lib/mock-data";
-
+import { getCurrentUser, hydrateProjectTeam, getAllProjects } from "@/lib/data-cache";
 
 function getDraftsPageData() {
     const currentUser = getCurrentUser();
-    
-    const projects = mockProjects.map(p => hydrateProjectTeam(p));
-
+    const projects = getAllProjects().map(p => hydrateProjectTeam(p));
     return { currentUser, projects };
 }
 
@@ -48,7 +44,7 @@ export default function DraftsPage() {
         </div>
     );
   }
-  
+
   const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.user.id === currentUser.id));
 
   return (

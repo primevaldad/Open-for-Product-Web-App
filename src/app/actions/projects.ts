@@ -1,12 +1,22 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import type { Project, ProjectStatus, Task } from '@/lib/types';
-import { mockProjects, mockTasks, mockUsers } from '@/lib/mock-data';
-import { getCurrentUser } from '@/lib/data-cache';
-
+import { 
+    addProject,
+    addTask as addTaskToDb,
+    deleteTask as deleteTaskFromDb,
+    findProjectById, 
+    findUserById, 
+    getAllProjects,
+    getAllTasks,
+    updateProject as updateProjectInDb,
+    updateTask as updateTaskInDb,
+    updateUser,
+    getCurrentUser
+} from '@/lib/data-cache';
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -51,7 +61,6 @@ const AddTeamMemberSchema = z.object({
     role: z.enum(['participant', 'lead']),
 });
 
-
 async function handleProjectSubmission(
   values: z.infer<typeof ProjectSchema>,
   status: ProjectStatus
@@ -64,15 +73,15 @@ async function handleProjectSubmission(
       error: 'Invalid data provided.',
     };
   }
-  
+
   const { name, tagline, description, category, contributionNeeds } = validatedFields.data;
-  
+
   const currentUser = await getCurrentUser();
   if (!currentUser) {
       return { success: false, error: "Could not find current user."};
   }
 
-  const newProjectId = `p${mockProjects.length + 1}`;
+  const newProjectId = `p${getAllProjects().length + 1}`;
 
   const newProjectData: Project = {
     id: newProjectId,
@@ -94,8 +103,7 @@ async function handleProjectSubmission(
     }
   };
 
-  mockProjects.push(newProjectData);
-  console.log("Added new project to mock data (in-memory, will reset on server restart)");
+  addProject(newProjectData);
 
   revalidatePath('/');
   revalidatePath('/create');
@@ -117,19 +125,18 @@ export async function joinProject(projectId: string) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = findProjectById(projectId);
     if (!project) {
         return { success: false, error: "Project not found" };
     }
 
     const isAlreadyMember = project.team.some(member => member.userId === currentUser.id);
     if (isAlreadyMember) {
-        console.log("User is already a member");
         return { success: true };
     }
 
     project.team.push({ userId: currentUser.id, role: 'participant' as const });
-    console.log("Added user to project team in mock data (in-memory, will reset on server restart)");
+    updateProjectInDb(project);
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/', 'layout'); // To update project cards potentially seen by others
@@ -142,10 +149,10 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     if (!validatedFields.success) {
         return { success: false, error: "Invalid data provided." };
     }
-    
+
     const { projectId, userId, role } = validatedFields.data;
 
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = findProjectById(projectId);
     if (!project) {
         return { success: false, error: "Project not found" };
     }
@@ -154,10 +161,11 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     if (isAlreadyMember) {
         return { success: false, error: "User is already a member of this project" };
     }
-    
+
     project.team.push({ userId, role });
-    
-    const invitedUser = mockUsers.find(u => u.id === userId);
+    updateProjectInDb(project);
+
+    const invitedUser = findUserById(userId);
     if (invitedUser) {
         if (!invitedUser.notifications) {
             invitedUser.notifications = [];
@@ -168,12 +176,11 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
             link: `/projects/${projectId}`,
             read: false,
         });
+        updateUser(invitedUser);
     }
 
-    console.log("Added new member to project and created notification (in-memory).");
-
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath('/', 'layout'); 
+    revalidatePath('/', 'layout');
     return { success: true };
 }
 
@@ -192,18 +199,17 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const projectIndex = mockProjects.findIndex(p => p.id === id);
-    if (projectIndex === -1) {
+    const project = findProjectById(id);
+    if (!project) {
         return { success: false, error: "Project not found" };
     }
-    
-    const project = mockProjects[projectIndex];
+
     const lead = project.team.find(m => m.role === 'lead');
     if (!lead || lead.userId !== currentUser.id) {
         return { success: false, error: "Only the project lead can edit the project." };
     }
-    
-    const updatedData = {
+
+    const updatedData: Project = {
         ...project,
         name: projectData.name,
         tagline: projectData.tagline,
@@ -216,14 +222,13 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
         governance: projectData.governance,
     };
 
-    mockProjects[projectIndex] = updatedData;
-    console.log("Updated project in mock data (in-memory, will reset on server restart)");
+    updateProjectInDb(updatedData);
 
-    revalidatePath('/'); 
+    revalidatePath('/');
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
     revalidatePath('/drafts');
-    
+
     return { success: true };
 }
 
@@ -239,17 +244,17 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = findProjectById(projectId);
     if (!project) {
       return { success: false, error: "Associated project not found" };
     }
-    
+
     const isMember = project.team.some(m => m.userId === currentUser.id);
     if (!isMember) {
       return { success: false, error: "Only team members can add tasks." };
     }
 
-    const newTaskId = `t${mockTasks.length + 1}`;
+    const newTaskId = `t${getAllTasks().length + 1}`;
     const newTaskData: Task = {
         id: newTaskId,
         projectId,
@@ -258,8 +263,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
         status,
     };
 
-    mockTasks.push(newTaskData);
-    console.log("Added new task to mock data (in-memory, will reset on server restart)");
+    addTaskToDb(newTaskData);
 
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
@@ -273,11 +277,11 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     }
 
     const { id, projectId, ...taskData } = validatedFields.data;
-    
+
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
-    
-    const project = mockProjects.find(p => p.id === projectId);
+
+    const project = findProjectById(projectId);
     if (!project) {
         return { success: false, error: "Associated project not found" };
     }
@@ -285,20 +289,18 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     if (!isMember) {
         return { success: false, error: "Only team members can edit tasks." };
     }
-    
-    const taskIndex = mockTasks.findIndex(t => t.id === id);
-    if (taskIndex === -1) {
+
+    const existingTask = getAllTasks().find(t => t.id === id);
+    if (!existingTask) {
         return { success: false, error: "Task not found" };
     }
-        
-    mockTasks[taskIndex] = { ...mockTasks[taskIndex], ...taskData };
-    console.log("Updated task in mock data (in-memory, will reset on server restart)");
+
+    updateTaskInDb({ ...existingTask, ...taskData });
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/activity');
     return { success: true };
 }
-
 
 export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     const validatedFields = DeleteTaskSchema.safeParse(values);
@@ -306,13 +308,13 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     if (!validatedFields.success) {
         return { success: false, error: 'Invalid data provided.' };
     }
-    
+
     const { id, projectId } = validatedFields.data;
-    
+
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = findProjectById(projectId);
     if (!project) {
       return { success: false, error: "Associated project not found" };
     }
@@ -322,11 +324,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
       return { success: false, error: "Only team members can delete tasks." };
     }
 
-    const taskIndex = mockTasks.findIndex(t => t.id === id);
-    if (taskIndex !== -1) {
-        mockTasks.splice(taskIndex, 1);
-        console.log("Deleted task from mock data (in-memory, will reset on server restart)");
-    }
+    deleteTaskFromDb(id);
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/activity');
@@ -340,7 +338,7 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
 
     const { projectId, userId, content } = validatedFields.data;
 
-    const project = mockProjects.find(p => p.id === projectId);
+    const project = findProjectById(projectId);
     if (!project) {
       return { success: false, error: "Project not found" };
     }
@@ -349,7 +347,7 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
     if (!isMember) {
       return { success: false, error: "Only team members can add comments." };
     }
-    
+
     const newComment = {
         userId,
         content,
@@ -357,8 +355,8 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
     };
 
     project.discussions.push(newComment);
-    console.log("Added comment to mock project data (in-memory, will reset on server restart)");
-    
+    updateProjectInDb(project);
+
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
 

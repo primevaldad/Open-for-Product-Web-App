@@ -3,25 +3,23 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Project } from '@/lib/types';
-import { getCurrentUser } from '@/lib/data-cache';
+import { getCurrentUser, findProjectById } from '@/lib/data-cache';
 import EditProjectForm from './edit-project-form';
 import { updateProject } from '@/app/actions/projects';
-import { mockProjects } from '@/lib/mock-data';
 
 function getEditProjectPageData(projectId: string) {
     const currentUser = getCurrentUser();
-    const project = mockProjects.find(p => p.id === projectId);
-    
+    const project = findProjectById(projectId);
+
     if (!project) return { project: null, currentUser };
-    
+
     return { project, currentUser };
 }
 
 // This is now a Server Component that fetches data and passes it to the form.
 export default function EditProjectPage({ params }: { params: { id: string } }) {
   const { project, currentUser } = getEditProjectPageData(params.id);
-  
+
   if (!project || !currentUser) {
     notFound();
   }

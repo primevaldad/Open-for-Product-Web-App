@@ -24,34 +24,32 @@ import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User, Project, Task, LearningPath, UserLearningProgress, Module } from "@/lib/types";
-import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam, getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data-cache";
 import ActivityClientPage from "./activity-client-page";
 import { updateTask, deleteTask } from "../actions/projects";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
-import { mockProjects, mockTasks, mockUserLearningProgress, mockLearningPaths, mockUsers } from "@/lib/mock-data";
 
 function getActivityPageData() {
     const currentUser = getCurrentUser();
     if (!currentUser) return { currentUser: null, projects: [], myTasks: [], learningPaths: [], userProgress: [] };
-    
-    const allUsers = mockUsers;
-    
-    const projects = mockProjects.map(p => hydrateProjectTeam(p));
 
-    const myTasks = mockTasks
+    const allUsers = getAllUsers();
+    const projects = getAllProjects().map(p => hydrateProjectTeam(p));
+    
+    const myTasks = getAllTasks()
         .filter(t => t.assignedToId === currentUser.id)
         .map(t => {
             const assignedTo = allUsers.find(u => u.id === t.assignedToId);
             return { ...t, assignedTo };
         }) as Task[];
-        
-    const userProgress = mockUserLearningProgress.filter(p => p.userId === currentUser.id);
 
-    const learningPaths = mockLearningPaths.map(lp => ({
+    const userProgress = getAllUserLearningProgress().filter(p => p.userId === currentUser.id);
+
+    const learningPaths = getAllLearningPaths().map(lp => ({
         ...lp,
         Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
-    })) as LearningPath[];
+    }));
 
     return { currentUser, projects, myTasks, learningPaths, userProgress };
 }
@@ -69,11 +67,11 @@ export default function ActivityPage() {
     );
   }
 
-  const completedModulesData = (userProgress || []).flatMap(progress => 
+  const completedModulesData = (userProgress || []).flatMap(progress =>
     (progress.completedModules || []).map(moduleId => {
       const path = learningPaths.find(p => p.id === progress.pathId);
       const module = path?.modules.find(m => m.id === moduleId);
-      
+
       const serializablePath = path ? { id: path.id, title: path.title } : undefined;
 
       return { path: serializablePath, module };

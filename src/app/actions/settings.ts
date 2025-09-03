@@ -1,9 +1,9 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { mockUsers } from '@/lib/mock-data';
+import { findUserById, updateUser as updateUserInDb } from '@/lib/data-cache';
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -45,28 +45,24 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
 
   const { id, name, bio, avatarDataUrl, email } = validatedFields.data;
 
-  const userIndex = mockUsers.findIndex(u => u.id === id);
-  if (userIndex === -1) {
+  const user = findUserById(id);
+  if (!user) {
       return { success: false, error: "User not found." };
   }
 
-  const user = mockUsers[userIndex];
   user.name = name;
   user.bio = bio;
   user.email = email;
 
-  console.log("Password change requested, but not stored in mock data.");
-  
   if (avatarDataUrl) {
     user.avatarUrl = avatarDataUrl;
   }
-  
-  mockUsers[userIndex] = user;
-  console.log("Updated user settings in mock data (in-memory, will reset on server restart)");
 
-  // Revalidate all paths where user data could be displayed
+  updateUserInDb(user);
+
+  // Revalidate the entire app to ensure global user data is fresh
   revalidatePath('/', 'layout');
-  
+
   return { success: true };
 }
 
@@ -79,21 +75,20 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
 
   const { id, name, bio, interests } = validatedFields.data;
 
-  const userIndex = mockUsers.findIndex(u => u.id === id);
-  if (userIndex === -1) {
+  const user = findUserById(id);
+  if (!user) {
     return { success: false, error: "User not found." };
   }
 
-  const user = mockUsers[userIndex];
   user.name = name;
   user.bio = bio;
   user.interests = interests;
   user.onboarded = true;
-  
-  mockUsers[userIndex] = user;
-  console.log("Updated onboarding info in mock data (in-memory, will reset on server restart)");
 
+  updateUserInDb(user);
+
+  // Revalidate the entire app to ensure global user data is fresh
   revalidatePath('/', 'layout');
-  
+
   return { success: true };
 }

@@ -1,9 +1,9 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { mockUserLearningProgress } from '@/lib/mock-data';
-
+import { findUserLearningProgress, updateUserLearningProgress } from '@/lib/data-cache';
 
 const CompleteModuleSchema = z.object({
   userId: z.string(),
@@ -23,19 +23,16 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     }
 
     const { userId, pathId, moduleId, completed } = validatedFields.data;
-    
-    console.log("Updating mock learning progress (in-memory, will reset on server restart)");
 
-    let userProgress = mockUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
+    let userProgress = findUserLearningProgress(userId, pathId);
 
     if (!userProgress) {
-        // This case handles enrolling a user in a path for the first time
-        // when they visit a module page.
-        mockUserLearningProgress.push({
+        // This case handles enrolling a user in a path for the first time.
+        userProgress = {
             userId,
             pathId,
             completedModules: completed ? [moduleId] : []
-        });
+        };
     } else {
         const moduleIndex = userProgress.completedModules.indexOf(moduleId);
         if (completed && moduleIndex === -1) {
@@ -44,6 +41,8 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
             userProgress.completedModules.splice(moduleIndex, 1);
         }
     }
+
+    updateUserLearningProgress(userProgress);
 
     // Revalidate all paths that display learning progress
     revalidatePath(`/learning/${pathId}/${moduleId}`);

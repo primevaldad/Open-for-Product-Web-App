@@ -129,7 +129,7 @@ export default async function SettingsPage() {
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
           {/* The form is now a client component */}
-          <SettingsForm 
+          <SettingsForm
             currentUser={currentUser}
             updateUserSettings={updateUserSettings}
           />

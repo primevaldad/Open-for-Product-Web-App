@@ -1,34 +1,30 @@
 
 import OnboardingForm from "./onboarding-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { User } from "@/lib/types";
 import { updateOnboardingInfo } from "../actions/settings";
-import { mockUsers } from "@/lib/mock-data";
+import { getCurrentUser, findUserById } from "@/lib/data-cache";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/data-cache";
 
 // This is now a Server Component that fetches data and passes it down.
 export default async function OnboardingPage() {
   const currentUser = await getCurrentUser();
 
-  // If there's no specific "new" user, check if the current user is already onboarded.
-  // If so, redirect them away from the onboarding page.
+  // If the currently simulated user is already onboarded, redirect them away.
   if (currentUser?.onboarded) {
     redirect('/');
   }
 
   // Find the first user that has not been onboarded.
-  const newUser = mockUsers.find(u => !u.onboarded) || null;
+  // In our new setup, this will always be u3 until they are onboarded.
+  const newUser = findUserById('u3');
 
-  if (!newUser) {
-    // This state should ideally not be reached if the check above works,
-    // but it's good practice to handle it.
+  if (!newUser || newUser.onboarded) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
             <Card>
                 <CardHeader>
                     <CardTitle>All users are onboarded!</CardTitle>
-                    <CardDescription>There are no new users to onboard in the mock data.</CardDescription>
+                    <CardDescription>There are no new users to onboard.</CardDescription>
                 </CardHeader>
             </Card>
         </div>

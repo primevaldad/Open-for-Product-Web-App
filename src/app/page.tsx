@@ -26,14 +26,13 @@ import {
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { getCurrentUser, hydrateProjectTeam } from "@/lib/data-cache";
+import { getCurrentUser, hydrateProjectTeam, getAllProjects } from "@/lib/data-cache";
 import HomeClientPage from "./home-client-page";
-import { mockProjects } from "@/lib/mock-data";
 
 function getDashboardPageData() {
     const currentUser = getCurrentUser();
-    
-    const projects = mockProjects
+
+    const projects = getAllProjects()
         .filter(p => p.status === 'published')
         .map(p => hydrateProjectTeam(p));
 
@@ -47,7 +46,7 @@ function getDashboardPageData() {
 // This is now a Server Component that fetches data and passes it to a client component.
 export default function DashboardPage() {
   const { currentUser, projects } = getDashboardPageData();
-  
+
   if (!currentUser) {
     return (
         <div className="flex h-screen items-center justify-center">
@@ -57,7 +56,7 @@ export default function DashboardPage() {
   }
 
   const suggestedProject = projects.length > 1 ? projects[1] : projects.length === 1 ? projects[0] : null;
-  
+
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">

@@ -6,27 +6,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle, ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import type { LearningPath, UserLearningProgress } from '@/lib/types';
+import type { LearningPath } from '@/lib/types';
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
-import { mockLearningPaths, mockUserLearningProgress, mockUsers } from '@/lib/mock-data';
-import { getCurrentUser } from '@/lib/data-cache';
+import { getCurrentUser, getAllLearningPaths, findUserLearningProgress } from '@/lib/data-cache';
 import LearningModuleListItem from '@/components/learning-module-list-item';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 
 function getLearningPathDetailPageData(pathId: string) {
     const currentUser = getCurrentUser();
-    const pathData = mockLearningPaths.find(p => p.id === pathId);
+    const pathData = getAllLearningPaths().find(p => p.id === pathId);
 
     if (!pathData || !currentUser) return { path: null, userProgress: undefined };
-    
+
     const path = {
         ...pathData,
         Icon: iconMap[pathData.category as keyof typeof iconMap] || FlaskConical,
     } as LearningPath;
-    
-    const userProgress = mockUserLearningProgress.find(p => p.userId === currentUser.id && p.pathId === pathId);
+
+    const userProgress = findUserLearningProgress(currentUser.id, pathId);
 
     return { path, userProgress };
 }
@@ -93,7 +92,7 @@ export default function LearningPathDetailPage({ params }: { params: { id: strin
                 <div className="space-y-2">
                     {path.modules.map((module, index) => (
                         <React.Fragment key={module.id}>
-                            <LearningModuleListItem 
+                            <LearningModuleListItem
                                 pathId={path.id}
                                 module={module}
                                 isCompleted={completedModules.includes(module.id)}
