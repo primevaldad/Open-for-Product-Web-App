@@ -17,6 +17,7 @@ import {
     updateUser,
     getCurrentUser
 } from '@/lib/data-cache';
+import { redirect } from 'next/navigation';
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -118,7 +119,11 @@ export async function saveProjectDraft(values: z.infer<typeof ProjectSchema>) {
 }
 
 export async function publishProject(values: z.infer<typeof ProjectSchema>) {
-    return await handleProjectSubmission(values, 'published');
+    const result = await handleProjectSubmission(values, 'published');
+    if (result.success && result.projectId) {
+        redirect(`/projects/${result.projectId}`);
+    }
+    return result;
 }
 
 export async function joinProject(projectId: string) {

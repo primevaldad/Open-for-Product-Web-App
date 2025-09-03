@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from "react-hook-form";
@@ -63,7 +64,7 @@ export const CreateProjectForm: FC<CreateProjectFormProps> = ({ saveProjectDraft
        if (result.success && result.projectId) {
          toast({ title: 'Project Published!', description: 'Your project is now live.' });
          router.push(`/projects/${result.projectId}`);
-      } else {
+      } else if (result.error) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
     });
