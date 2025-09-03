@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Project, ProjectStatus, Task } from '@/lib/types';
-import { mockProjects, mockTasks } from '@/lib/mock-data';
+import { mockProjects, mockTasks, mockUsers } from '@/lib/mock-data';
 import { getCurrentUser } from '@/lib/data-cache';
 
 
@@ -44,6 +44,12 @@ const DiscussionCommentSchema = z.object({
     projectId: z.string(),
     userId: z.string(),
     content: z.string().min(1, "Comment cannot be empty."),
+});
+
+const AddTeamMemberSchema = z.object({
+    projectId: z.string(),
+    userId: z.string(),
+    role: z.enum(['participant', 'lead']),
 });
 
 
@@ -137,6 +143,49 @@ export async function joinProject(projectId: string) {
     console.log("Added user to project team in mock data (in-memory, will reset on server restart)");
 
     revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+}
+
+export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>) {
+    const validatedFields = AddTeamMemberSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data provided." };
+    }
+    
+    const { projectId, userId, role } = validatedFields.data;
+
+    const project = mockProjects.find(p => p.id === projectId);
+    if (!project) {
+        return { success: false, error: "Project not found" };
+    }
+
+    const isAlreadyMember = project.team.some(member => member.userId === userId);
+    if (isAlreadyMember) {
+        return { success: false, error: "User is already a member of this project" };
+    }
+    
+    project.team.push({ userId, role });
+    
+    // Add a notification for the invited user
+    const invitedUser = mockUsers.find(u => u.id === userId);
+    if (invitedUser) {
+        if (!invitedUser.notifications) {
+            invitedUser.notifications = [];
+        }
+        invitedUser.notifications.push({
+            id: `n${Date.now()}`,
+            message: `You have been added to the project "${project.name}" as a ${role}.`,
+            link: `/projects/${projectId}`,
+            read: false,
+        });
+    }
+
+    console.log("Added new member to project and created notification (in-memory).");
+
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/', 'layout'); // Revalidate layout to show notification indicator
+
     return { success: true };
 }
 

@@ -1,6 +1,13 @@
 
 import type { LucideIcon } from "lucide-react";
 
+export type Notification = {
+  id: string;
+  message: string;
+  link: string;
+  read: boolean;
+};
+
 export type User = {
   id: string;
   name: string;
@@ -9,6 +16,7 @@ export type User = {
   bio?: string;
   interests?: string[];
   onboarded: boolean;
+  notifications?: Notification[];
 };
 
 export type UserRole = 'lead' | 'participant';

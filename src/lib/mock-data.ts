@@ -12,6 +12,10 @@ export const mockUsers: User[] = [
         bio: 'Creative full-stack developer with a passion for building beautiful and functional user experiences. Eager to contribute to open-source and learn from a diverse community.',
         interests: ['UI/UX Design', 'Frontend Development', 'Community Management'],
         onboarded: true,
+        notifications: [
+            { id: 'n1', message: 'You have been assigned a new task in "Community Art Mural".', link: '/projects/p1', read: true },
+            { id: 'n2', message: 'Your design for the landing page was approved.', link: '#', read: false }
+        ]
     },
     {
         id: 'u2',
@@ -21,6 +25,7 @@ export const mockUsers: User[] = [
         bio: 'Backend engineer focused on scalable systems and data architecture. Loves tackling complex problems and mentoring junior developers.',
         interests: ['Backend Development', 'Data Science', 'DevOps'],
         onboarded: true,
+        notifications: []
     },
     {
         id: 'u3',
@@ -30,6 +35,7 @@ export const mockUsers: User[] = [
         bio: 'Product manager with a knack for turning great ideas into successful products. Believes in user-centric design and agile methodologies.',
         interests: ['Product Management', 'Marketing', 'UI/UX Design'],
         onboarded: false,
+        notifications: []
     }
 ];
 
@@ -77,7 +83,7 @@ export const mockProjects: Project[] = [
         timeline: '4 Months',
         contributionNeeds: ['Marketing', 'Community Management', 'React'],
         progress: 15,
-        team: [{ userId: 'u1', role: 'participant' }, { userId: 'u3', role: 'lead' }],
+        team: [{ userId: 'u1', role: 'participant' }],
         votes: 98,
         discussions: [],
         status: 'published',

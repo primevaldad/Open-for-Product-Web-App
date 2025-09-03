@@ -40,11 +40,12 @@ import {
 import type { Task, TaskStatus, User, Project, Discussion } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { AddTaskDialog } from "@/components/add-task-dialog";
+import { AddMemberDialog } from "@/components/add-member-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { formatDistanceToNow } from 'date-fns';
-import type { addDiscussionComment, joinProject, addTask, updateTask, deleteTask } from "@/app/actions/projects";
+import type { addDiscussionComment, addTeamMember, joinProject, addTask, updateTask, deleteTask } from "@/app/actions/projects";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
@@ -95,7 +96,9 @@ interface ProjectDetailClientPageProps {
     project: Project;
     projectTasks: Task[];
     currentUser: User;
+    allUsers: User[];
     joinProject: typeof joinProject;
+    addTeamMember: typeof addTeamMember;
     addDiscussionComment: typeof addDiscussionComment;
     addTask: typeof addTask;
     updateTask: typeof updateTask;
@@ -106,7 +109,9 @@ export default function ProjectDetailClientPage({
     project, 
     projectTasks, 
     currentUser,
+    allUsers,
     joinProject,
+    addTeamMember,
     addDiscussionComment,
     addTask,
     updateTask,
@@ -163,6 +168,8 @@ export default function ProjectDetailClientPage({
     'Done': projectTasks.filter(t => t.status === 'Done'),
   }
 
+  const nonMemberUsers = allUsers.filter(user => !project.team.some(member => member.user.id === user.id));
+
   return (
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
@@ -216,8 +223,8 @@ export default function ProjectDetailClientPage({
                     <div className="space-y-4">
                         <div className="flex items-center"><Target className="h-5 w-5 mr-3 text-primary" /> <span>Skills Needed: {project.contributionNeeds.join(', ')}</span></div>
                         <div className="flex items-center"><Clock className="h-5 w-5 mr-3 text-primary" /> <span>Timeline: {project.timeline}</span></div>
-                        <div className="flex items-center">
-                            <Users className="h-5 w-5 mr-3 text-primary" />
+                        <div className="flex items-center gap-4">
+                            <Users className="h-5 w-5 text-primary flex-shrink-0" />
                             <div className="flex -space-x-2">
                                 {project.team.map(member => (
                                   <Tooltip key={member.user.id}>
@@ -236,6 +243,17 @@ export default function ProjectDetailClientPage({
                                   </Tooltip>
                                 ))}
                             </div>
+                            {isCurrentUserLead && (
+                                <AddMemberDialog 
+                                    projectId={project.id}
+                                    nonMemberUsers={nonMemberUsers}
+                                    addTeamMember={addTeamMember}
+                                >
+                                    <Button variant="outline" size="icon" className="h-8 w-8">
+                                        <UserPlus className="h-4 w-4" />
+                                    </Button>
+                                </AddMemberDialog>
+                            )}
                         </div>
                          <div className="space-y-2">
                             <div className="flex justify-between text-sm text-muted-foreground"><span>Progress</span><span>{project.progress}%</span></div>
