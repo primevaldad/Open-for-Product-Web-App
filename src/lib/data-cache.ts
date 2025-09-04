@@ -23,7 +23,7 @@ export async function getCurrentUser(): Promise<User | null> {
     // In a real app, this would get the logged-in user's ID
     const user = await findUserById('u1');
     if (!user) {
-        console.error("Could not find the default user (u1).");
+        console.error("Could not find the default user (u1). This might be because the database has not been seeded. Run `npx tsx src/lib/seed.ts`");
         return null;
     }
     return user;
