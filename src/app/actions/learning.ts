@@ -48,6 +48,7 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     revalidatePath(`/learning/${pathId}/${moduleId}`);
     revalidatePath(`/learning/${pathId}`);
     revalidatePath('/activity');
+    revalidatePath('/learning');
 
     return { success: true };
 }
