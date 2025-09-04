@@ -2,26 +2,45 @@
 import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
 import { mockUsers, mockProjects, mockTasks, mockLearningPaths, mockUserLearningProgress } from './mock-data';
 
-// --- In-Memory "Database" ---
-// This is a more robust simulation of a database for this prototype.
-// We create a "live" copy of the seeded mock data that our server actions will interact with.
-// This prevents issues with module caching in the serverless environment and centralizes data access.
+// --- In-Memory "Database" using a Singleton Pattern ---
+// This ensures that our "database" is initialized only once and persists across hot reloads
+// in the development environment, making changes durable for the session.
 
-let liveUsers: User[] = JSON.parse(JSON.stringify(mockUsers));
-let liveProjects: Project[] = JSON.parse(JSON.stringify(mockProjects));
-let liveTasks: Task[] = JSON.parse(JSON.stringify(mockTasks));
-let liveLearningPaths: LearningPath[] = JSON.parse(JSON.stringify(mockLearningPaths));
-let liveUserLearningProgress: UserLearningProgress[] = JSON.parse(JSON.stringify(mockUserLearningProgress));
+interface Db {
+    users: User[];
+    projects: Project[];
+    tasks: Task[];
+    learningPaths: LearningPath[];
+    userLearningProgress: UserLearningProgress[];
+}
+
+declare global {
+  var __db: Db | undefined;
+}
+
+const initializeDb = (): Db => {
+    console.log('--- Initializing In-Memory Database ---');
+    return {
+        users: JSON.parse(JSON.stringify(mockUsers)),
+        projects: JSON.parse(JSON.stringify(mockProjects)),
+        tasks: JSON.parse(JSON.stringify(mockTasks)),
+        learningPaths: JSON.parse(JSON.stringify(mockLearningPaths)),
+        userLearningProgress: JSON.parse(JSON.stringify(mockUserLearningProgress)),
+    };
+}
+
+const db = globalThis.__db ?? (globalThis.__db = initializeDb());
+
 
 // In a real app, these functions would be database queries (e.g., to Firestore or a SQL DB).
 
 // --- User Data Access ---
 export function getAllUsers(): User[] {
-    return liveUsers;
+    return db.users;
 }
 
 export function findUserById(userId: string): User | undefined {
-    return liveUsers.find(u => u.id === userId);
+    return db.users.find(u => u.id === userId);
 }
 
 export function getCurrentUser(): User | null {
@@ -34,84 +53,84 @@ export function getCurrentUser(): User | null {
 }
 
 export function updateUser(updatedUser: User): void {
-    const userIndex = liveUsers.findIndex(u => u.id === updatedUser.id);
+    const userIndex = db.users.findIndex(u => u.id === updatedUser.id);
     if (userIndex !== -1) {
-        liveUsers[userIndex] = updatedUser;
+        db.users[userIndex] = updatedUser;
     }
 }
 
 // --- Project Data Access ---
 export function getAllProjects(): Project[] {
-    return liveProjects;
+    return db.projects;
 }
 
 export function findProjectById(projectId: string): Project | undefined {
-    return liveProjects.find(p => p.id === projectId);
+    return db.projects.find(p => p.id === projectId);
 }
 
 export function addProject(newProject: Project): void {
-    liveProjects.push(newProject);
+    db.projects.push(newProject);
 }
 
 export function updateProject(updatedProject: Project): void {
-    const projectIndex = liveProjects.findIndex(p => p.id === updatedProject.id);
+    const projectIndex = db.projects.findIndex(p => p.id === updatedProject.id);
     if (projectIndex !== -1) {
-        liveProjects[projectIndex] = updatedProject;
+        db.projects[projectIndex] = updatedProject;
     }
 }
 
 // --- Task Data Access ---
 export function getAllTasks(): Task[] {
-    return liveTasks;
+    return db.tasks;
 }
 
 export function findTasksByProjectId(projectId: string): Task[] {
-    return liveTasks.filter(t => t.projectId === projectId);
+    return db.tasks.filter(t => t.projectId === projectId);
 }
 
 export function findTaskById(taskId: string): Task | undefined {
-    return liveTasks.find(t => t.id === taskId);
+    return db.tasks.find(t => t.id === taskId);
 }
 
 export function addTask(newTask: Task): void {
-    liveTasks.push(newTask);
+    db.tasks.push(newTask);
 }
 
 export function updateTask(updatedTask: Task): void {
-    const taskIndex = liveTasks.findIndex(t => t.id === updatedTask.id);
+    const taskIndex = db.tasks.findIndex(t => t.id === updatedTask.id);
     if (taskIndex !== -1) {
-        liveTasks[taskIndex] = updatedTask;
+        db.tasks[taskIndex] = updatedTask;
     }
 }
 
 export function deleteTask(taskId: string): void {
-    const taskIndex = liveTasks.findIndex(t => t.id === taskId);
+    const taskIndex = db.tasks.findIndex(t => t.id === taskId);
     if (taskIndex !== -1) {
-        liveTasks.splice(taskIndex, 1);
+        db.tasks.splice(taskIndex, 1);
     }
 }
 
 
 // --- Learning Progress Data Access ---
 export function getAllUserLearningProgress(): UserLearningProgress[] {
-    return liveUserLearningProgress;
+    return db.userLearningProgress;
 }
 
 export function findUserLearningProgress(userId: string, pathId: string): UserLearningProgress | undefined {
-    return liveUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
+    return db.userLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
 }
 
 export function updateUserLearningProgress(progress: UserLearningProgress): void {
-    const progressIndex = liveUserLearningProgress.findIndex(p => p.userId === progress.userId && p.pathId === progress.pathId);
+    const progressIndex = db.userLearningProgress.findIndex(p => p.userId === progress.userId && p.pathId === progress.pathId);
     if (progressIndex !== -1) {
-        liveUserLearningProgress[progressIndex] = progress;
+        db.userLearningProgress[progressIndex] = progress;
     } else {
-        liveUserLearningProgress.push(progress);
+        db.userLearningProgress.push(progress);
     }
 }
 
 export function getAllLearningPaths(): LearningPath[] {
-    return liveLearningPaths;
+    return db.learningPaths;
 }
 
 // --- Data Hydration ---
