@@ -18,24 +18,20 @@ function getLearningPathDetailPageData(pathId: string) {
     const currentUser = getCurrentUser();
     const pathData = getAllLearningPaths().find(p => p.id === pathId);
 
-    if (!pathData || !currentUser) return { path: null, userProgress: undefined };
+    if (!pathData || !currentUser) return { path: null, userProgress: undefined, Icon: null };
 
-    const path = {
-        ...pathData,
-        Icon: iconMap[pathData.category as keyof typeof iconMap] || FlaskConical,
-    } as LearningPath;
-
+    const Icon = iconMap[pathData.category as keyof typeof iconMap] || FlaskConical;
     const userProgress = findUserLearningProgress(currentUser.id, pathId);
 
-    return { path, userProgress };
+    return { path: pathData, userProgress, Icon };
 }
 
 
 // This is now a Server Component
 export default function LearningPathDetailPage({ params }: { params: { id: string } }) {
-  const { path, userProgress } = getLearningPathDetailPageData(params.id);
+  const { path, userProgress, Icon } = getLearningPathDetailPageData(params.id);
 
-  if (!path) {
+  if (!path || !Icon) {
     notFound();
   }
 
@@ -69,7 +65,7 @@ export default function LearningPathDetailPage({ params }: { params: { id: strin
          <Card className="mx-auto max-w-3xl">
           <CardHeader>
             <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10 mb-4">
-                <path.Icon className="h-8 w-8 text-primary" />
+                <Icon className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-3xl">{path.title}</CardTitle>
             <CardDescription className="text-lg">{path.description}</CardDescription>

@@ -15,21 +15,16 @@ function getLearningModulePageData(pathId: string, moduleId: string) {
     if (!pathData || !currentUser) {
         return { path: null, module: null, userProgress: undefined, currentUser, prevModule: null, nextModule: null };
     }
-
-    const serializablePath = {
-        ...pathData,
-        Icon: iconMap[pathData.category as keyof typeof iconMap] || FlaskConical,
-    };
     
-    const module = serializablePath.modules.find((m: Module) => m.id === moduleId) || null;
+    const module = pathData.modules.find((m: Module) => m.id === moduleId) || null;
 
     const userProgress = findUserLearningProgress(currentUser.id, pathId);
 
-    const currentModuleIndex = serializablePath.modules.findIndex((m: Module) => m.id === moduleId);
-    const prevModule = currentModuleIndex > 0 ? serializablePath.modules[currentModuleIndex - 1] : null;
-    const nextModule = currentModuleIndex < serializablePath.modules.length - 1 ? serializablePath.modules[currentModuleIndex + 1] : null;
+    const currentModuleIndex = pathData.modules.findIndex((m: Module) => m.id === moduleId);
+    const prevModule = currentModuleIndex > 0 ? pathData.modules[currentModuleIndex - 1] : null;
+    const nextModule = currentModuleIndex < pathData.modules.length - 1 ? pathData.modules[currentModuleIndex + 1] : null;
 
-    return { path: serializablePath, module, userProgress, currentUser, prevModule, nextModule };
+    return { path: pathData, module, userProgress, currentUser, prevModule, nextModule };
 }
 
 
@@ -42,9 +37,12 @@ export default function LearningModulePage({ params }: { params: { id: string, m
     notFound();
   }
 
+  // Omit the non-serializable Icon property before passing it to the client component
+  const { Icon, ...serializablePath } = path;
+
   return (
     <LearningModuleClientPage
-        path={path}
+        path={serializablePath}
         module={module}
         userProgress={userProgress}
         currentUser={currentUser}
