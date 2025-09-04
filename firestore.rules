@@ -1,0 +1,13 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read and write access for development purposes.
+    // WARNING: These rules are not secure and should be updated before
+    // launching to production.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
