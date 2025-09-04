@@ -134,6 +134,10 @@ const SidebarProvider = React.forwardRef<
       [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
     )
 
+    if (!isMounted) {
+        return null;
+    }
+    
     return (
       <SidebarContext.Provider value={contextValue}>
           <div
