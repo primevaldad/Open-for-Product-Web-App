@@ -20,13 +20,35 @@ import { CreditCard, LogOut, Settings, User as UserIcon, Bell } from "lucide-rea
 import Link from "next/link"
 import type { User } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
-import { Badge } from "./ui/badge";
+import { logout } from "@/app/actions/auth";
+import { useRouter } from "next/navigation";
 
 interface UserNavProps {
-  currentUser: User;
+  currentUser: User | null;
 }
 
 export function UserNav({ currentUser }: UserNavProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    await fetch('/api/auth/session', { method: 'DELETE' });
+    router.push('/login');
+  };
+
+  if (!currentUser) {
+    return (
+        <div className="flex items-center gap-2">
+            <Link href="/login">
+                <Button variant="ghost">Log In</Button>
+            </Link>
+            <Link href="/signup">
+                <Button>Sign Up</Button>
+            </Link>
+        </div>
+    );
+  }
+
   const unreadNotifications = currentUser.notifications?.filter(n => !n.read) ?? [];
   const hasUnread = unreadNotifications.length > 0;
 
@@ -93,7 +115,7 @@ export function UserNav({ currentUser }: UserNavProps) {
             )}
          </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

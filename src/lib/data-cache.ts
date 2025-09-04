@@ -2,6 +2,9 @@
 import { db } from './firebase';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
+import { getAuth } from 'firebase-admin/auth';
+import { cookies }from 'next/headers';
+import { adminApp } from './firebase-admin';
 
 // --- User Data Access ---
 export async function getAllUsers(): Promise<User[]> {
@@ -11,6 +14,7 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function findUserById(userId: string): Promise<User | undefined> {
+    if (!userId) return undefined;
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
@@ -20,14 +24,25 @@ export async function findUserById(userId: string): Promise<User | undefined> {
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-    // In a real app, this would get the logged-in user's ID
-    const user = await findUserById('u1');
-    if (!user) {
-        console.error("Could not find the default user (u1). This might be because the database has not been seeded. Run `npx tsx src/lib/seed.ts`");
+    try {
+        const sessionCookie = cookies().get('__session')?.value;
+        if (!sessionCookie) {
+            return null;
+        }
+        const auth = getAuth(adminApp);
+        const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+        const currentUser = await findUserById(decodedClaims.uid);
+        return currentUser ? { ...currentUser, id: decodedClaims.uid } : null;
+    } catch (error) {
+        // Session cookie is invalid or expired.
         return null;
     }
-    return user;
 }
+
+export async function addUser(uid: string, newUser: Omit<User, 'id'>): Promise<void> {
+    await setDoc(doc(db, 'users', uid), newUser);
+}
+
 
 export async function updateUser(updatedUser: User): Promise<void> {
     const { id, ...userData } = updatedUser;
@@ -104,7 +119,7 @@ export async function deleteTask(taskId: string): Promise<void> {
 export async function getAllUserLearningProgress(): Promise<UserLearningProgress[]> {
     const progressCol = collection(db, 'userLearningProgress');
     const progressSnapshot = await getDocs(progressCol);
-    return progressSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserLearningProgress));
+    return progressSnapshot.docs.map(doc => ({ ...doc.data() } as UserLearningProgress));
 }
 
 export async function findUserLearningProgress(userId: string, pathId: string): Promise<UserLearningProgress | undefined> {
