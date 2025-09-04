@@ -2,45 +2,19 @@
 import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
 import { mockUsers, mockProjects, mockTasks, mockLearningPaths, mockUserLearningProgress } from './mock-data';
 
-// --- In-Memory "Database" using a Singleton Pattern ---
-// This ensures that our "database" is initialized only once and persists across hot reloads
-// in the development environment, making changes durable for the session.
-
-interface Db {
-    users: User[];
-    projects: Project[];
-    tasks: Task[];
-    learningPaths: LearningPath[];
-    userLearningProgress: UserLearningProgress[];
-}
-
-declare global {
-  var __db: Db | undefined;
-}
-
-const initializeDb = (): Db => {
-    console.log('--- Initializing In-Memory Database ---');
-    return {
-        users: JSON.parse(JSON.stringify(mockUsers)),
-        projects: JSON.parse(JSON.stringify(mockProjects)),
-        tasks: JSON.parse(JSON.stringify(mockTasks)),
-        learningPaths: JSON.parse(JSON.stringify(mockLearningPaths)),
-        userLearningProgress: JSON.parse(JSON.stringify(mockUserLearningProgress)),
-    };
-}
-
-const db = globalThis.__db ?? (globalThis.__db = initializeDb());
-
-
-// In a real app, these functions would be database queries (e.g., to Firestore or a SQL DB).
+// --- Persistent In-Memory "Database" ---
+// This layer now directly interacts with the imported mock data arrays,
+// treating them as a persistent, in-memory database. Changes made via
+// the update functions will modify these arrays directly and will
+// persist for the lifetime of the server process.
 
 // --- User Data Access ---
 export function getAllUsers(): User[] {
-    return db.users;
+    return mockUsers;
 }
 
 export function findUserById(userId: string): User | undefined {
-    return db.users.find(u => u.id === userId);
+    return mockUsers.find(u => u.id === userId);
 }
 
 export function getCurrentUser(): User | null {
@@ -53,94 +27,94 @@ export function getCurrentUser(): User | null {
 }
 
 export function updateUser(updatedUser: User): void {
-    const userIndex = db.users.findIndex(u => u.id === updatedUser.id);
+    const userIndex = mockUsers.findIndex(u => u.id === updatedUser.id);
     if (userIndex !== -1) {
-        db.users[userIndex] = updatedUser;
+        mockUsers[userIndex] = updatedUser;
     }
 }
 
 // --- Project Data Access ---
 export function getAllProjects(): Project[] {
-    return db.projects;
+    return mockProjects;
 }
 
 export function findProjectById(projectId: string): Project | undefined {
-    return db.projects.find(p => p.id === projectId);
+    return mockProjects.find(p => p.id === projectId);
 }
 
 export function addProject(newProject: Project): void {
-    db.projects.push(newProject);
+    mockProjects.push(newProject);
 }
 
 export function updateProject(updatedProject: Project): void {
-    const projectIndex = db.projects.findIndex(p => p.id === updatedProject.id);
+    const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
     if (projectIndex !== -1) {
-        db.projects[projectIndex] = updatedProject;
+        mockProjects[projectIndex] = updatedProject;
     }
 }
 
 // --- Task Data Access ---
 export function getAllTasks(): Task[] {
-    return db.tasks;
+    return mockTasks;
 }
 
 export function findTasksByProjectId(projectId: string): Task[] {
-    return db.tasks.filter(t => t.projectId === projectId);
+    return mockTasks.filter(t => t.projectId === projectId);
 }
 
 export function findTaskById(taskId: string): Task | undefined {
-    return db.tasks.find(t => t.id === taskId);
+    return mockTasks.find(t => t.id === taskId);
 }
 
 export function addTask(newTask: Task): void {
-    db.tasks.push(newTask);
+    mockTasks.push(newTask);
 }
 
 export function updateTask(updatedTask: Task): void {
-    const taskIndex = db.tasks.findIndex(t => t.id === updatedTask.id);
+    const taskIndex = mockTasks.findIndex(t => t.id === updatedTask.id);
     if (taskIndex !== -1) {
-        db.tasks[taskIndex] = updatedTask;
+        mockTasks[taskIndex] = updatedTask;
     }
 }
 
 export function deleteTask(taskId: string): void {
-    const taskIndex = db.tasks.findIndex(t => t.id === taskId);
+    const taskIndex = mockTasks.findIndex(t => t.id === taskId);
     if (taskIndex !== -1) {
-        db.tasks.splice(taskIndex, 1);
+        mockTasks.splice(taskIndex, 1);
     }
 }
 
 
 // --- Learning Progress Data Access ---
 export function getAllUserLearningProgress(): UserLearningProgress[] {
-    return db.userLearningProgress;
+    return mockUserLearningProgress;
 }
 
 export function findUserLearningProgress(userId: string, pathId: string): UserLearningProgress | undefined {
-    return db.userLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
+    return mockUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
 }
 
 export function updateUserLearningProgress(progress: UserLearningProgress): void {
-    const progressIndex = db.userLearningProgress.findIndex(p => p.userId === progress.userId && p.pathId === progress.pathId);
+    const progressIndex = mockUserLearningProgress.findIndex(p => p.userId === progress.userId && p.pathId === progress.pathId);
     if (progressIndex !== -1) {
-        db.userLearningProgress[progressIndex] = progress;
+        mockUserLearningProgress[progressIndex] = progress;
     } else {
-        db.userLearningProgress.push(progress);
+        mockUserLearningProgress.push(progress);
     }
 }
 
 export function getAllLearningPaths(): LearningPath[] {
-    return db.learningPaths;
+    return mockLearningPaths;
 }
 
 // --- Data Hydration ---
-// This function remains crucial for combining raw data into rich objects for the UI.
+// This function remains crucial for combining raw data from different "tables" into rich objects for the UI.
 export function hydrateProjectTeam(project: Project): Project {
     const allUsers = getAllUsers();
 
     const team: ProjectMember[] = (project.team || []).map((m: any) => {
         const user = allUsers.find(u => u.id === m.userId);
-        return user ? { user, role: m.role } : null;
+        return user ? { user, role: m.role, userId: user.id } : null;
     }).filter((m): m is ProjectMember => m !== null);
 
     const discussions: Discussion[] = (project.discussions || []).map((d: any) => {
@@ -152,6 +126,7 @@ export function hydrateProjectTeam(project: Project): Project {
            user,
            content: d.content,
            timestamp: new Date(timestamp).toISOString(),
+           userId: user.id,
        };
    }).filter((d): d is Discussion => d !== null);
 
