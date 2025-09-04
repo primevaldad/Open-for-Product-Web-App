@@ -28,28 +28,30 @@ import ProjectDetailClientPage from "./project-detail-client-page";
 import { addTask, addDiscussionComment, addTeamMember, deleteTask, joinProject, updateTask } from "@/app/actions/projects";
 import type { Task } from "@/lib/types";
 
-function getProjectPageData(projectId: string) {
-    const currentUser = getCurrentUser();
-    const allUsers = getAllUsers();
-    const projectData = findProjectById(projectId);
+async function getProjectPageData(projectId: string) {
+    const currentUser = await getCurrentUser();
+    const allUsers = await getAllUsers();
+    const projectData = await findProjectById(projectId);
 
     if (!projectData) return { project: null, projectTasks: [], currentUser, allUsers: [] };
 
-    const project = hydrateProjectTeam(projectData);
+    const project = await hydrateProjectTeam(projectData);
 
-    const projectTasks = findTasksByProjectId(projectId)
-        .map(t => {
-            const assignedTo = t.assignedToId ? allUsers.find(u => u.id === t.assignedToId) : undefined;
-            return { ...t, description: t.description ?? '', assignedTo };
-        }) as Task[];
+    const projectTasksData = await findTasksByProjectId(projectId);
+    const taskPromises = projectTasksData.map(async t => {
+        const assignedTo = t.assignedToId ? allUsers.find(u => u.id === t.assignedToId) : undefined;
+        return { ...t, description: t.description ?? '', assignedTo };
+    });
+    
+    const projectTasks = await Promise.all(taskPromises) as Task[];
 
     return { project, projectTasks, currentUser, allUsers };
 }
 
 
 // This is now a Server Component responsible for fetching data
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const { project, projectTasks, currentUser, allUsers } = getProjectPageData(params.id);
+export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const { project, projectTasks, currentUser, allUsers } = await getProjectPageData(params.id);
 
   if (!project) {
     notFound();

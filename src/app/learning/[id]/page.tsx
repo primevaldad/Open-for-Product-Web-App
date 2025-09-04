@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle, ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import type { LearningPath } from '@/lib/types';
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
 import { getCurrentUser, getAllLearningPaths, findUserLearningProgress } from '@/lib/data-cache';
@@ -14,22 +13,22 @@ import LearningModuleListItem from '@/components/learning-module-list-item';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 
-function getLearningPathDetailPageData(pathId: string) {
-    const currentUser = getCurrentUser();
-    const pathData = getAllLearningPaths().find(p => p.id === pathId);
+async function getLearningPathDetailPageData(pathId: string) {
+    const currentUser = await getCurrentUser();
+    const pathData = (await getAllLearningPaths()).find(p => p.id === pathId);
 
     if (!pathData || !currentUser) return { path: null, userProgress: undefined, Icon: null };
 
     const Icon = iconMap[pathData.category as keyof typeof iconMap] || FlaskConical;
-    const userProgress = findUserLearningProgress(currentUser.id, pathId);
+    const userProgress = await findUserLearningProgress(currentUser.id, pathId);
 
     return { path: pathData, userProgress, Icon };
 }
 
 
 // This is now a Server Component
-export default function LearningPathDetailPage({ params }: { params: { id: string } }) {
-  const { path, userProgress, Icon } = getLearningPathDetailPageData(params.id);
+export default async function LearningPathDetailPage({ params }: { params: { id: string } }) {
+  const { path, userProgress, Icon } = await getLearningPathDetailPageData(params.id);
 
   if (!path || !Icon) {
     notFound();

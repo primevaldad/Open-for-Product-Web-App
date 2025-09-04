@@ -13,9 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { User, LearningPath, UserLearningProgress, Module } from '@/lib/types';
 import type { completeModule } from '@/app/actions/learning';
 
-// The LearningPath prop is now Omit<LearningPath, 'Icon'> because the Icon is a non-serializable component
 interface LearningModuleClientPageProps {
-    path: Omit<LearningPath, 'Icon'>;
+    path: LearningPath;
     module: Module;
     userProgress: UserLearningProgress | undefined;
     currentUser: User;

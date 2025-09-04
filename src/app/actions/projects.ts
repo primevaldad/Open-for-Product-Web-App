@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import type { Project, ProjectStatus, Task } from '@/lib/types';
 import { 
-    addProject,
+    addProject as addProjectToDb,
     addTask as addTaskToDb,
     deleteTask as deleteTaskFromDb,
     findProjectById, 
@@ -17,7 +17,6 @@ import {
     updateUser,
     getCurrentUser
 } from '@/lib/data-cache';
-import { redirect } from 'next/navigation';
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -81,8 +80,9 @@ async function handleProjectSubmission(
   if (!currentUser) {
       return { success: false, error: "Could not find current user."};
   }
-
-  const newProjectId = `p${getAllProjects().length + 1}`;
+  
+  const allProjects = await getAllProjects();
+  const newProjectId = `p${allProjects.length + 1}`;
 
   const newProjectData: Project = {
     id: newProjectId,
@@ -104,7 +104,7 @@ async function handleProjectSubmission(
     }
   };
 
-  addProject(newProjectData);
+  await addProjectToDb(newProjectData);
 
   revalidatePath('/');
   revalidatePath('/create');
@@ -119,18 +119,14 @@ export async function saveProjectDraft(values: z.infer<typeof ProjectSchema>) {
 }
 
 export async function publishProject(values: z.infer<typeof ProjectSchema>) {
-    const result = await handleProjectSubmission(values, 'published');
-    if (result.success && result.projectId) {
-        redirect(`/projects/${result.projectId}`);
-    }
-    return result;
+    return await handleProjectSubmission(values, 'published');
 }
 
 export async function joinProject(projectId: string) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = findProjectById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
         return { success: false, error: "Project not found" };
     }
@@ -141,7 +137,7 @@ export async function joinProject(projectId: string) {
     }
 
     project.team.push({ userId: currentUser.id, role: 'participant' as const });
-    updateProjectInDb(project);
+    await updateProjectInDb(project);
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/', 'layout'); // To update project cards potentially seen by others
@@ -157,7 +153,7 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
 
     const { projectId, userId, role } = validatedFields.data;
 
-    const project = findProjectById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
         return { success: false, error: "Project not found" };
     }
@@ -168,9 +164,9 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     }
 
     project.team.push({ userId, role });
-    updateProjectInDb(project);
+    await updateProjectInDb(project);
 
-    const invitedUser = findUserById(userId);
+    const invitedUser = await findUserById(userId);
     if (invitedUser) {
         if (!invitedUser.notifications) {
             invitedUser.notifications = [];
@@ -181,7 +177,7 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
             link: `/projects/${projectId}`,
             read: false,
         });
-        updateUser(invitedUser);
+        await updateUser(invitedUser);
     }
 
     revalidatePath(`/projects/${projectId}`);
@@ -204,7 +200,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = findProjectById(id);
+    const project = await findProjectById(id);
     if (!project) {
         return { success: false, error: "Project not found" };
     }
@@ -227,7 +223,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
         governance: projectData.governance,
     };
 
-    updateProjectInDb(updatedData);
+    await updateProjectInDb(updatedData);
 
     revalidatePath('/');
     revalidatePath(`/projects/${id}`);
@@ -249,7 +245,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = findProjectById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return { success: false, error: "Associated project not found" };
     }
@@ -258,8 +254,8 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
     if (!isMember) {
       return { success: false, error: "Only team members can add tasks." };
     }
-
-    const newTaskId = `t${getAllTasks().length + 1}`;
+    const allTasks = await getAllTasks();
+    const newTaskId = `t${allTasks.length + 1}`;
     const newTaskData: Task = {
         id: newTaskId,
         projectId,
@@ -268,7 +264,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
         status,
     };
 
-    addTaskToDb(newTaskData);
+    await addTaskToDb(newTaskData);
 
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
@@ -286,7 +282,7 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = findProjectById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
         return { success: false, error: "Associated project not found" };
     }
@@ -295,12 +291,12 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
         return { success: false, error: "Only team members can edit tasks." };
     }
 
-    const existingTask = getAllTasks().find(t => t.id === id);
+    const existingTask = (await getAllTasks()).find(t => t.id === id);
     if (!existingTask) {
         return { success: false, error: "Task not found" };
     }
 
-    updateTaskInDb({ ...existingTask, ...taskData });
+    await updateTaskInDb({ ...existingTask, ...taskData });
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/activity');
@@ -319,7 +315,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const project = findProjectById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return { success: false, error: "Associated project not found" };
     }
@@ -329,7 +325,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
       return { success: false, error: "Only team members can delete tasks." };
     }
 
-    deleteTaskFromDb(id);
+    await deleteTaskFromDb(id);
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/activity');
@@ -343,7 +339,7 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
 
     const { projectId, userId, content } = validatedFields.data;
 
-    const project = findProjectById(projectId);
+    const project = await findProjectById(projectId);
     if (!project) {
       return { success: false, error: "Project not found" };
     }
@@ -360,7 +356,7 @@ export async function addDiscussionComment(values: z.infer<typeof DiscussionComm
     };
 
     project.discussions.push(newComment);
-    updateProjectInDb(project);
+    await updateProjectInDb(project);
 
     revalidatePath(`/projects/${projectId}`);
     return { success: true };

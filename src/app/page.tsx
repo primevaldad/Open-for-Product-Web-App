@@ -10,7 +10,6 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
-import type { Project, User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,23 +28,23 @@ import { SuggestSteps } from "@/components/ai/suggest-steps";
 import { getCurrentUser, hydrateProjectTeam, getAllProjects } from "@/lib/data-cache";
 import HomeClientPage from "./home-client-page";
 
-function getDashboardPageData() {
-    const currentUser = getCurrentUser();
+async function getDashboardPageData() {
+    const currentUser = await getCurrentUser();
 
-    const projects = getAllProjects()
-        .filter(p => p.status === 'published')
-        .map(p => hydrateProjectTeam(p));
+    const allProjects = await getAllProjects();
+    const publishedProjects = allProjects.filter(p => p.status === 'published');
+    const hydratedProjects = await Promise.all(publishedProjects.map(p => hydrateProjectTeam(p)));
 
     return {
         currentUser,
-        projects
+        projects: hydratedProjects
     }
 }
 
 
 // This is now a Server Component that fetches data and passes it to a client component.
-export default function DashboardPage() {
-  const { currentUser, projects } = getDashboardPageData();
+export default async function DashboardPage() {
+  const { currentUser, projects } = await getDashboardPageData();
 
   if (!currentUser) {
     return (

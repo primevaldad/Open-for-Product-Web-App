@@ -25,16 +25,16 @@ import { getCurrentUser, getAllLearningPaths, getAllUserLearningProgress } from 
 import LearningClientPage from "./learning-client-page";
 
 
-function getLearningPageData() {
-    const currentUser = getCurrentUser();
-    const learningPaths = getAllLearningPaths();
-    const userProgress = getAllUserLearningProgress().filter(p => p.userId === currentUser?.id);
+async function getLearningPageData() {
+    const currentUser = await getCurrentUser();
+    const learningPaths = await getAllLearningPaths();
+    const userProgress = currentUser ? await getAllUserLearningProgress().then(p => p.filter(up => up.userId === currentUser.id)) : [];
     return { currentUser, learningPaths, userProgress };
 }
 
 
-export default function LearningPage() {
-    const { currentUser, learningPaths, userProgress } = getLearningPageData();
+export default async function LearningPage() {
+    const { currentUser, learningPaths, userProgress } = await getLearningPageData();
 
     if (!currentUser) {
         return (

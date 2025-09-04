@@ -26,15 +26,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { User, Project } from "@/lib/types";
 import { getCurrentUser, hydrateProjectTeam, getAllProjects } from "@/lib/data-cache";
 
-function getDraftsPageData() {
-    const currentUser = getCurrentUser();
-    const projects = getAllProjects().map(p => hydrateProjectTeam(p));
+async function getDraftsPageData() {
+    const currentUser = await getCurrentUser();
+    const projectPromises = (await getAllProjects()).map(p => hydrateProjectTeam(p));
+    const projects = await Promise.all(projectPromises);
     return { currentUser, projects };
 }
 
 // This is now a Server Component
-export default function DraftsPage() {
-  const { currentUser, projects } = getDraftsPageData();
+export default async function DraftsPage() {
+  const { currentUser, projects } = await getDraftsPageData();
 
   if (!currentUser) {
     // This can be a loading component or a redirect in a real app

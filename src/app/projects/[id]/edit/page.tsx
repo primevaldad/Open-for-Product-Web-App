@@ -7,9 +7,9 @@ import { getCurrentUser, findProjectById } from '@/lib/data-cache';
 import EditProjectForm from './edit-project-form';
 import { updateProject } from '@/app/actions/projects';
 
-function getEditProjectPageData(projectId: string) {
-    const currentUser = getCurrentUser();
-    const project = findProjectById(projectId);
+async function getEditProjectPageData(projectId: string) {
+    const currentUser = await getCurrentUser();
+    const project = await findProjectById(projectId);
 
     if (!project) return { project: null, currentUser };
 
@@ -17,8 +17,8 @@ function getEditProjectPageData(projectId: string) {
 }
 
 // This is now a Server Component that fetches data and passes it to the form.
-export default function EditProjectPage({ params }: { params: { id: string } }) {
-  const { project, currentUser } = getEditProjectPageData(params.id);
+export default async function EditProjectPage({ params }: { params: { id: string } }) {
+  const { project, currentUser } = await getEditProjectPageData(params.id);
 
   if (!project || !currentUser) {
     notFound();

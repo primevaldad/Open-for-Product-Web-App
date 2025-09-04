@@ -30,34 +30,38 @@ import { updateTask, deleteTask } from "../actions/projects";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
 
-function getActivityPageData() {
-    const currentUser = getCurrentUser();
+async function getActivityPageData() {
+    const currentUser = await getCurrentUser();
     if (!currentUser) return { currentUser: null, projects: [], myTasks: [], learningPaths: [], userProgress: [] };
 
-    const allUsers = getAllUsers();
-    const projects = getAllProjects().map(p => hydrateProjectTeam(p));
+    const allUsers = await getAllUsers();
+    const projectPromises = (await getAllProjects()).map(p => hydrateProjectTeam(p));
+    const projects = await Promise.all(projectPromises);
     
-    const myTasks = getAllTasks()
+    const taskPromises = (await getAllTasks())
         .filter(t => t.assignedToId === currentUser.id)
-        .map(t => {
+        .map(async t => {
             const assignedTo = allUsers.find(u => u.id === t.assignedToId);
             return { ...t, assignedTo };
-        }) as Task[];
+        });
 
-    const userProgress = getAllUserLearningProgress().filter(p => p.userId === currentUser.id);
+    const myTasks = await Promise.all(taskPromises) as Task[];
 
-    const learningPaths = getAllLearningPaths().map(lp => ({
+    const userProgress = await getAllUserLearningProgress();
+    const filteredUserProgress = userProgress.filter(p => p.userId === currentUser.id);
+
+    const learningPaths = (await getAllLearningPaths()).map(lp => ({
         ...lp,
         Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
     }));
 
-    return { currentUser, projects, myTasks, learningPaths, userProgress };
+    return { currentUser, projects, myTasks, learningPaths, userProgress: filteredUserProgress };
 }
 
 
 // This page is now a Server Component that fetches data and passes it to a Client Component.
-export default function ActivityPage() {
-  const { currentUser, projects, myTasks, learningPaths, userProgress } = getActivityPageData();
+export default async function ActivityPage() {
+  const { currentUser, projects, myTasks, learningPaths, userProgress } = await getActivityPageData();
 
   if (!currentUser) {
     return (

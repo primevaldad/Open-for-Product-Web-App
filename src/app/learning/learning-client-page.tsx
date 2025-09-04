@@ -15,7 +15,7 @@ import type { LearningPath, ProjectCategory, UserLearningProgress } from '@/lib/
 import { FlaskConical } from 'lucide-react';
 
 interface LearningClientPageProps {
-    learningPaths: Omit<LearningPath, 'Icon'>[];
+    learningPaths: LearningPath[];
     userProgress: UserLearningProgress[];
 }
 

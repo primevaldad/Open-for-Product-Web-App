@@ -1,24 +1,27 @@
 
+import { db } from './firebase';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
-import { mockUsers, mockProjects, mockTasks, mockLearningPaths, mockUserLearningProgress } from './mock-data';
-
-// --- Persistent In-Memory "Database" ---
-// This layer now directly interacts with the imported mock data arrays,
-// treating them as a persistent, in-memory database. Changes made via
-// the update functions will modify these arrays directly and will
-// persist for the lifetime of the server process.
 
 // --- User Data Access ---
-export function getAllUsers(): User[] {
-    return mockUsers;
+export async function getAllUsers(): Promise<User[]> {
+    const usersCol = collection(db, 'users');
+    const userSnapshot = await getDocs(usersCol);
+    return userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
 }
 
-export function findUserById(userId: string): User | undefined {
-    return mockUsers.find(u => u.id === userId);
+export async function findUserById(userId: string): Promise<User | undefined> {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+        return { id: userSnap.id, ...userSnap.data() } as User;
+    }
+    return undefined;
 }
 
-export function getCurrentUser(): User | null {
-    const user = findUserById('u1');
+export async function getCurrentUser(): Promise<User | null> {
+    // In a real app, this would get the logged-in user's ID
+    const user = await findUserById('u1');
     if (!user) {
         console.error("Could not find the default user (u1).");
         return null;
@@ -26,109 +29,131 @@ export function getCurrentUser(): User | null {
     return user;
 }
 
-export function updateUser(updatedUser: User): void {
-    const userIndex = mockUsers.findIndex(u => u.id === updatedUser.id);
-    if (userIndex !== -1) {
-        mockUsers[userIndex] = updatedUser;
-    }
+export async function updateUser(updatedUser: User): Promise<void> {
+    const { id, ...userData } = updatedUser;
+    const userRef = doc(db, 'users', id);
+    await updateDoc(userRef, userData);
 }
 
 // --- Project Data Access ---
-export function getAllProjects(): Project[] {
-    return mockProjects;
+export async function getAllProjects(): Promise<Project[]> {
+    const projectsCol = collection(db, 'projects');
+    const projectSnapshot = await getDocs(projectsCol);
+    return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
 }
 
-export function findProjectById(projectId: string): Project | undefined {
-    return mockProjects.find(p => p.id === projectId);
-}
-
-export function addProject(newProject: Project): void {
-    mockProjects.push(newProject);
-}
-
-export function updateProject(updatedProject: Project): void {
-    const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
-    if (projectIndex !== -1) {
-        mockProjects[projectIndex] = updatedProject;
+export async function findProjectById(projectId: string): Promise<Project | undefined> {
+    const projectRef = doc(db, 'projects', projectId);
+    const projectSnap = await getDoc(projectRef);
+    if (projectSnap.exists()) {
+        return { id: projectSnap.id, ...projectSnap.data() } as Project;
     }
+    return undefined;
+}
+
+export async function addProject(newProject: Project): Promise<void> {
+    const { id, ...projectData } = newProject;
+    await setDoc(doc(db, 'projects', id), projectData);
+}
+
+export async function updateProject(updatedProject: Project): Promise<void> {
+    const { id, ...projectData } = updatedProject;
+    const projectRef = doc(db, 'projects', id);
+    await updateDoc(projectRef, projectData);
 }
 
 // --- Task Data Access ---
-export function getAllTasks(): Task[] {
-    return mockTasks;
+export async function getAllTasks(): Promise<Task[]> {
+    const tasksCol = collection(db, 'tasks');
+    const taskSnapshot = await getDocs(tasksCol);
+    return taskSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
 }
 
-export function findTasksByProjectId(projectId: string): Task[] {
-    return mockTasks.filter(t => t.projectId === projectId);
+export async function findTasksByProjectId(projectId: string): Promise<Task[]> {
+    const tasksCol = collection(db, 'tasks');
+    const q = query(tasksCol, where("projectId", "==", projectId));
+    const taskSnapshot = await getDocs(q);
+    return taskSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
 }
 
-export function findTaskById(taskId: string): Task | undefined {
-    return mockTasks.find(t => t.id === taskId);
-}
-
-export function addTask(newTask: Task): void {
-    mockTasks.push(newTask);
-}
-
-export function updateTask(updatedTask: Task): void {
-    const taskIndex = mockTasks.findIndex(t => t.id === updatedTask.id);
-    if (taskIndex !== -1) {
-        mockTasks[taskIndex] = updatedTask;
+export async function findTaskById(taskId: string): Promise<Task | undefined> {
+    const taskRef = doc(db, 'tasks', taskId);
+    const taskSnap = await getDoc(taskRef);
+    if (taskSnap.exists()) {
+        return { id: taskSnap.id, ...taskSnap.data() } as Task;
     }
+    return undefined;
 }
 
-export function deleteTask(taskId: string): void {
-    const taskIndex = mockTasks.findIndex(t => t.id === taskId);
-    if (taskIndex !== -1) {
-        mockTasks.splice(taskIndex, 1);
-    }
+export async function addTask(newTask: Task): Promise<void> {
+    const { id, ...taskData } = newTask;
+    await setDoc(doc(db, 'tasks', id), taskData);
 }
 
+export async function updateTask(updatedTask: Task): Promise<void> {
+    const { id, ...taskData } = updatedTask;
+    const taskRef = doc(db, 'tasks', id);
+    await updateDoc(taskRef, taskData);
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+    await deleteDoc(doc(db, 'tasks', taskId));
+}
 
 // --- Learning Progress Data Access ---
-export function getAllUserLearningProgress(): UserLearningProgress[] {
-    return mockUserLearningProgress;
+export async function getAllUserLearningProgress(): Promise<UserLearningProgress[]> {
+    const progressCol = collection(db, 'userLearningProgress');
+    const progressSnapshot = await getDocs(progressCol);
+    return progressSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserLearningProgress));
 }
 
-export function findUserLearningProgress(userId: string, pathId: string): UserLearningProgress | undefined {
-    return mockUserLearningProgress.find(p => p.userId === userId && p.pathId === pathId);
-}
-
-export function updateUserLearningProgress(progress: UserLearningProgress): void {
-    const progressIndex = mockUserLearningProgress.findIndex(p => p.userId === progress.userId && p.pathId === progress.pathId);
-    if (progressIndex !== -1) {
-        mockUserLearningProgress[progressIndex] = progress;
-    } else {
-        mockUserLearningProgress.push(progress);
+export async function findUserLearningProgress(userId: string, pathId: string): Promise<UserLearningProgress | undefined> {
+    const progressCol = collection(db, 'userLearningProgress');
+    // Firestore doesn't support compound unique keys well, so we create a custom ID
+    const docId = `${userId}_${pathId}`;
+    const progressRef = doc(db, 'userLearningProgress', docId);
+    const progressSnap = await getDoc(progressRef);
+    if(progressSnap.exists()) {
+        return { ...progressSnap.data() } as UserLearningProgress;
     }
+    return undefined;
 }
 
-export function getAllLearningPaths(): LearningPath[] {
-    return mockLearningPaths;
+export async function updateUserLearningProgress(progress: UserLearningProgress): Promise<void> {
+    const docId = `${progress.userId}_${progress.pathId}`;
+    const progressRef = doc(db, 'userLearningProgress', docId);
+    await setDoc(progressRef, progress, { merge: true });
+}
+
+export async function getAllLearningPaths(): Promise<LearningPath[]> {
+    const pathsCol = collection(db, 'learningPaths');
+    const pathSnapshot = await getDocs(pathsCol);
+    return pathSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningPath));
 }
 
 // --- Data Hydration ---
-// This function remains crucial for combining raw data from different "tables" into rich objects for the UI.
-export function hydrateProjectTeam(project: Project): Project {
-    const allUsers = getAllUsers();
+export async function hydrateProjectTeam(project: Project): Promise<Project> {
+    const team: ProjectMember[] = await Promise.all(
+        (project.team || []).map(async (m: any) => {
+            const user = await findUserById(m.userId);
+            return user ? { user, role: m.role, userId: user.id } : null;
+        })
+    ).then(results => results.filter((m): m is ProjectMember => m !== null));
 
-    const team: ProjectMember[] = (project.team || []).map((m: any) => {
-        const user = allUsers.find(u => u.id === m.userId);
-        return user ? { user, role: m.role, userId: user.id } : null;
-    }).filter((m): m is ProjectMember => m !== null);
-
-    const discussions: Discussion[] = (project.discussions || []).map((d: any) => {
-        const user = allUsers.find(u => u.id === d.userId);
-        if (!user) return null;
-        const timestamp = d.timestamp instanceof Date ? d.timestamp.getTime() : new Date(d.timestamp).getTime();
-        return {
-           id: `${d.userId}-${timestamp}`,
-           user,
-           content: d.content,
-           timestamp: new Date(timestamp).toISOString(),
-           userId: user.id,
-       };
-   }).filter((d): d is Discussion => d !== null);
+    const discussions: Discussion[] = await Promise.all(
+        (project.discussions || []).map(async (d: any) => {
+            const user = await findUserById(d.userId);
+            if (!user) return null;
+            const timestamp = d.timestamp;
+            return {
+                id: `${d.userId}-${timestamp}`,
+                user,
+                content: d.content,
+                timestamp: timestamp,
+                userId: user.id,
+            };
+        })
+    ).then(results => results.filter((d): d is Discussion => d !== null));
 
     return { ...project, team, discussions };
 }

@@ -4,12 +4,10 @@ import { getCurrentUser, findUserLearningProgress, getAllLearningPaths, findUser
 import LearningModuleClientPage from './learning-module-client-page';
 import { completeModule } from '@/app/actions/learning';
 import type { Module } from '@/lib/types';
-import { iconMap } from '@/lib/static-data';
-import { FlaskConical } from 'lucide-react';
 
-function getLearningModulePageData(pathId: string, moduleId: string) {
-    const currentUser = getCurrentUser();
-    const learningPaths = getAllLearningPaths();
+async function getLearningModulePageData(pathId: string, moduleId: string) {
+    const currentUser = await getCurrentUser();
+    const learningPaths = await getAllLearningPaths();
     const pathData = learningPaths.find(p => p.id === pathId);
 
     if (!pathData || !currentUser) {
@@ -18,7 +16,7 @@ function getLearningModulePageData(pathId: string, moduleId: string) {
     
     const module = pathData.modules.find((m: Module) => m.id === moduleId) || null;
 
-    const userProgress = findUserLearningProgress(currentUser.id, pathId);
+    const userProgress = await findUserLearningProgress(currentUser.id, pathId);
 
     const currentModuleIndex = pathData.modules.findIndex((m: Module) => m.id === moduleId);
     const prevModule = currentModuleIndex > 0 ? pathData.modules[currentModuleIndex - 1] : null;
@@ -29,20 +27,17 @@ function getLearningModulePageData(pathId: string, moduleId: string) {
 
 
 // This is now a Server Component that fetches all necessary data
-export default function LearningModulePage({ params }: { params: { id: string, moduleId: string } }) {
+export default async function LearningModulePage({ params }: { params: { id: string, moduleId: string } }) {
 
-  const { path, module, userProgress, currentUser, prevModule, nextModule } = getLearningModulePageData(params.id, params.moduleId);
+  const { path, module, userProgress, currentUser, prevModule, nextModule } = await getLearningModulePageData(params.id, params.moduleId);
 
   if (!path || !module || !currentUser) {
     notFound();
   }
-
-  // Omit the non-serializable Icon property before passing it to the client component
-  const { Icon, ...serializablePath } = path;
-
+  
   return (
     <LearningModuleClientPage
-        path={serializablePath}
+        path={path}
         module={module}
         userProgress={userProgress}
         currentUser={currentUser}
