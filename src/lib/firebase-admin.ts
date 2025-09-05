@@ -1,13 +1,19 @@
 
 import * as admin from 'firebase-admin';
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+const serviceAccount = process.env.SERVICE_ACCOUNT_KEY_JSON;
 
 if (!serviceAccount) {
-    throw new Error('Firebase service account key not found. Please set the FIREBASE_SERVICE_ACCOUNT_KEY environment variable.');
+    throw new Error('Firebase service account key not found. Please set the SERVICE_ACCOUNT_KEY_JSON environment variable.');
 }
 
-const serviceAccountJson = JSON.parse(serviceAccount);
+let serviceAccountJson;
+try {
+    serviceAccountJson = JSON.parse(serviceAccount);
+} catch (e) {
+    throw new Error('Failed to parse Firebase service account key. Make sure it is a valid JSON string.');
+}
+
 
 let adminApp: admin.app.App;
 
