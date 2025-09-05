@@ -1,4 +1,3 @@
-
 import * as admin from 'firebase-admin';
 
 const serviceAccount = process.env.SERVICE_ACCOUNT_KEY_JSON;
