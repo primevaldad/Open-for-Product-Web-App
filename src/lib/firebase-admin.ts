@@ -9,9 +9,16 @@ if (!serviceAccount) {
 
 let serviceAccountJson;
 try {
-    serviceAccountJson = JSON.parse(serviceAccount);
+    // Some environments might automatically parse the JSON string.
+    // Others will provide it as a raw string. This handles both cases.
+    if (typeof serviceAccount === 'string') {
+        serviceAccountJson = JSON.parse(serviceAccount);
+    } else {
+        serviceAccountJson = serviceAccount;
+    }
 } catch (e) {
-    throw new Error('Failed to parse Firebase service account key. Make sure it is a valid JSON string.');
+    console.error("Error parsing Firebase service account key:", e);
+    throw new Error('Failed to parse Firebase service account key. Make sure it is a valid JSON string in your .env file.');
 }
 
 
