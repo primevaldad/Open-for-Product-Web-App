@@ -27,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { signup } from '@/app/actions/auth';
+import { useToast } from '@/hooks/use-toast';
 
 const SignUpSchema = z
   .object({
@@ -35,7 +36,7 @@ const SignUpSchema = z
     password: z.string().min(6, 'Password must be at least 6 characters.'),
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => data.password === data.passwordConfirm, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
   });
@@ -44,6 +45,7 @@ type SignUpFormValues = z.infer<typeof SignUpSchema>;
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +64,11 @@ export default function SignUpPage() {
     startTransition(async () => {
       const result = await signup(values);
       if (result.success) {
-        router.push('/onboarding');
+        toast({
+            title: 'Account Created!',
+            description: "Please log in to continue.",
+        });
+        router.push('/login');
       } else {
         setError(result.error || 'An unexpected error occurred.');
       }

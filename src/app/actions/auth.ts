@@ -60,16 +60,9 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
 
     await addUser(userRecord.uid, newUser);
     
-    // Create session cookie
-    const sessionCookie = await auth.createSessionCookie(userRecord.uid, { expiresIn: SESSION_COOKIE_EXPIRES_IN });
-    cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: SESSION_COOKIE_EXPIRES_IN,
-      path: '/',
-    });
-
-    revalidatePath('/', 'layout');
+    // We no longer create a session cookie here.
+    // The user will be redirected to the login page to sign in.
+    revalidatePath('/login');
     return { success: true, userId: userRecord.uid };
 
   } catch (error: any) {
