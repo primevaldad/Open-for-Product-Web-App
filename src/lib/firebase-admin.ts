@@ -1,5 +1,8 @@
 
 import * as admin from 'firebase-admin';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const serviceAccount = process.env.SERVICE_ACCOUNT_KEY_JSON;
 
@@ -9,13 +12,7 @@ if (!serviceAccount) {
 
 let serviceAccountJson;
 try {
-    // Some environments might automatically parse the JSON string.
-    // Others will provide it as a raw string. This handles both cases.
-    if (typeof serviceAccount === 'string') {
-        serviceAccountJson = JSON.parse(serviceAccount);
-    } else {
-        serviceAccountJson = serviceAccount;
-    }
+    serviceAccountJson = JSON.parse(serviceAccount);
 } catch (e) {
     console.error("Error parsing Firebase service account key:", e);
     throw new Error('Failed to parse Firebase service account key. Make sure it is a valid JSON string in your .env file.');
