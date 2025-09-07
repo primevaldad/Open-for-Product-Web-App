@@ -31,9 +31,10 @@ export async function POST(request: NextRequest) {
     response.cookies.set(options);
     
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating session cookie:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const errorMessage = error.message || 'An unknown error occurred during session creation.';
+    return NextResponse.json({ error: `Internal Server Error: ${errorMessage}` }, { status: 500 });
   }
 }
 
