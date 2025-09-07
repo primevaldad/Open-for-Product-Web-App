@@ -67,6 +67,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
     return { success: true, userId: userRecord.uid };
 
   } catch (error: any) {
+    console.error('Signup Error:', error); // Add detailed logging
     let errorMessage = 'An unknown error occurred.';
     if (error.code === 'auth/email-already-exists') {
       errorMessage = 'This email address is already in use by another account.';
