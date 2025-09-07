@@ -8,10 +8,10 @@ import { getAuth } from 'firebase/auth';
 const firebaseConfig = {
   "projectId": "open-for-product",
   "appId": "1:36569631324:web:9cacdc439f6b8ced253499",
-  "storageBucket": "open-for-product.firebasestorage.app",
-  "apiKey": "AIzaSyCDRVhRRr1rZHUYqWQBzWI_EZHtZ6iWhmY",
+  "storageBucket": "open-for-product.appspot.com",
+  "apiKey": "AIzaSyAz_-_rWTApPK5bJAgO93Z5SxqTVT5iDQ",
   "authDomain": "open-for-product.firebaseapp.com",
-  "measurementId": "",
+  "measurementId": "G-5G01E1N3L7",
   "messagingSenderId": "36569631324"
 };
 
