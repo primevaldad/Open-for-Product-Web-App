@@ -10,17 +10,11 @@ import { findUserById, addUser } from '@/lib/data-cache';
 import type { User } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
-const SignUpSchema = z
-  .object({
-    name: z.string().min(1, 'Name is required.'),
-    email: z.string().email('Invalid email address.'),
-    password: z.string().min(6, 'Password must be at least 6 characters.'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
+const SignUpSchema = z.object({
+  idToken: z.string(),
+  name: z.string().min(1, 'Name is required.'),
+  email: z.string().email('Invalid email address.'),
+});
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -39,41 +33,32 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
       error: 'Invalid data provided.',
     };
   }
-
-  const { email, password, name } = validatedFields.data;
+  
+  const { idToken, name, email } = validatedFields.data;
   const adminAuth = getAuth(adminApp);
   
   try {
-    const userRecord = await adminAuth.createUser({
-      email,
-      password,
-      displayName: name,
-    });
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
     
     const newUser: Omit<User, 'id'> = {
         name,
         email,
-        avatarUrl: `https://i.pravatar.cc/150?u=${userRecord.uid}`,
+        avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
         bio: 'Just joined Open for Product!',
         interests: [],
-        onboarded: false, // Start with onboarding incomplete
+        onboarded: false,
     };
 
-    await addUser(userRecord.uid, newUser);
+    await addUser(uid, newUser);
+    await createSession(idToken);
     
-    // We no longer create a session cookie here.
-    // The user will be redirected to the login page to sign in.
-    revalidatePath('/login');
-    return { success: true, userId: userRecord.uid };
+    revalidatePath('/onboarding');
+    return { success: true, userId: uid };
 
   } catch (error: any) {
-    console.error('Signup Error:', error); // Add detailed logging
-    let errorMessage = 'An unknown error occurred.';
-    if (error.code === 'auth/email-already-exists') {
-      errorMessage = 'This email address is already in use by another account.';
-    } else if (error.code === 'auth/operation-not-allowed') {
-      errorMessage = 'Email/Password sign-up is not enabled for this project. Please enable it in the Firebase console.';
-    }
+    console.error('Signup Server Action Error:', error);
+    let errorMessage = 'An unknown error occurred during server-side processing.';
     return {
       success: false,
       error: errorMessage,
@@ -86,16 +71,6 @@ export async function login(values: z.infer<typeof LoginSchema>) {
     if (!validatedFields.success) {
         return { success: false, error: "Invalid data provided." };
     }
-    
-    // We don't actually use Firebase Client SDK to login,
-    // as we can't create a session cookie from the client.
-    // So this action is a placeholder for the logic handled by middleware.
-    // The actual sign-in and session cookie creation happens in a custom API route
-    // that the login form will post to. 
-    // For now, this structure is fine. The user will be redirected by the form.
-
-    // A real implementation would verify the password here. For this prototype,
-    // we assume the password is correct and rely on the session creation step.
     return { success: true };
 }
 
@@ -118,13 +93,15 @@ export async function createSession(idToken: string) {
 
 
 export async function logout() {
-  const adminAuth = getAuth(adminApp);
   const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
   if (sessionCookie) {
     cookies().set(SESSION_COOKIE_NAME, '', { expires: new Date(0) });
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie).catch(() => null);
-    if (decodedClaims) {
-      await adminAuth.revokeRefreshTokens(decodedClaims.sub);
+    const adminAuth = getAuth(adminApp);
+    try {
+        const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie);
+        await adminAuth.revokeRefreshTokens(decodedClaims.sub);
+    } catch (error) {
+        // Session cookie is invalid. No need to revoke tokens.
     }
   }
   revalidatePath('/', 'layout');

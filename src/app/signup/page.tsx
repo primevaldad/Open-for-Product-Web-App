@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AlertCircle } from 'lucide-react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { signup } from '@/app/actions/auth';
 import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
 
 const SignUpSchema = z
   .object({
@@ -63,15 +65,42 @@ export default function SignUpPage() {
   const onSubmit = (values: SignUpFormValues) => {
     setError(null);
     startTransition(async () => {
-      const result = await signup(values);
-      if (result.success) {
-        toast({
-            title: 'Account Created!',
-            description: "Please log in to continue.",
+      try {
+        // 1. Create user on the client with the Firebase Client SDK
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          values.email,
+          values.password
+        );
+
+        const idToken = await userCredential.user.getIdToken();
+
+        // 2. Call server action to store user in Firestore and create session
+        const result = await signup({
+          idToken,
+          name: values.name,
+          email: values.email,
         });
-        router.push('/login');
-      } else {
-        setError(result.error || 'An unexpected error occurred.');
+
+        if (result.success) {
+          toast({
+            title: 'Account Created!',
+            description: "You're now logged in.",
+          });
+          router.push('/onboarding');
+        } else {
+          setError(result.error || 'An unexpected server error occurred.');
+        }
+      } catch (err: any) {
+        // Handle client-side Firebase errors
+        let errorMessage = 'An unknown error occurred.';
+        if (err.code === 'auth/email-already-in-use') {
+          errorMessage = 'This email address is already in use by another account.';
+        } else if (err.code === 'auth/weak-password') {
+          errorMessage = 'The password is too weak.';
+        }
+        setError(errorMessage);
+        console.error('Client-side signup error:', err);
       }
     });
   };
