@@ -71,6 +71,8 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
     let errorMessage = 'An unknown error occurred.';
     if (error.code === 'auth/email-already-exists') {
       errorMessage = 'This email address is already in use by another account.';
+    } else if (error.code === 'auth/operation-not-allowed') {
+      errorMessage = 'Email/Password sign-up is not enabled for this project. Please enable it in the Firebase console.';
     }
     return {
       success: false,
