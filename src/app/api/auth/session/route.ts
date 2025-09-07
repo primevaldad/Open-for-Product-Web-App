@@ -1,6 +1,6 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   const reqBody = (await request.json()) as { idToken: string };
@@ -8,16 +8,14 @@ export async function POST(request: NextRequest) {
 
   const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
-  const auth = getAuth(adminApp);
-
   try {
-    const decodedIdToken = await auth.verifyIdToken(idToken);
+    const decodedIdToken = await adminAuth.verifyIdToken(idToken);
     
     if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
       return NextResponse.json({ error: 'Recent sign-in required' }, { status: 401 });
     }
 
-    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
     const options = {
       name: '__session',

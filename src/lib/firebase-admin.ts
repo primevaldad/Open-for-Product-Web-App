@@ -1,24 +1,22 @@
 
 'use server';
 
-import * as admin from 'firebase-admin';
+import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import type { ServiceAccount } from 'firebase-admin';
-
-// Using a direct JSON import is the most robust method for Next.js.
-// The bundler includes the JSON content at build time, avoiding runtime file path issues.
 import serviceAccountJson from '@/lib/serviceAccountKey.json';
 
-let adminApp: admin.app.App;
+let adminApp;
 
-if (!admin.apps.length) {
-    // The imported JSON needs to be cast to the ServiceAccount type
+if (!getApps().length) {
     const serviceAccount = serviceAccountJson as ServiceAccount;
-
-    adminApp = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+    adminApp = initializeApp({
+        credential: cert(serviceAccount),
     });
 } else {
-  adminApp = admin.app();
+  adminApp = getApp();
 }
 
-export { adminApp };
+const adminAuth = getAuth(adminApp);
+
+export { adminApp, adminAuth };

@@ -1,10 +1,10 @@
+
 'use server';
 
 import { z } from 'zod';
 import { cookies } from 'next/headers';
-import { getAuth } from 'firebase-admin/auth';
+import { adminAuth } from '@/lib/firebase-admin';
 
-import { adminApp } from '@/lib/firebase-admin';
 import { findUserById, addUser } from '@/lib/data-cache';
 import type { User } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
@@ -40,10 +40,9 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
   }
 
   const { email, password, name } = validatedFields.data;
-  const auth = getAuth(adminApp);
-
+  
   try {
-    const userRecord = await auth.createUser({
+    const userRecord = await adminAuth.createUser({
       email,
       password,
       displayName: name,
@@ -96,14 +95,13 @@ export async function login(values: z.infer<typeof LoginSchema>) {
 }
 
 export async function createSession(idToken: string) {
-    const auth = getAuth(adminApp);
-    const decodedIdToken = await auth.verifyIdToken(idToken);
+    const decodedIdToken = await adminAuth.verifyIdToken(idToken);
 
     if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
         throw new Error('Recent sign-in required!');
     }
     
-    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_COOKIE_EXPIRES_IN });
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn: SESSION_COOKIE_EXPIRES_IN });
     cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -117,10 +115,9 @@ export async function logout() {
   const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
   if (sessionCookie) {
     cookies().set(SESSION_COOKIE_NAME, '', { expires: new Date(0) });
-    const auth = getAuth(adminApp);
-    const decodedClaims = await auth.verifySessionCookie(sessionCookie).catch(() => null);
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie).catch(() => null);
     if (decodedClaims) {
-      await auth.revokeRefreshTokens(decodedClaims.sub);
+      await adminAuth.revokeRefreshTokens(decodedClaims.sub);
     }
   }
   revalidatePath('/', 'layout');
