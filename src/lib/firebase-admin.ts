@@ -27,7 +27,7 @@ if (!admin.apps.length) {
         });
     } catch (e) {
         console.error("Error initializing Firebase Admin SDK:", e);
-        throw new Error('Failed to initialize Firebase Admin SDK. This can happen if the serviceAccountKey.json file is not correctly formatted.');
+        throw new Error('Failed to initialize Firebase Admin SDK. Make sure the serviceAccountKey.json file is correctly placed and formatted.');
     }
 } else {
   adminApp = admin.app();
