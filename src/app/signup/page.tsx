@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -36,7 +37,7 @@ const SignUpSchema = z
     password: z.string().min(6, 'Password must be at least 6 characters.'),
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.passwordConfirm, {
+  .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
   });
