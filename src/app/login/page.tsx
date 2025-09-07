@@ -72,6 +72,7 @@ export default function LoginPage() {
               description: "Welcome back! Redirecting...",
             });
             router.push('/home');
+            router.refresh();
         } else {
             setError(result.error || 'An unexpected server error occurred.');
         }
