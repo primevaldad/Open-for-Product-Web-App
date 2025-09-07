@@ -71,7 +71,7 @@ export default function LoginPage() {
               title: "Login Successful",
               description: "Welcome back!",
             });
-            router.push('/home');
+            window.location.href = '/home';
         } else {
             setError(result.error || 'Login failed. Please try again.');
         }
