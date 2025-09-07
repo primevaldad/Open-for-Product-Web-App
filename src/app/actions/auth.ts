@@ -3,7 +3,8 @@
 
 import { z } from 'zod';
 import { cookies } from 'next/headers';
-import { adminAuth } from '@/lib/firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { adminApp } from '@/lib/firebase-admin';
 
 import { findUserById, addUser } from '@/lib/data-cache';
 import type { User } from '@/lib/types';
@@ -40,6 +41,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
   }
 
   const { email, password, name } = validatedFields.data;
+  const adminAuth = getAuth(adminApp);
   
   try {
     const userRecord = await adminAuth.createUser({
@@ -95,6 +97,7 @@ export async function login(values: z.infer<typeof LoginSchema>) {
 }
 
 export async function createSession(idToken: string) {
+    const adminAuth = getAuth(adminApp);
     const decodedIdToken = await adminAuth.verifyIdToken(idToken);
 
     if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
@@ -112,6 +115,7 @@ export async function createSession(idToken: string) {
 
 
 export async function logout() {
+  const adminAuth = getAuth(adminApp);
   const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
   if (sessionCookie) {
     cookies().set(SESSION_COOKIE_NAME, '', { expires: new Date(0) });
