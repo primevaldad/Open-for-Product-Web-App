@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { signup } from '@/app/actions/auth';
 import { useToast } from '@/hooks/use-toast';
-import { auth, firebaseConfig } from '@/lib/firebase'; // Import firebaseConfig for logging
+import { auth } from '@/lib/firebase';
 
 const SignUpSchema = z
   .object({
@@ -65,9 +65,6 @@ export default function SignUpPage() {
   const onSubmit = (values: SignUpFormValues) => {
     setError(null);
     startTransition(async () => {
-      // Diagnostic log: Print the config to the browser console
-      console.log('DIAGNOSTIC: Using Firebase config:', firebaseConfig);
-
       try {
         // 1. Create user on the client with the Firebase Client SDK
         const userCredential = await createUserWithEmailAndPassword(
