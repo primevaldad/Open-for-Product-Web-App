@@ -72,7 +72,6 @@ export default function LoginPage() {
               description: "Welcome back!",
             });
             router.push('/home');
-            router.refresh(); // Force a refresh to ensure layout updates with user state
         } else {
             setError(result.error || 'Login failed. Please try again.');
         }
