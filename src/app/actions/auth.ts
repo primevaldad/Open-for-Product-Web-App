@@ -9,6 +9,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { findUserById, addUser } from '@/lib/data-cache';
 import type { User } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 const SignUpSchema = z.object({
   idToken: z.string(),
@@ -73,19 +74,20 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
 export async function login(values: z.infer<typeof LoginSchema>) {
     const validatedFields = LoginSchema.safeParse(values);
     if (!validatedFields.success) {
-        return { success: false, error: "Invalid data provided." };
+        throw new Error("Invalid data provided.");
     }
 
     const { idToken } = validatedFields.data;
 
     try {
         await createSession(idToken);
-        revalidatePath('/', 'layout');
-        return { success: true };
     } catch (error) {
         console.error("Login Server Action Error:", error);
-        return { success: false, error: "Failed to create session." };
+        throw new Error("Failed to create session.");
     }
+
+    // On successful session creation, redirect the user to the home page.
+    redirect('/home');
 }
 
 export async function createSession(idToken: string) {

@@ -31,6 +31,7 @@ import { auth } from '@/lib/firebase';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { login } from '@/app/actions/auth';
+import { redirect } from 'next/navigation';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -40,7 +41,6 @@ const LoginSchema = z.object({
 type LoginFormValues = z.infer<typeof LoginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -64,17 +64,12 @@ export default function LoginPage() {
         );
         const idToken = await userCredential.user.getIdToken();
         
-        const result = await login({ idToken });
+        await login({ idToken });
 
-        if (result.success) {
-            toast({
-              title: "Login Successful",
-              description: "Welcome back!",
-            });
-            window.location.href = '/home';
-        } else {
-            setError(result.error || 'Login failed. Please try again.');
-        }
+        toast({
+          title: "Login Successful",
+          description: "Welcome back! Redirecting...",
+        });
 
       } catch (error: any) {
         if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
