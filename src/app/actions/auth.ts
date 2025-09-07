@@ -58,6 +58,11 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
   } catch (error: any) {
     console.error('Signup Server Action Error:', error);
     let errorMessage = 'An unknown error occurred during server-side processing.';
+    if (error.code === 'auth/id-token-expired') {
+      errorMessage = 'The authentication token has expired. Please sign in again.';
+    } else if (error.code === 'auth/invalid-id-token') {
+      errorMessage = 'The authentication token is invalid. Please sign in again.';
+    }
     return {
       success: false,
       error: errorMessage,
@@ -75,6 +80,7 @@ export async function login(values: z.infer<typeof LoginSchema>) {
 
     try {
         await createSession(idToken);
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (error) {
         console.error("Login Server Action Error:", error);
@@ -86,15 +92,18 @@ export async function createSession(idToken: string) {
     const adminAuth = getAuth(adminApp);
     const decodedIdToken = await adminAuth.verifyIdToken(idToken);
 
+    // Set session expiration to 5 days.
+    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+
     if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
         throw new Error('Recent sign-in required!');
     }
     
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn: SESSION_COOKIE_EXPIRES_IN });
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: SESSION_COOKIE_EXPIRES_IN,
+        maxAge: expiresIn,
         path: '/',
     });
 }

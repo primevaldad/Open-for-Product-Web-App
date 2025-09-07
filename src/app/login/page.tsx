@@ -67,7 +67,12 @@ export default function LoginPage() {
         const result = await login({ idToken });
 
         if (result.success) {
+            toast({
+              title: "Login Successful",
+              description: "Welcome back!",
+            });
             router.push('/home');
+            router.refresh(); // Force a refresh to ensure layout updates with user state
         } else {
             setError(result.error || 'Login failed. Please try again.');
         }
