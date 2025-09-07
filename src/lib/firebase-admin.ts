@@ -8,7 +8,8 @@ let adminApp: admin.app.App;
 
 if (!admin.apps.length) {
     try {
-        const serviceAccountPath = path.resolve(process.cwd(), 'src/lib/serviceAccountKey.json');
+        // Use a path relative to the project root, which is more reliable.
+        const serviceAccountPath = 'src/lib/serviceAccountKey.json';
         const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
 
         adminApp = admin.initializeApp({
