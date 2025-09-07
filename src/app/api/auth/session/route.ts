@@ -1,12 +1,14 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { adminApp } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   const reqBody = (await request.json()) as { idToken: string };
   const idToken = reqBody.idToken;
 
   const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+  const adminAuth = getAuth(adminApp);
 
   try {
     const decodedIdToken = await adminAuth.verifyIdToken(idToken);
