@@ -17,8 +17,7 @@ const SignUpSchema = z.object({
 });
 
 const LoginSchema = z.object({
-  email: z.string().email('Invalid email address.'),
-  password: z.string().min(1, 'Password is required.'),
+  idToken: z.string(),
 });
 
 const SESSION_COOKIE_NAME = '__session';
@@ -71,7 +70,16 @@ export async function login(values: z.infer<typeof LoginSchema>) {
     if (!validatedFields.success) {
         return { success: false, error: "Invalid data provided." };
     }
-    return { success: true };
+
+    const { idToken } = validatedFields.data;
+
+    try {
+        await createSession(idToken);
+        return { success: true };
+    } catch (error) {
+        console.error("Login Server Action Error:", error);
+        return { success: false, error: "Failed to create session." };
+    }
 }
 
 export async function createSession(idToken: string) {

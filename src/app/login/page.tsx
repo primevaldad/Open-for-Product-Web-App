@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -29,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { login } from '@/app/actions/auth';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -62,19 +64,12 @@ export default function LoginPage() {
         );
         const idToken = await userCredential.user.getIdToken();
         
-        const response = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken }),
-        });
+        const result = await login({ idToken });
 
-        if (response.ok) {
+        if (result.success) {
             router.push('/home');
         } else {
-            const data = await response.json();
-            setError(data.error || 'Login failed. Please try again.');
+            setError(result.error || 'Login failed. Please try again.');
         }
 
       } catch (error: any) {
