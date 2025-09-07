@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { signup } from '@/app/actions/auth';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { auth, firebaseConfig } from '@/lib/firebase'; // Import firebaseConfig for logging
 
 const SignUpSchema = z
   .object({
@@ -65,6 +65,9 @@ export default function SignUpPage() {
   const onSubmit = (values: SignUpFormValues) => {
     setError(null);
     startTransition(async () => {
+      // Diagnostic log: Print the config to the browser console
+      console.log('DIAGNOSTIC: Using Firebase config:', firebaseConfig);
+
       try {
         // 1. Create user on the client with the Firebase Client SDK
         const userCredential = await createUserWithEmailAndPassword(
@@ -98,6 +101,8 @@ export default function SignUpPage() {
           errorMessage = 'This email address is already in use by another account.';
         } else if (err.code === 'auth/weak-password') {
           errorMessage = 'The password is too weak.';
+        } else if (err.code === 'auth/api-key-not-valid') {
+            errorMessage = 'The provided Firebase API key is not valid. Please check the configuration.'
         }
         setError(errorMessage);
         console.error('Client-side signup error:', err);

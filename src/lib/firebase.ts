@@ -3,14 +3,16 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-const firebaseConfig = {
-  "apiKey": "AIzaSyAz_-_rWTApPK5bJAgO93Z5SxqTVT5iDQ",
-  "authDomain": "open-for-product.firebaseapp.com",
-  "projectId": "open-for-product",
-  "storageBucket": "open-for-product.appspot.com",
-  "messagingSenderId": "36569631324",
-  "appId": "1:36569631324:web:9cacdc439f6b8ced253499",
-  "measurementId": "G-5G01E1N3L7"
+// This is the configuration object that is causing the error.
+// We are exporting it temporarily to log its contents on the client.
+export const firebaseConfig = {
+  "apiKey": "YOUR_API_KEY",
+  "authDomain": "YOUR_AUTH_DOMAIN",
+  "projectId": "YOUR_PROJECT_ID",
+  "storageBucket": "YOUR_STORAGE_BUCKET",
+  "messagingSenderId": "YOUR_MESSAGING_SENDER_ID",
+  "appId": "YOUR_APP_ID",
+  "measurementId": "YOUR_MEASUREMENT_ID"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
