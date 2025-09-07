@@ -2,26 +2,31 @@
 'use server';
 
 import * as admin from 'firebase-admin';
-import serviceAccount from './serviceAccountKey.json';
+import * as fs from 'fs';
+import * as path from 'path';
 
 let adminApp: admin.app.App;
 
-// The service account object has to be cast to the correct type.
-const serviceAccountParams = {
-    type: serviceAccount.type,
-    projectId: serviceAccount.project_id,
-    privateKeyId: serviceAccount.private_key_id,
-    privateKey: serviceAccount.private_key,
-    clientEmail: serviceAccount.client_email,
-    clientId: serviceAccount.client_id,
-    authUri: serviceAccount.auth_uri,
-    tokenUri: serviceAccount.token_uri,
-    authProviderX509CertUrl: serviceAccount.auth_provider_x509_cert_url,
-    clientC509CertUrl: serviceAccount.client_x509_cert_url,
-}
-
 if (!admin.apps.length) {
     try {
+        const keyPath = path.resolve('src/lib/serviceAccountKey.json');
+        const serviceAccountFile = fs.readFileSync(keyPath).toString();
+        const serviceAccount = JSON.parse(serviceAccountFile);
+
+        // The service account object has to be cast to the correct type.
+        const serviceAccountParams = {
+            type: serviceAccount.type,
+            projectId: serviceAccount.project_id,
+            privateKeyId: serviceAccount.private_key_id,
+            privateKey: serviceAccount.private_key,
+            clientEmail: serviceAccount.client_email,
+            clientId: serviceAccount.client_id,
+            authUri: serviceAccount.auth_uri,
+            tokenUri: serviceAccount.token_uri,
+            authProviderX509CertUrl: serviceAccount.auth_provider_x509_cert_url,
+            clientC509CertUrl: serviceAccount.client_x509_cert_url,
+        }
+
         adminApp = admin.initializeApp({
             credential: admin.credential.cert(serviceAccountParams),
         });
