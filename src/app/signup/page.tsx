@@ -66,7 +66,6 @@ export default function SignUpPage() {
     setError(null);
     startTransition(async () => {
       try {
-        // 1. Create user on the client with the Firebase Client SDK
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           values.email,
@@ -75,7 +74,6 @@ export default function SignUpPage() {
 
         const idToken = await userCredential.user.getIdToken();
 
-        // 2. Call server action to store user in Firestore and create session
         const result = await signup({
           idToken,
           name: values.name,
@@ -92,7 +90,6 @@ export default function SignUpPage() {
           setError(result.error || 'An unexpected server error occurred.');
         }
       } catch (err: any) {
-        // Handle client-side Firebase errors
         let errorMessage = 'An unknown error occurred.';
         if (err.code === 'auth/email-already-in-use') {
           errorMessage = 'This email address is already in use by another account.';
