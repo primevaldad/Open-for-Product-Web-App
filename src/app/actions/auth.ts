@@ -74,20 +74,18 @@ export async function signup(values: z.infer<typeof SignUpSchema>) {
 export async function login(values: z.infer<typeof LoginSchema>) {
     const validatedFields = LoginSchema.safeParse(values);
     if (!validatedFields.success) {
-        throw new Error("Invalid data provided.");
+        return { success: false, error: "Invalid data provided." };
     }
 
     const { idToken } = validatedFields.data;
 
     try {
         await createSession(idToken);
+        return { success: true };
     } catch (error) {
         console.error("Login Server Action Error:", error);
-        throw new Error("Failed to create session.");
+        return { success: false, error: "Failed to create session." };
     }
-
-    // On successful session creation, redirect the user to the home page.
-    redirect('/home');
 }
 
 export async function createSession(idToken: string) {
@@ -95,7 +93,7 @@ export async function createSession(idToken: string) {
     const decodedIdToken = await adminAuth.verifyIdToken(idToken);
 
     // Set session expiration to 5 days.
-    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
     if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
         throw new Error('Recent sign-in required!');
