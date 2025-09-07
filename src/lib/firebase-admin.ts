@@ -3,6 +3,9 @@
 
 import * as admin from 'firebase-admin';
 import type { ServiceAccount } from 'firebase-admin';
+
+// Using a direct JSON import is the most robust method for Next.js.
+// The bundler includes the JSON content at build time, avoiding runtime file path issues.
 import serviceAccountJson from '@/lib/serviceAccountKey.json';
 
 let adminApp: admin.app.App;
