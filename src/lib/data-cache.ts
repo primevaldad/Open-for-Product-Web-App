@@ -2,9 +2,6 @@
 import { db } from './firebase';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
-import { cookies }from 'next/headers';
-import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from './firebase-admin';
 
 // --- User Data Access ---
 export async function getAllUsers(): Promise<User[]> {
@@ -21,22 +18,6 @@ export async function findUserById(userId: string): Promise<User | undefined> {
         return { id: userSnap.id, ...userSnap.data() } as User;
     }
     return undefined;
-}
-
-export async function getCurrentUser(): Promise<User | null> {
-    try {
-        const sessionCookie = cookies().get('__session')?.value;
-        if (!sessionCookie) {
-            return null;
-        }
-        const adminAuth = getAuth(adminApp);
-        const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-        const currentUser = await findUserById(decodedClaims.uid);
-        return currentUser ? { ...currentUser, id: decodedClaims.uid } : null;
-    } catch (error) {
-        // Session cookie is invalid or expired.
-        return null;
-    }
 }
 
 export async function addUser(uid: string, newUser: Omit<User, 'id'>): Promise<void> {

@@ -2,21 +2,12 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import * as z from 'zod';
+import { useRouter } from 'next/navigation'; // Import the useRouter hook
 
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -24,132 +15,118 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-import { login } from '@/app/actions/auth';
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
 
-const LoginSchema = z.object({
-  email: z.string().email('Invalid email address.'),
-  password: z.string().min(1, 'Password is required.'),
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { login } from '@/app/actions/auth'; 
+
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters long." }),
 });
 
-type LoginFormValues = z.infer<typeof LoginSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
-  const { toast } = useToast();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter(); // Initialize the router
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(LoginSchema),
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
-  const onSubmit = (values: LoginFormValues) => {
+  async function onSubmit(values: FormValues) {
     setError(null);
+    
     startTransition(async () => {
       try {
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          values.email,
-          values.password
-        );
+        // 1. Sign in with Firebase on the client
+        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
         const idToken = await userCredential.user.getIdToken();
-        
+
+        // 2. Send the ID token to our server action
         const result = await login({ idToken });
 
+        // 3. Handle the response from the server action
         if (result.success) {
-            toast({
-              title: "Login Successful",
-              description: "Welcome back! Redirecting...",
-            });
-            router.push('/home');
+          // 4. On success, navigate to the home page using the client-side router
+          router.push('/home');
         } else {
-            setError(result.error || 'An unexpected server error occurred.');
+          // If the server action returned an error, display it
+          setError(result.error || 'An unknown error occurred.');
         }
-
       } catch (error: any) {
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-          setError('Invalid email or password.');
+        // Handle Firebase client-side errors (e.g., wrong password)
+        if (error.code === 'auth/invalid-credential') {
+            setError("Invalid email or password. Please try again.");
         } else {
-          setError('An unexpected error occurred. Please try again.');
-          console.error(error);
+            setError(error.message || "An unexpected error occurred during login.");
         }
       }
     });
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-          <CardDescription>
-            Enter your email below to log in to your account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {error && (
-                 <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Login Failed</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="w-full max-w-md p-8 space-y-8 bg-card text-card-foreground rounded-lg shadow-lg">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Sign In</h1>
+          <p className="text-muted-foreground">to continue to Open for Product</p>
+        </div>
+
+        {error && (
+            <Alert variant="destructive">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Heads up!</AlertTitle>
+                <AlertDescription>
+                    {error}
+                </AlertDescription>
+            </Alert>
+        )}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="your@email.com" {...field} disabled={isPending}/>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="m@example.com"
-                        {...field}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" {...field} disabled={isPending} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? 'Signing In...' : 'Sign In'}
-              </Button>
-            </form>
-          </Form>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} disabled={isPending}/>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? 'Signing In...' : 'Sign In'}
+            </Button>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }
