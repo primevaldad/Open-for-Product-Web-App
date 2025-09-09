@@ -2,14 +2,14 @@
 import OnboardingForm from "./onboarding-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateOnboardingInfo } from "../actions/settings";
-import { getCurrentUser } from "@/lib/data-cache";
+import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
 import { redirect } from "next/navigation";
 import type { User } from '@/lib/types';
 
 
 // This is now a Server Component that fetches data and passes it down.
 export default async function OnboardingPage() {
-  const currentUser = await getCurrentUser() as User;
+  const currentUser = await getAuthenticatedUser() as User; // Corrected function call
 
   if (!currentUser) {
     redirect('/login');

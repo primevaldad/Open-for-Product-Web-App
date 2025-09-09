@@ -15,8 +15,8 @@ import {
     updateProject as updateProjectInDb,
     updateTask as updateTaskInDb,
     updateUser,
-    getCurrentUser
-} from '@/lib/data-cache';
+} from '@/lib/data.server'; // Corrected import
+import { getAuthenticatedUser } from '@/lib/session.server'; // Corrected import
 
 const ProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -76,7 +76,7 @@ async function handleProjectSubmission(
 
   const { name, tagline, description, category, contributionNeeds } = validatedFields.data;
 
-  const currentUser = await getCurrentUser();
+  const currentUser = await getAuthenticatedUser(); // Corrected function call
   if (!currentUser) {
       return { success: false, error: "Could not find current user."};
   }
@@ -123,7 +123,7 @@ export async function publishProject(values: z.infer<typeof ProjectSchema>) {
 }
 
 export async function joinProject(projectId: string) {
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     if (!currentUser) throw new Error("User not found");
 
     const project = await findProjectById(projectId);
@@ -197,7 +197,7 @@ export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
 
     const { id, ...projectData } = validatedFields.data;
 
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     if (!currentUser) throw new Error("User not found");
 
     const project = await findProjectById(id);
@@ -242,7 +242,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
 
     const { projectId, title, description, status } = validatedFields.data;
 
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     if (!currentUser) throw new Error("User not found");
 
     const project = await findProjectById(projectId);
@@ -279,7 +279,7 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
 
     const { id, projectId, ...taskData } = validatedFields.data;
 
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     if (!currentUser) throw new Error("User not found");
 
     const project = await findProjectById(projectId);
@@ -312,7 +312,7 @@ export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
 
     const { id, projectId } = validatedFields.data;
 
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     if (!currentUser) throw new Error("User not found");
 
     const project = await findProjectById(projectId);

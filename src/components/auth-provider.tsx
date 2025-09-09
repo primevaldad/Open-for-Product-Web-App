@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@/lib/types';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { findUserById } from '@/lib/data-cache';
+import { findUserById } from '@/lib/data.client';
 
 // 1. Top-level context for auth state
 interface AuthContextType {

@@ -24,28 +24,21 @@ import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User, Project, Task, LearningPath, UserLearningProgress, Module } from "@/lib/types";
-import { getCurrentUser, hydrateProjectTeam, getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data-cache";
+import { getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data.server"; // Corrected import
+import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
 import ActivityClientPage from "./activity-client-page";
 import { updateTask, deleteTask } from "../actions/projects";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
 
 async function getActivityPageData() {
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     if (!currentUser) return { currentUser: null, projects: [], myTasks: [], learningPaths: [], userProgress: [] };
 
-    const allUsers = await getAllUsers();
-    const projectPromises = (await getAllProjects()).map(p => hydrateProjectTeam(p));
-    const projects = await Promise.all(projectPromises);
+    const projects = await getAllProjects();
     
-    const taskPromises = (await getAllTasks())
-        .filter(t => t.assignedToId === currentUser.id)
-        .map(async t => {
-            const assignedTo = allUsers.find(u => u.id === t.assignedToId);
-            return { ...t, assignedTo };
-        });
-
-    const myTasks = await Promise.all(taskPromises) as Task[];
+    const allTasks = await getAllTasks();
+    const myTasks = allTasks.filter(t => t.assignedToId === currentUser.id);
 
     const userProgress = await getAllUserLearningProgress();
     const filteredUserProgress = userProgress.filter(p => p.userId === currentUser.id);

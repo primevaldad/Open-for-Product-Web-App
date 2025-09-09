@@ -54,12 +54,14 @@ export type Project = {
   timeline: string;
   contributionNeeds: string[];
   progress: number;
-  team: Omit<ProjectMember, 'user'>[];
+  team: ProjectMember[];
   votes: number;
-  discussions: Omit<Discussion, 'user' | 'id'>[];
+  discussions: Discussion[];
   isExpertReviewed?: boolean;
   status: ProjectStatus;
   governance?: Governance;
+  startDate: string;
+  endDate: string;
 };
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'Done';

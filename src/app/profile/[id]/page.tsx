@@ -1,21 +1,19 @@
 
 import { notFound } from 'next/navigation';
 import UserProfilePageClient from './profile-client-page';
-import { getCurrentUser, hydrateProjectTeam, findUserById, getAllProjects } from '@/lib/data-cache';
+import { getAllProjects, findUserById } from '@/lib/data.server'; // Corrected import
+import { getAuthenticatedUser } from '@/lib/session.server'; // Corrected import
 
 async function getUserProfilePageData(userId: string) {
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     const user = await findUserById(userId);
 
     if (!user) return { user: null, userProjects: [], currentUser };
 
     const allProjects = await getAllProjects();
-    const userProjectPromises = allProjects
-        .filter(p => p.team.some(m => m.userId === userId))
-        .map(p => hydrateProjectTeam(p));
+    const userProjects = allProjects
+        .filter(p => p.team.some(m => m.userId === userId));
         
-    const userProjects = await Promise.all(userProjectPromises);
-
     return { user, userProjects, currentUser };
 }
 

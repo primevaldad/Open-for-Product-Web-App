@@ -4,7 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getCurrentUser } from '@/lib/session'; // Updated import path
+import { getCurrentUser } from '@/lib/session.server'; // Corrected import
 import { AuthProvider } from '@/components/auth-provider';
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser(); // Corrected function call
 
   return (
     <html lang="en" suppressHydrationWarning>

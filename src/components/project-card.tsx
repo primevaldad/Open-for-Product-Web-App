@@ -1,6 +1,9 @@
 
+'use client';
+
 import Link from 'next/link';
 import { ArrowUpRight, CheckCircle, MessageSquare, Sparkles, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +23,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { projectCategories } from '@/lib/static-data';
-import type { Project } from '@/lib/types';
+import type { Project, User } from '@/lib/types';
 import { cn, getInitials } from '@/lib/utils';
+import { findUserById } from '@/lib/data.client';
 
 interface ProjectCardProps {
   project: Project;
@@ -29,8 +33,22 @@ interface ProjectCardProps {
 }
 
 export default function ProjectCard({ project, className }: ProjectCardProps) {
+  const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const CategoryIcon =
     projectCategories.find((c) => c.name === project.category)?.icon ?? Users;
+
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      // The server now sends raw project data. The client is responsible for
+      // hydrating the nested user data.
+      const members = await Promise.all(project.team.map(member => findUserById(member.userId)));
+      setTeamMembers(members.filter((m): m is User => !!m));
+    };
+
+    if (project.team) {
+        fetchTeamMembers();
+    }
+  }, [project.team]);
 
   return (
     <Card className={cn("flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1", className)}>
@@ -42,7 +60,7 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
               {project.category}
             </Badge>
             <CardTitle className="text-lg font-bold">
-              <Link href={`/projects/${project.id}`} className="hover:text-primary transition-colors">
+              <Link href={`/project/${project.id}`} className="hover:text-primary transition-colors">
                 {project.name}
               </Link>
             </CardTitle>
@@ -76,16 +94,16 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div className="flex -space-x-2">
-          {project.team.map((member) => (
-            <Tooltip key={member.user.id}>
+          {teamMembers.map((member) => (
+            <Tooltip key={member.id}>
               <TooltipTrigger>
                 <Avatar className="h-8 w-8 border-2 border-background">
-                  <AvatarImage src={member.user.avatarUrl} alt={member.user.name} data-ai-hint="person portrait" />
-                  <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
+                  <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person portrait" />
+                  <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                 </Avatar>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{member.user.name}</p>
+                <p>{member.name}</p>
               </TooltipContent>
             </Tooltip>
           ))}

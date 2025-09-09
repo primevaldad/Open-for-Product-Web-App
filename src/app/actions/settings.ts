@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserById, updateUser as updateUserInDb } from '@/lib/data-cache';
+import { findUserById, updateUser as updateUserInDb } from '@/lib/data.server'; // Corrected import
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -45,7 +45,7 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
 
   const { id, name, bio, avatarDataUrl, email } = validatedFields.data;
 
-  const user = findUserById(id);
+  const user = await findUserById(id); // findUserById is async
   if (!user) {
       return { success: false, error: "User not found." };
   }
@@ -58,7 +58,7 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
     user.avatarUrl = avatarDataUrl;
   }
 
-  updateUserInDb(user);
+  await updateUserInDb(user); // updateUserInDb is async
 
   // Revalidate the entire app to ensure global user data is fresh
   revalidatePath('/', 'layout');
@@ -75,7 +75,7 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
 
   const { id, name, bio, interests } = validatedFields.data;
 
-  const user = findUserById(id);
+  const user = await findUserById(id); // findUserById is async
   if (!user) {
     return { success: false, error: "User not found." };
   }
@@ -85,7 +85,7 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   user.interests = interests;
   user.onboarded = true;
 
-  updateUserInDb(user);
+  await updateUserInDb(user); // updateUserInDb is async
 
   // Revalidate the entire app to ensure global user data is fresh
   revalidatePath('/', 'layout');

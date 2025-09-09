@@ -4,10 +4,10 @@
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from '@/lib/firebase-admin';
+import { adminApp } from '@/lib/firebase.server';
 import { revalidatePath } from 'next/cache';
 
-import { findUserById, addUser } from '@/lib/data-cache';
+import { findUserById, addUser } from '@/lib/data.server';
 import type { User } from '@/lib/types';
 
 const SignUpSchema = z.object({
@@ -25,34 +25,31 @@ const SESSION_COOKIE_NAME = '__session';
 // --- SESSION MANAGEMENT ---
 
 async function createSession(idToken: string): Promise<void> {
+  console.log('[AUTH_ACTION_TRACE] Creating session...');
   const adminAuth = getAuth(adminApp);
   const decodedIdToken = await adminAuth.verifyIdToken(idToken);
 
-  // Session expires in 5 days.
-  const expiresIn = 60 * 60 * 24 * 5 * 1000;
+  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
-  // Ensure the user has signed in recently.
   if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
     throw new Error('Recent sign-in required! Please try logging in again.');
   }
 
   const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
-  cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     maxAge: expiresIn,
     path: '/',
   });
+  console.log('[AUTH_ACTION_TRACE] Session cookie set successfully.');
 }
 
 // --- SERVER ACTIONS ---
 
-/**
- * Handles user login.
- * Verifies the Firebase ID token and creates a session cookie.
- * Returns a JSON object indicating success or failure. Does NOT redirect.
- */
 export async function login(values: z.infer<typeof LoginSchema>): Promise<{ success: boolean; error?: string }> {
+  console.log('[AUTH_ACTION_TRACE] Login action initiated.');
   const validatedFields = LoginSchema.safeParse(values);
   if (!validatedFields.success) {
     return { success: false, error: "Invalid ID token provided." };
@@ -62,24 +59,21 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
 
   try {
     await createSession(idToken);
-    // Revalidate the home path to ensure the layout re-fetches the user.
     revalidatePath('/home');
+    console.log('[AUTH_ACTION_TRACE] Login successful.');
     return { success: true };
   } catch (error: any) {
-    console.error("Login Server Action Error:", error.message);
-    return { success: false, error: error.message || "Failed to create session. Please try again." };
+    console.error("[AUTH_ACTION_TRACE] Login Server Action Error:", error.message);
+    return { success: false, error: error.message || "Failed to create session." };
   }
 }
 
-/**
- * Handles user signup.
- * Creates a new user in the database and creates a session cookie.
- * Returns a JSON object indicating success or failure. Does NOT redirect.
- */
 export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ success: boolean; error?: string; userId?: string }> {
+  console.log('[AUTH_ACTION_TRACE] Signup action initiated.');
   const validatedFields = SignUpSchema.safeParse(values);
 
   if (!validatedFields.success) {
+    console.error('[AUTH_ACTION_TRACE] Signup validation failed.', validatedFields.error);
     return { success: false, error: 'Invalid data provided.' };
   }
 
@@ -89,14 +83,13 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
   try {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
+    console.log(`[AUTH_ACTION_TRACE] Token verified for UID: ${uid}`);
 
-    // Check if user already exists before trying to add them
     const existingUser = await findUserById(uid);
     if (existingUser) {
-      // This case can happen if a user signs up, deletes their account from your DB,
-      // but the Firebase user still exists.
-      console.log(`User with UID ${uid} already exists. Proceeding with login.`);
+      console.log(`[AUTH_ACTION_TRACE] User with UID ${uid} already exists. Proceeding with login.`);
     } else {
+      console.log(`[AUTH_ACTION_TRACE] User not found. Creating new user record for UID: ${uid}`);
       const newUser: Omit<User, 'id'> = {
         name,
         email,
@@ -106,16 +99,17 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
         onboarded: false,
       };
       await addUser(uid, newUser);
+      console.log(`[AUTH_ACTION_TRACE] New user record created successfully for UID: ${uid}`);
     }
 
     await createSession(idToken);
 
-    // Revalidate the onboarding path in case the user needs to go there.
     revalidatePath('/onboarding');
+    console.log(`[AUTH_ACTION_TRACE] Signup successful for UID: ${uid}`);
     return { success: true, userId: uid };
 
   } catch (error: any) {
-    console.error('Signup Server Action Error:', error);
+    console.error('[AUTH_ACTION_TRACE] Signup Server Action Error:', error);
     return {
       success: false,
       error: error.message || 'An unknown error occurred during signup.',
@@ -123,27 +117,24 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
   }
 }
 
-/**
- * Handles user logout.
- * Clears the session cookie and revokes Firebase refresh tokens.
- */
 export async function logout() {
-  const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
+  console.log('[AUTH_ACTION_TRACE] Logout action initiated.');
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
   if (sessionCookie) {
-    // Clear the cookie from the browser
-    cookies().set(SESSION_COOKIE_NAME, '', { maxAge: 0 });
+    cookieStore.set(SESSION_COOKIE_NAME, '', { maxAge: 0 });
+    console.log('[AUTH_ACTION_TRACE] Session cookie cleared.');
 
     const adminAuth = getAuth(adminApp);
     try {
-      // Verify the cookie to get the user's UID
       const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-      // Revoke all refresh tokens for that user
       await adminAuth.revokeRefreshTokens(decodedClaims.sub);
+      console.log(`[AUTH_ACTION_TRACE] Firebase refresh tokens revoked for UID: ${decodedClaims.sub}`);
     } catch (error) {
-      // This can happen if the cookie is already invalid. We can ignore it.
-      console.log('Logout: Could not revoke tokens, session cookie likely invalid.');
+      console.log('[AUTH_ACTION_TRACE] Logout: Could not revoke tokens, session cookie likely invalid.');
     }
   }
-  // Revalidate the entire application's cache to reflect the logged-out state.
   revalidatePath('/', 'layout');
+  console.log('[AUTH_ACTION_TRACE] Logout complete, path revalidated.');
 }

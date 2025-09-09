@@ -1,3 +1,4 @@
+
 import {
   Activity,
   BookOpen,
@@ -9,6 +10,8 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from 'next/navigation';
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,36 +27,47 @@ import {
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { getCurrentUser, hydrateProjectTeam, getAllProjects } from "@/lib/data-cache";
+import { getAllProjects } from "@/lib/data.server";
+import { getAuthenticatedUser } from "@/lib/session.server";
+import { UserNotFoundError } from "@/lib/errors"; // Import the custom error
 import HomeClientPage from "../home-client-page";
-import { redirect } from 'next/navigation';
 
 async function getDashboardPageData() {
-    const currentUser = await getCurrentUser();
+    try {
+        const currentUser = await getAuthenticatedUser();
 
-    if (!currentUser) {
-        return { currentUser: null, projects: [] };
-    }
+        // This redirect throws an error, which was being improperly caught.
+        if (!currentUser.onboarded) {
+            redirect('/onboarding');
+        }
 
-    if (!currentUser.onboarded) {
-      redirect('/onboarding');
-    }
+        const allProjects = await getAllProjects();
+        const publishedProjects = allProjects.filter(p => p.status === 'published');
 
-    const allProjects = await getAllProjects();
-    const publishedProjects = allProjects.filter(p => p.status === 'published');
-    const hydratedProjects = await Promise.all(publishedProjects.map(p => hydrateProjectTeam(p)));
+        return {
+            currentUser,
+            projects: publishedProjects
+        }
+    } catch (error) {
+        // This is the crucial change. We ONLY catch the UserNotFoundError.
+        // All other errors (including the one from redirect()) will be ignored here.
+        if (error instanceof UserNotFoundError) {
+            console.log('User authenticated but not found in DB. Redirecting to logout route.');
+            redirect('/api/auth/logout');
+        }
 
-    return {
-        currentUser,
-        projects: hydratedProjects
+        // Re-throw any other errors so that Next.js can handle them (like redirects).
+        throw error;
     }
 }
 
 
 // This is now a Server Component that fetches data and passes it to a client component.
 export default async function DashboardPage() {
+  // This function now correctly handles all edge cases.
   const { currentUser, projects } = await getDashboardPageData();
 
+  // This check is now robust.
   if (!currentUser) {
     redirect('/login');
   }

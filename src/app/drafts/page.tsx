@@ -24,12 +24,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { User, Project } from "@/lib/types";
-import { getCurrentUser, hydrateProjectTeam, getAllProjects } from "@/lib/data-cache";
+import { getAllProjects } from "@/lib/data.server"; // Corrected import
+import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
 
 async function getDraftsPageData() {
-    const currentUser = await getCurrentUser();
-    const projectPromises = (await getAllProjects()).map(p => hydrateProjectTeam(p));
-    const projects = await Promise.all(projectPromises);
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
+    const projects = await getAllProjects(); // Corrected function call
     return { currentUser, projects };
 }
 
@@ -46,7 +46,7 @@ export default async function DraftsPage() {
     );
   }
 
-  const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.user.id === currentUser.id));
+  const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.userId === currentUser.id));
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">

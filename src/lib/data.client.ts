@@ -1,4 +1,4 @@
-
+import 'client-only';
 import { db } from './firebase';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
@@ -125,31 +125,4 @@ export async function getAllLearningPaths(): Promise<LearningPath[]> {
     const pathsCol = collection(db, 'learningPaths');
     const pathSnapshot = await getDocs(pathsCol);
     return pathSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningPath));
-}
-
-// --- Data Hydration ---
-export async function hydrateProjectTeam(project: Project): Promise<Project> {
-    const team: ProjectMember[] = await Promise.all(
-        (project.team || []).map(async (m: any) => {
-            const user = await findUserById(m.userId);
-            return user ? { user, role: m.role, userId: user.id } : null;
-        })
-    ).then(results => results.filter((m): m is ProjectMember => m !== null));
-
-    const discussions: Discussion[] = await Promise.all(
-        (project.discussions || []).map(async (d: any) => {
-            const user = await findUserById(d.userId);
-            if (!user) return null;
-            const timestamp = d.timestamp;
-            return {
-                id: `${d.userId}-${timestamp}`,
-                user,
-                content: d.content,
-                timestamp: timestamp,
-                userId: user.id,
-            };
-        })
-    ).then(results => results.filter((d): d is Discussion => d !== null));
-
-    return { ...project, team, discussions };
 }

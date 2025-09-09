@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserLearningProgress, updateUserLearningProgress } from '@/lib/data-cache';
+import { findUserLearningProgress, updateUserLearningProgress } from '@/lib/data.server'; // Corrected import
 
 const CompleteModuleSchema = z.object({
   userId: z.string(),
@@ -24,7 +24,7 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
 
     const { userId, pathId, moduleId, completed } = validatedFields.data;
 
-    let userProgress = findUserLearningProgress(userId, pathId);
+    let userProgress = await findUserLearningProgress(userId, pathId); // findUserLearningProgress is async
 
     if (!userProgress) {
         // This case handles enrolling a user in a path for the first time.
@@ -42,7 +42,7 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
         }
     }
 
-    updateUserLearningProgress(userProgress);
+    await updateUserLearningProgress(userProgress); // updateUserLearningProgress is async
 
     // Revalidate all paths that display learning progress
     revalidatePath(`/learning/${pathId}/${moduleId}`);

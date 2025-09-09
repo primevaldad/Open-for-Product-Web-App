@@ -21,12 +21,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser } from "@/lib/data-cache";
+import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
 import { CreateProjectForm } from "./create-project-form";
 import { publishProject, saveProjectDraft } from "../actions/projects";
 
 async function getCreatePageData() {
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     return { currentUser };
 }
 

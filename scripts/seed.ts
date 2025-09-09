@@ -1,9 +1,9 @@
 
-// Use with `npx tsx src/lib/seed.ts`
+// Use with `npx tsx scripts/seed.ts`
 import 'dotenv/config';
-import { db } from './firebase';
+import { db } from '../src/lib/firebase';
 import { collection, writeBatch } from 'firebase/firestore';
-import type { User, Project, Task, LearningPath, UserLearningProgress } from './types';
+import type { User, Project, Task, LearningPath, UserLearningProgress } from '../src/lib/types';
 
 const interests = [
     { "id": "i1", "name": "UI/UX Design" },

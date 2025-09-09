@@ -21,12 +21,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser, getAllLearningPaths, getAllUserLearningProgress } from "@/lib/data-cache";
+import { getAllLearningPaths, getAllUserLearningProgress } from "@/lib/data.server"; // Corrected import
+import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
 import LearningClientPage from "./learning-client-page";
 
 
 async function getLearningPageData() {
-    const currentUser = await getCurrentUser();
+    const currentUser = await getAuthenticatedUser(); // Corrected function call
     const learningPaths = await getAllLearningPaths();
     const userProgress = currentUser ? await getAllUserLearningProgress().then(p => p.filter(up => up.userId === currentUser.id)) : [];
     return { currentUser, learningPaths, userProgress };

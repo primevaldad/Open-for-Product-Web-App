@@ -5,7 +5,8 @@ import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation'; // Import the useRouter hook
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +35,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function LoginPage() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter(); // Initialize the router
+  const router = useRouter();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -49,23 +50,17 @@ export default function LoginPage() {
     
     startTransition(async () => {
       try {
-        // 1. Sign in with Firebase on the client
         const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
         const idToken = await userCredential.user.getIdToken();
 
-        // 2. Send the ID token to our server action
         const result = await login({ idToken });
 
-        // 3. Handle the response from the server action
         if (result.success) {
-          // 4. On success, navigate to the home page using the client-side router
           router.push('/home');
         } else {
-          // If the server action returned an error, display it
           setError(result.error || 'An unknown error occurred.');
         }
       } catch (error: any) {
-        // Handle Firebase client-side errors (e.g., wrong password)
         if (error.code === 'auth/invalid-credential') {
             setError("Invalid email or password. Please try again.");
         } else {
@@ -126,6 +121,14 @@ export default function LoginPage() {
             </Button>
           </form>
         </Form>
+
+        <div className="text-center text-sm text-muted-foreground">
+          Don't have an account?{' '}
+          <Link href="/signup" className="font-semibold text-primary hover:underline">
+            Sign up
+          </Link>
+        </div>
+
       </div>
     </div>
   );
