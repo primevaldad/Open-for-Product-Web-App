@@ -35,7 +35,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser }: Ho
   
   const filteredProjects = allPublishedProjects.filter(p => {
     const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(p.category);
-    const myProjectsMatch = !showMyProjects || p.team.some(member => member.user && member.user.id === currentUser.id);
+    const myProjectsMatch = !showMyProjects || p.team.some(member => member.userId === currentUser.id);
     return categoryMatch && myProjectsMatch;
   });
 

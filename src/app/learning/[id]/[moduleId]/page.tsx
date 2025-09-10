@@ -1,49 +1,61 @@
 
 import { notFound } from 'next/navigation';
-import { getCurrentUser, findUserLearningProgress, getAllLearningPaths, findUserById } from '@/lib/data-cache';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import {
+  findUserLearningProgress,
+  getAllLearningPaths,
+} from '@/lib/data.server';
 import LearningModuleClientPage from './learning-module-client-page';
 import { completeModule } from '@/app/actions/learning';
 import type { Module } from '@/lib/types';
 
-async function getLearningModulePageData(pathId: string, moduleId: string) {
-    const currentUser = await getCurrentUser();
-    const learningPaths = await getAllLearningPaths();
-    const pathData = learningPaths.find(p => p.id === pathId);
-
-    if (!pathData || !currentUser) {
-        return { path: null, module: null, userProgress: undefined, currentUser, prevModule: null, nextModule: null };
-    }
-    
-    const module = pathData.modules.find((m: Module) => m.id === moduleId) || null;
-
-    const userProgress = await findUserLearningProgress(currentUser.id, pathId);
-
-    const currentModuleIndex = pathData.modules.findIndex((m: Module) => m.id === moduleId);
-    const prevModule = currentModuleIndex > 0 ? pathData.modules[currentModuleIndex - 1] : null;
-    const nextModule = currentModuleIndex < pathData.modules.length - 1 ? pathData.modules[currentModuleIndex + 1] : null;
-
-    return { path: pathData, module, userProgress, currentUser, prevModule, nextModule };
-}
-
-
 // This is now a Server Component that fetches all necessary data
-export default async function LearningModulePage({ params }: { params: { id: string, moduleId: string } }) {
+export default async function LearningModulePage({
+  params,
+}: {
+  params: { id: string; moduleId: string };
+}) {
+  // getAuthenticatedUser will redirect if the user is not logged in.
+  const currentUser = await getAuthenticatedUser();
+  const learningPaths = await getAllLearningPaths();
+  const path = learningPaths.find((p) => p.id === params.id);
 
-  const { path, module, userProgress, currentUser, prevModule, nextModule } = await getLearningModulePageData(params.id, params.moduleId);
-
-  if (!path || !module || !currentUser) {
+  // If the path doesn't exist, return a 404
+  if (!path) {
     notFound();
   }
-  
+
+  // Find the specific module within the path
+  const module = path.modules.find((m: Module) => m.id === params.moduleId) || null;
+
+  // If the module doesn't exist in the path, return a 404
+  if (!module) {
+    notFound();
+  }
+
+  // Find the user's progress in this learning path
+  const userProgress = await findUserLearningProgress(currentUser.id, params.id);
+
+  // Determine the previous and next modules for navigation
+  const currentModuleIndex = path.modules.findIndex(
+    (m: Module) => m.id === params.moduleId
+  );
+  const prevModule =
+    currentModuleIndex > 0 ? path.modules[currentModuleIndex - 1] : null;
+  const nextModule =
+    currentModuleIndex < path.modules.length - 1
+      ? path.modules[currentModuleIndex + 1]
+      : null;
+
   return (
     <LearningModuleClientPage
-        path={path}
-        module={module}
-        userProgress={userProgress}
-        currentUser={currentUser}
-        prevModule={prevModule}
-        nextModule={nextModule}
-        completeModule={completeModule}
+      path={path}
+      module={module}
+      userProgress={userProgress}
+      currentUser={currentUser}
+      prevModule={prevModule}
+      nextModule={nextModule}
+      completeModule={completeModule}
     />
   );
 }

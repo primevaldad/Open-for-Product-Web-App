@@ -21,26 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getCurrentUser } from "@/lib/data-cache";
+import { getAuthenticatedUser } from "@/lib/session.server";
 import SettingsForm from "./settings-form";
 import { updateUserSettings } from "../actions/settings";
 
-async function getSettingsPageData() {
-    const currentUser = await getCurrentUser();
-    return { currentUser };
-}
-
 // This is now a server component that fetches the user and passes it to the form
 export default async function SettingsPage() {
-  const { currentUser } = await getSettingsPageData();
-
-  if (!currentUser) {
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <p>Loading settings...</p>
-        </div>
-    );
-  }
+  // getAuthenticatedUser will redirect if the user is not logged in.
+  const currentUser = await getAuthenticatedUser();
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
