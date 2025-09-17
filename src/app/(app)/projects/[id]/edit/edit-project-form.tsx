@@ -14,9 +14,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Slider } from '@/components/ui/slider';
 import { TagSelector } from '@/components/tags/tag-selector';
+import { updateProject } from '@/app/actions/projects'; // Direct import
 import type { Project, Tag as GlobalTag } from '@/lib/types';
-import { EditProjectSchema, EditProjectFormValues } from '@/lib/schemas'; // Using the single source of truth
-import type { updateProject } from '@/app/actions/projects';
+import { EditProjectSchema, EditProjectFormValues } from '@/lib/schemas';
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -24,17 +24,16 @@ const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 interface EditProjectFormProps {
     project: Project;
     allTags: GlobalTag[];
-    updateProject: typeof updateProject;
 }
 
 // --- EditProjectForm Component ---
-export default function EditProjectForm({ project, allTags, updateProject }: EditProjectFormProps) {
+export default function EditProjectForm({ project, allTags }: EditProjectFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<EditProjectFormValues>({
-    resolver: zodResolver(EditProjectSchema), // Centralized schema
+    resolver: zodResolver(EditProjectSchema),
     defaultValues: {
         id: project.id,
         name: project.name,
@@ -96,7 +95,7 @@ export default function EditProjectForm({ project, allTags, updateProject }: Edi
             />
 
             <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Full Description</FormLabel><FormControl><div data-color-mode="light"><MDEditor value={field.value} onChange={(v) => field.onChange(v || '')} height={300} /></div></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="timeline" render={({ field }) => (<FormItem><FormLabel>Timeline</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="timeline" render={({ field }) => (<FormItem><FormLabel>Timeline</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage></FormItem>)} />
             <FormField control={form.control} name="contributionNeeds" render={({ field }) => (<FormItem><FormLabel>Contribution Needs</FormLabel><FormControl><Input placeholder="Enter skills needed, comma-separated" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <Card>

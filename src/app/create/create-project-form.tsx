@@ -121,10 +121,10 @@ export function CreateProjectForm({ availableTags }: CreateProjectFormProps) {
         />
 
         <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={() => handleFormSubmit(form.getValues(), true)}>
+          <Button type="button" variant="outline" onClick={form.handleSubmit((values) => handleFormSubmit(values, true))}>
             Save as Draft
           </Button>
-          <Button type="button" onClick={() => handleFormSubmit(form.getValues(), false)}>
+          <Button type="button" onClick={form.handleSubmit((values) => handleFormSubmit(values, false))}>
             Publish Project
           </Button>
         </div>
