@@ -14,14 +14,14 @@ import type { ProjectTag, Tag as GlobalTag } from "@/lib/types";
 const MAX_TAG_LENGTH = 35;
 const MAX_CATEGORY_TAGS = 3;
 
-// --- Helper: TagChip Component (Updated) ---
+// --- Helper: TagChip Component ---
 
 interface TagChipProps {
   tag: ProjectTag;
   onUpdate: (updatedTag: ProjectTag) => void;
   onRemove: () => void;
   isCategoryDisabled: boolean;
-  isEditable: boolean; // New prop for read-only state
+  isEditable: boolean;
 }
 
 const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDisabled, isEditable }) => {
@@ -42,7 +42,6 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
     }
   }, [isEditing]);
 
-  // Render a simple, non-editable chip for filtering contexts
   if (!isEditable) {
     return (
         <Badge
@@ -50,22 +49,18 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
             className="flex items-center gap-1.5 py-1 px-2 text-sm font-medium"
         >
             <span>{tag.display}</span>
-            <button
+            {isEditable && <button
                 type="button"
                 className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                onClick={(e) => {
-                    e.stopPropagation(); // Prevent popover from closing
-                    onRemove();
-                }}
+                onClick={(e) => { e.stopPropagation(); onRemove(); }}
                 aria-label={`Remove ${tag.display}`}
             >
                 <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </button>
+            </button>}
         </Badge>
     );
   }
 
-  // Full-featured, editable chip for project forms
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -73,10 +68,10 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
           <Badge
             variant={tag.role === 'category' ? "default" : "secondary"}
             className="flex items-center gap-1.5 py-1.5 px-3 text-sm font-medium transition-all duration-200"
-            onClick={() => !isEditing && setIsEditing(true)}
+            onClick={() => isEditable && !isEditing && setIsEditing(true)}
           >
-            <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
-            {isEditing ? (
+            {isEditable && <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />}
+            {isEditing && isEditable ? (
               <input
                 ref={inputRef}
                 type="text"
@@ -91,21 +86,54 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
             ) : (
               <span className="cursor-text">{tag.display}</span>
             )}
-            <Separator orientation="vertical" className="h-4 mx-1" />
-            <div className="flex items-center gap-1">
-                 {/* Role Toggles and other editable features remain here */}
-            </div>
-            <button
+            {isEditable && <>
+                <Separator orientation="vertical" className="h-4 mx-1" />
+                <div className="flex items-center gap-1">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onUpdate({ ...tag, role: 'category' }); }}
+                                disabled={tag.role === 'category' || isCategoryDisabled}
+                                className={cn(
+                                    "rounded-full p-1 transition-colors",
+                                    tag.role === 'category' ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+                                    isCategoryDisabled && tag.role !== 'category' && "cursor-not-allowed opacity-50"
+                                )}
+                                aria-label="Set as category"
+                            >
+                                <CircleDot className="h-3.5 w-3.5" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Set as Category Tag</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onUpdate({ ...tag, role: 'relational' }); }}
+                                disabled={tag.role === 'relational'}
+                                className={cn(
+                                    "rounded-full p-1 transition-colors",
+                                    tag.role === 'relational' ? "bg-secondary text-secondary-foreground" : "hover:bg-muted"
+                                )}
+                                aria-label="Set as relational"
+                            >
+                                <Circle className="h-3.5 w-3.5" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Set as Relational Tag</p></TooltipContent>
+                    </Tooltip>
+                </div>
+            </>}
+            {isEditable && <button
               type="button"
               className="ml-1.5 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
               aria-label={`Remove ${tag.display}`}
             >
               <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </button>
+            </button>}
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
@@ -117,15 +145,14 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
   );
 };
 
-
-// --- Main TagSelector Component (Updated) ---
+// --- Main TagSelector Component ---
 
 interface TagSelectorProps {
   value: ProjectTag[];
   onChange: (tags: ProjectTag[]) => void;
   allTags?: GlobalTag[];
   placeholder?: string;
-  isEditable?: boolean; // New prop to control UI variant
+  isEditable?: boolean;
 }
 
 export function TagSelector({
@@ -133,7 +160,7 @@ export function TagSelector({
   onChange,
   allTags = [],
   placeholder = "Add tags...",
-  isEditable = true, // Default to editable for forms
+  isEditable = true,
 }: TagSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -143,11 +170,7 @@ export function TagSelector({
 
   const handleSelect = (tag: Pick<GlobalTag, 'id' | 'display'>) => {
     if (!value.some(t => t.id === tag.id)) {
-      const newTag: ProjectTag = {
-        id: tag.id,
-        display: tag.display,
-        role: 'relational',
-      };
+      const newTag: ProjectTag = { id: tag.id, display: tag.display, role: 'relational' };
       onChange([...value, newTag]);
     }
     setSearchTerm("");
@@ -159,8 +182,7 @@ export function TagSelector({
       setSearchTerm("");
       return;
     }
-
-    const newTag: ProjectTag = { id: trimmed, display: trimmed, role: 'relational' };
+    const newTag: ProjectTag = { id: trimmed.toLowerCase(), display: trimmed, role: 'relational' };
     onChange([...value, newTag]);
     setSearchTerm("");
   };
@@ -185,58 +207,65 @@ export function TagSelector({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 min-h-[2.5rem]">
-            {value.map((tag, index) => (
-                <TagChip
-                    key={`${tag.id}-${index}`}
-                    tag={tag}
-                    onUpdate={(updatedTag) => handleUpdate(index, updatedTag)}
-                    onRemove={() => handleRemove(index)}
-                    isCategoryDisabled={isCategoryDisabled}
-                    isEditable={isEditable} // Pass down editable state
-                />
-            ))}
-             <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    className={cn(
-                        "flex items-center justify-center rounded-md border border-dashed border-input bg-transparent px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/50",
-                        value.length > 0 ? "w-auto" : "w-full min-h-[6rem]"
-                    )}
-                >
-                    + {placeholder}
-                </button>
-            </PopoverTrigger>
-        </div>
-        {isEditable && isCategoryDisabled && <p className="text-xs text-amber-600">Max of {MAX_CATEGORY_TAGS} category tags selected.</p>}
-        {isEditable && value.find(v => v.display.length > MAX_TAG_LENGTH) && <p className="text-xs text-destructive">A tag exceeds the {MAX_TAG_LENGTH} character limit.</p>}
-      </div>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command shouldFilter={false}>
-          <CommandInput value={searchTerm} onValueChange={setSearchTerm} placeholder="Search tags..." maxLength={MAX_TAG_LENGTH} autoFocus />
-          <CommandList>
-            {/* Error and empty states */}
-            {suggestions.length > 0 && (
-              <CommandGroup heading="Suggestions">
-                {suggestions.map(tag => (
-                  <CommandItem key={tag.id} value={tag.display} onSelect={() => handleSelect(tag)}>
-                    <Check className={cn("mr-2 h-4 w-4", value.some(t => t.id === tag.id) ? "opacity-100" : "opacity-0")} />
-                    {tag.display}
-                  </CommandItem>
+        <div className="space-y-3">
+            {isEditable && (
+                <div className="flex justify-between items-center px-1">
+                    <p className="text-sm text-muted-foreground">Select up to {MAX_CATEGORY_TAGS} category tags.</p>
+                    <p className={cn("text-sm font-medium", isCategoryDisabled ? "text-amber-600" : "text-muted-foreground")}>
+                        Categories: {categoryTagsCount}/{MAX_CATEGORY_TAGS}
+                    </p>
+                </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2 min-h-[2.5rem]">
+                {value.map((tag, index) => (
+                    <TagChip
+                        key={`${tag.id}-${index}`}
+                        tag={tag}
+                        onUpdate={(updatedTag) => handleUpdate(index, updatedTag)}
+                        onRemove={() => handleRemove(index)}
+                        isCategoryDisabled={isCategoryDisabled}
+                        isEditable={isEditable}
+                    />
                 ))}
-              </CommandGroup>
-            )}
-            {showCreateOption && (
-              <CommandGroup heading="New Tag">
-                <CommandItem value={searchTerm} onSelect={() => handleCreate(searchTerm)}>
-                    <span className="mr-2">+</span>Create "{searchTerm}"
-                </CommandItem>
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
+                {isEditable && <PopoverTrigger asChild>
+                    <button
+                        type="button"
+                        className={cn(
+                            "flex items-center justify-center rounded-md border border-dashed border-input bg-transparent px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/50",
+                            value.length > 0 ? "w-auto" : "w-full min-h-[6rem]"
+                        )}
+                    >
+                        + {placeholder}
+                    </button>
+                </PopoverTrigger>}
+            </div>
+             {isEditable && value.find(v => v.display.length > MAX_TAG_LENGTH) && <p className="text-xs text-destructive">A tag exceeds the {MAX_TAG_LENGTH} character limit.</p>}
+        </div>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+            <Command shouldFilter={false}>
+            <CommandInput value={searchTerm} onValueChange={setSearchTerm} placeholder="Search or create..." maxLength={MAX_TAG_LENGTH} autoFocus />
+            <CommandList>
+                {suggestions.length > 0 && (
+                <CommandGroup heading="Suggestions">
+                    {suggestions.map(tag => (
+                    <CommandItem key={tag.id} value={tag.display} onSelect={() => handleSelect(tag)}>
+                        <Check className={cn("mr-2 h-4 w-4", value.some(t => t.id === tag.id) ? "opacity-100" : "opacity-0")} />
+                        {tag.display}
+                    </CommandItem>
+                    ))}
+                </CommandGroup>
+                )}
+                {showCreateOption && (
+                <CommandGroup heading="Create New Tag">
+                    <CommandItem value={searchTerm} onSelect={() => handleCreate(searchTerm)}>
+                        <span className="mr-2">+</span>Create "{searchTerm}"
+                    </CommandItem>
+                </CommandGroup>
+                )}
+                {!showCreateOption && !suggestions.length && <CommandEmpty>No results found.</CommandEmpty>}
+            </CommandList>
+            </Command>
+        </PopoverContent>
     </Popover>
   );
 }
