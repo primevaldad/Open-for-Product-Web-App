@@ -28,10 +28,9 @@ const mockProjects: Project[] = [
     name: 'Test Project 1',
     tagline: 'Tagline 1',
     description: 'Description 1',
-    category: 'Creative',
+    category: 'Creative & Media',
     status: 'published',
     team: [],
-    discussions: [],
     timeline: 'test',
     contributionNeeds: [],
     progress: 0,
@@ -44,10 +43,9 @@ const mockProjects: Project[] = [
     name: 'Test Project 2',
     tagline: 'Tagline 2',
     description: 'Description 2',
-    category: 'Technical',
+    category: 'Technical & Engineering',
     status: 'published',
     team: [],
-    discussions: [],
     timeline: 'test',
     contributionNeeds: [],
     progress: 0,
@@ -65,10 +63,10 @@ describe('HomeClientPage', () => {
     // 1. Initial Render: All projects should be visible
     expect(screen.getByText('All Projects')).toBeInTheDocument();
     expect(screen.getAllByTestId('project-card')).toHaveLength(2);
-    expect(screen.getByText('Test Project 1')).toBeInTheDocument(); // Creative
-    expect(screen.getByText('Test Project 2')).toBeInTheDocument(); // Technical
+    expect(screen.getByText('Test Project 1')).toBeInTheDocument(); // Creative & Media
+    expect(screen.getByText('Test Project 2')).toBeInTheDocument(); // Technical & Engineering
 
-    // 2. Filter by 'Creative': Only creative projects should be visible
+    // 2. Filter by 'Creative & Media': Only creative projects should be visible
     const creativeButton = screen.getByRole('button', { name: /creative/i });
     await user.click(creativeButton);
 
@@ -76,7 +74,7 @@ describe('HomeClientPage', () => {
     expect(screen.getByText('Test Project 1')).toBeInTheDocument();
     expect(screen.queryByText('Test Project 2')).not.toBeInTheDocument();
 
-    // 3. Filter by 'Technical' as well: Both creative and technical projects should be visible
+    // 3. Filter by 'Technical & Engineering' as well: Both creative and technical projects should be visible
     const technicalButton = screen.getByRole('button', { name: /technical/i });
     await user.click(technicalButton);
 
@@ -84,14 +82,14 @@ describe('HomeClientPage', () => {
     expect(screen.getByText('Test Project 1')).toBeInTheDocument();
     expect(screen.getByText('Test Project 2')).toBeInTheDocument();
 
-    // 4. De-select 'Creative': Only technical projects should be visible
+    // 4. De-select 'Creative & Media': Only technical projects should be visible
     await user.click(creativeButton);
 
     expect(screen.getAllByTestId('project-card')).toHaveLength(1);
     expect(screen.queryByText('Test Project 1')).not.toBeInTheDocument();
     expect(screen.getByText('Test Project 2')).toBeInTheDocument();
 
-    // 5. De-select 'Technical': All projects should be visible again
+    // 5. De-select 'Technical & Engineering': All projects should be visible again
     await user.click(technicalButton);
     
     expect(screen.getAllByTestId('project-card')).toHaveLength(2);

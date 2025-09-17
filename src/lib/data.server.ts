@@ -1,9 +1,13 @@
 import 'server-only';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag } from './types';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
+
+// Export adminDb to be used for transactions in server actions
+export { adminDb };
 
 // --- User Data Access ---
 export async function getAllUsers(): Promise<User[]> {
@@ -22,6 +26,18 @@ export async function findUserById(userId: string): Promise<User | undefined> {
     return undefined;
 }
 
+export async function findUserByEmail(email: string): Promise<User | undefined> {
+    if (!email) return undefined;
+    const usersCol = adminDb.collection('users');
+    const q = usersCol.where('email', '==', email).limit(1);
+    const userSnapshot = await q.get();
+    if (!userSnapshot.empty) {
+        const userDoc = userSnapshot.docs[0];
+        return { id: userDoc.id, ...userDoc.data() } as User;
+    }
+    return undefined;
+}
+
 export async function addUser(uid: string, newUser: Omit<User, 'id'>): Promise<void> {
     await adminDb.collection('users').doc(uid).set(newUser);
 }
@@ -32,59 +48,53 @@ export async function updateUser(updatedUser: User): Promise<void> {
     await userRef.update(userData);
 }
 
-// --- Project Data Access (Refactored for explicit data shaping) ---
+export async function deleteUser(userId: string): Promise<void> {
+    if (!userId) return;
+    const userRef = adminDb.collection('users').doc(userId);
+    await userRef.delete();
+}
+
+export async function logOrphanedUser(orphanedUserData: User): Promise<void> {
+    const orphanedCol = adminDb.collection('users_orphaned');
+    await orphanedCol.add({
+        ...orphanedUserData,
+        orphanedAt: FieldValue.serverTimestamp(),
+    });
+}
+
+// --- Notification Data Access ---
+export async function addNotification(notificationData: Omit<Notification, 'id'>): Promise<string> {
+    const notificationRef = await adminDb.collection('notifications').add(notificationData);
+    return notificationRef.id;
+}
+
+export async function getNotificationsByUserId(userId: string): Promise<Notification[]> {
+    const notificationsCol = adminDb.collection('notifications');
+    const q = notificationsCol.where('userId', '==', userId).orderBy('timestamp', 'desc');
+    const snapshot = await q.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+}
+
+
+// --- Project Data Access ---
 export async function getAllProjects(): Promise<Project[]> {
     const projectsCol = adminDb.collection('projects');
     const projectSnapshot = await projectsCol.get();
-    return projectSnapshot.docs.map(doc => {
-        const data = doc.data();
-        // Explicitly shape the project data to ensure it's raw and non-hydrated.
-        return {
-            id: doc.id,
-            name: data.name,
-            tagline: data.tagline,
-            description: data.description,
-            category: data.category,
-            timeline: data.timeline,
-            contributionNeeds: data.contributionNeeds,
-            progress: data.progress,
-            team: data.team || [], // Ensure team is always an array
-            votes: data.votes,
-            discussions: data.discussions || [], // Ensure discussions is always an array
-            status: data.status,
-            governance: data.governance,
-        } as Project;
-    });
+    return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
 }
 
 export async function findProjectById(projectId: string): Promise<Project | undefined> {
     const projectRef = adminDb.collection('projects').doc(projectId);
     const projectSnap = await projectRef.get();
     if (projectSnap.exists) {
-        const data = projectSnap.data();
-        // Explicitly shape the project data to ensure it's raw and non-hydrated.
-        return {
-            id: projectSnap.id,
-            name: data.name,
-            tagline: data.tagline,
-            description: data.description,
-            category: data.category,
-            timeline: data.timeline,
-            contributionNeeds: data.contributionNeeds,
-            progress: data.progress,
-            team: data.team || [],
-            votes: data.votes,
-            discussions: data.discussions || [],
-            status: data.status,
-            governance: data.governance,
-        } as Project;
+        return { id: projectSnap.id, ...projectSnap.data() } as Project;
     }
     return undefined;
 }
 
-export async function addProject(newProject: Project): Promise<void> {
-    const { id, ...projectData } = newProject;
-    await adminDb.collection('projects').doc(id).set(projectData);
+export async function addProject(newProjectData: Omit<Project, 'id'>): Promise<string> {
+    const projectRef = await adminDb.collection('projects').add(newProjectData);
+    return projectRef.id;
 }
 
 export async function updateProject(updatedProject: Project): Promise<void> {
@@ -92,6 +102,81 @@ export async function updateProject(updatedProject: Project): Promise<void> {
     const projectRef = adminDb.collection('projects').doc(id);
     await projectRef.update(projectData);
 }
+
+// --- Tag Data Access ---
+export async function getAllTags(): Promise<Tag[]> {
+    const tagsCol = adminDb.collection('tags').orderBy('usageCount', 'desc');
+    const tagsSnapshot = await tagsCol.get();
+    return tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
+}
+
+/**
+ * Synchronizes tags for a project, creating new tags and updating usage counts
+ * within a single transaction.
+ *
+ * @param transaction - The Firestore transaction object.
+ * @param projectId - The ID of the project being updated.
+ * @param newTags - The new array of tags from the form.
+ * @param currentTags - The array of tags currently on the project.
+ * @returns The final, complete array of tags for the project.
+ */
+async function manageTagsForProject(
+  transaction: FirebaseFirestore.Transaction,
+  newTags: SelectableTag[],
+  currentTags: Tag[]
+): Promise<Tag[]> {
+  const newTagIds = new Set(newTags.map(t => t.id));
+  const currentTagIds = new Set(currentTags.map(t => t.id));
+
+  const tagsToAdd = newTags.filter(t => !currentTagIds.has(t.id));
+  const tagsToRemove = currentTags.filter(t => !newTagIds.has(t.id));
+  const finalTags: Tag[] = [...newTags]; // Start with the desired state
+
+  const tagsCollection = adminDb.collection('tags');
+
+  // Process tags to add
+  for (const tag of tagsToAdd) {
+    const tagRef = tagsCollection.doc(tag.id);
+    const tagSnap = await transaction.get(tagRef);
+    if (tagSnap.exists) {
+      // Tag exists, increment its usage count
+      transaction.update(tagRef, { usageCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+    } else {
+      // New tag, create it
+      transaction.set(tagRef, {
+        id: tag.id,
+        display: tag.display,
+        usageCount: 1,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  // Process tags to remove
+  for (const tag of tagsToRemove) {
+    const tagRef = tagsCollection.doc(tag.id);
+    // Decrement the usage count, but don't let it go below zero.
+    transaction.update(tagRef, { usageCount: FieldValue.increment(-1), updatedAt: FieldValue.serverTimestamp() });
+  }
+  
+  return finalTags;
+}
+
+
+// --- Discussion Data Access ---
+export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>): Promise<string> {
+    const commentRef = await adminDb.collection('discussions').add(commentData);
+    return commentRef.id;
+}
+
+export async function getDiscussionsByProjectId(projectId: string): Promise<Discussion[]> {
+    const discussionsCol = adminDb.collection('discussions');
+    const q = discussionsCol.where('projectId', '==', projectId).orderBy('timestamp', 'asc');
+    const snapshot = await q.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Discussion));
+}
+
 
 // --- Task Data Access ---
 export async function getAllTasks(): Promise<Task[]> {
@@ -116,9 +201,9 @@ export async function findTaskById(taskId: string): Promise<Task | undefined> {
     return undefined;
 }
 
-export async function addTask(newTask: Task): Promise<void> {
-    const { id, ...taskData } = newTask;
-    await adminDb.collection('tasks').doc(id).set(taskData);
+export async function addTask(newTaskData: Omit<Task, 'id'>): Promise<string> {
+    const taskRef = await adminDb.collection('tasks').add(newTaskData);
+    return taskRef.id;
 }
 
 export async function updateTask(updatedTask: Task): Promise<void> {

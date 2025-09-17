@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUpRight, CheckCircle, MessageSquare, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, CheckCircle, Sparkles, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -60,7 +60,7 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
               {project.category}
             </Badge>
             <CardTitle className="text-lg font-bold">
-              <Link href={`/project/${project.id}`} className="hover:text-primary transition-colors">
+              <Link href={`/projects/${project.id}`} className="hover:text-primary transition-colors">
                 {project.name}
               </Link>
             </CardTitle>
@@ -111,9 +111,6 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
         <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
             <span className="flex items-center gap-1">
                 <Users className="h-4 w-4" /> {project.votes}
-            </span>
-            <span className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4" /> {project.discussions.length}
             </span>
         </div>
       </CardFooter>

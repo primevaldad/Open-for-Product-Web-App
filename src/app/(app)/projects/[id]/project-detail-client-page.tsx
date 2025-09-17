@@ -18,6 +18,7 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from 'zod';
+import ReactMarkdown from 'react-markdown';
 
 import {
   SidebarInset,
@@ -55,6 +56,7 @@ const DiscussionSchema = z.object({
 
 type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
 
+type HydratedDiscussion = Discussion & { user: User };
 
 function TaskCard({ task, isTeamMember, team, updateTask, deleteTask }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask }) {
   return (
@@ -95,6 +97,7 @@ function TaskCard({ task, isTeamMember, team, updateTask, deleteTask }: { task: 
 interface ProjectDetailClientPageProps {
     project: Project;
     projectTasks: Task[];
+    projectDiscussions: HydratedDiscussion[];
     currentUser: User;
     allUsers: User[];
     joinProject: typeof joinProject;
@@ -108,6 +111,7 @@ interface ProjectDetailClientPageProps {
 export default function ProjectDetailClientPage({ 
     project, 
     projectTasks, 
+    projectDiscussions,
     currentUser,
     allUsers,
     joinProject,
@@ -196,7 +200,7 @@ export default function ProjectDetailClientPage({
                   <TabsTrigger value="tasks">Tasks</TabsTrigger>
                   <TabsTrigger value="discussions">
                     Discussions
-                    <Badge className="ml-2">{project.discussions.length}</Badge>
+                    {projectDiscussions && projectDiscussions.length > 0 && <Badge className="ml-2">{projectDiscussions.length}</Badge>}
                   </TabsTrigger>
                   <TabsTrigger value="governance">Governance</TabsTrigger>
                 </TabsList>
@@ -218,7 +222,9 @@ export default function ProjectDetailClientPage({
                 <CardContent className="grid md:grid-cols-2 gap-6">
                     <div>
                         <h3 className="font-semibold mb-2">Description</h3>
-                        <p className="text-muted-foreground">{project.description}</p>
+                        <div className="prose text-muted-foreground max-w-none">
+                            <ReactMarkdown>{project.description}</ReactMarkdown>
+                        </div>
                     </div>
                     <div className="space-y-4">
                         <div className="flex items-center"><Target className="h-5 w-5 mr-3 text-primary" /> <span>Skills Needed: {project.contributionNeeds.join(', ')}</span></div>
@@ -335,8 +341,8 @@ export default function ProjectDetailClientPage({
                         )}
 
                         <div className="space-y-4">
-                           {project.discussions && project.discussions.length > 0 ? (
-                                [...project.discussions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(comment => (
+                           {projectDiscussions && projectDiscussions.length > 0 ? (
+                                [...projectDiscussions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(comment => (
                                 <div key={comment.id} className="flex items-start gap-4">
                                     <Avatar className="h-10 w-10 border">
                                         <AvatarImage src={comment.user.avatarUrl} alt={comment.user.name} />
@@ -354,7 +360,7 @@ export default function ProjectDetailClientPage({
                                 </div>
                                 ))
                            ) : (
-                             <div className="text-center text-muted-foreground text-sm py-8">
+                             <div key="no-discussions" className="text-center text-muted-foreground text-sm py-8">
                                 <MessageSquare className="h-8 w-8 mx-auto mb-2" />
                                 <p>No discussions yet. Be the first to start the conversation!</p>
                              </div>

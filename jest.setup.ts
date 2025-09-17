@@ -1,4 +1,19 @@
 
+// In jest.setup.js
 import '@testing-library/jest-dom';
 
-process.env.FIREBASE_SERVICE_ACCOUNT_KEY = '{"privateKey": "dummy"}';
+// Mock ResizeObserver for Jest tests
+global.ResizeObserver = class ResizeObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe(target) {
+    // do nothing
+  }
+  unobserve(target) {
+    // do nothing
+  }
+  disconnect() {
+    // do nothing
+  }
+};

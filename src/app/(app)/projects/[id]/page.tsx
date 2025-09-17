@@ -28,6 +28,7 @@ import {
   findProjectById,
   findTasksByProjectId,
   getAllUsers,
+  getDiscussionsByProjectId,
 } from "@/lib/data.server";
 import {
   addTask,
@@ -37,37 +38,103 @@ import {
   joinProject,
   updateTask,
 } from "@/app/actions/projects";
-import type { Task } from "@/lib/types";
+import type { Task, Project, Discussion, Tag, User } from "@/lib/types";
+
+const toISOString = (timestamp: any): string | any => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toISOString();
+    }
+    if (timestamp instanceof Date) {
+        return timestamp.toISOString();
+    }
+    return timestamp;
+};
 
 // This is now a Server Component responsible for fetching all necessary data
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
   // getAuthenticatedUser will redirect if the user is not logged in.
-  const currentUser = await getAuthenticatedUser();
-  const project = await findProjectById(params.id);
+  const rawCurrentUser = await getAuthenticatedUser();
+  const rawProjectData = await findProjectById(params.id);
 
-  if (!project) {
+  if (!rawProjectData) {
     notFound();
   }
 
-  // Fetch all users and tasks for the project
-  const allUsers = await getAllUsers();
-  const projectTasksData = await findTasksByProjectId(params.id);
+  // Fetch all raw data
+  const rawAllUsers = await getAllUsers();
+  const rawProjectTasksData = await findTasksByProjectId(params.id);
+  const rawDiscussionData = await getDiscussionsByProjectId(params.id);
 
-  // Hydrate tasks with their assigned user objects
-  const taskPromises = projectTasksData.map(async (t) => {
+  // --- SERIALIZATION --- 
+  // Convert all Firestore Timestamps to ISO strings before passing to client components
+
+  const currentUser = {
+    ...rawCurrentUser,
+    createdAt: toISOString(rawCurrentUser.createdAt),
+    lastLogin: toISOString(rawCurrentUser.lastLogin),
+  };
+
+  const allUsers = rawAllUsers.map(user => ({
+    ...user,
+    createdAt: toISOString(user.createdAt),
+    lastLogin: toISOString(user.lastLogin),
+  }));
+
+  const projectTasksData = rawProjectTasksData.map(task => ({
+      ...task,
+      createdAt: toISOString(task.createdAt),
+      updatedAt: toISOString(task.updatedAt),
+  }));
+
+  const discussionData = rawDiscussionData.map(comment => ({
+      ...comment,
+      timestamp: toISOString(comment.timestamp),
+  }));
+
+  const projectData = {
+      ...rawProjectData,
+      createdAt: toISOString(rawProjectData.createdAt),
+      updatedAt: toISOString(rawProjectData.updatedAt),
+      startDate: rawProjectData.startDate ? toISOString(rawProjectData.startDate) : undefined,
+      endDate: rawProjectData.endDate ? toISOString(rawProjectData.endDate) : undefined,
+      tags: (rawProjectData.tags || []).map(tag => ({
+          ...tag,
+          createdAt: toISOString(tag.createdAt),
+          updatedAt: toISOString(tag.updatedAt),
+      })),
+  };
+
+  // --- HYDRATION --- 
+  // Hydrate data on the server using the safe, serialized data
+
+  const projectTasks = projectTasksData.map(t => {
     const assignedTo = t.assignedToId
       ? allUsers.find((u) => u.id === t.assignedToId)
       : undefined;
     return { ...t, description: t.description ?? '', assignedTo };
-  });
+  }) as Task[];
 
-  const projectTasks = (await Promise.all(taskPromises)) as Task[];
+  const hydratedTeam = projectData.team.map(member => ({
+      ...member,
+      user: allUsers.find(u => u.id === member.userId)!
+  }));
+
+  const hydratedDiscussions = discussionData.map(comment => ({
+      ...comment,
+      user: allUsers.find(u => u.id === comment.userId)!
+  }));
+
+  const project = {
+      ...projectData,
+      team: hydratedTeam,
+  } as Project;
+
 
   return (
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">
         <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/home" className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
@@ -83,7 +150,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <SidebarContent className="p-4 pt-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/">
+              <Link href="/home">
                 <SidebarMenuButton>
                   <Home />
                   Home
@@ -153,6 +220,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       <ProjectDetailClientPage
         project={project}
         projectTasks={projectTasks}
+        projectDiscussions={hydratedDiscussions}
         currentUser={currentUser}
         allUsers={allUsers}
         joinProject={joinProject}

@@ -1,26 +1,26 @@
 
 import { notFound } from 'next/navigation';
 import UserProfilePageClient from './profile-client-page';
-import { getAllProjects, findUserById } from '@/lib/data.server'; // Corrected import
-import { getAuthenticatedUser } from '@/lib/session.server'; // Corrected import
+import { getAllProjects, findUserById } from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
 
+// --- Data Fetching ---
 async function getUserProfilePageData(userId: string) {
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
+    const currentUser = await getAuthenticatedUser();
     const user = await findUserById(userId);
 
-    if (!user) return { user: null, userProjects: [], currentUser };
+    if (!user) {
+        return { user: null, userProjects: [], currentUser };
+    }
 
     const allProjects = await getAllProjects();
-    const userProjects = allProjects
-        .filter(p => p.team.some(m => m.userId === userId));
+    const userProjects = allProjects.filter(p => p.team.some(m => m.userId === userId));
         
     return { user, userProjects, currentUser };
 }
 
-
-// This is now a Server Component that fetches all necessary data
-export default async function UserProfilePage({ params }: { params: { id:string } }) {
-
+// --- Server Component: UserProfilePage ---
+export default async function UserProfilePage({ params }: { params: { id: string } }) {
   const { user, userProjects, currentUser } = await getUserProfilePageData(params.id);
 
   if (!user || !currentUser) {

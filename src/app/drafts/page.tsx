@@ -23,14 +23,38 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { User, Project } from "@/lib/types";
-import { getAllProjects } from "@/lib/data.server"; // Corrected import
-import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
+import type { User, Project, Tag } from "@/lib/types";
+import { getAllProjects } from "@/lib/data.server";
+import { getAuthenticatedUser } from "@/lib/session.server";
+
+const toISOString = (timestamp: any): string | any => {
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate().toISOString();
+  }
+  if (timestamp instanceof Date) {
+    return timestamp.toISOString();
+  }
+  return timestamp;
+};
+
+const serializeProject = (project: Project): Project => ({
+  ...project,
+  createdAt: toISOString(project.createdAt),
+  updatedAt: toISOString(project.updatedAt),
+  startDate: project.startDate ? toISOString(project.startDate) : undefined,
+  endDate: project.endDate ? toISOString(project.endDate) : undefined,
+  tags: (project.tags || []).map(tag => ({
+    ...tag,
+    createdAt: toISOString(tag.createdAt),
+    updatedAt: toISOString(tag.updatedAt),
+  })) as Tag[],
+});
 
 async function getDraftsPageData() {
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
-    const projects = await getAllProjects(); // Corrected function call
-    return { currentUser, projects };
+    const currentUser = await getAuthenticatedUser();
+    const projects = await getAllProjects();
+    const serializedProjects = projects.map(serializeProject);
+    return { currentUser, projects: serializedProjects };
 }
 
 // This is now a Server Component
@@ -38,7 +62,6 @@ export default async function DraftsPage() {
   const { currentUser, projects } = await getDraftsPageData();
 
   if (!currentUser) {
-    // This can be a loading component or a redirect in a real app
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading user...</p>
@@ -52,7 +75,7 @@ export default async function DraftsPage() {
     <div className="flex h-full min-h-screen w-full bg-background">
       <Sidebar className="border-r" collapsible="icon">
         <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/home" className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="shrink-0 bg-primary/20 text-primary hover:bg-primary/30">
                 <LayoutPanelLeft className="h-5 w-5" />
             </Button>
@@ -62,7 +85,7 @@ export default async function DraftsPage() {
         <SidebarContent className="p-4 pt-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/">
+              <Link href="/home">
                 <SidebarMenuButton>
                   <Home />
                   Home

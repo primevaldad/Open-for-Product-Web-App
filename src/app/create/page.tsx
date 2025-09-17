@@ -1,136 +1,47 @@
 
-import {
-  Activity,
-  BookOpen,
-  FilePlus2,
-  FolderKanban,
-  Home,
-  LayoutPanelLeft,
-  Settings,
-} from "lucide-react";
-import Link from "next/link";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { UserNav } from "@/components/user-nav";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
+import { getAuthenticatedUser } from "@/lib/session.server";
 import { CreateProjectForm } from "./create-project-form";
-import { publishProject, saveProjectDraft } from "../actions/projects";
+import { getAllTags } from "@/lib/data.server";
+import { redirect } from 'next/navigation';
+import type { Tag } from "@/lib/types";
+
+// --- Serialization Helpers ---
+const toISOString = (timestamp: any): string | any => {
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate().toISOString();
+  }
+  if (timestamp instanceof Date) {
+    return timestamp.toISOString();
+  }
+  return timestamp;
+};
+
+const serializeTag = (tag: Tag): Tag => ({
+  ...tag,
+  createdAt: toISOString(tag.createdAt),
+  updatedAt: toISOString(tag.updatedAt),
+});
 
 async function getCreatePageData() {
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
-    return { currentUser };
+    const [currentUser, allTags] = await Promise.all([
+        getAuthenticatedUser(),
+        getAllTags()
+    ]);
+    const serializedTags = allTags.map(serializeTag);
+    return { currentUser, allTags: serializedTags };
 }
 
 // The page is a Server Component responsible for fetching data and rendering the layout.
 export default async function CreateProjectPage() {
-    const { currentUser } = await getCreatePageData();
+    const { currentUser, allTags } = await getCreatePageData();
 
     if (!currentUser) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                <p>Loading...</p>
-            </div>
-        );
+        redirect('/login');
     }
 
     return (
-        <div className="flex h-full min-h-screen w-full bg-background">
-            <Sidebar className="border-r" collapsible="icon">
-                <SidebarHeader className="p-4">
-                <Link href="/" className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="shrink-0 bg-primary/20 text-primary hover:bg-primary/30">
-                        <LayoutPanelLeft className="h-5 w-5" />
-                    </Button>
-                    <span className="text-lg font-semibold text-foreground">Open for Product</span>
-                </Link>
-                </SidebarHeader>
-                <SidebarContent className="p-4 pt-0">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                    <Link href="/">
-                        <SidebarMenuButton>
-                        <Home />
-                        Home
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                    <Link href="/create">
-                        <SidebarMenuButton isActive>
-                        <FilePlus2 />
-                        Create Project
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                    <Link href="/drafts">
-                        <SidebarMenuButton>
-                        <FolderKanban />
-                        Drafts
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                    <Link href="/learning">
-                        <SidebarMenuButton>
-                        <BookOpen />
-                        Learning Paths
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                    <Link href="/activity">
-                        <SidebarMenuButton>
-                        <Activity />
-                        Activity
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                    <Link href="/profile">
-                        <SidebarMenuButton>
-                        <Avatar className="size-5">
-                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                            <AvatarFallback>
-                            {currentUser.name.charAt(0)}
-                            </AvatarFallback>
-                        </Avatar>
-                        Profile
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                    <Link href="/settings">
-                        <SidebarMenuButton>
-                        <Settings />
-                        Settings
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-                </SidebarContent>
-            </Sidebar>
-            <SidebarInset className="flex flex-col">
-                <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-                <h1 className="text-lg font-semibold md:text-xl">
-                    Publish a New Project
-                </h1>
-                <UserNav currentUser={currentUser} />
-                </header>
-                <CreateProjectForm 
-                    saveProjectDraft={saveProjectDraft}
-                    publishProject={publishProject}
-                />
-            </SidebarInset>
-        </div>
+        <CreateProjectForm 
+            availableTags={allTags} 
+        />
     );
 }

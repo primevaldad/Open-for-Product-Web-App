@@ -1,53 +1,49 @@
 
-
 import { NextResponse, type NextRequest } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from '@/lib/firebase-admin';
+import { createSession, clearSession } from '@/lib/session.server';
 
+/**
+ * API route to create a user session.
+ * Expects a POST request with a JSON body containing the Firebase ID token.
+ */
 export async function POST(request: NextRequest) {
-  const reqBody = (await request.json()) as { idToken: string };
-  const idToken = reqBody.idToken;
-
-  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-  const adminAuth = getAuth(adminApp);
-
   try {
-    const decodedIdToken = await adminAuth.verifyIdToken(idToken);
-    
-    if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
-      return NextResponse.json({ error: 'Recent sign-in required' }, { status: 401 });
+    const reqBody = (await request.json()) as { idToken: string };
+    const idToken = reqBody.idToken;
+
+    if (!idToken) {
+      return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
     }
 
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    // createSession handles token verification, cookie creation, and setting it.
+    await createSession(idToken);
 
-    const options = {
-      name: '__session',
-      value: sessionCookie,
-      maxAge: expiresIn,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-    };
-
-    const response = NextResponse.json({ status: 'success' }, { status: 200 });
-    response.cookies.set(options);
-    
-    return response;
+    return NextResponse.json({ status: 'success' }, { status: 200 });
   } catch (error: any) {
-    console.error('Error creating session cookie:', error);
-    const errorMessage = error.message || 'An unknown error occurred during session creation.';
-    return NextResponse.json({ error: `Internal Server Error: ${errorMessage}` }, { status: 500 });
+    console.error('Error in session POST route:', error);
+    const errorMessage =
+      error.message || 'An unknown error occurred during session creation.';
+    return NextResponse.json(
+      { error: `Internal Server Error: ${errorMessage}` },
+      { status: 500 }
+    );
   }
 }
 
+/**
+ * API route to delete a user session (logout).
+ * Expects a DELETE request.
+ */
 export async function DELETE() {
-  const options = {
-    name: '__session',
-    value: '',
-    maxAge: -1,
-  };
-
-  const response = NextResponse.json({ status: 'success' }, { status: 200 });
-  response.cookies.set(options);
-
-  return response;
+  try {
+    // clearSession handles cookie removal and token revocation.
+    await clearSession();
+    return NextResponse.json({ status: 'success' }, { status: 200 });
+  } catch (error: any) {
+    console.error('Error in session DELETE route:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
 }

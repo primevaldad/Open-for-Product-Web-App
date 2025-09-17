@@ -56,7 +56,8 @@ export default function LoginPage() {
         const result = await login({ idToken });
 
         if (result.success) {
-          router.push('/home');
+          // Use window.location.href for a full page refresh to ensure server components re-evaluate auth state.
+          window.location.href = '/home';
         } else {
           setError(result.error || 'An unknown error occurred.');
         }

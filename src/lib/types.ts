@@ -3,9 +3,11 @@ import type { LucideIcon } from "lucide-react";
 
 export type Notification = {
   id: string;
+  userId: string;
   message: string;
   link: string;
   read: boolean;
+  timestamp: string; // ISO 8601 format
 };
 
 export type User = {
@@ -16,18 +18,17 @@ export type User = {
   bio?: string;
   interests?: string[];
   onboarded: boolean;
-  notifications?: Notification[];
+  createdAt?: string;
+  lastLogin?: string;
 };
 
 export type UserRole = 'lead' | 'participant';
 
 export type ProjectMember = {
-  user: User;
-  role: UserRole;
   userId: string;
+  role: UserRole;
+  user?: User; // Populated for display, not stored in DB
 };
-
-export type ProjectCategory = 'Creative' | 'Technical' | 'Community' | 'Business & Enterprise' | 'Learning & Research';
 
 export type ProjectStatus = 'published' | 'draft';
 
@@ -39,10 +40,31 @@ export type Governance = {
 
 export type Discussion = {
   id: string;
-  user: User;
-  content: string;
-  timestamp: string;
+  projectId: string;
   userId: string;
+  content: string;
+  timestamp: string; // ISO 8601 format
+};
+
+export type Tag = {
+  id: string;
+  normalized: string;
+  display: string;
+  type: 'category' | 'relational';
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  usageCount?: number;
+};
+
+export type ProjectTag = {
+  id: string;
+  display: string;
+  role: 'category' | 'relational';
+};
+
+export type SelectableTag = Tag & {
+  isSelected: boolean;
 };
 
 export type Project = {
@@ -50,18 +72,19 @@ export type Project = {
   name: string;
   tagline: string;
   description: string;
-  category: ProjectCategory;
   timeline: string;
   contributionNeeds: string[];
   progress: number;
   team: ProjectMember[];
   votes: number;
-  discussions: Discussion[];
   isExpertReviewed?: boolean;
   status: ProjectStatus;
   governance?: Governance;
   startDate: string;
   endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  tags?: ProjectTag[];
 };
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
@@ -75,6 +98,8 @@ export type Task = {
   assignedTo?: User;
   assignedToId?: string;
   estimatedHours?: number;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type Module = {
@@ -89,7 +114,6 @@ export type LearningPath = {
   id: string;
   title: string;
   description: string;
-  category: ProjectCategory;
   duration: string;
   Icon: LucideIcon;
   isLocked?: boolean;
@@ -99,7 +123,7 @@ export type LearningPath = {
 export type UserLearningProgress = {
   userId: string;
   pathId: string;
-  completedModules: string[]; // array of module ids
+  completedModules: string[];
 };
 
 export type Interest = {

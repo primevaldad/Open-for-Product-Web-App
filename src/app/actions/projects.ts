@@ -1,364 +1,313 @@
 
 'use server';
 
-import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import type { Project, ProjectStatus, Task } from '@/lib/types';
-import { 
-    addProject as addProjectToDb,
+import * as admin from 'firebase-admin';
+import { z } from 'zod';
+import type { Project, ProjectStatus, ProjectTag, Tag as GlobalTag, User, ProjectMember } from '@/lib/types';
+import {
+    adminDb,
+    addDiscussionComment as addDiscussionCommentToDb,
+    addNotification as addNotificationToDb,
     addTask as addTaskToDb,
     deleteTask as deleteTaskFromDb,
-    findProjectById, 
-    findUserById, 
-    getAllProjects,
+    findProjectById,
+    findUserById,
     getAllTasks,
     updateProject as updateProjectInDb,
     updateTask as updateTaskInDb,
-    updateUser,
-} from '@/lib/data.server'; // Corrected import
-import { getAuthenticatedUser } from '@/lib/session.server'; // Corrected import
+} from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
 
-const ProjectSchema = z.object({
-  name: z.string().min(1, 'Project name is required.'),
-  tagline: z.string().min(1, 'Tagline is required.'),
-  description: z.string().min(1, 'Description is required.'),
-  category: z.enum(['Creative', 'Technical', 'Community', 'Business & Enterprise', 'Learning & Research']),
-  contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
-});
+const MAX_TAG_LENGTH = 35;
 
-const EditProjectSchema = ProjectSchema.extend({
-  id: z.string(),
-  timeline: z.string().min(1, "Timeline is required."),
-  governance: z.object({
-    contributorsShare: z.number(),
-    communityShare: z.number(),
-    sustainabilityShare: z.number(),
-  }),
-});
+// --- Helper Functions ---
 
-const TaskSchema = z.object({
-    id: z.string(),
-    projectId: z.string(),
-    title: z.string().min(1, "Title is required."),
-    description: z.string().optional(),
-    status: z.enum(['To Do', 'In Progress', 'Done']),
-    assignedToId: z.string().optional(),
-    estimatedHours: z.coerce.number().optional(),
-});
+const normalizeTag = (tag: string): string => {
+  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '').slice(0, MAX_TAG_LENGTH);
+};
 
-const CreateTaskSchema = TaskSchema.omit({ id: true });
-const DeleteTaskSchema = z.object({ id: z.string(), projectId: z.string() });
+async function manageTagsForProject(
+    transaction: FirebaseFirestore.Transaction,
+    projectTags: ProjectTag[],
+    currentUser: User
+): Promise<ProjectTag[]> {
+    if (!projectTags || projectTags.length === 0) return [];
 
-const DiscussionCommentSchema = z.object({
-    projectId: z.string(),
-    userId: z.string(),
-    content: z.string().min(1, "Comment cannot be empty."),
-});
+    const tagsCollection = adminDb.collection('tags');
+    const processedProjectTags: ProjectTag[] = [];
 
-const AddTeamMemberSchema = z.object({
-    projectId: z.string(),
-    userId: z.string(),
-    role: z.enum(['participant', 'lead']),
-});
+    for (const pTag of projectTags) {
+        const normalizedId = normalizeTag(pTag.id);
+        if (!normalizedId) continue;
+
+        const finalDisplay = pTag.display;
+        const tagRef = tagsCollection.doc(normalizedId);
+        const tagSnap = await transaction.get(tagRef);
+
+        if (tagSnap.exists) {
+            transaction.update(tagRef, { usageCount: admin.firestore.FieldValue.increment(1) });
+            processedProjectTags.push({ id: normalizedId, display: finalDisplay, role: pTag.role });
+        } else {
+            const newGlobalTag: GlobalTag = {
+                id: normalizedId,
+                normalized: normalizedId,
+                display: finalDisplay,
+                type: pTag.role,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                createdBy: currentUser.id,
+                usageCount: 1,
+            };
+            transaction.set(tagRef, newGlobalTag);
+            processedProjectTags.push({ id: normalizedId, display: finalDisplay, role: pTag.role });
+        }
+    }
+    return processedProjectTags;
+}
+
+async function hydrateTeamMembers(team: ProjectMember[]): Promise<ProjectMember[]> {
+    console.log('hydrating team members')
+    const userIdsToFetch = team.filter(m => !m.user).map(m => m.userId);
+    if (userIdsToFetch.length === 0) return team;
+
+    const userPromises = userIdsToFetch.map(findUserById);
+    const users = await Promise.all(userPromises);
+    const userMap = new Map(users.filter(Boolean).map(u => [u!.id, u]));
+
+    return team.map(member => {
+        console.log('returning hydrated team member')
+        if (member.user) return member;
+        const user = userMap.get(member.userId);
+        return user ? { ...member, user } : member;
+    });
+}
+
+
+// --- Project Submission and Update Actions ---
 
 async function handleProjectSubmission(
-  values: z.infer<typeof ProjectSchema>,
+  values: CreateProjectFormValues,
   status: ProjectStatus
 ): Promise<{ success: boolean; error?: string; projectId?: string; }> {
-  const validatedFields = ProjectSchema.safeParse(values);
+  const validatedFields = CreateProjectSchema.safeParse(values);
 
   if (!validatedFields.success) {
-    return {
-      success: false,
-      error: 'Invalid data provided.',
-    };
+    return { success: false, error: validatedFields.error.issues[0]?.message || 'Invalid data.' };
   }
 
-  const { name, tagline, description, category, contributionNeeds } = validatedFields.data;
+  const { name, tagline, description, contributionNeeds, tags } = validatedFields.data;
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: "Authentication required." };
 
-  const currentUser = await getAuthenticatedUser(); // Corrected function call
-  if (!currentUser) {
-      return { success: false, error: "Could not find current user."};
-  }
+  let newProjectId: string | undefined;
+  console.log('new project got an ID')
   
-  const allProjects = await getAllProjects();
-  const newProjectId = `p${allProjects.length + 1}`;
+  try {
+    await adminDb.runTransaction(async (transaction) => {
+        const newProjectRef = adminDb.collection('projects').doc();
+        newProjectId = newProjectRef.id;
+        const processedTags = await manageTagsForProject(transaction, tags, currentUser);
 
-  const newProjectData: Project = {
-    id: newProjectId,
-    name,
-    tagline,
-    description,
-    category,
-    timeline: 'TBD',
-    contributionNeeds: contributionNeeds.split(',').map(item => item.trim()),
-    progress: 0,
-    team: [{ userId: currentUser.id, role: 'lead' }],
-    votes: 0,
-    discussions: [],
-    status,
-    governance: {
-        contributorsShare: 75,
-        communityShare: 10,
-        sustainabilityShare: 15,
-    }
-  };
+        const newProjectData: Omit<Project, 'id'> = {
+            name, tagline, description, tags: processedTags,
+            contributionNeeds: contributionNeeds.split(',').map(item => item.trim()),
+            timeline: 'TBD', progress: 0, 
+            team: [{ userId: currentUser.id, role: 'lead' }],
+            votes: 0, status, 
+            governance: { contributorsShare: 75, communityShare: 10, sustainabilityShare: 15 },
+            startDate: new Date().toISOString(), endDate: '',
+            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        };
+        transaction.set(newProjectRef, newProjectData);
+    });
 
-  await addProjectToDb(newProjectData);
-
-  revalidatePath('/');
-  revalidatePath('/create');
-  revalidatePath('/drafts');
-  revalidatePath(`/projects/${newProjectId}`);
-
-  return { success: true, projectId: newProjectId };
+    if (!newProjectId) throw new Error("Failed to create project.");
+  
+    revalidatePath('/', 'layout');
+    if (status === 'draft') revalidatePath('/drafts');
+  
+    return { success: true, projectId: newProjectId };
+  } catch (error) {
+      console.error("Project creation failed:", error);
+      return { success: false, error: "An unexpected error occurred while creating the project." };
+  }
 }
 
-export async function saveProjectDraft(values: z.infer<typeof ProjectSchema>) {
-    return await handleProjectSubmission(values, 'draft');
+export async function saveProjectDraft(values: CreateProjectFormValues) {
+    return handleProjectSubmission(values, 'draft');
 }
 
-export async function publishProject(values: z.infer<typeof ProjectSchema>) {
-    return await handleProjectSubmission(values, 'published');
+export async function publishProject(values: CreateProjectFormValues) {
+    return handleProjectSubmission(values, 'published');
 }
 
-export async function joinProject(projectId: string) {
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
-    if (!currentUser) throw new Error("User not found");
-
-    const project = await findProjectById(projectId);
-    if (!project) {
-        return { success: false, error: "Project not found" };
-    }
-
-    const isAlreadyMember = project.team.some(member => member.userId === currentUser.id);
-    if (isAlreadyMember) {
-        return { success: true };
-    }
-
-    project.team.push({ userId: currentUser.id, role: 'participant' as const });
-    await updateProjectInDb(project);
-
-    revalidatePath(`/projects/${projectId}`);
-    revalidatePath('/', 'layout'); // To update project cards potentially seen by others
-    return { success: true };
-}
-
-export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>) {
-    const validatedFields = AddTeamMemberSchema.safeParse(values);
+export async function updateProject(values: EditProjectFormValues): Promise<{ success: boolean; error?: string; }> {
+    const validatedFields = EditProjectSchema.safeParse(values);
 
     if (!validatedFields.success) {
-        return { success: false, error: "Invalid data provided." };
+        console.error("Project update validation failed:", validatedFields.error.issues);
+        return { success: false, error: validatedFields.error.issues[0]?.message || 'Invalid data.' };
     }
 
-    const { projectId, userId, role } = validatedFields.data;
+    const { id, tags, governance, ...projectData } = validatedFields.data;
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { success: false, error: "Authentication required." };
+
+    try {
+        await adminDb.runTransaction(async (transaction) => {
+            const projectRef = adminDb.collection('projects').doc(id);
+            const projectSnap = await transaction.get(projectRef);
+            if (!projectSnap.exists) throw new Error("Project not found");
+
+            const project = projectSnap.data() as Project;
+            const lead = project.team.find(m => m.role === 'lead');
+            if (!lead || lead.userId !== currentUser.id) throw new Error("Only the project lead can edit.");
+
+            const processedTags = await manageTagsForProject(transaction, tags, currentUser);
+            
+            const updatedData: Partial<Project> = {
+                ...projectData,
+                governance, // Explicitly include the validated governance object
+                contributionNeeds: typeof projectData.contributionNeeds === 'string'
+                    ? projectData.contributionNeeds.split(',').map(item => item.trim())
+                    : project.contributionNeeds,
+                tags: processedTags,
+                updatedAt: new Date().toISOString(),
+            };
+            transaction.update(projectRef, updatedData);
+        });
+
+        revalidatePath('/', 'layout');
+        revalidatePath(`/projects/${id}`);
+        revalidatePath(`/projects/${id}/edit`);
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to update project:", error);
+        return { success: false, error: error.message || "An unexpected error occurred while updating the project." };
+    }
+}
+
+
+// --- Other Actions ---
+
+const TaskSchema = z.object({
+    id: z.string(), projectId: z.string(), title: z.string().min(1), description: z.string().optional(),
+    status: z.enum(['To Do', 'In Progress', 'Done']), assignedToId: z.string().optional(), estimatedHours: z.coerce.number().optional(),
+});
+const CreateTaskSchema = TaskSchema.omit({ id: true });
+const DeleteTaskSchema = z.object({ id: z.string(), projectId: z.string() });
+const DiscussionCommentSchema = z.object({ projectId: z.string(), userId: z.string(), content: z.string().min(1) });
+const AddTeamMemberSchema = z.object({ projectId: z.string(), userId: z.string(), role: z.enum(['participant', 'lead']) });
+
+export async function joinProject(projectId: string) {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) throw new Error("Authentication required.");
 
     const project = await findProjectById(projectId);
-    if (!project) {
-        return { success: false, error: "Project not found" };
-    }
+    if (!project) return { success: false, error: "Project not found" };
 
-    const isAlreadyMember = project.team.some(member => member.userId === userId);
-    if (isAlreadyMember) {
-        return { success: false, error: "User is already a member of this project" };
-    }
+    if (project.team.some(member => member.userId === currentUser.id)) return { success: true };
 
-    project.team.push({ userId, role });
-    await updateProjectInDb(project);
-
-    const invitedUser = await findUserById(userId);
-    if (invitedUser) {
-        if (!invitedUser.notifications) {
-            invitedUser.notifications = [];
-        }
-        invitedUser.notifications.push({
-            id: `n${Date.now()}`,
-            message: `You have been added to the project "${project.name}" as a ${role}.`,
-            link: `/projects/${projectId}`,
-            read: false,
-        });
-        await updateUser(invitedUser);
-    }
+    const updatedTeam = [...project.team, { userId: currentUser.id, role: 'participant' as const }];
+    await updateProjectInDb({ ...project, team: updatedTeam });
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/', 'layout');
     return { success: true };
 }
 
-export async function updateProject(values: z.infer<typeof EditProjectSchema>) {
-    const validatedFields = EditProjectSchema.safeParse(values);
+export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>) {
+    const validatedFields = AddTeamMemberSchema.safeParse(values);
+    if (!validatedFields.success) return { success: false, error: "Invalid data." };
+    
+    const { projectId, userId, role } = validatedFields.data;
+    const project = await findProjectById(projectId);
+    if (!project) return { success: false, error: "Project not found" };
 
-    if (!validatedFields.success) {
-        return {
-            success: false,
-            error: 'Invalid data provided.',
-        };
-    }
+    if (project.team.some(member => member.userId === userId)) return { success: false, error: "User is already a member" };
+    
+    const userToAdd = await findUserById(userId);
+    if (!userToAdd) return { success: false, error: "User to add not found" };
 
-    const { id, ...projectData } = validatedFields.data;
-
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
-    if (!currentUser) throw new Error("User not found");
-
-    const project = await findProjectById(id);
-    if (!project) {
-        return { success: false, error: "Project not found" };
-    }
-
-    const lead = project.team.find(m => m.role === 'lead');
-    if (!lead || lead.userId !== currentUser.id) {
-        return { success: false, error: "Only the project lead can edit the project." };
-    }
-
-    const updatedData: Project = {
-        ...project,
-        name: projectData.name,
-        tagline: projectData.tagline,
-        description: projectData.description,
-        category: projectData.category,
-        timeline: projectData.timeline,
-        contributionNeeds: typeof projectData.contributionNeeds === 'string'
-            ? projectData.contributionNeeds.split(',').map(item => item.trim())
-            : project.contributionNeeds,
-        governance: projectData.governance,
-    };
-
-    await updateProjectInDb(updatedData);
-
-    revalidatePath('/');
-    revalidatePath(`/projects/${id}`);
-    revalidatePath(`/projects/${id}/edit`);
-    revalidatePath('/drafts');
-
+    const updatedTeam = [...project.team, { userId: userToAdd.id, role }];
+    await updateProjectInDb({ ...project, team: updatedTeam });
+    
+    await addNotificationToDb({ 
+        userId: userToAdd.id, 
+        message: `You have been added to the project "${project.name}".`, 
+        link: `/projects/${projectId}`, 
+        read: false, 
+        timestamp: new Date().toISOString() 
+    });
+    
+    revalidatePath(`/projects/${projectId}`);
     return { success: true };
 }
 
 export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
     const validatedFields = CreateTaskSchema.safeParse(values);
-
-    if (!validatedFields.success) {
-        return { success: false, error: 'Invalid data provided.' };
-    }
-
-    const { projectId, title, description, status } = validatedFields.data;
-
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
-    if (!currentUser) throw new Error("User not found");
+    if (!validatedFields.success) return { success: false, error: 'Invalid data.' };
+    const { projectId } = validatedFields.data;
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { success: false, error: "Authentication required." };
 
     const project = await findProjectById(projectId);
-    if (!project) {
-      return { success: false, error: "Associated project not found" };
+    if (!project || !project.team.some(m => m.userId === currentUser.id)) {
+        return { success: false, error: "Only team members can add tasks." };
     }
 
-    const isMember = project.team.some(m => m.userId === currentUser.id);
-    if (!isMember) {
-      return { success: false, error: "Only team members can add tasks." };
-    }
-    const allTasks = await getAllTasks();
-    const newTaskId = `t${allTasks.length + 1}`;
-    const newTaskData: Task = {
-        id: newTaskId,
-        projectId,
-        title,
-        description,
-        status,
-    };
-
-    await addTaskToDb(newTaskData);
-
+    await addTaskToDb({ ...validatedFields.data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
 }
 
 export async function updateTask(values: z.infer<typeof TaskSchema>) {
     const validatedFields = TaskSchema.safeParse(values);
-
-    if (!validatedFields.success) {
-        return { success: false, error: 'Invalid data provided.' };
-    }
-
-    const { id, projectId, ...taskData } = validatedFields.data;
-
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
-    if (!currentUser) throw new Error("User not found");
+    if (!validatedFields.success) return { success: false, error: 'Invalid data.' };
+    const { id, projectId } = validatedFields.data;
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { success: false, error: "Authentication required." };
 
     const project = await findProjectById(projectId);
-    if (!project) {
-        return { success: false, error: "Associated project not found" };
-    }
-    const isMember = project.team.some(m => m.userId === currentUser.id);
-    if (!isMember) {
+    if (!project || !project.team.some(m => m.userId === currentUser.id)) {
         return { success: false, error: "Only team members can edit tasks." };
     }
-
     const existingTask = (await getAllTasks()).find(t => t.id === id);
-    if (!existingTask) {
-        return { success: false, error: "Task not found" };
-    }
+    if (!existingTask) return { success: false, error: "Task not found" };
 
-    await updateTaskInDb({ ...existingTask, ...taskData });
-
+    await updateTaskInDb({ ...existingTask, ...validatedFields.data, updatedAt: new Date().toISOString() });
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath('/activity');
     return { success: true };
 }
 
 export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     const validatedFields = DeleteTaskSchema.safeParse(values);
-
-    if (!validatedFields.success) {
-        return { success: false, error: 'Invalid data provided.' };
-    }
-
+    if (!validatedFields.success) return { success: false, error: 'Invalid data.' };
     const { id, projectId } = validatedFields.data;
-
-    const currentUser = await getAuthenticatedUser(); // Corrected function call
-    if (!currentUser) throw new Error("User not found");
-
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { success: false, error: "Authentication required." };
+    
     const project = await findProjectById(projectId);
-    if (!project) {
-      return { success: false, error: "Associated project not found" };
+    if (!project || !project.team.some(m => m.userId === currentUser.id)) {
+        return { success: false, error: "Only team members can delete tasks." };
     }
-
-    const isMember = project.team.some(m => m.userId === currentUser.id);
-    if (!isMember) {
-      return { success: false, error: "Only team members can delete tasks." };
-    }
-
     await deleteTaskFromDb(id);
-
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath('/activity');
     return { success: true };
 }
 
 export async function addDiscussionComment(values: z.infer<typeof DiscussionCommentSchema>) {
     const validatedFields = DiscussionCommentSchema.safeParse(values);
-
-    if (!validatedFields.success) { return { success: false, error: "Invalid data provided." }; }
-
-    const { projectId, userId, content } = validatedFields.data;
-
+    if (!validatedFields.success) return { success: false, error: "Invalid data." };
+    const { projectId, userId } = validatedFields.data;
     const project = await findProjectById(projectId);
-    if (!project) {
-      return { success: false, error: "Project not found" };
+    if (!project || !project.team.some(m => m.userId === userId)) {
+        return { success: false, error: "Only team members can comment." };
     }
-
-    const isMember = project.team.some(m => m.userId === userId);
-    if (!isMember) {
-      return { success: false, error: "Only team members can add comments." };
-    }
-
-    const newComment = {
-        userId,
-        content,
-        timestamp: new Date().toISOString(),
-    };
-
-    project.discussions.push(newComment);
-    await updateProjectInDb(project);
-
+    await addDiscussionCommentToDb({ ...validatedFields.data, timestamp: new Date().toISOString() });
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
-
 }

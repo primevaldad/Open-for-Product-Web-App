@@ -2,12 +2,10 @@
 'use server';
 
 import { z } from 'zod';
-import { cookies } from 'next/headers';
-import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from '@/lib/firebase.server';
 import { revalidatePath } from 'next/cache';
 
-import { findUserById, addUser } from '@/lib/data.server';
+import { adminDb, findUserByEmail, logOrphanedUser } from '@/lib/data.server';
+import { createSession, clearSession } from '@/lib/session.server';
 import type { User } from '@/lib/types';
 
 const SignUpSchema = z.object({
@@ -20,31 +18,6 @@ const LoginSchema = z.object({
   idToken: z.string(),
 });
 
-const SESSION_COOKIE_NAME = '__session';
-
-// --- SESSION MANAGEMENT ---
-
-async function createSession(idToken: string): Promise<void> {
-  console.log('[AUTH_ACTION_TRACE] Creating session...');
-  const adminAuth = getAuth(adminApp);
-  const decodedIdToken = await adminAuth.verifyIdToken(idToken);
-
-  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-
-  if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
-    throw new Error('Recent sign-in required! Please try logging in again.');
-  }
-
-  const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: expiresIn,
-    path: '/',
-  });
-  console.log('[AUTH_ACTION_TRACE] Session cookie set successfully.');
-}
 
 // --- SERVER ACTIONS ---
 
@@ -78,38 +51,59 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
   }
 
   const { idToken, name, email } = validatedFields.data;
-  const adminAuth = getAuth(adminApp);
 
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-    console.log(`[AUTH_ACTION_TRACE] Token verified for UID: ${uid}`);
+    // Create the session and get the new UID from the valid token.
+    const uid = await createSession(idToken);
+    console.log(`[AUTH_ACTION_TRACE] Session created for new UID: ${uid}`);
 
-    const existingUser = await findUserById(uid);
-    if (existingUser) {
-      console.log(`[AUTH_ACTION_TRACE] User with UID ${uid} already exists. Proceeding with login.`);
-    } else {
-      console.log(`[AUTH_ACTION_TRACE] User not found. Creating new user record for UID: ${uid}`);
-      const newUser: Omit<User, 'id'> = {
-        name,
-        email,
-        avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
-        bio: 'Just joined Open for Product!',
-        interests: [],
-        onboarded: false,
-      };
-      await addUser(uid, newUser);
-      console.log(`[AUTH_ACTION_TRACE] New user record created successfully for UID: ${uid}`);
-    }
+    // ** ATOMIC TRANSACTION **
+    // This ensures that finding, logging, deleting, and creating the user profile happen as a single, indivisible operation.
+    await adminDb.runTransaction(async (transaction) => {
+        const usersCollection = adminDb.collection('users');
+        
+        // 1. Find potential orphan using the transaction
+        const orphanQuery = usersCollection.where('email', '==', email).limit(1);
+        const orphanSnapshot = await transaction.get(orphanQuery);
 
-    await createSession(idToken);
+        if (!orphanSnapshot.empty) {
+            const orphanDoc = orphanSnapshot.docs[0];
+            // Ensure we don't accidentally delete the profile for the UID we just created
+            if (orphanDoc.id !== uid) {
+                console.log(`[AUTH_ACTION_TRACE] Transaction: Found orphan profile for ${email} with ID ${orphanDoc.id}.`);
+                const orphanData = { id: orphanDoc.id, ...orphanDoc.data() } as User;
+
+                // 2. Log the orphan for auditing (not part of the transaction itself, but good practice)
+                await logOrphanedUser(orphanData);
+                console.log(`[AUTH_ACTION_TRACE] Transaction: Logged orphan to 'users_orphaned'.`);
+
+                // 3. Delete the orphan within the transaction
+                transaction.delete(orphanDoc.ref);
+                console.log(`[AUTH_ACTION_TRACE] Transaction: Deleting orphan.`);
+            }
+        }
+
+        // 4. Create the new user profile within the transaction
+        const newUserRef = usersCollection.doc(uid);
+        const newUser: Omit<User, 'id'> = {
+            name,
+            email,
+            avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
+            bio: 'Just joined Open for Product!',
+            interests: [],
+            onboarded: false,
+        };
+        transaction.set(newUserRef, newUser);
+        console.log(`[AUTH_ACTION_TRACE] Transaction: Creating new user profile for UID ${uid}.`);
+    });
 
     revalidatePath('/onboarding');
-    console.log(`[AUTH_ACTION_TRACE] Signup successful for UID: ${uid}`);
+    console.log(`[AUTH_ACTION_TRACE] Signup transaction successful for UID: ${uid}`);
     return { success: true, userId: uid };
 
   } catch (error: any) {
     console.error('[AUTH_ACTION_TRACE] Signup Server Action Error:', error);
+    await clearSession();
     return {
       success: false,
       error: error.message || 'An unknown error occurred during signup.',
@@ -119,22 +113,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
 
 export async function logout() {
   console.log('[AUTH_ACTION_TRACE] Logout action initiated.');
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (sessionCookie) {
-    cookieStore.set(SESSION_COOKIE_NAME, '', { maxAge: 0 });
-    console.log('[AUTH_ACTION_TRACE] Session cookie cleared.');
-
-    const adminAuth = getAuth(adminApp);
-    try {
-      const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-      await adminAuth.revokeRefreshTokens(decodedClaims.sub);
-      console.log(`[AUTH_ACTION_TRACE] Firebase refresh tokens revoked for UID: ${decodedClaims.sub}`);
-    } catch (error) {
-      console.log('[AUTH_ACTION_TRACE] Logout: Could not revoke tokens, session cookie likely invalid.');
-    }
-  }
+  await clearSession();
   revalidatePath('/', 'layout');
   console.log('[AUTH_ACTION_TRACE] Logout complete, path revalidated.');
 }
