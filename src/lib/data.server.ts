@@ -1,3 +1,4 @@
+
 import 'server-only';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
@@ -79,8 +80,43 @@ export async function getNotificationsByUserId(userId: string): Promise<Notifica
 // --- Project Data Access ---
 export async function getAllProjects(): Promise<Project[]> {
     const projectsCol = adminDb.collection('projects');
-    const projectSnapshot = await projectsCol.get();
-    return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+    const tagsCol = adminDb.collection('tags');
+
+    // Fetch all projects and all tags in parallel
+    const [projectSnapshot, tagsSnapshot] = await Promise.all([
+        projectsCol.get(),
+        tagsCol.get()
+    ]);
+
+    // Create a map of tag IDs to tag objects for efficient lookup
+    const tagsMap = new Map<string, Tag>();
+    tagsSnapshot.docs.forEach(doc => {
+        const tag = { id: doc.id, ...doc.data() } as Tag;
+        tagsMap.set(tag.id, tag);
+    });
+
+    // Process projects to embed the full tag objects
+    const projectsWithTags = projectSnapshot.docs.map(doc => {
+        const projectData = doc.data();
+        const project = { id: doc.id, ...projectData } as Project;
+
+        // The `tags` on the project are ProjectTag[], which may be stale or incomplete.
+        if (project.tags && Array.isArray(project.tags)) {
+            // Replace the partial ProjectTag objects with full, up-to-date Tag objects.
+            const hydratedTags = project.tags
+                .map(projectTag => tagsMap.get(projectTag.id)) // Find the full tag object from the map
+                .filter((tag): tag is Tag => !!tag); // Filter out any tags that might not have been found
+            
+            project.tags = hydratedTags;
+        } else {
+            // Ensure the tags property is always an array.
+            project.tags = [];
+        }
+
+        return project;
+    });
+
+    return projectsWithTags;
 }
 
 export async function findProjectById(projectId: string): Promise<Project | undefined> {
@@ -146,6 +182,7 @@ async function manageTagsForProject(
       transaction.set(tagRef, {
         id: tag.id,
         display: tag.display,
+        type: tag.type, // <-- Add the type field
         usageCount: 1,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),

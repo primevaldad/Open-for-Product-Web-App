@@ -2,28 +2,15 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUpRight, CheckCircle, Sparkles, Users } from 'lucide-react';
+import { CheckCircle, Sparkles, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { projectCategories } from '@/lib/static-data';
-import type { Project, User } from '@/lib/types';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { Project, User, ProjectTag } from '@/lib/types';
 import { cn, getInitials } from '@/lib/utils';
 import { findUserById } from '@/lib/data.client';
 
@@ -34,13 +21,11 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ project, className }: ProjectCardProps) {
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
-  const CategoryIcon =
-    projectCategories.find((c) => c.name === project.category)?.icon ?? Users;
+
+  const displayTags = project.tags || [];
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
-      // The server now sends raw project data. The client is responsible for
-      // hydrating the nested user data.
       const members = await Promise.all(project.team.map(member => findUserById(member.userId)));
       setTeamMembers(members.filter((m): m is User => !!m));
     };
@@ -55,10 +40,17 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
       <CardHeader className="p-4">
         <div className="flex items-start justify-between">
           <div>
-            <Badge variant="outline" className="mb-2">
-              <CategoryIcon className="mr-1 h-3 w-3" />
-              {project.category}
-            </Badge>
+            <div className="mb-2 flex flex-wrap gap-2">
+                {displayTags.filter((tag: ProjectTag) => tag.role === 'category').map((tag: ProjectTag) => (
+                    <Badge
+                        key={tag.id}
+                        variant={"default"}
+                        className="text-xs font-medium"
+                    >
+                        {tag.display}
+                    </Badge>
+                ))}
+            </div>
             <CardTitle className="text-lg font-bold">
               <Link href={`/projects/${project.id}`} className="hover:text-primary transition-colors">
                 {project.name}
@@ -70,9 +62,7 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
               <TooltipTrigger>
                 <CheckCircle className="h-5 w-5 text-green-500" />
               </TooltipTrigger>
-              <TooltipContent>
-                <p>Expert Reviewed</p>
-              </TooltipContent>
+              <TooltipContent><p>Expert Reviewed</p></TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -92,7 +82,7 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
             <span>AI Forecast: High Potential</span>
         </div>
       </CardContent>
-      <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
+      <CardFooter className="flex items-center justify-between bg-muted/50 p-4 mt-auto">
         <div className="flex -space-x-2">
           {teamMembers.map((member) => (
             <Tooltip key={member.id}>
@@ -102,9 +92,7 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
                   <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                 </Avatar>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{member.name}</p>
-              </TooltipContent>
+              <TooltipContent><p>{member.name}</p></TooltipContent>
             </Tooltip>
           ))}
         </div>
