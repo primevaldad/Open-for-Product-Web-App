@@ -95,7 +95,7 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
             />
 
             <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Full Description</FormLabel><FormControl><div data-color-mode="light"><MDEditor value={field.value} onChange={(v) => field.onChange(v || '')} height={300} /></div></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="timeline" render={({ field }) => (<FormItem><FormLabel>Timeline</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage></FormItem>)} />
+            <FormField control={form.control} name="timeline" render={({ field }) => (<FormItem><FormLabel>Timeline</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="contributionNeeds" render={({ field }) => (<FormItem><FormLabel>Contribution Needs</FormLabel><FormControl><Input placeholder="Enter skills needed, comma-separated" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <Card>
