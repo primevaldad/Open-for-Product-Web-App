@@ -30,43 +30,47 @@ const normalizeTag = (tag: string): string => {
 
 async function manageTagsForProject(
     transaction: FirebaseFirestore.Transaction,
-    projectTags: ProjectTag[],
+    newTags: ProjectTag[],       // Tags from the form
+    currentTags: ProjectTag[],   // Tags currently on the project
     currentUser: User
 ): Promise<ProjectTag[]> {
-    if (!projectTags || projectTags.length === 0) return [];
-
     const tagsCollection = adminDb.collection('tags');
 
-    // --- READ PHASE ---
-    // First, perform all reads to check for existing tags.
-    const tagReads = await Promise.all(
-        projectTags.map(async (pTag) => {
-            const normalizedId = normalizeTag(pTag.id);
-            if (!normalizedId) return null; // Filter out invalid tags
+    const newTagsMap = new Map(newTags.map(t => [normalizeTag(t.id), t]));
+    const currentTagsMap = new Map(currentTags.map(t => [normalizeTag(t.id), t]));
 
-            const tagRef = tagsCollection.doc(normalizedId);
-            const tagSnap = await transaction.get(tagRef);
-            return { pTag, normalizedId, tagRef, tagSnap };
-        })
-    );
+    const tagsToAddIds = [...newTagsMap.keys()].filter(id => !currentTagsMap.has(id));
+    const tagsToRemoveIds = [...currentTagsMap.keys()].filter(id => !newTagsMap.has(id));
+
+    // --- READ PHASE ---
+    // Fetch all relevant tag documents from the global collection at once to respect transaction rules.
+    const allRelevantTagIds = [...new Set([...tagsToAddIds, ...tagsToRemoveIds])].filter(Boolean);
+    if (allRelevantTagIds.length === 0) {
+        // If no tags were added or removed, just return the normalized new tags.
+        return newTags.map(pTag => ({ ...pTag, id: normalizeTag(pTag.id) }));
+    }
+    
+    const tagRefs = allRelevantTagIds.map(id => tagsCollection.doc(id));
+    const tagSnaps = await transaction.getAll(...tagRefs);
+    const tagSnapsMap = new Map(tagSnaps.map(snap => [snap.id, snap]));
 
     // --- WRITE PHASE ---
     // Now that all reads are complete, perform all writes.
-    const processedProjectTags: ProjectTag[] = [];
 
-    for (const readResult of tagReads) {
-        if (!readResult) continue; // Skip any invalid tags from the read phase
+    // Process tags to add
+    for (const id of tagsToAddIds) {
+        const tagRef = tagsCollection.doc(id);
+        const tagSnap = tagSnapsMap.get(id);
+        const pTag = newTagsMap.get(id)!; // It must exist in the map
 
-        const { pTag, normalizedId, tagRef, tagSnap } = readResult;
-
-        if (tagSnap.exists) {
-            // This tag already exists in the global collection. Increment its usage count.
+        if (tagSnap && tagSnap.exists) {
+            // Tag exists, increment usage count.
             transaction.update(tagRef, { usageCount: admin.firestore.FieldValue.increment(1) });
         } else {
             // This is a new tag. Create it in the global collection.
             const newGlobalTag: GlobalTag = {
-                id: normalizedId,
-                normalized: normalizedId,
+                id: id,
+                normalized: id,
                 display: pTag.display,
                 type: pTag.role, // Set the initial type based on its first use
                 createdAt: new Date().toISOString(),
@@ -76,10 +80,26 @@ async function manageTagsForProject(
             };
             transaction.set(tagRef, newGlobalTag);
         }
-
-        // Add the processed tag to the list that will be stored in the project document.
-        processedProjectTags.push({ id: normalizedId, display: pTag.display, role: pTag.role });
     }
+
+    // Process tags to remove
+    for (const id of tagsToRemoveIds) {
+        const tagRef = tagsCollection.doc(id);
+        const tagSnap = tagSnapsMap.get(id);
+
+        if (tagSnap && tagSnap.exists) {
+            // Tag exists, decrement usage count. This is safe in a transaction.
+            transaction.update(tagRef, { usageCount: admin.firestore.FieldValue.increment(-1) });
+        }
+        // If the tag to remove doesn't exist in the global collection, we do nothing.
+        // This prevents the transaction from failing on an edge case.
+    }
+
+    // Return the final list of tags to be stored on the project document.
+    const processedProjectTags = newTags.map(pTag => ({
+        ...pTag,
+        id: normalizeTag(pTag.id),
+    }));
 
     return processedProjectTags;
 }
@@ -125,7 +145,8 @@ async function handleProjectSubmission(
     await adminDb.runTransaction(async (transaction) => {
         const newProjectRef = adminDb.collection('projects').doc();
         newProjectId = newProjectRef.id;
-        const processedTags = await manageTagsForProject(transaction, tags, currentUser);
+        // For new projects, currentTags is an empty array
+        const processedTags = await manageTagsForProject(transaction, tags, [], currentUser);
 
         const newProjectData: Omit<Project, 'id'> = {
             name, tagline, description, tags: processedTags,
@@ -182,7 +203,8 @@ export async function updateProject(values: EditProjectFormValues): Promise<{ su
             const lead = project.team.find(m => m.role === 'lead');
             if (!lead || lead.userId !== currentUser.id) throw new Error("Only the project lead can edit.");
 
-            const processedTags = await manageTagsForProject(transaction, tags, currentUser);
+            // Pass both the new and current tags to the management function
+            const processedTags = await manageTagsForProject(transaction, tags, project.tags || [], currentUser);
             
             const updatedData: Partial<Project> = {
                 ...projectData,

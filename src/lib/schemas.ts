@@ -47,9 +47,20 @@ export const EditProjectSchema = ProjectBaseSchema.extend({
     communityShare: z.number(),
     sustainabilityShare: z.number(),
   }).optional(),
-}).refine(tagValidationRefinement, {
+})
+.refine(tagValidationRefinement, {
     message: "A project can have a maximum of 3 category tags.",
     path: ["tags"],
+})
+.refine(data => {
+    // If governance is not defined, this validation does not apply
+    if (!data.governance) return true;
+    // If it is defined, the shares must sum to 100
+    const { contributorsShare, communityShare, sustainabilityShare } = data.governance;
+    return contributorsShare + communityShare + sustainabilityShare === 100;
+}, {
+    message: "The sum of all governance shares must be exactly 100%.",
+    path: ["governance"], // This will display the error next to the governance section
 });
 
 
