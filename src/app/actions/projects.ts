@@ -36,34 +36,51 @@ async function manageTagsForProject(
     if (!projectTags || projectTags.length === 0) return [];
 
     const tagsCollection = adminDb.collection('tags');
+
+    // --- READ PHASE ---
+    // First, perform all reads to check for existing tags.
+    const tagReads = await Promise.all(
+        projectTags.map(async (pTag) => {
+            const normalizedId = normalizeTag(pTag.id);
+            if (!normalizedId) return null; // Filter out invalid tags
+
+            const tagRef = tagsCollection.doc(normalizedId);
+            const tagSnap = await transaction.get(tagRef);
+            return { pTag, normalizedId, tagRef, tagSnap };
+        })
+    );
+
+    // --- WRITE PHASE ---
+    // Now that all reads are complete, perform all writes.
     const processedProjectTags: ProjectTag[] = [];
 
-    for (const pTag of projectTags) {
-        const normalizedId = normalizeTag(pTag.id);
-        if (!normalizedId) continue;
+    for (const readResult of tagReads) {
+        if (!readResult) continue; // Skip any invalid tags from the read phase
 
-        const finalDisplay = pTag.display;
-        const tagRef = tagsCollection.doc(normalizedId);
-        const tagSnap = await transaction.get(tagRef);
+        const { pTag, normalizedId, tagRef, tagSnap } = readResult;
 
         if (tagSnap.exists) {
+            // This tag already exists in the global collection. Increment its usage count.
             transaction.update(tagRef, { usageCount: admin.firestore.FieldValue.increment(1) });
-            processedProjectTags.push({ id: normalizedId, display: finalDisplay, role: pTag.role });
         } else {
+            // This is a new tag. Create it in the global collection.
             const newGlobalTag: GlobalTag = {
                 id: normalizedId,
                 normalized: normalizedId,
-                display: finalDisplay,
-                type: pTag.role,
+                display: pTag.display,
+                type: pTag.role, // Set the initial type based on its first use
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 createdBy: currentUser.id,
                 usageCount: 1,
             };
             transaction.set(tagRef, newGlobalTag);
-            processedProjectTags.push({ id: normalizedId, display: finalDisplay, role: pTag.role });
         }
+
+        // Add the processed tag to the list that will be stored in the project document.
+        processedProjectTags.push({ id: normalizedId, display: pTag.display, role: pTag.role });
     }
+
     return processedProjectTags;
 }
 
@@ -237,7 +254,7 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     
     await addNotificationToDb({ 
         userId: userToAdd.id, 
-        message: `You have been added to the project "${project.name}".`, 
+        message: `You have been added to the project \"${project.name}\".`, 
         link: `/projects/${projectId}`, 
         read: false, 
         timestamp: new Date().toISOString() 
