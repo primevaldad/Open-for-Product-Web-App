@@ -7,16 +7,15 @@ import {
   FilePlus2,
   FolderKanban,
   Home,
-  LayoutPanelLeft,
   Settings,
   Library,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { User } from "@/lib/types";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -45,10 +44,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
     return (
         <Sidebar className="border-r" collapsible="icon">
             <SidebarHeader className="p-4">
-                <Link href="/home" className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="shrink-0 bg-primary/20 text-primary hover:bg-primary/30">
-                        <LayoutPanelLeft className="h-5 w-5" />
-                    </Button>
+                <Link href="/home" className="flex items-center gap-3">
+                    <Image src="/logo.png" alt="Open for Product Logo" width={28} height={28} className="shrink-0" />
                     <span className="text-lg font-semibold text-sidebar-foreground">Open for Product</span>
                 </Link>
             </SidebarHeader>
