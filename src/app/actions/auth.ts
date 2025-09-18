@@ -22,7 +22,6 @@ const LoginSchema = z.object({
 // --- SERVER ACTIONS ---
 
 export async function login(values: z.infer<typeof LoginSchema>): Promise<{ success: boolean; error?: string }> {
-  console.log('[AUTH_ACTION_TRACE] Login action initiated.');
   const validatedFields = LoginSchema.safeParse(values);
   if (!validatedFields.success) {
     return { success: false, error: "Invalid ID token provided." };
@@ -33,7 +32,6 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
   try {
     await createSession(idToken);
     revalidatePath('/home');
-    console.log('[AUTH_ACTION_TRACE] Login successful.');
     return { success: true };
   } catch (error: any) {
     console.error("[AUTH_ACTION_TRACE] Login Server Action Error:", error.message);
@@ -42,7 +40,6 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
 }
 
 export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ success: boolean; error?: string; userId?: string }> {
-  console.log('[AUTH_ACTION_TRACE] Signup action initiated.');
   const validatedFields = SignUpSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -55,7 +52,6 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
   try {
     // Create the session and get the new UID from the valid token.
     const uid = await createSession(idToken);
-    console.log(`[AUTH_ACTION_TRACE] Session created for new UID: ${uid}`);
 
     // ** ATOMIC TRANSACTION **
     // This ensures that finding, logging, deleting, and creating the user profile happen as a single, indivisible operation.
@@ -70,16 +66,13 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
             const orphanDoc = orphanSnapshot.docs[0];
             // Ensure we don't accidentally delete the profile for the UID we just created
             if (orphanDoc.id !== uid) {
-                console.log(`[AUTH_ACTION_TRACE] Transaction: Found orphan profile for ${email} with ID ${orphanDoc.id}.`);
                 const orphanData = { id: orphanDoc.id, ...orphanDoc.data() } as User;
 
                 // 2. Log the orphan for auditing (not part of the transaction itself, but good practice)
                 await logOrphanedUser(orphanData);
-                console.log(`[AUTH_ACTION_TRACE] Transaction: Logged orphan to 'users_orphaned'.`);
 
                 // 3. Delete the orphan within the transaction
                 transaction.delete(orphanDoc.ref);
-                console.log(`[AUTH_ACTION_TRACE] Transaction: Deleting orphan.`);
             }
         }
 
@@ -94,11 +87,9 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
             onboarded: false,
         };
         transaction.set(newUserRef, newUser);
-        console.log(`[AUTH_ACTION_TRACE] Transaction: Creating new user profile for UID ${uid}.`);
     });
 
     revalidatePath('/onboarding');
-    console.log(`[AUTH_ACTION_TRACE] Signup transaction successful for UID: ${uid}`);
     return { success: true, userId: uid };
 
   } catch (error: any) {
@@ -112,8 +103,6 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
 }
 
 export async function logout() {
-  console.log('[AUTH_ACTION_TRACE] Logout action initiated.');
   await clearSession();
   revalidatePath('/', 'layout');
-  console.log('[AUTH_ACTION_TRACE] Logout complete, path revalidated.');
 }
