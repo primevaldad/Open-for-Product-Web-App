@@ -49,7 +49,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     <Button variant="ghost" size="icon" className="shrink-0 bg-primary/20 text-primary hover:bg-primary/30">
                         <LayoutPanelLeft className="h-5 w-5" />
                     </Button>
-                    <span className="text-lg font-semibold text-foreground">Open for Product</span>
+                    <span className="text-lg font-semibold text-sidebar-foreground">Open for Product</span>
                 </Link>
             </SidebarHeader>
             <SidebarContent className="p-4 pt-0">
