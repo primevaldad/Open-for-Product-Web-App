@@ -6,80 +6,76 @@
 
 @layer base {
   :root {
-    --background: 169 70% 92%;      /* Your Brand: Light Teal */
-    --foreground: 224 71% 4%;
-    --card: 169 60% 97%;
-    --card-foreground: 224 71% 4%;
-    --popover: 169 60% 97%;
-    --popover-foreground: 224 71% 4%;
-    --primary: 172 67% 30%;         /* Accessible Brand Teal (Darker) */
-    --primary-foreground: 172 67% 97%;
-    --secondary: 169 50% 85%;
-    --secondary-foreground: 224 71% 4%;
-    --muted: 169 50% 88%;
-    --muted-foreground: 224 71% 25%;
-    --accent: 150 58% 83%;          /* Your Brand: Seafoam Green */
-    --accent-foreground: 224 71% 4%;
-    --accent-gold: 46 65% 52%;        /* New: Golden Accent */
-    --accent-gold-foreground: 224 71% 4%;
+    --background: 25 100% 96%;      /* seashell */
+    --foreground: 314 53% 21%;      /* palatinate */
+    --card: 25 100% 98%;           /* slightly whiter seashell for cards */
+    --card-foreground: 314 53% 21%; /* palatinate */
+    --popover: 25 100% 98%;        /* slightly whiter seashell for popovers */
+    --popover-foreground: 314 53% 21%; /* palatinate */
+    --primary: 206 88% 55%;         /* celestial-blue */
+    --primary-foreground: 25 100% 98%; /* seashell */
+    --secondary: 163 15% 90%;      /* lighter ash-gray for secondary elements */
+    --secondary-foreground: 314 53% 21%; /* palatinate */
+    --muted: 163 15% 92%;          /* lighter ash-gray */
+    --muted-foreground: 314 53% 45%; /* lighter palatinate */
+    --accent: 29 96% 60%;           /* princeton-orange */
+    --accent-foreground: 314 53% 21%; /* palatinate */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 169 50% 85%;
-    --input: 169 50% 88%;
-    --ring: 172 67% 30%;              /* Match to new Primary */
+    --border: 163 15% 85%;          /* light ash-gray */
+    --input: 163 15% 90%;           /* a lighter ash-gray for inputs */
+    --ring: 206 88% 55%;              /* celestial-blue */
     --radius: 0.8rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    
-    /* Updated Sidebar Theme */
-    --sidebar-background: 172 70% 15%; /* Dark Teal */
-    --sidebar-foreground: 172 20% 95%; /* Light Teal-Gray */
-    --sidebar-primary: 172 67% 47%;    /* Vibrant Brand Teal */
-    --sidebar-primary-foreground: 172 70% 98%;
-    --sidebar-accent: 172 70% 20%;     /* Dark Teal (Hover) */
-    --sidebar-accent-foreground: 172 20% 98%;
-    --sidebar-border: 172 70% 18%;
-    --sidebar-ring: 172 67% 47%;      /* Vibrant Brand Teal */
+
+    /* Charts */
+    --chart-1: 206 88% 55%; /* celestial-blue */
+    --chart-2: 29 96% 60%; /* princeton-orange */
+    --chart-3: 163 15% 60%; /* medium ash-gray */
+    --chart-4: 314 53% 45%; /* medium palatinate */
+    --chart-5: 206 88% 75%; /* light celestial-blue */
+
+    /* Sidebar Theme */
+    --sidebar-background: 314 53% 21%; /* palatinate */
+    --sidebar-foreground: 25 100% 96%; /* seashell */
+    --sidebar-primary: 206 88% 65%;    /* slightly lighter celestial-blue */
+    --sidebar-primary-foreground: 314 53% 15%; /* darker palatinate for text on primary */
+    --sidebar-accent: 314 40% 31%;     /* lighter palatinate for hover */
+    --sidebar-accent-foreground: 25 100% 98%; /* seashell */
+    --sidebar-border: 314 53% 25%;     /* slightly lighter palatinate for border */
+    --sidebar-ring: 206 88% 55%;      /* celestial-blue */
   }
 
   .dark {
-    --background: 224 71% 10%;
-    --foreground: 210 40% 98%;
-    --card: 224 71% 12%;
-    --card-foreground: 210 40% 98%;
-    --popover: 224 71% 10%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 190 70% 50%;
-    --primary-foreground: 190 70% 98%;
-    --secondary: 224 71% 15%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 224 71% 15%;
-    --muted-foreground: 210 40% 60%;
-    --accent: 190 70% 44%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* Dark Mode Theme using the new palette */
+    --background: 314 53% 15%;      /* Dark Palatinate */
+    --foreground: 25 100% 96%;      /* Seashell */
+    --card: 314 53% 21%;           /* Palatinate */
+    --card-foreground: 25 100% 96%; /* Seashell */
+    --popover: 314 53% 15%;        /* Dark Palatinate */
+    --popover-foreground: 25 100% 96%; /* Seashell */
+    --primary: 206 88% 60%;         /* Lighter Celestial Blue */
+    --primary-foreground: 314 53% 15%; /* Dark Palatinate */
+    --secondary: 163 15% 30%;      /* Dark Ash Gray */
+    --secondary-foreground: 25 100% 96%; /* Seashell */
+    --muted: 163 15% 25%;          /* Darker Ash Gray */
+    --muted-foreground: 163 15% 70%; /* Light Ash Gray */
+    --accent: 29 96% 60%;           /* Princeton Orange */
+    --accent-foreground: 314 53% 15%; /* Dark Palatinate */
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 224 71% 15%;
-    --input: 224 71% 15%;
-    --ring: 190 70% 50%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --border: 163 15% 40%;          /* Medium Ash Gray */
+    --input: 163 15% 25%;           /* Darker Ash Gray */
+    --ring: 206 88% 60%;
 
-    /* Dark Mode Sidebar - keeping it dark blue for now */
-    --sidebar-background: 224 71% 10%; 
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 190 70% 50%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 224 71% 20%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 224 71% 15%;
-    --sidebar-ring: 190 70% 50%;
+    /* Dark Mode Sidebar */
+    --sidebar-background: 314 53% 12%; /* Even Darker Palatinate */
+    --sidebar-foreground: 25 100% 96%; /* seashell */
+    --sidebar-primary: 206 88% 65%;    /* slightly lighter celestial-blue */
+    --sidebar-primary-foreground: 314 53% 10%;
+    --sidebar-accent: 314 40% 25%;
+    --sidebar-accent-foreground: 25 100% 98%;
+    --sidebar-border: 314 53% 20%;
+    --sidebar-ring: 206 88% 55%;
   }
 }
 
