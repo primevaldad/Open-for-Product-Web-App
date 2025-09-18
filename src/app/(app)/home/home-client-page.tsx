@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from "react";
-import type { Project, User, Tag as GlobalTag, ProjectTag } from "@/lib/types";
+import type { Project, User, Tag as GlobalTag, ProjectTag, ProjectPathLink, LearningPath } from "@/lib/types";
 import { TagSelector } from "@/components/tags/tag-selector";
 import {
   Select,
@@ -20,9 +20,11 @@ interface HomeClientPageProps {
     allPublishedProjects: Project[];
     currentUser: User;
     allTags: GlobalTag[];
+    allProjectPathLinks: ProjectPathLink[];
+    allLearningPaths: LearningPath[];
 }
 
-export default function HomeClientPage({ allPublishedProjects, currentUser, allTags }: HomeClientPageProps) {
+export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths }: HomeClientPageProps) {
   const [showMyProjects, setShowMyProjects] = useState(false);
   // Corrected state to use the ProjectTag type, as expected by the new TagSelector
   const [selectedTags, setSelectedTags] = useState<ProjectTag[]>([]);
@@ -84,7 +86,12 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredProjects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
+          <ProjectCard 
+            key={project.id} 
+            project={project} 
+            allProjectPathLinks={allProjectPathLinks}
+            allLearningPaths={allLearningPaths}
+          />
         ))}
       </div>
     </>

@@ -10,7 +10,8 @@ import {
   UserPlus,
   Pencil,
   PlusCircle,
-  MessageSquare
+  MessageSquare,
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -38,7 +39,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Task, TaskStatus, User, Project, Discussion } from "@/lib/types";
+import type { Task, TaskStatus, User, Project, Discussion, LearningPath } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
@@ -98,6 +99,7 @@ interface ProjectDetailClientPageProps {
     project: Project;
     projectTasks: Task[];
     projectDiscussions: HydratedDiscussion[];
+    recommendedLearningPaths: LearningPath[];
     currentUser: User;
     allUsers: User[];
     joinProject: typeof joinProject;
@@ -112,6 +114,7 @@ export default function ProjectDetailClientPage({
     project, 
     projectTasks, 
     projectDiscussions,
+    recommendedLearningPaths,
     currentUser,
     allUsers,
     joinProject,
@@ -202,6 +205,7 @@ export default function ProjectDetailClientPage({
                     Discussions
                     {projectDiscussions && projectDiscussions.length > 0 && <Badge className="ml-2">{projectDiscussions.length}</Badge>}
                   </TabsTrigger>
+                  <TabsTrigger value="learning">Recommended Learning</TabsTrigger>
                   <TabsTrigger value="governance">Governance</TabsTrigger>
                 </TabsList>
                 {isCurrentUserLead && (
@@ -368,6 +372,37 @@ export default function ProjectDetailClientPage({
                         </div>
                     </CardContent>
                 </Card>
+            </TabsContent>
+
+            <TabsContent value="learning">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recommended Learning</CardTitle>
+                  <CardDescription>Courses and resources to help you get up to speed on this project.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 gap-4">
+                  {recommendedLearningPaths && recommendedLearningPaths.length > 0 ? (
+                    recommendedLearningPaths.map(path => (
+                      <Link key={path.id} href={`/learning/${path.id}`} className="block hover:bg-muted/50 rounded-lg border p-4 transition-colors">
+                        <div className="flex items-start gap-4">
+                            <div className="bg-primary/20 text-primary p-2 rounded-full">
+                                <BookOpen className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="font-semibold">{path.title}</p>
+                                <p className="text-sm text-muted-foreground mt-1">{path.description}</p>
+                            </div>
+                        </div>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center text-muted-foreground text-sm py-12">
+                        <BookOpen className="h-8 w-8 mx-auto mb-2" />
+                        <p>No recommended learning paths for this project yet.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="governance">

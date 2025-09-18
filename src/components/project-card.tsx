@@ -2,27 +2,36 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle, Sparkles, Users } from 'lucide-react';
+import { BookOpen, CheckCircle, Sparkles, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { Project, User, ProjectTag } from '@/lib/types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { Project, User, ProjectTag, ProjectPathLink, LearningPath } from '@/lib/types';
 import { cn, getInitials } from '@/lib/utils';
 import { findUserById } from '@/lib/data.client';
 
 interface ProjectCardProps {
   project: Project;
   className?: string;
+  allProjectPathLinks: ProjectPathLink[];
+  allLearningPaths: LearningPath[];
 }
 
-export default function ProjectCard({ project, className }: ProjectCardProps) {
+export default function ProjectCard({ project, className, allProjectPathLinks, allLearningPaths }: ProjectCardProps) {
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
 
   const displayTags = project.tags || [];
+
+  // Find recommended paths for this specific project
+  const recommendedPathLinks = allProjectPathLinks.filter(link => link.projectId === project.id);
+  const recommendedPaths = recommendedPathLinks
+      .map(link => allLearningPaths.find(p => p.id === link.learningPathId))
+      .filter((p): p is LearningPath => !!p);
+
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -58,12 +67,14 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
             </CardTitle>
           </div>
           {project.isExpertReviewed && (
-            <Tooltip>
-              <TooltipTrigger>
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              </TooltipTrigger>
-              <TooltipContent><p>Expert Reviewed</p></TooltipContent>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                </TooltipTrigger>
+                <TooltipContent><p>Expert Reviewed</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
         <CardDescription className="line-clamp-2 text-sm">{project.tagline}</CardDescription>
@@ -85,18 +96,38 @@ export default function ProjectCard({ project, className }: ProjectCardProps) {
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4 mt-auto">
         <div className="flex -space-x-2">
           {teamMembers.map((member) => (
-            <Tooltip key={member.id}>
-              <TooltipTrigger>
-                <Avatar className="h-8 w-8 border-2 border-background">
-                  <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person portrait" />
-                  <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                </Avatar>
-              </TooltipTrigger>
-              <TooltipContent><p>{member.name}</p></TooltipContent>
-            </Tooltip>
+            <TooltipProvider key={member.id}>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Avatar className="h-8 w-8 border-2 border-background">
+                    <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person portrait" />
+                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                  </Avatar>
+                </TooltipTrigger>
+                <TooltipContent><p>{member.name}</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ))}
         </div>
         <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
+            {recommendedPaths.length > 0 && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger>
+                            <Badge variant="secondary" className="flex items-center gap-1.5">
+                                <BookOpen className="h-4 w-4" />
+                                {recommendedPaths.length}
+                            </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="font-semibold mb-1">Recommended Learning:</p>
+                            <ul className="list-disc list-inside">
+                                {recommendedPaths.map(p => <li key={p.id}>{p.title}</li>)}
+                            </ul>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
             <span className="flex items-center gap-1">
                 <Users className="h-4 w-4" /> {project.votes}
             </span>

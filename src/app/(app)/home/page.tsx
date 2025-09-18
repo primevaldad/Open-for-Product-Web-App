@@ -2,11 +2,11 @@
 import { redirect } from 'next/navigation';
 
 import { SuggestSteps } from "@/components/ai/suggest-steps";
-import { getAllProjects, getAllTags } from "@/lib/data.server";
+import { getAllProjects, getAllTags, getAllProjectPathLinks, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import { UserNotFoundError } from "@/lib/errors";
 import HomeClientPage from "./home-client-page";
-import type { Project, Tag, ProjectTag } from "@/lib/types";
+import type { Project, Tag, ProjectTag, ProjectPathLink, LearningPath } from "@/lib/types";
 
 // --- Serialization Helpers ---
 const toISOString = (timestamp: any): string | any => {
@@ -25,14 +25,24 @@ const serializeGlobalTag = (tag: Tag): Tag => ({
   updatedAt: toISOString(tag.updatedAt),
 });
 
+const serializeLearningPath = (path: LearningPath): LearningPath => ({
+    ...path,
+    createdAt: toISOString(path.createdAt),
+    updatedAt: toISOString(path.updatedAt),
+});
+
+const serializeProjectPathLink = (link: ProjectPathLink): ProjectPathLink => ({
+    ...link,
+    createdAt: toISOString(link.createdAt),
+});
+
+
 // Correctly serializes a project and transforms its tags
 const serializeProject = (project: any): Project => {
-  // The incoming project from getAllProjects has a `tags` array of full `Tag` objects.
-  // We need to convert them to the expected `ProjectTag[]` format.
   const projectTags: ProjectTag[] = (project.tags || []).map((tag: Tag) => ({
       id: tag.id,
-      display: tag.display, // Use the global display name
-      role: tag.type, // Use the global `type` as the project-specific `role`
+      display: tag.display,
+      role: tag.type,
   }));
 
   return {
@@ -41,7 +51,7 @@ const serializeProject = (project: any): Project => {
     updatedAt: toISOString(project.updatedAt),
     startDate: project.startDate ? toISOString(project.startDate) : undefined,
     endDate: project.endDate ? toISOString(project.endDate) : undefined,
-    tags: projectTags, // Assign the correctly transformed array
+    tags: projectTags,
   };
 };
 
@@ -54,20 +64,26 @@ async function getDashboardPageData() {
             redirect('/onboarding');
         }
 
-        const [allProjects, allTags] = await Promise.all([
+        const [allProjects, allTags, allProjectPathLinks, allLearningPaths] = await Promise.all([
             getAllProjects(),
             getAllTags(),
+            getAllProjectPathLinks(),
+            getAllLearningPaths(),
         ]);
 
         const publishedProjects = allProjects.filter(p => p.status === 'published');
 
         const serializedProjects = publishedProjects.map(serializeProject);
         const serializedTags = allTags.map(serializeGlobalTag);
+        const serializedProjectPathLinks = allProjectPathLinks.map(serializeProjectPathLink);
+        const serializedLearningPaths = allLearningPaths.map(serializeLearningPath);
 
         return {
             currentUser,
             projects: serializedProjects,
             tags: serializedTags,
+            allProjectPathLinks: serializedProjectPathLinks,
+            allLearningPaths: serializedLearningPaths,
         }
     } catch (error) {
         if (error instanceof UserNotFoundError) {
@@ -83,7 +99,7 @@ async function getDashboardPageData() {
 }
 
 export default async function DashboardPage() {
-  const { currentUser, projects, tags } = await getDashboardPageData();
+  const { currentUser, projects, tags, allProjectPathLinks, allLearningPaths } = await getDashboardPageData();
 
   if (!currentUser) {
     redirect('/login');
@@ -96,7 +112,13 @@ export default async function DashboardPage() {
         <div className="mb-6">
             {suggestedProject && <SuggestSteps suggestedProject={suggestedProject} />}
         </div>
-        <HomeClientPage allPublishedProjects={projects} currentUser={currentUser} allTags={tags} />
+        <HomeClientPage 
+            allPublishedProjects={projects} 
+            currentUser={currentUser} 
+            allTags={tags} 
+            allProjectPathLinks={allProjectPathLinks}
+            allLearningPaths={allLearningPaths}
+        />
     </>
   );
 }

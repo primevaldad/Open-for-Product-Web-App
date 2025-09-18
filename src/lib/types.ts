@@ -87,6 +87,12 @@ export type Project = {
   tags?: ProjectTag[];
 };
 
+export type ProjectPathLink = {
+    id: string;
+    projectId: string;
+    learningPathId: string;
+};
+
 export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
 
 export type Task = {

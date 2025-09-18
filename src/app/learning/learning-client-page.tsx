@@ -3,23 +3,25 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle, Lock } from 'lucide-react';
+import { CheckCircle, Lock, FlaskConical, Link2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { projectCategories, iconMap } from '@/lib/static-data';
 import { cn } from '@/lib/utils';
-import type { LearningPath, ProjectCategory, UserLearningProgress } from '@/lib/types';
-import { FlaskConical } from 'lucide-react';
+import type { LearningPath, ProjectCategory, UserLearningProgress, Project, ProjectPathLink } from '@/lib/types';
 
 interface LearningClientPageProps {
     learningPaths: LearningPath[];
     userProgress: UserLearningProgress[];
+    projects: Project[];
+    allProjectPathLinks: ProjectPathLink[];
 }
 
-export default function LearningClientPage({ learningPaths, userProgress }: LearningClientPageProps) {
+export default function LearningClientPage({ learningPaths, userProgress, projects, allProjectPathLinks }: LearningClientPageProps) {
     const [selectedCategories, setSelectedCategories] = useState<ProjectCategory[]>([]);
     const [showMyPaths, setShowMyPaths] = useState(false);
 
@@ -76,8 +78,13 @@ export default function LearningClientPage({ learningPaths, userProgress }: Lear
                     const isCompleted = progress && path.modules.length > 0 && progress.completedModules.length === path.modules.length;
                     const Icon = iconMap[path.category as keyof typeof iconMap] || FlaskConical;
 
+                    const recommendingProjectLinks = allProjectPathLinks.filter(link => link.learningPathId === path.id);
+                    const recommendingProjects = recommendingProjectLinks
+                        .map(link => projects.find(p => p.id === link.projectId))
+                        .filter((p): p is Project => !!p);
+
                     return (
-                        <Link key={path.id} href={path.isLocked ? '#' : `/learning/${path.id}`} className={cn(path.isLocked && "pointer-events-none")}>
+                        <Link key={path.id} href={path.isLocked ? '#' : `/learning/${path.id}`} className={cn("flex flex-col", path.isLocked && "pointer-events-none")}>
                             <Card className={cn("flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1", path.isLocked && "bg-muted/50", isCompleted && "border-primary/50")}>
                                 <CardHeader>
                                     <div className="flex items-start justify-between">
@@ -90,9 +97,29 @@ export default function LearningClientPage({ learningPaths, userProgress }: Lear
                                         </div>
                                     </div>
                                     <CardTitle className="pt-4">{path.title}</CardTitle>
-                                    <Badge variant="outline" className="w-fit">{path.category}</Badge>
+                                    <div className="flex items-center gap-2 pt-2">
+                                        <Badge variant="outline" className="w-fit">{path.category}</Badge>
+                                        {recommendingProjects.length > 0 && (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <Badge variant="secondary" className="gap-1.5">
+                                                            <Link2 className="h-3 w-3" />
+                                                            {recommendingProjects.length} Project{recommendingProjects.length > 1 ? 's' : ''}
+                                                        </Badge>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="font-semibold mb-1">Recommended by:</p>
+                                                        <ul className="list-disc list-inside">
+                                                            {recommendingProjects.map(p => <li key={p.id}>{p.name}</li>)}
+                                                        </ul>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                    </div>
                                 </CardHeader>
-                                <CardContent className="flex-grow">
+                                <CardContent className="flex-grow pt-0">
                                     <p className="text-muted-foreground">{path.description}</p>
                                 </CardContent>
                                 <CardFooter className="flex justify-between">

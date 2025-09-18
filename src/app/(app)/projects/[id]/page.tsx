@@ -29,6 +29,7 @@ import {
   findTasksByProjectId,
   getAllUsers,
   getDiscussionsByProjectId,
+  getRecommendedLearningPathsForProject,
 } from "@/lib/data.server";
 import {
   addTask,
@@ -38,7 +39,7 @@ import {
   joinProject,
   updateTask,
 } from "@/app/actions/projects";
-import type { Task, Project, Discussion, Tag, User } from "@/lib/types";
+import type { Task, Project, Discussion, Tag, User, LearningPath } from "@/lib/types";
 
 const toISOString = (timestamp: any): string | any => {
     if (timestamp && typeof timestamp.toDate === 'function') {
@@ -61,9 +62,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   }
 
   // Fetch all raw data
-  const rawAllUsers = await getAllUsers();
-  const rawProjectTasksData = await findTasksByProjectId(params.id);
-  const rawDiscussionData = await getDiscussionsByProjectId(params.id);
+  const [rawAllUsers, rawProjectTasksData, rawDiscussionData, recommendedLearningPaths] = await Promise.all([
+    getAllUsers(),
+    findTasksByProjectId(params.id),
+    getDiscussionsByProjectId(params.id),
+    getRecommendedLearningPathsForProject(params.id),
+  ]);
 
   // --- SERIALIZATION --- 
   // Convert all Firestore Timestamps to ISO strings before passing to client components
@@ -221,6 +225,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         project={project}
         projectTasks={projectTasks}
         projectDiscussions={hydratedDiscussions}
+        recommendedLearningPaths={recommendedLearningPaths}
         currentUser={currentUser}
         allUsers={allUsers}
         joinProject={joinProject}

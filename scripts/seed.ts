@@ -18,6 +18,10 @@ type TeamMember = {
     avatarUrl: string;
 };
 
+type LearningPath = {
+    id: string;
+    title: string;
+}
 
 function initializeFirebaseAdmin() {
     if (admin.apps.length) {
@@ -33,7 +37,7 @@ function initializeFirebaseAdmin() {
         } catch (e) { console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY.', e); }
     }
     try {
-        const serviceAccount = require('../serviceAccountKey.json');
+        const serviceAccount = require('../src/lib/serviceAccountKey.json');
         admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
         console.log('Initialized Firebase Admin from local serviceAccountKey.json.');
         return;
@@ -87,6 +91,7 @@ const newProjectData = [
       `,
       category: 'Culture & Society',
       contributionNeeds: ['Therapists', 'Coaches', 'App Developers', 'Playtesters'],
+      recommendedLearningPathTitles: ['User Experience (UX) for Developers'],
     },
     {
       name: 'Growth ReposiStory',
@@ -108,6 +113,7 @@ const newProjectData = [
       `,
       category: 'Learning & Research',
       contributionNeeds: ['UX/UI Designers', 'Mobile Developers', 'Behavioral Psychologists', 'Coaches'],
+      recommendedLearningPathTitles: ['Introduction to Web Development', 'Product Management Essentials'],
     },
 ];
 
@@ -161,13 +167,16 @@ async function main() {
         if (newMembers.length > 0) {
             const updatedTeam = [...currentTeam, ...newMembers];
             updatePromises.push(projectDoc.ref.update({ team: updatedTeam }));
-            console.log(`Adding ${newMembers.length} members to "${project.name}"`);
+            console.log(`Adding ${newMembers.length} members to \"${project.name}\"`);
         }
     }
     await Promise.all(updatePromises);
     console.log('Finished enriching existing projects.');
 
     // --- 4. CREATE 2 NEW TEST PROJECTS ---
+    const learningPathsSnapshot = await db.collection('learningPaths').get();
+    const allLearningPaths: LearningPath[] = learningPathsSnapshot.docs.map((doc: firestore.QueryDocumentSnapshot) => ({ id: doc.id, ...doc.data() } as LearningPath));
+
     let newProjectsCreated = 0;
     console.log('Adding 2 new test projects...');
 
@@ -181,6 +190,10 @@ async function main() {
                 name: user.name,
                 avatarUrl: user.avatarUrl,
             }));
+            
+            const recommendedLearningPathIds = allLearningPaths
+                .filter(lp => p.recommendedLearningPathTitles.includes(lp.title))
+                .map(lp => lp.id);
 
             await projectsCollection.add({
                 name: p.name,
@@ -196,11 +209,12 @@ async function main() {
                 team: teamMembers,
                 discussions: [],
                 governance: { contributorsShare: 70, communityShare: 20, sustainabilityShare: 10 },
+                recommendedLearningPaths: recommendedLearningPathIds,
             });
             newProjectsCreated++;
-            console.log(`Created new project: "${p.name}" with ${teamMembers.length} members.`);
+            console.log(`Created new project: \"${p.name}\" with ${teamMembers.length} members.`);
         } else {
-            console.log(`Skipping creation of "${p.name}" as it already exists.`);
+            console.log(`Skipping creation of \"${p.name}\" as it already exists.`);
         }
     }
     console.log(`Created ${newProjectsCreated} new projects.`);

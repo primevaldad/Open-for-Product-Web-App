@@ -2,7 +2,7 @@
 import 'server-only';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink } from './types';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
@@ -100,16 +100,13 @@ export async function getAllProjects(): Promise<Project[]> {
         const projectData = doc.data();
         const project = { id: doc.id, ...projectData } as Project;
 
-        // The `tags` on the project are ProjectTag[], which may be stale or incomplete.
         if (project.tags && Array.isArray(project.tags)) {
-            // Replace the partial ProjectTag objects with full, up-to-date Tag objects.
             const hydratedTags = project.tags
-                .map(projectTag => tagsMap.get(projectTag.id)) // Find the full tag object from the map
-                .filter((tag): tag is Tag => !!tag); // Filter out any tags that might not have been found
+                .map(projectTag => tagsMap.get(projectTag.id))
+                .filter((tag): tag is Tag => !!tag);
             
             project.tags = hydratedTags;
         } else {
-            // Ensure the tags property is always an array.
             project.tags = [];
         }
 
@@ -146,16 +143,6 @@ export async function getAllTags(): Promise<Tag[]> {
     return tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
 }
 
-/**
- * Synchronizes tags for a project, creating new tags and updating usage counts
- * within a single transaction.
- *
- * @param transaction - The Firestore transaction object.
- * @param projectId - The ID of the project being updated.
- * @param newTags - The new array of tags from the form.
- * @param currentTags - The array of tags currently on the project.
- * @returns The final, complete array of tags for the project.
- */
 async function manageTagsForProject(
   transaction: FirebaseFirestore.Transaction,
   newTags: SelectableTag[],
@@ -166,23 +153,20 @@ async function manageTagsForProject(
 
   const tagsToAdd = newTags.filter(t => !currentTagIds.has(t.id));
   const tagsToRemove = currentTags.filter(t => !newTagIds.has(t.id));
-  const finalTags: Tag[] = [...newTags]; // Start with the desired state
+  const finalTags: Tag[] = [...newTags];
 
   const tagsCollection = adminDb.collection('tags');
 
-  // Process tags to add
   for (const tag of tagsToAdd) {
     const tagRef = tagsCollection.doc(tag.id);
     const tagSnap = await transaction.get(tagRef);
     if (tagSnap.exists) {
-      // Tag exists, increment its usage count
       transaction.update(tagRef, { usageCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
     } else {
-      // New tag, create it
       transaction.set(tagRef, {
         id: tag.id,
         display: tag.display,
-        type: tag.type, // <-- Add the type field
+        type: tag.type,
         usageCount: 1,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -190,10 +174,8 @@ async function manageTagsForProject(
     }
   }
 
-  // Process tags to remove
   for (const tag of tagsToRemove) {
     const tagRef = tagsCollection.doc(tag.id);
-    // Decrement the usage count, but don't let it go below zero.
     transaction.update(tagRef, { usageCount: FieldValue.increment(-1), updatedAt: FieldValue.serverTimestamp() });
   }
   
@@ -253,7 +235,45 @@ export async function deleteTask(taskId: string): Promise<void> {
     await adminDb.collection('tasks').doc(taskId).delete();
 }
 
-// --- Learning Progress Data Access ---
+// --- Learning Progress & Path Data Access ---
+
+export async function findLearningPathsByIds(ids: string[]): Promise<LearningPath[]> {
+    if (!ids || ids.length === 0) {
+        return [];
+    }
+    const uniqueIds = [...new Set(ids)];
+    const docRefs = uniqueIds.map(id => adminDb.collection('learningPaths').doc(id));
+    const docs = await adminDb.getAll(...docRefs);
+
+    return docs
+        .map(doc => {
+            if (!doc.exists) return null;
+            return { id: doc.id, ...doc.data() } as LearningPath;
+        })
+        .filter((path): path is LearningPath => path !== null);
+}
+
+export async function getRecommendedPathIdsForProject(projectId: string): Promise<string[]> {
+    const linksSnapshot = await adminDb.collection('projectPathLinks').where('projectId', '==', projectId).get();
+    if (linksSnapshot.empty) {
+        return [];
+    }
+    return linksSnapshot.docs.map(doc => doc.data().learningPathId as string);
+}
+
+export async function getAllProjectPathLinks(): Promise<ProjectPathLink[]> {
+    const linksSnapshot = await adminDb.collection('projectPathLinks').get();
+    return linksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectPathLink));
+}
+
+export async function getRecommendedLearningPathsForProject(projectId: string): Promise<LearningPath[]> {
+    const pathIds = await getRecommendedPathIdsForProject(projectId);
+    if (pathIds.length === 0) {
+        return [];
+    }
+    return findLearningPathsByIds(pathIds);
+}
+
 export async function getAllUserLearningProgress(): Promise<UserLearningProgress[]> {
     const progressCol = adminDb.collection('userLearningProgress');
     const progressSnapshot = await progressCol.get();

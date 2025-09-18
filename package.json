@@ -12,6 +12,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
+    "seed:learning": "tsx scripts/seed-learning-paths.ts",
     "test": "jest"
   },
   "dependencies": {
