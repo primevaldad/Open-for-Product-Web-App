@@ -46,89 +46,93 @@ export function CreateProjectForm({ availableTags }: CreateProjectFormProps) {
   };
 
   return (
-    <Form {...form}>
-      <form className="space-y-8">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Project Name</FormLabel>
-              <FormControl>
-                <Input placeholder="My Awesome Project" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    <div className="flex justify-center py-12">
+      <div className="w-full max-w-2xl px-4">
+        <Form {...form}>
+          <form className="space-y-8">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="My Awesome Project" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="tagline"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tagline</FormLabel>
-              <FormControl>
-                <Input placeholder="A short, catchy phrase for your project" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="tagline"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tagline</FormLabel>
+                  <FormControl>
+                    <Input placeholder="A short, catchy phrase for your project" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="A detailed description of your project..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="A detailed description of your project..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="contributionNeeds"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Contribution Needs</FormLabel>
-              <FormControl>
-                <Textarea placeholder="What kind of help are you looking for? (e.g., frontend developers, designers, testers)" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="tags"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tags</FormLabel>
-              <TagSelector
-                allTags={availableTags}
-                value={field.value || []}
-                onChange={field.onChange}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="contributionNeeds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contribution Needs</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="What kind of help are you looking for? (e.g., frontend developers, designers, testers)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="tags"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tags</FormLabel>
+                  <TagSelector
+                    allTags={availableTags}
+                    value={field.value || []}
+                    onChange={field.onChange}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={form.handleSubmit((values) => handleFormSubmit(values, true))}>
-            Save as Draft
-          </Button>
-          <Button type="button" onClick={form.handleSubmit((values) => handleFormSubmit(values, false))}>
-            Publish Project
-          </Button>
-        </div>
-      </form>
-    </Form>
+            <div className="flex justify-end space-x-4">
+              <Button type="button" variant="outline" onClick={form.handleSubmit((values) => handleFormSubmit(values, true))}>
+                Save as Draft
+              </Button>
+              <Button type="button" onClick={form.handleSubmit((values) => handleFormSubmit(values, false))}>
+                Publish Project
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
+    </div>
   );
 }

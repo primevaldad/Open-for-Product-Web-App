@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 25 100% 96%;      /* seashell */
+    --background: 206 88% 55%;      /* celestial-blue */
     --foreground: 314 53% 21%;      /* palatinate */
     --card: 25 100% 98%;           /* slightly whiter seashell for cards */
     --card-foreground: 314 53% 21%; /* palatinate */
