@@ -91,8 +91,6 @@ async function manageTagsForProject(
             // Tag exists, decrement usage count. This is safe in a transaction.
             transaction.update(tagRef, { usageCount: admin.firestore.FieldValue.increment(-1) });
         }
-        // If the tag to remove doesn't exist in the global collection, we do nothing.
-        // This prevents the transaction from failing on an edge case.
     }
 
     // Return the final list of tags to be stored on the project document.
@@ -105,7 +103,6 @@ async function manageTagsForProject(
 }
 
 async function hydrateTeamMembers(team: ProjectMember[]): Promise<ProjectMember[]> {
-    console.log('hydrating team members')
     const userIdsToFetch = team.filter(m => !m.user).map(m => m.userId);
     if (userIdsToFetch.length === 0) return team;
 
@@ -114,7 +111,6 @@ async function hydrateTeamMembers(team: ProjectMember[]): Promise<ProjectMember[
     const userMap = new Map(users.filter(Boolean).map(u => [u!.id, u]));
 
     return team.map(member => {
-        console.log('returning hydrated team member')
         if (member.user) return member;
         const user = userMap.get(member.userId);
         return user ? { ...member, user } : member;
@@ -134,25 +130,31 @@ async function handleProjectSubmission(
     return { success: false, error: validatedFields.error.issues[0]?.message || 'Invalid data.' };
   }
 
-  const { name, tagline, description, contributionNeeds, tags } = validatedFields.data;
+  const { name, tagline, description, contributionNeeds, tags, team } = validatedFields.data;
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: "Authentication required." };
 
+  const finalTeam = [...(team || [])];
+  const creatorIsLead = finalTeam.some(member => member.userId === currentUser.id && member.role === 'lead');
+
+  if (!creatorIsLead) {
+    const withoutCreator = finalTeam.filter(member => member.userId !== currentUser.id);
+    finalTeam.push({ userId: currentUser.id, role: 'lead' });
+  }
+
   let newProjectId: string | undefined;
-  console.log('new project got an ID')
   
   try {
     await adminDb.runTransaction(async (transaction) => {
         const newProjectRef = adminDb.collection('projects').doc();
         newProjectId = newProjectRef.id;
-        // For new projects, currentTags is an empty array
         const processedTags = await manageTagsForProject(transaction, tags, [], currentUser);
 
         const newProjectData: Omit<Project, 'id'> = {
             name, tagline, description, tags: processedTags,
             contributionNeeds: contributionNeeds.split(',').map(item => item.trim()),
             timeline: 'TBD', progress: 0, 
-            team: [{ userId: currentUser.id, role: 'lead' }],
+            team: finalTeam,
             votes: 0, status, 
             governance: { contributorsShare: 75, communityShare: 10, sustainabilityShare: 15 },
             startDate: new Date().toISOString(), endDate: '',
@@ -200,15 +202,14 @@ export async function updateProject(values: EditProjectFormValues): Promise<{ su
             if (!projectSnap.exists) throw new Error("Project not found");
 
             const project = projectSnap.data() as Project;
-            const lead = project.team.find(m => m.role === 'lead');
-            if (!lead || lead.userId !== currentUser.id) throw new Error("Only the project lead can edit.");
+            const isLead = project.team.some(m => m.role === 'lead' && m.userId === currentUser.id);
+            if (!isLead) throw new Error("Only a project lead can edit.");
 
-            // Pass both the new and current tags to the management function
             const processedTags = await manageTagsForProject(transaction, tags, project.tags || [], currentUser);
             
             const updatedData: Partial<Project> = {
                 ...projectData,
-                governance, // Explicitly include the validated governance object
+                governance,
                 contributionNeeds: typeof projectData.contributionNeeds === 'string'
                     ? projectData.contributionNeeds.split(',').map(item => item.trim())
                     : project.contributionNeeds,

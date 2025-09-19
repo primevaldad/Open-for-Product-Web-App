@@ -22,7 +22,8 @@ export type User = {
   lastLogin?: string;
 };
 
-export type UserRole = 'lead' | 'contributor' | 'participant';
+export const ROLES = ["lead", "contributor", "participant"] as const;
+export type UserRole = typeof ROLES[number];
 
 export type ProjectMember = {
   userId: string;

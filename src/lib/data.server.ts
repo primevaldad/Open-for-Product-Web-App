@@ -27,6 +27,24 @@ export async function findUserById(userId: string): Promise<User | undefined> {
     return undefined;
 }
 
+export async function findUsersByIds(userIds: string[]): Promise<User[]> {
+    if (!userIds || userIds.length === 0) {
+        return [];
+    }
+
+    const users: User[] = [];
+    // Firestore 'in' query is limited to 10 items, so we batch the requests.
+    for (let i = 0; i < userIds.length; i += 10) {
+        const chunk = userIds.slice(i, i + 10);
+        const q = adminDb.collection('users').where(FieldValue.documentId(), 'in', chunk);
+        const userSnapshot = await q.get();
+        const chunkUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        users.push(...chunkUsers);
+    }
+
+    return users;
+}
+
 export async function findUserByEmail(email: string): Promise<User | undefined> {
     if (!email) return undefined;
     const usersCol = adminDb.collection('users');
@@ -37,6 +55,33 @@ export async function findUserByEmail(email: string): Promise<User | undefined> 
         return { id: userDoc.id, ...userDoc.data() } as User;
     }
     return undefined;
+}
+
+export async function findUsersByName(query: string): Promise<User[]> {
+    if (!query) return [];
+    const usersCol = adminDb.collection('users');
+
+    // Since Firestore doesn't support native OR queries on different fields,
+    // we perform two separate queries and merge the results.
+    const nameQuery = usersCol.where('name', '>=', query).where('name', '<=', query + '\uf8ff');
+    const emailQuery = usersCol.where('email', '>=', query).where('email', '<=', query + '\uf8ff');
+
+    const [nameSnapshot, emailSnapshot] = await Promise.all([
+        nameQuery.get(),
+        emailQuery.get(),
+    ]);
+
+    const usersMap = new Map<string, User>();
+    nameSnapshot.docs.forEach(doc => {
+        const user = { id: doc.id, ...doc.data() } as User;
+        usersMap.set(user.id, user);
+    });
+    emailSnapshot.docs.forEach(doc => {
+        const user = { id: doc.id, ...doc.data() } as User;
+        usersMap.set(user.id, user);
+    });
+
+    return Array.from(usersMap.values());
 }
 
 export async function addUser(uid: string, newUser: Omit<User, 'id'>): Promise<void> {

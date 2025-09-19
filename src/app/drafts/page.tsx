@@ -23,8 +23,8 @@ import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { User, Project, Tag } from "@/lib/types";
-import { getAllProjects } from "@/lib/data.server";
+import type { User, Project, Tag, LearningPath, ProjectPathLink } from "@/lib/types";
+import { getAllProjects, getAllProjectPathLinks, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 
 const toISOString = (timestamp: any): string | any => {
@@ -36,6 +36,17 @@ const toISOString = (timestamp: any): string | any => {
   }
   return timestamp;
 };
+
+const serializeLearningPath = (path: any): LearningPath => ({
+    ...path,
+    createdAt: toISOString(path.createdAt),
+    updatedAt: toISOString(path.updatedAt),
+});
+
+const serializeProjectPathLink = (link: any): ProjectPathLink => ({
+    ...link,
+    createdAt: toISOString(link.createdAt),
+});
 
 const serializeProject = (project: Project): Project => ({
   ...project,
@@ -52,14 +63,27 @@ const serializeProject = (project: Project): Project => ({
 
 async function getDraftsPageData() {
     const currentUser = await getAuthenticatedUser();
-    const projects = await getAllProjects();
+    const [projects, allProjectPathLinks, allLearningPaths] = await Promise.all([
+        getAllProjects(),
+        getAllProjectPathLinks(),
+        getAllLearningPaths(),
+    ]);
+
     const serializedProjects = projects.map(serializeProject);
-    return { currentUser, projects: serializedProjects };
+    const serializedProjectPathLinks = allProjectPathLinks.map(serializeProjectPathLink);
+    const serializedLearningPaths = allLearningPaths.map(serializeLearningPath);
+
+    return {
+        currentUser,
+        projects: serializedProjects,
+        allProjectPathLinks: serializedProjectPathLinks,
+        allLearningPaths: serializedLearningPaths
+    };
 }
 
 // This is now a Server Component
 export default async function DraftsPage() {
-  const { currentUser, projects } = await getDraftsPageData();
+  const { currentUser, projects, allProjectPathLinks, allLearningPaths } = await getDraftsPageData();
 
   if (!currentUser) {
     return (
@@ -160,7 +184,12 @@ export default async function DraftsPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {draftProjects.length > 0 ? (
                 draftProjects.map((project) => (
-                    <ProjectCard key={project.id} project={project} />
+                    <ProjectCard 
+                        key={project.id} 
+                        project={project} 
+                        allProjectPathLinks={allProjectPathLinks} 
+                        allLearningPaths={allLearningPaths} 
+                    />
                 ))
             ) : (
                 <Card className="col-span-full">

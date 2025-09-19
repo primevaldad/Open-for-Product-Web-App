@@ -13,6 +13,7 @@ import { publishProject, saveProjectDraft } from '../actions/projects';
 import { TagSelector } from '@/components/tags/tag-selector';
 import type { Tag, ProjectTag } from '@/lib/types';
 import { CreateProjectSchema, CreateProjectFormValues } from '@/lib/schemas';
+import { UserSelector } from '@/components/users/user-selector';
 
 interface CreateProjectFormProps {
   availableTags: Tag[];
@@ -30,6 +31,7 @@ export function CreateProjectForm({ availableTags }: CreateProjectFormProps) {
       description: '',
       contributionNeeds: '',
       tags: [],
+      team: [],
     },
   });
 
@@ -106,6 +108,21 @@ export function CreateProjectForm({ availableTags }: CreateProjectFormProps) {
               )}
             />
             
+            <FormField
+              control={form.control}
+              name="team"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Team</FormLabel>
+                  <UserSelector
+                    value={field.value || []}
+                    onChange={field.onChange}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="tags"

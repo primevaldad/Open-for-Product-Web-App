@@ -11,6 +11,11 @@ export const ProjectTagSchema = z.object({
     role: z.enum(['category', 'relational']),
 });
 
+export const ProjectMemberSchema = z.object({
+  userId: z.string(),
+  role: z.enum(['lead', 'contributor', 'participant']),
+});
+
 // Base properties common to both create and edit forms
 export const ProjectBaseSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
@@ -18,6 +23,7 @@ export const ProjectBaseSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
   contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
   tags: z.array(ProjectTagSchema).optional().default([]),
+  team: z.array(ProjectMemberSchema).optional().default([]),
 });
 
 
