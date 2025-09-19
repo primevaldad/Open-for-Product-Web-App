@@ -19,9 +19,16 @@ interface ProjectCardProps {
   className?: string;
   allProjectPathLinks: ProjectPathLink[];
   allLearningPaths: LearningPath[];
+  suggestionText?: string; // Add the new optional prop
 }
 
-export default function ProjectCard({ project, className, allProjectPathLinks, allLearningPaths }: ProjectCardProps) {
+export default function ProjectCard({ 
+    project, 
+    className, 
+    allProjectPathLinks, 
+    allLearningPaths, 
+    suggestionText 
+}: ProjectCardProps) {
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
 
   const displayTags = project.tags || [];
@@ -31,7 +38,6 @@ export default function ProjectCard({ project, className, allProjectPathLinks, a
   const recommendedPaths = recommendedPathLinks
       .map(link => allLearningPaths.find(p => p.id === link.learningPathId))
       .filter((p): p is LearningPath => !!p);
-
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -47,6 +53,14 @@ export default function ProjectCard({ project, className, allProjectPathLinks, a
   return (
     <Card className={cn("flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1", className)}>
       <CardHeader className="p-4">
+        {/* Display the AI suggestion if it exists */}
+        {suggestionText && (
+          <div className="mb-3 flex items-start gap-2.5 text-sm text-primary-foreground bg-primary/90 p-3 rounded-md shadow-sm">
+            <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
+            <p className="font-medium leading-relaxed">{suggestionText}</p>
+          </div>
+        )}
+
         <div className="flex items-start justify-between">
           <div>
             <div className="mb-2 flex flex-wrap gap-2">

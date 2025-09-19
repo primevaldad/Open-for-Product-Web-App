@@ -19,8 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { addTeamMember } from '@/app/actions/projects';
-import type { User, UserRole } from '@/lib/types';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import type { User } from '@/lib/types';
 
 interface AddMemberDialogProps extends PropsWithChildren {
   projectId: string;
@@ -31,7 +30,6 @@ interface AddMemberDialogProps extends PropsWithChildren {
 const AddMemberSchema = z.object({
   projectId: z.string(),
   userId: z.string().min(1, 'Please select a user to add.'),
-  role: z.enum(['participant', 'lead']),
 });
 
 type AddMemberFormValues = z.infer<typeof AddMemberSchema>;
@@ -46,7 +44,6 @@ export function AddMemberDialog({ projectId, nonMemberUsers, addTeamMember, chil
     defaultValues: {
       projectId: projectId,
       userId: '',
-      role: 'participant',
     },
   });
 
@@ -96,40 +93,6 @@ export function AddMemberDialog({ projectId, nonMemberUsers, addTeamMember, chil
                             ))}
                         </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Role</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex flex-col space-y-1"
-                      >
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="participant" />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                           Participant
-                          </FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="lead" />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            Lead
-                          </FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

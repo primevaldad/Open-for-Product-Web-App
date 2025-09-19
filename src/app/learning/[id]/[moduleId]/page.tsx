@@ -9,6 +9,16 @@ import LearningModuleClientPage from './learning-module-client-page';
 import { completeModule } from '@/app/actions/learning';
 import type { Module } from '@/lib/types';
 
+const toISOString = (timestamp: any): string | any => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toISOString();
+    }
+    if (timestamp instanceof Date) {
+        return timestamp.toISOString();
+    }
+    return timestamp;
+};
+
 // This is now a Server Component that fetches all necessary data
 export default async function LearningModulePage({
   params,
@@ -16,25 +26,40 @@ export default async function LearningModulePage({
   params: { id: string; moduleId: string };
 }) {
   // getAuthenticatedUser will redirect if the user is not logged in.
-  const currentUser = await getAuthenticatedUser();
+  const rawCurrentUser = await getAuthenticatedUser();
   const learningPaths = await getAllLearningPaths();
-  const path = learningPaths.find((p) => p.id === params.id);
+  const rawPath = learningPaths.find((p) => p.id === params.id);
 
   // If the path doesn't exist, return a 404
-  if (!path) {
+  if (!rawPath) {
     notFound();
   }
 
   // Find the specific module within the path
-  const module = path.modules.find((m: Module) => m.id === params.moduleId) || null;
+  const module = rawPath.modules.find((m: Module) => m.id === params.moduleId) || null;
 
   // If the module doesn't exist in the path, return a 404
   if (!module) {
     notFound();
   }
+  
+  // --- SERIALIZATION ---
+  const currentUser = {
+    ...rawCurrentUser,
+    createdAt: toISOString(rawCurrentUser.createdAt),
+    lastLogin: toISOString(rawCurrentUser.lastLogin),
+  };
+
+  const path = {
+      ...rawPath,
+      createdAt: toISOString(rawPath.createdAt),
+      updatedAt: toISOString(rawPath.updatedAt),
+  };
 
   // Find the user's progress in this learning path
+  // Note: userProgress might also need serialization if it contains timestamps.
   const userProgress = await findUserLearningProgress(currentUser.id, params.id);
+
 
   // Determine the previous and next modules for navigation
   const currentModuleIndex = path.modules.findIndex(

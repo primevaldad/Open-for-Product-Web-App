@@ -2,12 +2,11 @@
 "use client";
 
 import { suggestNextSteps } from "@/ai/flows/suggest-next-steps";
-import { Button } from "@/components/ui/button";
+import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, Loader2, Sparkles } from "lucide-react";
-import Link from "next/link";
+import type { LearningPath, Project, ProjectPathLink } from "@/lib/types";
+import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { Project } from "@/lib/types";
 
 type Suggestion = {
   suggestedNextSteps: string[];
@@ -16,9 +15,11 @@ type Suggestion = {
 
 interface SuggestStepsProps {
     suggestedProject: Project;
+    allProjectPathLinks: ProjectPathLink[];
+    allLearningPaths: LearningPath[];
 }
 
-export function SuggestSteps({ suggestedProject }: SuggestStepsProps) {
+export function SuggestSteps({ suggestedProject, allProjectPathLinks, allLearningPaths }: SuggestStepsProps) {
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,14 +37,30 @@ export function SuggestSteps({ suggestedProject }: SuggestStepsProps) {
         });
         setSuggestion(res);
       } catch (e) {
-        setError("Could not load suggestions at this time.");
-        console.error(e);
+        console.error("AI suggestion failed:", e);
+        // Fallback logic as planned
+        if (suggestedProject.fallbackSuggestion) {
+            setSuggestion({
+                suggestedNextSteps: [suggestedProject.fallbackSuggestion],
+                matchingOpportunities: [suggestedProject.tagline],
+            });
+        } else {
+            setError("Could not load suggestions at this time.");
+        }
       } finally {
         setLoading(false);
       }
     }
     getSuggestions();
-  }, []);
+  }, [suggestedProject]); // Add suggestedProject to dependency array
+
+  // Use the tagline from the AI suggestion if available, otherwise use the project's original tagline.
+  const projectWithSuggestion = suggestion
+    ? { ...suggestedProject, tagline: suggestion.matchingOpportunities[0] || suggestedProject.tagline }
+    : suggestedProject;
+
+  // Determine the suggestion text, prioritizing the dynamic one, then the fallback.
+  const suggestionText = suggestion?.suggestedNextSteps[0];
 
   return (
     <Card className="bg-gradient-to-br from-primary/20 to-background">
@@ -55,32 +72,20 @@ export function SuggestSteps({ suggestedProject }: SuggestStepsProps) {
       </CardHeader>
       <CardContent>
         {loading && (
-          <div className="flex items-center justify-center h-24">
+          <div className="flex items-center justify-center h-48">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         )}
-        {error && <p className="text-destructive">{error}</p>}
-        {suggestion && suggestedProject && (
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-            <div className="flex-grow">
-                <p className="font-semibold text-lg">{suggestedProject.name}</p>
-                <p className="text-muted-foreground mb-2 line-clamp-2">
-                    {suggestion.matchingOpportunities[0] || suggestedProject.tagline}
-                </p>
-                <p className="text-sm">
-                    {suggestion.suggestedNextSteps[0] || 'Take a look at the project board to get started.'}
-                </p>
-            </div>
-            <Link href={`/projects/${suggestedProject.id}`}>
-                <Button variant="secondary" className="w-full md:w-auto">
-                    View Project <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-            </Link>
-          </div>
+        {error && !loading && <p className="text-destructive text-center py-4">{error}</p>}
+        {!loading && !error && suggestedProject && (
+            <ProjectCard
+                project={projectWithSuggestion}
+                allProjectPathLinks={allProjectPathLinks}
+                allLearningPaths={allLearningPaths}
+                suggestionText={suggestionText}
+            />
         )}
       </CardContent>
     </Card>
   );
 }
-
-    

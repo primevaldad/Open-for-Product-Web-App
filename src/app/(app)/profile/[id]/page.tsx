@@ -5,6 +5,11 @@ import { getAllProjects, findUserById } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import type { User } from '@/lib/types';
 
+// Define a specific props type for the page
+type PageProps = {
+  params: { id: string };
+};
+
 // Helper to serialize Firestore Timestamps
 function serializeTimestamps(data: any): any {
     if (data === null || typeof data !== 'object') {
@@ -48,7 +53,7 @@ async function getUserProfilePageData(userId: string) {
 }
 
 // --- Server Component: UserProfilePage ---
-export default async function UserProfilePage({ params }: { params: { id: string } }) {
+export default async function UserProfilePage({ params }: PageProps) {
   const { user, userProjects, currentUser } = await getUserProfilePageData(params.id);
 
   if (!user || !currentUser) {

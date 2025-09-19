@@ -62,7 +62,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   }
 
   // Fetch all raw data
-  const [rawAllUsers, rawProjectTasksData, rawDiscussionData, recommendedLearningPaths] = await Promise.all([
+  const [rawAllUsers, rawProjectTasksData, rawDiscussionData, rawRecommendedLearningPaths] = await Promise.all([
     getAllUsers(),
     findTasksByProjectId(params.id),
     getDiscussionsByProjectId(params.id),
@@ -108,6 +108,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       })),
   };
 
+  const recommendedLearningPaths = rawRecommendedLearningPaths.map(path => ({
+      ...path,
+      createdAt: toISOString(path.createdAt),
+      updatedAt: toISOString(path.updatedAt),
+  }));
+
   // --- HYDRATION --- 
   // Hydrate data on the server using the safe, serialized data
 
@@ -118,15 +124,15 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     return { ...t, description: t.description ?? '', assignedTo };
   }) as Task[];
 
-  const hydratedTeam = projectData.team.map(member => ({
-      ...member,
-      user: allUsers.find(u => u.id === member.userId)!
-  }));
+  const hydratedTeam = projectData.team.map(member => {
+      const user = allUsers.find(u => u.id === member.userId);
+      return user ? { ...member, user } : null;
+  }).filter(Boolean) as (typeof projectData.team[0] & { user: User })[];
 
-  const hydratedDiscussions = discussionData.map(comment => ({
-      ...comment,
-      user: allUsers.find(u => u.id === comment.userId)!
-  }));
+  const hydratedDiscussions = discussionData.map(comment => {
+      const user = allUsers.find(u => u.id === comment.userId);
+      return user ? { ...comment, user } : null;
+  }).filter(Boolean) as (typeof discussionData[0] & { user: User })[];
 
   const project = {
       ...projectData,

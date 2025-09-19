@@ -2,7 +2,7 @@
 import 'server-only';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink, ProjectBadgeLink, UserBadge } from './types';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
@@ -135,6 +135,30 @@ export async function updateProject(updatedProject: Project): Promise<void> {
     const projectRef = adminDb.collection('projects').doc(id);
     await projectRef.update(projectData);
 }
+
+export async function addTeamMember(projectId: string, userId: string): Promise<void> {
+    const project = await findProjectById(projectId);
+    const user = await findUserById(userId);
+
+    if (!project || !user) {
+        throw new Error("Project or user not found");
+    }
+
+    const requiredBadgesSnapshot = await adminDb.collection('projectBadgeLinks').where('projectId', '==', projectId).where('isRequirement', '==', true).get();
+    const requiredBadgeIds = requiredBadgesSnapshot.docs.map(doc => doc.data().badgeId);
+
+    const userBadgesSnapshot = await adminDb.collection('userBadges').where('userId', '==', userId).get();
+    const userBadgeIds = new Set(userBadgesSnapshot.docs.map(doc => doc.data().badgeId));
+
+    const hasAllRequiredBadges = requiredBadgeIds.every(badgeId => userBadgeIds.has(badgeId));
+
+    const role = hasAllRequiredBadges ? 'contributor' : 'participant';
+
+    const updatedTeam = [...(project.team || []), { userId, role }];
+
+    await adminDb.collection('projects').doc(projectId).update({ team: updatedTeam });
+}
+
 
 // --- Tag Data Access ---
 export async function getAllTags(): Promise<Tag[]> {

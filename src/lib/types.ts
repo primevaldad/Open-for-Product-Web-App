@@ -22,7 +22,7 @@ export type User = {
   lastLogin?: string;
 };
 
-export type UserRole = 'lead' | 'participant';
+export type UserRole = 'lead' | 'contributor' | 'participant';
 
 export type ProjectMember = {
   userId: string;
@@ -85,6 +85,7 @@ export type Project = {
   createdAt: string;
   updatedAt: string;
   tags?: ProjectTag[];
+  fallbackSuggestion?: string; // A pre-written suggestion for when the AI fails
 };
 
 export type ProjectPathLink = {
@@ -92,6 +93,27 @@ export type ProjectPathLink = {
     projectId: string;
     learningPathId: string;
 };
+
+export type ProjectBadgeLink = {
+    id: string;
+    projectId: string;
+    badgeId: string;
+    isRequirement: boolean;
+}
+
+export type Badge = {
+    id: string;
+    name: string;
+    learningPathId: string;
+    moduleIds: string[];
+}
+
+export type UserBadge = {
+    id: string;
+    userId: string;
+    badgeId: string;
+    earnedAt: string;
+}
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
 

@@ -110,7 +110,13 @@ export default async function DashboardPage() {
   return (
     <>
         <div className="mb-6">
-            {suggestedProject && <SuggestSteps suggestedProject={suggestedProject} />}
+            {suggestedProject && (
+                <SuggestSteps 
+                    suggestedProject={suggestedProject} 
+                    allProjectPathLinks={allProjectPathLinks} 
+                    allLearningPaths={allLearningPaths} 
+                />
+            )}
         </div>
         <HomeClientPage 
             allPublishedProjects={projects} 

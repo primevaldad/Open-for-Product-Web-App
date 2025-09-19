@@ -239,7 +239,7 @@ const TaskSchema = z.object({
 const CreateTaskSchema = TaskSchema.omit({ id: true });
 const DeleteTaskSchema = z.object({ id: z.string(), projectId: z.string() });
 const DiscussionCommentSchema = z.object({ projectId: z.string(), userId: z.string(), content: z.string().min(1) });
-const AddTeamMemberSchema = z.object({ projectId: z.string(), userId: z.string(), role: z.enum(['participant', 'lead']) });
+const AddTeamMemberSchema = z.object({ projectId: z.string(), userId: z.string() });
 
 export async function joinProject(projectId: string) {
     const currentUser = await getAuthenticatedUser();
@@ -262,28 +262,47 @@ export async function addTeamMember(values: z.infer<typeof AddTeamMemberSchema>)
     const validatedFields = AddTeamMemberSchema.safeParse(values);
     if (!validatedFields.success) return { success: false, error: "Invalid data." };
     
-    const { projectId, userId, role } = validatedFields.data;
-    const project = await findProjectById(projectId);
-    if (!project) return { success: false, error: "Project not found" };
+    const { projectId, userId } = validatedFields.data;
 
-    if (project.team.some(member => member.userId === userId)) return { success: false, error: "User is already a member" };
-    
-    const userToAdd = await findUserById(userId);
-    if (!userToAdd) return { success: false, error: "User to add not found" };
+    try {
+        const project = await findProjectById(projectId);
+        const user = await findUserById(userId);
 
-    const updatedTeam = [...project.team, { userId: userToAdd.id, role }];
-    await updateProjectInDb({ ...project, team: updatedTeam });
-    
-    await addNotificationToDb({ 
-        userId: userToAdd.id, 
-        message: `You have been added to the project \"${project.name}\".`, 
-        link: `/projects/${projectId}`, 
-        read: false, 
-        timestamp: new Date().toISOString() 
-    });
-    
-    revalidatePath(`/projects/${projectId}`);
-    return { success: true };
+        if (!project || !user) {
+            return { success: false, error: "Project or user not found" };
+        }
+        
+        if (project.team.some(member => member.userId === userId)) {
+            return { success: false, error: "User is already a member" };
+        }
+
+        const requiredBadgesSnapshot = await adminDb.collection('projectBadgeLinks').where('projectId', '==', projectId).where('isRequirement', '==', true).get();
+        const requiredBadgeIds = requiredBadgesSnapshot.docs.map(doc => doc.data().badgeId);
+
+        const userBadgesSnapshot = await adminDb.collection('userBadges').where('userId', '==', userId).get();
+        const userBadgeIds = new Set(userBadgesSnapshot.docs.map(doc => doc.data().badgeId));
+
+        const hasAllRequiredBadges = requiredBadgeIds.every(badgeId => userBadgeIds.has(badgeId));
+        const role = hasAllRequiredBadges ? 'contributor' : 'participant';
+
+        const updatedTeam = [...(project.team || []), { userId: user.id, role }];
+
+        await updateProjectInDb({ ...project, team: updatedTeam });
+        
+        await addNotificationToDb({ 
+            userId: user.id, 
+            message: `You have been added to the project "${project.name}" as a ${role}.`, 
+            link: `/projects/${projectId}`, 
+            read: false, 
+            timestamp: new Date().toISOString() 
+        });
+        
+        revalidatePath(`/projects/${projectId}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to add team member:", error);
+        return { success: false, error: "An unexpected error occurred." };
+    }
 }
 
 export async function addTask(values: z.infer<typeof CreateTaskSchema>) {
