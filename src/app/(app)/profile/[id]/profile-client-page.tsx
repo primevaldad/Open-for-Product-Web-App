@@ -10,7 +10,7 @@ import ProjectCard from '@/components/project-card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { User, Project } from '@/lib/types';
+import type { User, Project, LearningPath, ProjectPathLink } from '@/lib/types';
 
 const badges = [
   { name: 'First Contribution', icon: Award },
@@ -24,9 +24,11 @@ interface UserProfileClientPageProps {
   user: User;
   userProjects: Project[];
   isCurrentUserProfile: boolean;
+  allLearningPaths: LearningPath[];
+  allProjectPathLinks: ProjectPathLink[];
 }
 
-export default function UserProfilePageClient({ user, userProjects, isCurrentUserProfile }: UserProfileClientPageProps) {
+export default function UserProfilePageClient({ user, userProjects, isCurrentUserProfile, allLearningPaths, allProjectPathLinks }: UserProfileClientPageProps) {
   const hasContributed = userProjects.length > 0;
 
   return (
@@ -114,7 +116,12 @@ export default function UserProfilePageClient({ user, userProjects, isCurrentUse
             {hasContributed ? (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {userProjects.map(project => (
-                  <ProjectCard key={project.id} project={project} />
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    allLearningPaths={allLearningPaths} 
+                    allProjectPathLinks={allProjectPathLinks} 
+                  />
                 ))}
               </div>
             ) : (
