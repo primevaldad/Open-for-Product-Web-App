@@ -35,7 +35,8 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
     return { success: true };
   } catch (error: any) {
     console.error("[AUTH_ACTION_TRACE] Login Server Action Error:", error.message);
-    return { success: false, error: error.message || "Failed to create session." };
+    // Return the specific error message from the catch block to the client.
+    return { success: false, error: error.message || "An unknown error occurred while creating the session." };
   }
 }
 
