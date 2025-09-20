@@ -29,7 +29,7 @@ export default function ProjectCard({
     allLearningPaths, 
     suggestionText 
 }: ProjectCardProps) {
-  const [teamMembers, setTeamMembers] = useState<User[]>([]);
+  const [teamMembers, setTeamMembers] = useState<(User & { role: string })[]>([]);
 
   const displayTags = project.tags || [];
 
@@ -41,17 +41,32 @@ export default function ProjectCard({
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
-      const members = await Promise.all(project.team.map(member => findUserById(member.userId)));
-      setTeamMembers(members.filter((m): m is User => !!m));
+      const members = await Promise.all(
+        project.team.map(async (teamMember) => {
+          const user = await findUserById(teamMember.userId);
+          if (user) {
+            return { ...user, role: teamMember.role };
+          }
+          return null;
+        })
+      );
+      setTeamMembers(members.filter((m): m is User & { role: string } => !!m));
     };
 
     if (project.team) {
         fetchTeamMembers();
     }
   }, [project.team]);
+  
+  const sortedTeamMembers = [...teamMembers].sort((a, b) => {
+    const roleOrder = { lead: 0, contributor: 1, participant: 2 };
+    const aRole = roleOrder[a.role] ?? 99;
+    const bRole = roleOrder[b.role] ?? 99;
+    return aRole - bRole;
+  });
 
   return (
-    <Card className={cn("flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1", className)}>
+    <Card className={cn("flex flex-col transition-all hover:shadow-lg hover:-translate-y-1", className)}>
       <CardHeader className="p-4">
         {/* Display the AI suggestion if it exists */}
         {suggestionText && (
@@ -108,17 +123,31 @@ export default function ProjectCard({
         </div>
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4 mt-auto">
-        <div className="flex -space-x-2">
-          {teamMembers.map((member) => (
+        <div className="flex items-end -space-x-2">
+          {sortedTeamMembers
+            .map((member) => (
             <TooltipProvider key={member.id}>
               <Tooltip>
-                <TooltipTrigger>
-                  <Avatar className="h-8 w-8 border-2 border-background">
+                <TooltipTrigger asChild>
+                  <Link href={`/profile/${member.id}`}>
+                    <Avatar className={cn(
+                        "border-2 border-background h-8 w-8",
+                        {
+                            'h-10 w-10 opacity-100': member.role === 'lead',
+                            'opacity-70': member.role === 'contributor',
+                            'opacity-50': member.role === 'participant',
+                        }
+                    )}>
                     <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person portrait" />
                     <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                   </Avatar>
+                  </Link>
                 </TooltipTrigger>
-                <TooltipContent><p>{member.name}</p></TooltipContent>
+                <TooltipContent>
+                  <p>
+                    {member.name} - {member.role}
+                  </p>
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           ))}
@@ -128,7 +157,7 @@ export default function ProjectCard({
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger>
-                            <Badge variant="secondary" className="flex items-center gap-1.5">
+                            <Badge variant={"secondary"} className="flex items-center gap-1.5">
                                 <BookOpen className="h-4 w-4" />
                                 {recommendedPaths.length}
                             </Badge>
