@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -198,7 +197,7 @@ export default function ProjectDetailClientPage({
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mx-auto max-w-7xl">
             <Tabs defaultValue="overview">
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4 flex items-center justify-between">
                     <TabsList>
                       <TabsTrigger value="overview">Overview</TabsTrigger>
                       <TabsTrigger value="tasks">Tasks</TabsTrigger>
@@ -441,3 +440,5 @@ export default function ProjectDetailClientPage({
       </SidebarInset>
   )
 }
+
+    
