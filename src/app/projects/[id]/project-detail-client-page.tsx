@@ -196,7 +196,7 @@ export default function ProjectDetailClientPage({
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="mx-auto max-w-7xl">
             <Tabs defaultValue="overview">
                 <div className="flex items-center justify-between mb-4">
                     <TabsList>
