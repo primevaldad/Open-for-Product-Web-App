@@ -32,10 +32,14 @@ export async function createSession(idToken: string): Promise<string> {
     expiresIn: SESSION_DURATION_MS,
   });
 
+  // Conditionally set sameSite attribute for Firebase preview iFrame
+  const sameSite = process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax';
+
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
+    sameSite,
     maxAge: SESSION_DURATION_MS,
     path: '/',
   });
