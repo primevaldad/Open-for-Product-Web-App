@@ -9,6 +9,8 @@ import type { User } from './types';
 const SESSION_COOKIE_NAME = '__session';
 const SESSION_DURATION_MS = 60 * 60 * 24 * 5 * 1000; // 5 days
 
+const IS_PROD = process.env.NODE_ENV === 'production';
+
 // --- PUBLIC API ---
 
 /**
@@ -31,13 +33,13 @@ export async function createSession(idToken: string): Promise<string> {
     expiresIn: SESSION_DURATION_MS,
   });
 
-  // Conditionally set sameSite attribute for Firebase preview iFrame
-  const sameSite = process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax';
+  // Conditionally set cookie attributes
+  const sameSite = IS_PROD ? 'lax' : 'none';
 
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
     httpOnly: true,
-    secure: true,
+    secure: IS_PROD, // only secure in production
     sameSite,
     maxAge: SESSION_DURATION_MS,
     path: '/',
@@ -63,7 +65,7 @@ export async function clearSession(): Promise<void> {
     try {
       const decodedClaims = await adminAuth.verifySessionCookie(
         sessionCookieValue,
-        true
+        IS_PROD // revoke check only in prod
       );
       await adminAuth.revokeRefreshTokens(decodedClaims.sub);
       console.log(`[AUTH_TRACE] Revoked tokens for UID: ${decodedClaims.sub}`);
@@ -96,7 +98,7 @@ export async function getCurrentUser(): Promise<User | null> {
     const adminAuth = getAuth(adminApp);
     const decodedClaims = await adminAuth.verifySessionCookie(
       sessionCookie.value,
-      true
+      IS_PROD // check revoked only in prod
     );
     console.log(`[AUTH_TRACE] Session cookie verified for UID: ${decodedClaims.uid}`);
 
