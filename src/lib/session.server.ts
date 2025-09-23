@@ -1,5 +1,5 @@
 
-import 'server-only';
+'use server';
 import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from './firebase.server';
