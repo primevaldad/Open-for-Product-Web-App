@@ -1,3 +1,4 @@
+
 'use server';
 import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
@@ -39,7 +40,7 @@ export async function createSession(idToken: string): Promise<string> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
     httpOnly: true,
-    secure: IS_PROD, // only secure in production
+    secure: true, // Always true, as dev environments now use HTTPS
     sameSite,
     maxAge: SESSION_DURATION_MS,
     path: '/',

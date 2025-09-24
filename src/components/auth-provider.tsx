@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -39,12 +40,34 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
     // This is useful for cases like signup or logout which happen entirely on the client.
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
+            console.log('[CLIENT_AUTH_TRACE] onAuthStateChanged fired. User is present.');
+            // When a user logs in on the client, get their ID token
+            const idToken = await firebaseUser.getIdToken(true);
+            console.log('[CLIENT_AUTH_TRACE] ID Token retrieved. Sending to server...');
+            // and send it to the server to create a session cookie.
+            const response = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken }),
+            });
+
+            if (response.ok) {
+                console.log('[CLIENT_AUTH_TRACE] Server responded OK. Session should be created.');
+            } else {
+                console.error('[CLIENT_AUTH_TRACE] Server responded with an error:', await response.text());
+            }
+
             // If Firebase gives us a user, we fetch our detailed user profile from our database.
             // Note: In a real app, you might want to handle the case where findUserById returns undefined.
             const appUser = await findUserById(firebaseUser.uid);
             setCurrentUser(appUser || null);
         } else {
-            // If the user logs out on the client, we clear the user state.
+            console.log('[CLIENT_AUTH_TRACE] onAuthStateChanged fired. User is NOT present.');
+            // If the user logs out on the client, we must clear the server session.
+            await fetch('/api/auth/session', { method: 'DELETE' });
+            console.log('[CLIENT_AUTH_TRACE] Sent request to delete server session.');
+            
+            // Clear the user state in the context.
             setCurrentUser(null);
         }
         setLoading(false);
