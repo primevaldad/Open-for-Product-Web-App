@@ -62,7 +62,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         </SidebarMenuItem>
                     ))}
                     <SidebarMenuItem>
-                        <Link href="/profile">
+                        <Link href={`/profile/${user.id}`}>
                             <SidebarMenuButton isActive={pathname.startsWith('/profile')}>
                                 <Avatar className="size-5">
                                     <AvatarImage src={user.avatarUrl} alt={user.name} />
