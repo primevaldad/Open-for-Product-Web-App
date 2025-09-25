@@ -5,67 +5,67 @@
 
 @layer base {
   :root {
-    /* New Open for Product Palette - Light Theme */
-    --background: 0 0% 100%; /* open-surface: #ffffff */
-    --foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    /* Open for Product Blueprint Palette - Light Theme */
+    --background: 0 0% 100%; /* White */
+    --foreground: 240 10% 3.9%; /* Default */
 
-    --card: 169 75% 93%; /* open-bg-teal: #E0F8F4 */
-    --card-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --card: 170 75% 92%; /* Light Teal - #E0F8F4 */
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 0 0% 100%; /* open-surface: #ffffff */
-    --popover-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 224 76% 58%; /* open-primary-500: #356fe6 (adjusted) */
-    --primary-foreground: 0 0% 100%; /* White text on primary */
+    --primary: 172 67% 40%; /* Vibrant Teal - #23BDA8 */
+    --primary-foreground: 0 0% 100%; /* White */
 
-    --secondary: 0 0% 96.1%; /* open-gray-100: #f5f5f5 */
-    --secondary-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --secondary: 240 4.8% 95.9%; /* Default */
+    --secondary-foreground: 240 10% 3.9%;
 
-    --muted: 0 0% 96.1%; /* open-gray-100: #f5f5f5 */
-    --muted-foreground: 0 0% 45.1%; /* open-gray-500: #737373 */
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 120 73% 92%; /* open-accent-success-100: #daf5da */
-    --accent-foreground: 120 51% 20%; /* Custom dark green for text */
+    --accent: 154 63% 77%; /* Seafoam Green - #A2E8C9 */
+    --accent-foreground: 172 67% 20%; /* Dark Teal for contrast */
 
-    --destructive: 0 84.2% 60.2%; /* Default Red */
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 89.8%; /* open-gray-200: #e5e5e5 */
-    --input: 0 0% 89.8%; /* open-gray-200: #e5e5e5 */
-    --ring: 224 76% 58%; /* open-primary-500 */
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 172 67% 40%; /* Vibrant Teal */
 
     --radius: 0.5rem;
   }
 
   .dark {
-    /* New Open for Product Palette - Dark Theme */
-    --background: 0 0% 10%; /* open-gray-900: #1a1a1a */
-    --foreground: 0 0% 98%; /* open-gray-100 (near white) */
+    /* Open for Product Blueprint Palette - Dark Theme */
+    --background: 240 10% 3.9%; /* Default Dark */
+    --foreground: 0 0% 98%;
 
-    --card: 172 65% 10%; /* Dark Teal */
+    --card: 172 67% 10%; /* Dark Teal */
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 10%;
+    --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 224 76% 58%; /* open-primary-500 */
+    --primary: 172 67% 40%; /* Vibrant Teal */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 14.9%; /* open-gray-800: #262626 */
+    --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 14.9%; /* open-gray-800: #262626 */
-    --muted-foreground: 0 0% 63.9%; /* open-gray-400: #a3a3a3 */
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 224 76% 58%; /* Using primary for accent in dark mode */
-    --accent-foreground: 0 0% 100%;
+    --accent: 154 63% 77%; /* Seafoam Green */
+    --accent-foreground: 172 67% 10%; /* Dark Teal for contrast */
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 14.9%; /* open-gray-800: #262626 */
-    --input: 0 0% 14.9%;
-    --ring: 224 76% 58%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 172 67% 40%;
   }
 }
 
