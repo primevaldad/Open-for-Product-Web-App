@@ -24,6 +24,11 @@ import { Separator } from '@/components/ui/separator';
 import { TagSelector } from '@/components/tags/tag-selector';
 import { useTransition } from 'react';
 
+<<<<<<< HEAD
+=======
+// **TARGETED CHANGE START**
+// Updated schema to include optional password fields and a refinement to ensure they match.
+>>>>>>> display
 const profileFormSchema = z.object({
   name: z.string().min(2, {
     message: 'Name must be at least 2 characters.',
@@ -31,7 +36,18 @@ const profileFormSchema = z.object({
   bio: z.string().max(160).optional(),
   interests: z.array(z.string()).optional(),
   location: z.string().optional(),
+<<<<<<< HEAD
 });
+=======
+  email: z.string().email(),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }).optional().or(z.literal('')),
+  passwordConfirmation: z.string().optional(),
+}).refine(data => data.password === data.passwordConfirmation, {
+    message: "Passwords do not match",
+    path: ["passwordConfirmation"],
+});
+// **TARGETED CHANGE END**
+>>>>>>> display
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
@@ -40,7 +56,10 @@ interface SettingsFormProps {
   updateUserSettings: typeof updateUserSettings;
 }
 
+<<<<<<< HEAD
 // This is the Client Component that now contains all the UI logic.
+=======
+>>>>>>> display
 export default function SettingsForm({ currentUser, updateUserSettings }: SettingsFormProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -51,12 +70,33 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
       bio: currentUser.bio || '',
       interests: currentUser.interests || [],
       location: currentUser.location || '',
+<<<<<<< HEAD
+=======
+      email: currentUser.email || '',
+      // **TARGETED CHANGE START**
+      // Ensure password fields are always initialized as blank for security.
+      password: '',
+      passwordConfirmation: '',
+      // **TARGETED CHANGE END**
+>>>>>>> display
     },
   });
 
   function onSubmit(data: ProfileFormValues) {
     startTransition(async () => {
+<<<<<<< HEAD
       const result = await updateUserSettings(data);
+=======
+        // **TARGETED CHANGE START**
+        // Only include the password in the data sent to the server if it has been changed.
+        const { passwordConfirmation, ...updateData } = data;
+        if (!updateData.password) {
+            delete updateData.password;
+        }
+        // **TARGETED CHANGE END**
+
+      const result = await updateUserSettings(updateData);
+>>>>>>> display
       if (result.error) {
         toast({
           variant: 'destructive',
@@ -67,6 +107,11 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
         toast({
           title: 'Settings updated!',
         });
+<<<<<<< HEAD
+=======
+        // Reset password fields after successful submission
+        form.reset({ ...form.getValues(), password: '', passwordConfirmation: '' });
+>>>>>>> display
       }
     });
   }
@@ -162,6 +207,66 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
             </Form>
         </CardContent>
       </Card>
+<<<<<<< HEAD
+=======
+
+      <Card>
+        <CardHeader>
+            <CardTitle>Account</CardTitle>
+            <CardDescription>
+            Update your account settings. Leave password fields blank to keep your current password.
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                    <Input type="email" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                        <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>New Password</FormLabel>
+                                <FormControl>
+                                    <Input type="password" {...field} placeholder="••••••••" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="passwordConfirmation"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Confirm New Password</FormLabel>
+                                <FormControl>
+                                    <Input type="password" {...field} placeholder="••••••••" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="submit" disabled={isPending}>
+                        {isPending ? "Updating..." : "Update account"}
+                    </Button>
+                </form>
+            </Form>
+        </CardContent>
+      </Card>
+>>>>>>> display
       
     </div>
   );

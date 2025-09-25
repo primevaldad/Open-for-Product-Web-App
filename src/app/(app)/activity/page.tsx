@@ -127,6 +127,7 @@ export default async function ActivityPage() {
 
 
   return (
+<<<<<<< HEAD
         <ActivityClientPage
             myTasks={myTasks}
             completedModulesData={completedModulesData}
@@ -135,5 +136,20 @@ export default async function ActivityPage() {
             updateTask={updateTask}
             deleteTask={deleteTask}
         />
+=======
+    <div className="space-y-6">
+        <h1 className="text-2xl font-bold">My Activity</h1>
+        <div className="grid md:grid-cols-2 gap-6">
+            <ActivityClientPage
+                myTasks={myTasks}
+                completedModulesData={completedModulesData}
+                projects={projects}
+                allUsers={allUsers}
+                updateTask={updateTask}
+                deleteTask={deleteTask}
+            />
+        </div>
+    </div>
+>>>>>>> display
   );
 }

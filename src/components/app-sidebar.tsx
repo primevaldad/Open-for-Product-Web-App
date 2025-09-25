@@ -45,7 +45,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <Sidebar className="border-r" collapsible="icon">
             <SidebarHeader className="p-4">
                 <Link href="/home" className="flex items-center gap-3">
-                    <Image src="/logo.png" alt="Open for Product Logo" width={28} height={28} className="shrink-0" />
+                    <Image src="/logo.png" alt="Open for Product Logo" width={100} height={100} className="shrink-0" />
                     <span className="text-lg font-semibold text-sidebar-foreground">Open for Product</span>
                 </Link>
             </SidebarHeader>

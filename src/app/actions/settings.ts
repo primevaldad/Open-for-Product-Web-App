@@ -3,7 +3,9 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserById, updateUser as updateUserInDb } from '@/lib/data.server'; // Corrected import
+import { findUserById, updateUser as updateUserInDb } from '@/lib/data.server';
+import { adminApp } from '@/lib/firebase.server';
+import { getAuth } from 'firebase-admin/auth';
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -43,27 +45,33 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
     };
   }
 
-  const { id, name, bio, avatarDataUrl, email } = validatedFields.data;
+  const { id, name, bio, avatarDataUrl, email, password } = validatedFields.data;
 
-  const user = await findUserById(id); // findUserById is async
-  if (!user) {
-      return { success: false, error: "User not found." };
+  try {
+    const user = await findUserById(id);
+    if (!user) {
+        return { success: false, error: "User not found." };
+    }
+
+    user.name = name;
+    user.bio = bio;
+    user.email = email;
+
+    if (avatarDataUrl) {
+      user.avatarUrl = avatarDataUrl;
+    }
+
+    await updateUserInDb(user);
+
+    if (password) {
+        await getAuth(adminApp).updateUser(id, { password });
+    }
+
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "An unexpected error occurred." };
   }
-
-  user.name = name;
-  user.bio = bio;
-  user.email = email;
-
-  if (avatarDataUrl) {
-    user.avatarUrl = avatarDataUrl;
-  }
-
-  await updateUserInDb(user); // updateUserInDb is async
-
-  // Revalidate the entire app to ensure global user data is fresh
-  revalidatePath('/', 'layout');
-
-  return { success: true };
 }
 
 export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSchema>) {
@@ -75,7 +83,7 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
 
   const { id, name, bio, interests } = validatedFields.data;
 
-  const user = await findUserById(id); // findUserById is async
+  const user = await findUserById(id);
   if (!user) {
     return { success: false, error: "User not found." };
   }
@@ -85,9 +93,8 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   user.interests = interests;
   user.onboarded = true;
 
-  await updateUserInDb(user); // updateUserInDb is async
+  await updateUserInDb(user);
 
-  // Revalidate the entire app to ensure global user data is fresh
   revalidatePath('/', 'layout');
 
   return { success: true };

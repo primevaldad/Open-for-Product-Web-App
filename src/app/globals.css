@@ -1,4 +1,3 @@
-@import "@uiw/react-md-editor/markdown-editor.css";
 
 @tailwind base;
 @tailwind components;
@@ -6,76 +5,67 @@
 
 @layer base {
   :root {
-    --background: 206 88% 55%;      /* celestial-blue */
-    --foreground: 314 53% 21%;      /* palatinate */
-    --card: 25 100% 98%;           /* slightly whiter seashell for cards */
-    --card-foreground: 314 53% 21%; /* palatinate */
-    --popover: 25 100% 98%;        /* slightly whiter seashell for popovers */
-    --popover-foreground: 314 53% 21%; /* palatinate */
-    --primary: 206 88% 55%;         /* celestial-blue */
-    --primary-foreground: 25 100% 98%; /* seashell */
-    --secondary: 163 15% 90%;      /* lighter ash-gray for secondary elements */
-    --secondary-foreground: 314 53% 21%; /* palatinate */
-    --muted: 163 15% 92%;          /* lighter ash-gray */
-    --muted-foreground: 314 53% 45%; /* lighter palatinate */
-    --accent: 29 96% 60%;           /* princeton-orange */
-    --accent-foreground: 314 53% 21%; /* palatinate */
-    --destructive: 0 84.2% 60.2%;
+    /* New Open for Product Palette - Light Theme */
+    --background: 0 0% 100%; /* open-surface: #ffffff */
+    --foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+
+    --card: 169 75% 93%; /* open-bg-teal: #E0F8F4 */
+    --card-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+
+    --popover: 0 0% 100%; /* open-surface: #ffffff */
+    --popover-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+
+    --primary: 224 76% 58%; /* open-primary-500: #356fe6 (adjusted) */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
+
+    --secondary: 0 0% 96.1%; /* open-gray-100: #f5f5f5 */
+    --secondary-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+
+    --muted: 0 0% 96.1%; /* open-gray-100: #f5f5f5 */
+    --muted-foreground: 0 0% 45.1%; /* open-gray-500: #737373 */
+
+    --accent: 120 73% 92%; /* open-accent-success-100: #daf5da */
+    --accent-foreground: 120 51% 20%; /* Custom dark green for text */
+
+    --destructive: 0 84.2% 60.2%; /* Default Red */
     --destructive-foreground: 0 0% 98%;
-    --border: 163 15% 85%;          /* light ash-gray */
-    --input: 163 15% 90%;           /* a lighter ash-gray for inputs */
-    --ring: 206 88% 55%;              /* celestial-blue */
-    --radius: 0.8rem;
 
-    /* Charts */
-    --chart-1: 206 88% 55%; /* celestial-blue */
-    --chart-2: 29 96% 60%; /* princeton-orange */
-    --chart-3: 163 15% 60%; /* medium ash-gray */
-    --chart-4: 314 53% 45%; /* medium palatinate */
-    --chart-5: 206 88% 75%; /* light celestial-blue */
+    --border: 0 0% 89.8%; /* open-gray-200: #e5e5e5 */
+    --input: 0 0% 89.8%; /* open-gray-200: #e5e5e5 */
+    --ring: 224 76% 58%; /* open-primary-500 */
 
-    /* Sidebar Theme */
-    --sidebar-background: 314 53% 21%; /* palatinate */
-    --sidebar-foreground: 25 100% 96%; /* seashell */
-    --sidebar-primary: 206 88% 65%;    /* slightly lighter celestial-blue */
-    --sidebar-primary-foreground: 314 53% 15%; /* darker palatinate for text on primary */
-    --sidebar-accent: 314 40% 31%;     /* lighter palatinate for hover */
-    --sidebar-accent-foreground: 25 100% 98%; /* seashell */
-    --sidebar-border: 314 53% 25%;     /* slightly lighter palatinate for border */
-    --sidebar-ring: 206 88% 55%;      /* celestial-blue */
+    --radius: 0.5rem;
   }
 
   .dark {
-    /* Dark Mode Theme using the new palette */
-    --background: 314 53% 15%;      /* Dark Palatinate */
-    --foreground: 25 100% 96%;      /* Seashell */
-    --card: 314 53% 21%;           /* Palatinate */
-    --card-foreground: 25 100% 96%; /* Seashell */
-    --popover: 314 53% 15%;        /* Dark Palatinate */
-    --popover-foreground: 25 100% 96%; /* Seashell */
-    --primary: 206 88% 60%;         /* Lighter Celestial Blue */
-    --primary-foreground: 314 53% 15%; /* Dark Palatinate */
-    --secondary: 163 15% 30%;      /* Dark Ash Gray */
-    --secondary-foreground: 25 100% 96%; /* Seashell */
-    --muted: 163 15% 25%;          /* Darker Ash Gray */
-    --muted-foreground: 163 15% 70%; /* Light Ash Gray */
-    --accent: 29 96% 60%;           /* Princeton Orange */
-    --accent-foreground: 314 53% 15%; /* Dark Palatinate */
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 163 15% 40%;          /* Medium Ash Gray */
-    --input: 163 15% 25%;           /* Darker Ash Gray */
-    --ring: 206 88% 60%;
+    /* New Open for Product Palette - Dark Theme */
+    --background: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --foreground: 0 0% 98%; /* open-gray-100 (near white) */
 
-    /* Dark Mode Sidebar */
-    --sidebar-background: 314 53% 12%; /* Even Darker Palatinate */
-    --sidebar-foreground: 25 100% 96%; /* seashell */
-    --sidebar-primary: 206 88% 65%;    /* slightly lighter celestial-blue */
-    --sidebar-primary-foreground: 314 53% 10%;
-    --sidebar-accent: 314 40% 25%;
-    --sidebar-accent-foreground: 25 100% 98%;
-    --sidebar-border: 314 53% 20%;
-    --sidebar-ring: 206 88% 55%;
+    --card: 172 65% 10%; /* Dark Teal */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 224 76% 58%; /* open-primary-500 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 14.9%; /* open-gray-800: #262626 */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 14.9%; /* open-gray-800: #262626 */
+    --muted-foreground: 0 0% 63.9%; /* open-gray-400: #a3a3a3 */
+
+    --accent: 224 76% 58%; /* Using primary for accent in dark mode */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 14.9%; /* open-gray-800: #262626 */
+    --input: 0 0% 14.9%;
+    --ring: 224 76% 58%;
   }
 }
 
