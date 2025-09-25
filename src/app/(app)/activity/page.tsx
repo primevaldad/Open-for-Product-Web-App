@@ -3,7 +3,7 @@ import type { User, Project, Task, LearningPath, UserLearningProgress, Module, T
 import { getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import ActivityClientPage from "./activity-client-page";
-import { updateTask, deleteTask } from "../actions/projects";
+import { updateTask, deleteTask } from "@/app/actions/projects";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
 
