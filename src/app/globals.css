@@ -5,44 +5,58 @@
 
 @layer base {
   :root {
-    /* New Open for Product Palette - Light Theme */
-    --background: 0 0% 100%; /* open-surface: #ffffff */
-    --foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    /* Open for Product – Light Theme */
 
-    --card: 0 0% 100%; /* open-surface: #ffffff */
-    --card-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --background: 0 0% 100%; /* surface: white */
+    --foreground: 0 0% 10%;  /* gray-900 */
 
-    --popover: 0 0% 100%; /* open-surface: #ffffff */
-    --popover-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --inverse: 0 0% 0%;      /* true black */
+    --inverse-foreground: 0 0% 100%; /* white */
 
-    --primary: 224 76% 58%; /* open-primary-500: #356fe6 (adjusted) */
-    --primary-foreground: 0 0% 100%; /* White text on primary */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
 
-    --secondary: 0 0% 96.1%; /* open-gray-100: #f5f5f5 */
-    --secondary-foreground: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
 
-    --muted: 0 0% 96.1%; /* open-gray-100: #f5f5f5 */
-    --muted-foreground: 0 0% 45.1%; /* open-gray-500: #737373 */
+    --primary: 224 76% 58%;  /* open-primary-500 (#356fe6) */
+    --primary-foreground: 0 0% 100%;
 
-    --accent: 120 73% 92%; /* open-accent-success-100: #daf5da */
-    --accent-foreground: 120 51% 20%; /* Custom dark green for text */
+    --secondary: 0 0% 96.1%; /* gray-100 */
+    --secondary-foreground: 0 0% 10%;
 
-    --destructive: 0 84.2% 60.2%; /* Default Red */
+    --muted: 0 0% 96.1%; 
+    --muted-foreground: 0 0% 45.1%; /* gray-500 */
+
+    --accent: 120 73% 92%;  /* green-100 (#daf5da) */
+    --accent-foreground: 120 51% 20%; /* dark green */
+
+    --destructive: 0 84.2% 60.2%; /* red-500 */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 89.8%; /* open-gray-200: #e5e5e5 */
-    --input: 0 0% 89.8%; /* open-gray-200: #e5e5e5 */
-    --ring: 224 76% 58%; /* open-primary-500 */
+    --border: 0 0% 89.8%; /* gray-200 */
+    --input: 0 0% 89.8%;
+    --ring: 224 76% 58%; /* primary-500 */
+
+    --chart-1: 224 76% 58%;  /* primary */
+    --chart-2: 120 51% 40%;  /* accent-600 green */
+    --chart-3: 29 96% 56%;   /* orange highlight */
+    --chart-4: 283 68% 40%;  /* mauve/purple */
+    --chart-5: 206 88% 55%;  /* lighter blue */
 
     --radius: 0.5rem;
   }
 
   .dark {
-    /* New Open for Product Palette - Dark Theme */
-    --background: 0 0% 10%; /* open-gray-900: #1a1a1a */
-    --foreground: 0 0% 98%; /* open-gray-100 (near white) */
+    /* Open for Product – Dark Theme */
 
-    --card: 0 0% 10%; /* open-gray-900: #1a1a1a */
+    --background: 0 0% 10%; /* gray-900 */
+    --foreground: 0 0% 98%; /* near white */
+
+    --inverse: 0 0% 100%; /* true white */
+    --inverse-foreground: 0 0% 0%; /* true black */
+
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 98%;
 
     --popover: 0 0% 10%;
@@ -51,21 +65,27 @@
     --primary: 224 76% 58%; /* open-primary-500 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 14.9%; /* open-gray-800: #262626 */
+    --secondary: 0 0% 14.9%; /* gray-800 */
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 14.9%; /* open-gray-800: #262626 */
-    --muted-foreground: 0 0% 63.9%; /* open-gray-400: #a3a3a3 */
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%; /* gray-400 */
 
-    --accent: 224 76% 58%; /* Using primary for accent in dark mode */
+    --accent: 120 51% 40%; /* green-600 (#2aa32a) – distinct from primary */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 30.6%; /* dark red */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 14.9%; /* open-gray-800: #262626 */
+    --border: 0 0% 14.9%; /* gray-800 */
     --input: 0 0% 14.9%;
-    --ring: 224 76% 58%;
+    --ring: 224 76% 58%; /* primary */
+    
+    --chart-1: 224 76% 58%; /* primary */
+    --chart-2: 120 51% 50%; /* accent */
+    --chart-3: 29 96% 56%;  /* orange */
+    --chart-4: 283 68% 50%; /* purple */
+    --chart-5: 206 88% 65%; /* lighter blue */
   }
 }
 
