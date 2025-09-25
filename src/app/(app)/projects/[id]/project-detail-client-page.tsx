@@ -16,13 +16,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from 'zod';
 import ReactMarkdown from 'react-markdown';
-import { DndContext, useDraggable, useDroppable, DragOverlay } from '@dnd-kit/core';
-import type { UniqueIdentifier, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { DndContext, DragOverlay, closestCorners, useDroppable } from '@dnd-kit/core';
+import type { UniqueIdentifier, DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,9 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { formatDistanceToNow } from 'date-fns';
-// **TARGETED CHANGE START**
 import type { addDiscussionComment, addTeamMember, joinProject, addTask, updateTask, deleteTask } from "@/app/actions/projects";
-// **TARGETED CHANGE END**
 import { cn } from "@/lib/utils";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
@@ -62,73 +63,88 @@ type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
 type HydratedDiscussion = Discussion & { user: User };
 
 // Reusable Task Card component for both draggable items and the overlay
-function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating?: boolean, isDragging?: boolean }) {
+function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, props?: any }) {
     return (
-        <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>
-            <Card className={cn(
-                "mb-2 bg-card/80 hover:bg-accent cursor-pointer relative",
-                isUpdating && "opacity-50",
-                isDragging && "shadow-lg z-10"
-            )}>
-                 {isUpdating && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-lg">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <div style={style} {...props}>
+            <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>
+                <Card className={cn(
+                    "mb-2 bg-card/80 hover:bg-accent cursor-pointer relative",
+                    isUpdating && "opacity-50",
+                    isDragging && "shadow-lg z-10"
+                )}>
+                    {isUpdating && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-lg">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        </div>
+                    )}
+                    <CardContent className="p-3">
+                    <p className="text-sm font-medium mb-2">{task.title}</p>
+                    <div className="flex items-center justify-between">
+                        {task.assignedTo ? (
+                        <TooltipProvider>
+                            <Tooltip>
+                            <TooltipTrigger>
+                                <Avatar className="h-6 w-6">
+                                <AvatarImage src={task.assignedTo.avatarUrl} alt={task.assignedTo.name} />
+                                <AvatarFallback>{getInitials(task.assignedTo.name)}</AvatarFallback>
+                                </Avatar>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{task.assignedTo.name}</p>
+                            </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        ) : (
+                            <div className="h-6 w-6" />
+                        )}
+                        {task.estimatedHours && (
+                            <Badge variant="outline" className="text-xs">
+                                {task.estimatedHours}h
+                            </Badge>
+                        )}
                     </div>
-                )}
-                <CardContent className="p-3">
-                <p className="text-sm font-medium mb-2">{task.title}</p>
-                <div className="flex items-center justify-between">
-                    {task.assignedTo ? (
-                    <TooltipProvider>
-                        <Tooltip>
-                        <TooltipTrigger>
-                            <Avatar className="h-6 w-6">
-                            <AvatarImage src={task.assignedTo.avatarUrl} alt={task.assignedTo.name} />
-                            <AvatarFallback>{getInitials(task.assignedTo.name)}</AvatarFallback>
-                            </Avatar>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>{task.assignedTo.name}</p>
-                        </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                    ) : (
-                        <div className="h-6 w-6" />
-                    )}
-                    {task.estimatedHours && (
-                        <Badge variant="outline" className="text-xs">
-                            {task.estimatedHours}h
-                        </Badge>
-                    )}
-                </div>
-                </CardContent>
-            </Card>
-        </EditTaskDialog>
+                    </CardContent>
+                </Card>
+            </EditTaskDialog>
+        </div>
     );
 }
 
 
-// Draggable Task Card Component
-function DraggableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating: boolean }) {
-    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+// Sortable Task Card Component
+function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating: boolean }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
         data: { task },
     });
     
     const style = {
-        opacity: isDragging ? 0 : 1,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-             <TaskCard task={task} isTeamMember={isTeamMember} team={team} updateTask={updateTask} deleteTask={deleteTask} isUpdating={isUpdating} />
-        </div>
+        <TaskCard 
+            ref={setNodeRef}
+            style={style}
+            task={task} 
+            isTeamMember={isTeamMember} 
+            team={team} 
+            updateTask={updateTask} 
+            deleteTask={deleteTask} 
+            isUpdating={isUpdating} 
+            isDragging={isDragging}
+            {...attributes} 
+            {...listeners} 
+        />
     );
 }
 
 // Droppable Column Component
 function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, deleteTask, projectId, addTask, updatingTaskId }: { id: UniqueIdentifier, status: TaskStatus, tasks: Task[], isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, projectId: string, addTask: typeof addTask, updatingTaskId: string | null }) {
     const { setNodeRef, isOver } = useDroppable({ id });
+    const taskIds = tasks.map(t => t.id);
 
     return (
         <div ref={setNodeRef} className={cn("bg-muted/50 rounded-lg p-4 transition-colors duration-200", isOver && "bg-primary/10")}>
@@ -143,7 +159,9 @@ function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, de
                 )}
             </div>
             <div className="space-y-2 min-h-[100px]">
-                {tasks.map(task => <DraggableTaskCard key={task.id} task={task} isTeamMember={isTeamMember} team={team} updateTask={updateTask} deleteTask={deleteTask} isUpdating={task.id === updatingTaskId} />)}
+                <SortableContext items={taskIds}>
+                    {tasks.map(task => <SortableTaskCard key={task.id} task={task} isTeamMember={isTeamMember} team={team} updateTask={updateTask} deleteTask={deleteTask} isUpdating={task.id === updatingTaskId} />)}
+                </SortableContext>
             </div>
         </div>
     )
@@ -195,8 +213,8 @@ export default function ProjectDetailClientPage({
   }, [projectTasks]);
 
 
-  const isCurrentUserMember = project.team.some(member => member.user.id === currentUser.id);
-  const isCurrentUserLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead');
+  const isCurrentUserMember = project.team.some(member => member.user && member.user.id === currentUser.id);
+  const isCurrentUserLead = project.team.some(member => member.user && member.user.id === currentUser.id && member.role === 'lead');
 
   const form = useForm<DiscussionFormValues>({
     resolver: zodResolver(DiscussionSchema),
@@ -235,61 +253,100 @@ export default function ProjectDetailClientPage({
     });
   };
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveTask(event.active.data.current?.task);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveTask(null);
-
-    if (over && active.id !== over.id) {
-        const task = active.data.current?.task as Task;
-        const newStatus = over.id as TaskStatus;
-
-        if (task && task.status !== newStatus) {
-            // Store the original state in case we need to revert
-            const originalTasks = tasks;
-            
-            // Optimistically update the UI
-            setTasks(prevTasks => {
-                const taskIndex = prevTasks.findIndex(t => t.id === task.id);
-                if (taskIndex === -1) return prevTasks;
-                const updatedTask = { ...prevTasks[taskIndex], status: newStatus };
-                const newTasks = [...prevTasks];
-                newTasks[taskIndex] = updatedTask;
-                return newTasks;
-            });
-
-            setUpdatingTaskId(task.id);
-
-            // Call the server action in the background
-            startTransition(async () => {
-                const result = await updateTask({ ...task, status: newStatus });
-
-                setUpdatingTaskId(null);
-
-                if (result.error) {
-                    // If the server update fails, revert the UI and show an error
-                    setTasks(originalTasks);
-                    toast({ variant: 'destructive', title: 'Error updating task', description: result.error });
-                } else {
-                    // On success, the optimistic state is correct, just show a confirmation.
-                    toast({ title: 'Task updated!', description: `Task "${task.title}" moved to ${newStatus}.`});
-                }
-            });
-        }
-    }
-  };
-
-
   const taskColumns: { [key in TaskStatus]: Task[] } = {
     'To Do': tasks.filter(t => t.status === 'To Do'),
     'In Progress': tasks.filter(t => t.status === 'In Progress'),
     'Done': tasks.filter(t => t.status === 'Done'),
   }
 
-  const nonMemberUsers = allUsers.filter(user => !project.team.some(member => member.user.id === user.id));
+  const findTaskContainer = useCallback((taskId: string) => {
+    if (taskId in taskColumns) {
+      return taskId as TaskStatus;
+    }
+    const task = tasks.find(t => t.id === taskId);
+    return task?.status;
+  }, [tasks]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+      setActiveTask(event.active.data.current?.task);
+  }, []);
+  
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id.toString();
+    const overId = over.id.toString();
+    const activeContainer = findTaskContainer(activeId);
+    const overContainer = findTaskContainer(overId);
+
+    if (!activeContainer || !overContainer || activeContainer === overContainer) {
+      return;
+    }
+
+    setTasks(previousTasks => {
+      const activeIndex = previousTasks.findIndex(t => t.id === activeId);
+      let overIndex = previousTasks.findIndex(t => t.id === overId);
+
+      // If dropping on a column, find the last item's index in that column
+      if (taskColumns[overContainer as TaskStatus].some(t => t.id === overId)) {
+        overIndex = previousTasks.map(t => t.id).lastIndexOf(overId);
+      }
+     
+      let newTasks = [...previousTasks];
+      newTasks[activeIndex] = { ...newTasks[activeIndex], status: overContainer };
+      
+      return arrayMove(newTasks, activeIndex, overIndex);
+    });
+  }, [findTaskContainer, tasks, taskColumns]);
+
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveTask(null);
+  
+      if (!over) return;
+  
+      const activeId = active.id.toString();
+      const overId = over.id.toString();
+      const activeTask = tasks.find(t => t.id === activeId);
+  
+      if (!activeTask) return;
+  
+      const originalStatus = activeTask.status;
+      const newStatus = findTaskContainer(overId);
+  
+      if (!newStatus) return;
+  
+      if (originalStatus === newStatus) {
+          // It's a sort within the same column
+          const oldIndex = tasks.findIndex(t => t.id === activeId);
+          const newIndex = tasks.findIndex(t => t.id === overId);
+          if (oldIndex !== newIndex) {
+              setTasks(currentTasks => arrayMove(currentTasks, oldIndex, newIndex));
+              // TODO: Save new sort order to the database.
+          }
+      } else {
+          // It's a move to a new column. The UI has already been updated
+          // by handleDragOver. We just need to trigger the server action.
+          const originalTasks = tasks; // Store state before server call
+          setUpdatingTaskId(activeId);
+  
+          startTransition(async () => {
+              const result = await updateTask({ ...activeTask, status: newStatus });
+              setUpdatingTaskId(null);
+              if (result.error) {
+                  setTasks(originalTasks); // Revert on error
+                  toast({ variant: 'destructive', title: 'Error updating task', description: result.error });
+              } else {
+                  toast({ title: 'Task updated!', description: `Task "${activeTask.title}" moved to ${newStatus}.`});
+              }
+          });
+      }
+  }, [tasks, findTaskContainer, updateTask, toast, startTransition]);
+
+
+  const nonMemberUsers = allUsers.filter(user => !project.team.some(member => member.user && member.user.id === user.id));
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -334,7 +391,6 @@ export default function ProjectDetailClientPage({
                           <Users className="h-5 w-5 text-primary flex-shrink-0" />
                           <div className="flex -space-x-2">
                               {project.team.map(member => (
-                                // **TARGETED CHANGE START**
                                 member.user && (
                                 <Tooltip key={member.user.id}>
                                   <TooltipTrigger asChild>
@@ -351,7 +407,6 @@ export default function ProjectDetailClientPage({
                                   </TooltipContent>
                                 </Tooltip>
                                 )
-                                // **TARGETED CHANGE END**
                               ))}
                           </div>
                           {isCurrentUserLead && (
@@ -380,7 +435,7 @@ export default function ProjectDetailClientPage({
           </TabsContent>
 
           <TabsContent value="tasks">
-              <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragOver={handleDragOver} collisionDetection={closestCorners}>
                 <Card>
                   <CardHeader><CardTitle>Task Board</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
