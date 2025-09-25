@@ -16,14 +16,16 @@ import { findUserById } from '@/lib/data.client';
 
 interface ProjectCardProps {
   project: Project;
+  currentUser?: User;
   className?: string;
   allProjectPathLinks: ProjectPathLink[];
   allLearningPaths: LearningPath[];
-  suggestionText?: string; // Add the new optional prop
+  suggestionText?: string;
 }
 
 export default function ProjectCard({ 
     project, 
+    currentUser,
     className, 
     allProjectPathLinks, 
     allLearningPaths, 
@@ -31,9 +33,10 @@ export default function ProjectCard({
 }: ProjectCardProps) {
   const [teamMembers, setTeamMembers] = useState<(User & { role: string })[]>([]);
 
+  const isLead = currentUser ? project.team.some(member => member.userId === currentUser.id && member.role === 'lead') : false;
+
   const displayTags = project.tags || [];
 
-  // Find recommended paths for this specific project
   const recommendedPathLinks = allProjectPathLinks.filter(link => link.projectId === project.id);
   const recommendedPaths = recommendedPathLinks
       .map(link => allLearningPaths.find(p => p.id === link.learningPathId))
@@ -60,15 +63,18 @@ export default function ProjectCard({
   
   const sortedTeamMembers = [...teamMembers].sort((a, b) => {
     const roleOrder = { lead: 0, contributor: 1, participant: 2 };
-    const aRole = roleOrder[a.role] ?? 99;
-    const bRole = roleOrder[b.role] ?? 99;
+    const aRole = roleOrder[a.role as keyof typeof roleOrder] ?? 99;
+    const bRole = roleOrder[b.role as keyof typeof roleOrder] ?? 99;
     return aRole - bRole;
   });
 
   return (
-    <Card className={cn("flex flex-col transition-all hover:shadow-lg hover:-translate-y-1", className)}>
+    <Card className={cn(
+        "flex flex-col transition-all hover:shadow-lg hover:-translate-y-1",
+        isLead && "border-2 border-yellow-500",
+        className
+    )}>
       <CardHeader className="p-4">
-        {/* Display the AI suggestion if it exists */}
         {suggestionText && (
           <div className="mb-3 flex items-start gap-2.5 text-sm text-primary-foreground bg-primary/90 p-3 rounded-md shadow-sm">
             <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
@@ -132,6 +138,7 @@ export default function ProjectCard({
                   <Link href={`/profile/${member.id}`}>
                     <Avatar className={cn(
                         "border-2 border-background h-8 w-8",
+                        member.role === 'lead' && "border-yellow-500",
                         {
                             'h-10 w-10 opacity-100': member.role === 'lead',
                             'opacity-70': member.role === 'contributor',

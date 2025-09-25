@@ -395,7 +395,10 @@ export default function ProjectDetailClientPage({
                                 <Tooltip key={member.user.id}>
                                   <TooltipTrigger asChild>
                                       <Link href={`/profile/${member.user.id}`}>
-                                          <Avatar className="h-8 w-8 border-2 border-background">
+                                          <Avatar className={cn(
+                                              "h-8 w-8 border-2 border-background",
+                                              member.role === 'lead' && "border-yellow-500"
+                                          )}>
                                               <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
                                               <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
                                           </Avatar>

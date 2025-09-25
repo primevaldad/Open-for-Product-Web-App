@@ -89,6 +89,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
           <ProjectCard 
             key={project.id} 
             project={project} 
+            currentUser={currentUser}
             allProjectPathLinks={allProjectPathLinks}
             allLearningPaths={allLearningPaths}
           />
