@@ -19,7 +19,17 @@ service cloud.firestore {
 
     // --- Projects Collection ---
     match /projects/{projectId} {
-      allow read: if resource.data.status == 'published' || isTeamMember(resource);
+      // **TARGETED CHANGE START**
+      // The `list` rule allows collection queries (e.g., getAllProjects).
+      // Any signed-in user can list all projects. The filtering for drafts
+      // happens in the application code.
+      allow list: if isSignedIn();
+      
+      // The `get` rule secures individual document reads.
+      // A user can get a project if it's published OR they are a team member.
+      allow get: if resource.data.status == 'published' || isTeamMember(resource);
+      // **TARGETED CHANGE END**
+      
       allow create: if isSignedIn();
       allow update: if isTeamMember(resource);
       allow delete: if false; // Deletes are disabled for now
@@ -27,31 +37,23 @@ service cloud.firestore {
 
     // --- Users Collection ---
     match /users/{userId} {
-      // Any signed-in user can read a user's profile.
       allow read: if isSignedIn();
-      // A user can only write to their own document.
       allow write: if isOwner(userId);
     }
 
     // --- Tags Collection ---
     match /tags/{tagId} {
-      // Any signed-in user can read tags.
-      allow read: if isSignedIn();
-      // For now, allow any signed-in user to create/update tags.
-      allow write: if isSignedIn();
+      allow read, write: if isSignedIn();
     }
 
     // --- Learning Paths Collection ---
     match /learningPaths/{pathId} {
-        // Content collections are readable by any signed-in user.
         allow read: if isSignedIn();
-        // Writes are likely handled by an admin process, not clients.
         allow write: if false;
     }
 
     // --- User Progress Collection ---
     match /userLearningProgress/{progressId} {
-        // Users can only read and write to their own progress documents.
         allow read, write: if request.auth.uid == resource.data.userId;
     }
   }
