@@ -45,7 +45,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <Sidebar className="border-r" collapsible="icon">
             <SidebarHeader className="p-4">
                 <Link href="/home" className="flex items-center gap-3">
-                    <Image src="/logo.png" alt="Open for Product Logo" width={28} height={28} className="shrink-0" />
+                    <Image src="/logo.png" alt="Open for Product Logo" width={36} height={36} className="shrink-0" />
                     <span className="text-lg font-semibold text-sidebar-foreground">Open for Product</span>
                 </Link>
             </SidebarHeader>
@@ -62,7 +62,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         </SidebarMenuItem>
                     ))}
                     <SidebarMenuItem>
-                        <Link href="/profile">
+                        <Link href={`/profile/${user.id}`}>
                             <SidebarMenuButton isActive={pathname.startsWith('/profile')}>
                                 <Avatar className="size-5">
                                     <AvatarImage src={user.avatarUrl} alt={user.name} />
