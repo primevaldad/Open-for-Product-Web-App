@@ -4,10 +4,6 @@ import { getAuthenticatedUser } from "@/lib/session.server";
 import LearningClientPage from "./learning-client-page";
 import { redirect } from 'next/navigation';
 
-<<<<<<< HEAD
-// Helper to serialize Firestore Timestamps
-=======
->>>>>>> display
 function serializeTimestamps(data: any): any {
     if (data === null || typeof data !== 'object') {
         return data;
@@ -56,14 +52,6 @@ export default async function LearningPage() {
     }
 
   return (
-<<<<<<< HEAD
-      <LearningClientPage
-          learningPaths={learningPaths}
-          userProgress={userProgress}
-          projects={projects}
-          allProjectPathLinks={allProjectPathLinks}
-      />
-=======
     <div className="space-y-6">
         <h1 className="text-2xl font-bold">Learning Paths</h1>
         <LearningClientPage
@@ -73,6 +61,5 @@ export default async function LearningPage() {
             allProjectPathLinks={allProjectPathLinks}
         />
     </div>
->>>>>>> display
   );
 }

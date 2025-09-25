@@ -1,11 +1,7 @@
 
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-<<<<<<< HEAD
-import type { User, Project, Tag, LearningPath, ProjectPathLink } from "@/lib/types";
-=======
 import type { Project, Tag, LearningPath, ProjectPathLink } from "@/lib/types";
->>>>>>> display
 import { getAllProjects, getAllProjectPathLinks, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import Link from "next/link";
@@ -65,10 +61,6 @@ async function getDraftsPageData() {
     };
 }
 
-<<<<<<< HEAD
-// This is now a Server Component
-=======
->>>>>>> display
 export default async function DraftsPage() {
   const { currentUser, projects, allProjectPathLinks, allLearningPaths } = await getDraftsPageData();
 
@@ -83,31 +75,6 @@ export default async function DraftsPage() {
   const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.userId === currentUser.id));
 
   return (
-<<<<<<< HEAD
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {draftProjects.length > 0 ? (
-          draftProjects.map((project) => (
-              <ProjectCard 
-                  key={project.id} 
-                  project={project} 
-                  allProjectPathLinks={allProjectPathLinks} 
-                  allLearningPaths={allLearningPaths} 
-              />
-          ))
-      ) : (
-          <Card className="col-span-full">
-              <CardHeader>
-                  <CardTitle>No Drafts Found</CardTitle>
-                  <CardDescription>You haven't saved any project drafts yet.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                  <Link href="/create">
-                      <Button>Create a New Project</Button>
-                  </Link>
-              </CardContent>
-          </Card>
-      )}
-=======
     <div className="space-y-6">
         <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">My Drafts</h1>
@@ -136,7 +103,6 @@ export default async function DraftsPage() {
             </Card>
         )}
         </div>
->>>>>>> display
     </div>
   );
 }
