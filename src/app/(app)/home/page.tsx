@@ -6,7 +6,7 @@ import { getAllProjects, getAllTags, getAllProjectPathLinks, getAllLearningPaths
 import { getAuthenticatedUser } from "@/lib/session.server";
 import { UserNotFoundError } from "@/lib/errors";
 import HomeClientPage from "./home-client-page";
-import type { Project, Tag, ProjectTag, ProjectPathLink, LearningPath } from "@/lib/types";
+import type { Project, Tag, ProjectTag, ProjectPathLink, LearningPath, User } from "@/lib/types";
 
 // --- Serialization Helpers ---
 const toISOString = (timestamp: any): string | any => {
@@ -33,7 +33,6 @@ const serializeLearningPath = (path: LearningPath): LearningPath => ({
 
 const serializeProjectPathLink = (link: ProjectPathLink): ProjectPathLink => ({
     ...link,
-    createdAt: toISOString(link.createdAt),
 });
 
 
@@ -78,12 +77,18 @@ async function getDashboardPageData() {
         const serializedProjectPathLinks = allProjectPathLinks.map(serializeProjectPathLink);
         const serializedLearningPaths = allLearningPaths.map(serializeLearningPath);
         
-        // Serialize the currentUser object as well
-        const serializedUser = {
-            ...currentUser,
+        // Explicitly create a serializable User object
+        const serializedUser: User = {
+            id: currentUser.id,
+            name: currentUser.name,
+            email: currentUser.email,
+            avatarUrl: currentUser.avatarUrl,
+            bio: currentUser.bio,
+            interests: currentUser.interests || [],
+            onboarded: currentUser.onboarded,
             createdAt: toISOString(currentUser.createdAt),
             lastLogin: toISOString(currentUser.lastLogin),
-        }
+        };
 
         return {
             currentUser: serializedUser,

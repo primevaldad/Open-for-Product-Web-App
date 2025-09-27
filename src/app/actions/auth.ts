@@ -68,7 +68,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
             // Ensure we don't accidentally delete the profile for the UID we just created
             if (orphanDoc.id !== uid) {
                 const orphanData = { id: orphanDoc.id, ...orphanDoc.data() } as User;
-
+
                 // 2. Log the orphan for auditing (not part of the transaction itself, but good practice)
                 await logOrphanedUser(orphanData);
 
@@ -104,6 +104,10 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
 }
 
 export async function logout() {
-  await clearSession();
-  revalidatePath('/', 'layout');
+    try {
+        await clearSession();
+        revalidatePath('/', 'layout');
+    } catch (error) {
+        console.error("[AUTH_ACTION_TRACE] Logout Server Action Error:", error);
+    }
 }

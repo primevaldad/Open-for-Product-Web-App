@@ -70,12 +70,9 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
             delete updateData.password;
         }
 
-        // **TARGETED CHANGE START**
-        // The server action requires the user's ID for validation and database operations.
         const payload = { ...updateData, id: currentUser.id };
 
         const result = await updateUserSettings(payload);
-        // **TARGETED CHANGE END**
 
       if (result.error) {
         toast({

@@ -25,11 +25,6 @@ export async function createSession(idToken: string): Promise<string> {
   const adminAuth = getAuth(adminApp);
   const decodedIdToken = await adminAuth.verifyIdToken(idToken);
 
-  // Security check: ensure the token was issued recently.
-  if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
-    throw new Error('Recent sign-in required! Please try logging in again.');
-  }
-
   const sessionCookie = await adminAuth.createSessionCookie(idToken, {
     expiresIn: SESSION_DURATION_MS,
   });
