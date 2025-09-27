@@ -4,9 +4,9 @@
 import { suggestNextSteps } from "@/ai/flows/suggest-next-steps";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { LearningPath, Project, ProjectPathLink } from "@/lib/types";
+import type { LearningPath, Project, ProjectPathLink, User } from "@/lib/types";
 import { Loader2, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 type Suggestion = {
   suggestedNextSteps: string[];
@@ -14,52 +14,79 @@ type Suggestion = {
 };
 
 interface SuggestStepsProps {
-    suggestedProject: Project;
+    currentUser: User;
+    allProjects: Project[];
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
 }
 
-export function SuggestSteps({ suggestedProject, allProjectPathLinks, allLearningPaths }: SuggestStepsProps) {
+export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, allLearningPaths }: SuggestStepsProps) {
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [suggestedProject, setSuggestedProject] = useState<Project | null>(null);
+
+  // Memoize the project finding logic so it doesn't re-run on every render
+  const bestMatchProject = useMemo(() => {
+    if (!currentUser.interests || currentUser.interests.length === 0) {
+      return null;
+    }
+
+    // Find projects that match the user's interests and they haven't joined yet
+    const matchingProjects = allProjects.filter(p => 
+      !p.team.some(member => member.userId === currentUser.id) &&
+      p.contributionNeeds.some(need => currentUser.interests?.includes(need))
+    );
+
+    // For now, just pick the first match. Could be improved with better ranking.
+    return matchingProjects.length > 0 ? matchingProjects[0] : null;
+  }, [allProjects, currentUser]);
 
   useEffect(() => {
     async function getSuggestions() {
+      if (!bestMatchProject) {
+        setSuggestedProject(null);
+        setLoading(false);
+        return;
+      }
+
+      setSuggestedProject(bestMatchProject);
+
       try {
         setLoading(true);
         setError(null);
         const res = await suggestNextSteps({
-          userSkills: ["UI/UX Design", "Frontend Development", "Community"],
-          projectNeeds: "We need help with designing new features and engaging the community.",
-          userInterests: "Interested in social impact projects and creative tools.",
-          projectProgress: "Project is in early stages, focusing on core feature development.",
+          userSkills: currentUser.interests || [], // Using interests as a proxy for skills
+          projectNeeds: bestMatchProject.contributionNeeds.join(', '),
+          userInterests: currentUser.interests?.join(', ') || '',
+          projectProgress: `Project has ${bestMatchProject.progress}% progress.`,
         });
         setSuggestion(res);
       } catch (e) {
         console.error("AI suggestion failed:", e);
-        // Fallback logic as planned
-        if (suggestedProject.fallbackSuggestion) {
+        if (bestMatchProject.fallbackSuggestion) {
             setSuggestion({
-                suggestedNextSteps: [suggestedProject.fallbackSuggestion],
-                matchingOpportunities: [suggestedProject.tagline],
+                suggestedNextSteps: [bestMatchProject.fallbackSuggestion],
+                matchingOpportunities: [bestMatchProject.tagline],
             });
         } else {
-            setError("Could not load suggestions at this time.");
+            // A graceful fallback when the AI fails
+            setSuggestion({
+                suggestedNextSteps: [`Check out "${bestMatchProject.name}"! It seems like a great fit for your skills and interests.`],
+                matchingOpportunities: [bestMatchProject.tagline],
+            });
         }
       } finally {
         setLoading(false);
       }
     }
     getSuggestions();
-  }, [suggestedProject]); // Add suggestedProject to dependency array
+  }, [bestMatchProject, currentUser]);
 
-  // Use the tagline from the AI suggestion if available, otherwise use the project's original tagline.
-  const projectWithSuggestion = suggestion
+  const projectWithSuggestion = suggestion && suggestedProject
     ? { ...suggestedProject, tagline: suggestion.matchingOpportunities[0] || suggestedProject.tagline }
     : suggestedProject;
 
-  // Determine the suggestion text, prioritizing the dynamic one, then the fallback.
   const suggestionText = suggestion?.suggestedNextSteps[0];
 
   return (
@@ -77,13 +104,19 @@ export function SuggestSteps({ suggestedProject, allProjectPathLinks, allLearnin
           </div>
         )}
         {error && !loading && <p className="text-destructive text-center py-4">{error}</p>}
-        {!loading && !error && suggestedProject && (
+        {!loading && !error && projectWithSuggestion && (
             <ProjectCard
                 project={projectWithSuggestion}
+                currentUser={currentUser}
                 allProjectPathLinks={allProjectPathLinks}
                 allLearningPaths={allLearningPaths}
                 suggestionText={suggestionText}
             />
+        )}
+        {!loading && !suggestedProject && (
+            <div className="text-center text-muted-foreground p-4">
+                <p>No new project suggestions right now. Explore all projects below!</p>
+            </div>
         )}
       </CardContent>
     </Card>

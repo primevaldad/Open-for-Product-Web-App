@@ -67,7 +67,8 @@ async function getUserProfilePageData(userId: string) {
 
 // --- Server Component: UserProfilePage ---ffs
 export default async function UserProfilePage({ params }: PageProps) {
-  const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks } = await getUserProfilePageData(params.id);
+  const userId = params.id;
+  const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks } = await getUserProfilePageData(userId);
 
   if (!user || !currentUser) {
     notFound();

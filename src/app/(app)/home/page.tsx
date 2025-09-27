@@ -77,9 +77,16 @@ async function getDashboardPageData() {
         const serializedTags = allTags.map(serializeGlobalTag);
         const serializedProjectPathLinks = allProjectPathLinks.map(serializeProjectPathLink);
         const serializedLearningPaths = allLearningPaths.map(serializeLearningPath);
+        
+        // Serialize the currentUser object as well
+        const serializedUser = {
+            ...currentUser,
+            createdAt: toISOString(currentUser.createdAt),
+            lastLogin: toISOString(currentUser.lastLogin),
+        }
 
         return {
-            currentUser,
+            currentUser: serializedUser,
             projects: serializedProjects,
             tags: serializedTags,
             allProjectPathLinks: serializedProjectPathLinks,
@@ -105,18 +112,15 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  const suggestedProject = projects.length > 1 ? projects[1] : projects.length === 1 ? projects[0] : null;
-
   return (
     <>
         <div className="mb-6">
-            {suggestedProject && (
-                <SuggestSteps 
-                    suggestedProject={suggestedProject} 
-                    allProjectPathLinks={allProjectPathLinks} 
-                    allLearningPaths={allLearningPaths} 
-                />
-            )}
+            <SuggestSteps 
+                currentUser={currentUser}
+                allProjects={projects}
+                allProjectPathLinks={allProjectPathLinks} 
+                allLearningPaths={allLearningPaths} 
+            />
         </div>
         <HomeClientPage 
             allPublishedProjects={projects} 

@@ -14,7 +14,7 @@ import type { ProjectTag, Tag as GlobalTag } from "@/lib/types";
 const MAX_TAG_LENGTH = 35;
 const MAX_CATEGORY_TAGS = 3;
 
-// --- Helper: TagChip Component (Corrected for Filtering) ---
+// --- Helper: TagChip Component ---
 
 interface TagChipProps {
   tag: ProjectTag;
@@ -42,7 +42,6 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
     }
   }, [isEditing]);
 
-  // Non-editable variant for filtering now includes a remove button
   if (!isEditable) {
     return (
         <Badge
@@ -62,7 +61,6 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
     );
   }
 
-  // Full-featured, editable chip for project forms
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -145,7 +143,7 @@ const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDi
   );
 };
 
-// --- Main TagSelector Component (Corrected for Filtering) ---
+// --- Main TagSelector Component ---
 
 interface TagSelectorProps {
   value: ProjectTag[];
@@ -170,11 +168,10 @@ export function TagSelector({
 
   const handleSelect = (tag: Pick<GlobalTag, 'id' | 'display'>) => {
     if (!value.some(t => t.id === tag.id)) {
-      const newTag: ProjectTag = { id: tag.id, display: tag.display, role: 'relational' }; // Role is arbitrary for filtering
+      const newTag: ProjectTag = { id: tag.id, display: tag.display, role: 'relational' };
       onChange([...value, newTag]);
     }
     setSearchTerm("");
-    // Keep popover open to select multiple tags
   };
 
   const handleCreate = (userInput: string) => {
@@ -200,7 +197,7 @@ export function TagSelector({
 
   const suggestions = React.useMemo(() => {
     const available = allTags.filter(at => !value.some(st => st.id === at.id));
-    if (!searchTerm) return available.slice(0, 10); // Show more suggestions for filtering
+    if (!searchTerm) return available.slice(0, 10);
     return available.filter(tag => tag.display.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [searchTerm, allTags, value]);
 
@@ -228,21 +225,18 @@ export function TagSelector({
                     isEditable={isEditable}
                 />
             ))}
-            <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    className={cn(
-                        "flex items-center justify-center rounded-md border border-dashed border-input bg-transparent px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/50",
-                        value.length > 0 ? "w-auto" : "w-full justify-start font-normal"
-                    )}
-                >
-                    + {placeholder}
-                </button>
-            </PopoverTrigger>
         </div>
+        <PopoverTrigger asChild>
+            <button
+                type="button"
+                className="flex items-center justify-center rounded-md border border-dashed border-input bg-transparent px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/50 w-full font-normal mt-2"
+            >
+                + {placeholder}
+            </button>
+        </PopoverTrigger>
          {isEditable && value.find(v => v.display.length > MAX_TAG_LENGTH) && <p className="text-xs text-destructive">A tag exceeds the {MAX_TAG_LENGTH} character limit.</p>}
       </div>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[300px] p-0">
         <Command shouldFilter={false}>
           <CommandInput value={searchTerm} onValueChange={setSearchTerm} placeholder="Search tags..." maxLength={MAX_TAG_LENGTH} autoFocus />
           <CommandList>
