@@ -1,2 +1,17 @@
-.env
-node_modules
+# Local environment variables
+.env*
+
+# Service account keys
+serviceAccountKey.json
+/src/lib/serviceAccountKey.json
+
+# Node dependencies
+/node_modules
+
+# Build output
+/.next/
+/out/
+
+# Other
+.DS_Store
+*.pem
