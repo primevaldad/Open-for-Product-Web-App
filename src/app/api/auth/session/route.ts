@@ -1,6 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSession, clearSession } from '@/lib/session.server';
+import { RecentSignInRequiredError } from '@/lib/errors';
 
 /**
  * API route to create a user session.
@@ -21,6 +22,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'success' }, { status: 200 });
   } catch (error: any) {
     console.error('Error in session POST route:', error);
+
+    if (error instanceof RecentSignInRequiredError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+
     const errorMessage =
       error.message || 'An unknown error occurred during session creation.';
     return NextResponse.json(

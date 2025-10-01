@@ -29,7 +29,7 @@ export const ProjectBaseSchema = z.object({
 
 // --- Refinement Logic ---
 
-// Reusable refinement to check for the number of category tags
+// Reusable refinement for the create schema.
 const tagValidationRefinement = (data: { tags: z.infer<typeof ProjectTagSchema>[] }) => {
     return data.tags.filter(t => t.role === 'category').length <= 3;
 };
@@ -43,30 +43,36 @@ export const CreateProjectSchema = ProjectBaseSchema.refine(tagValidationRefinem
     path: ["tags"],
 });
 
-// Schema for editing an existing project, used in the edit form and action
+// Schema for editing an existing project, using superRefine for more robust validation
 export const EditProjectSchema = ProjectBaseSchema.extend({
   id: z.string(),
   timeline: z.string().min(1, "Timeline is required."),
-  // Governance is optional on the Project type, so it must be optional here too.
   governance: z.object({
     contributorsShare: z.number(),
     communityShare: z.number(),
     sustainabilityShare: z.number(),
   }).optional(),
-})
-.refine(tagValidationRefinement, {
-    message: "A project can have a maximum of 3 category tags.",
-    path: ["tags"],
-})
-.refine(data => {
-    // If governance is not defined, this validation does not apply
-    if (!data.governance) return true;
-    // If it is defined, the shares must sum to 100
+}).superRefine((data, ctx) => {
+  // 1. Validate category tag count
+  if (data.tags.filter(t => t.role === 'category').length > 3) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "A project can have a maximum of 3 category tags.",
+      path: ["tags"],
+    });
+  }
+
+  // 2. Validate governance total
+  if (data.governance) {
     const { contributorsShare, communityShare, sustainabilityShare } = data.governance;
-    return contributorsShare + communityShare + sustainabilityShare === 100;
-}, {
-    message: "The sum of all governance shares must be exactly 100%.",
-    path: ["governance"], // This will display the error next to the governance section
+    if (contributorsShare + communityShare + sustainabilityShare !== 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "The sum of all governance shares must be exactly 100%.",
+        path: ["governance"],
+      });
+    }
+  }
 });
 
 

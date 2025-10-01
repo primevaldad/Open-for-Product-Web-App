@@ -5,6 +5,7 @@ import { updateUserSettings } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
 import { getAllTags } from "@/lib/data.server";
 import type { Tag } from "@/lib/types";
+import { NotAuthenticatedError } from "@/lib/errors";
 
 // Helper to serialize Firestore Timestamps
 const toISOString = (timestamp: any): string | any => {
@@ -25,23 +26,27 @@ const serializeTag = (tag: Tag): Tag => ({
 
 // The page is a Server Component responsible for fetching data.
 export default async function SettingsPage() {
-  const [currentUser, allTags] = await Promise.all([
-    getAuthenticatedUser(),
-    getAllTags()
-  ]);
+  try {
+    const [currentUser, allTags] = await Promise.all([
+        getAuthenticatedUser(),
+        getAllTags()
+    ]);
 
-  if (!currentUser) {
-    redirect("/login");
+    const serializedTags = allTags.map(serializeTag);
+
+    // It passes the user data, tags, and the server action to the client component.
+    return (
+        <SettingsForm
+            currentUser={currentUser}
+            allTags={serializedTags}
+            updateUserSettings={updateUserSettings}
+        />
+    );
+  } catch (error) {
+    if (error instanceof NotAuthenticatedError) {
+      redirect("/login");
+    }
+    // Re-throw other errors to be handled by Next.js error boundaries
+    throw error;
   }
-
-  const serializedTags = allTags.map(serializeTag);
-
-  // It passes the user data, tags, and the server action to the client component.
-  return (
-    <SettingsForm
-      currentUser={currentUser}
-      allTags={serializedTags}
-      updateUserSettings={updateUserSettings}
-    />
-  );
 }

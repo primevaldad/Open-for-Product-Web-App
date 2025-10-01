@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { InterestSelector } from '@/components/users/interest-selector';
 import { useTransition } from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {
@@ -71,21 +72,20 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
         }
 
         const payload = { ...updateData, id: currentUser.id };
-
         const result = await updateUserSettings(payload);
 
-      if (result.error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error updating settings',
-          description: result.error,
-        });
-      } else {
-        toast({
-          title: 'Settings updated!',
-        });
-        form.reset({ ...form.getValues(), password: '', passwordConfirmation: '' });
-      }
+        if (result.error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error updating settings',
+                description: result.error,
+            });
+        } else {
+            toast({
+                title: 'Settings updated!',
+            });
+            form.reset({ ...form.getValues(), password: '', passwordConfirmation: '' });
+        }
     });
   }
 
@@ -100,6 +100,21 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
       <Separator />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Display</CardTitle>
+                    <CardDescription>Customize the look and feel of the application.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <FormLabel>Theme</FormLabel>
+                            <FormDescription>Select a theme for the application.</FormDescription>
+                        </div>
+                        <ThemeToggle />
+                    </div>
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>Profile</CardTitle>

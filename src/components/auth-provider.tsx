@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@/lib/types';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { findUserById } from '@/lib/data.client';
 
@@ -55,6 +55,13 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
                 console.log('[CLIENT_AUTH_TRACE] Server responded OK. Session should be created.');
             } else {
                 console.error('[CLIENT_AUTH_TRACE] Server responded with an error:', await response.text());
+                if (response.status === 401) {
+                    // This specific error means the server requires a recent sign-in.
+                    // The best way to handle this is to sign the user out on the client,
+                    // which will then trigger the app to prompt for re-login.
+                    await signOut(auth);
+                    return;
+                }
             }
 
             // If Firebase gives us a user, we fetch our detailed user profile from our database.

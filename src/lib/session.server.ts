@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from './firebase.server';
 import { findUserById } from './data.server';
-import { UserNotFoundError } from './errors';
+import { UserNotFoundError, RecentSignInRequiredError, NotAuthenticatedError } from './errors';
 import type { User } from './types';
 
 const SESSION_COOKIE_NAME = '__session';
@@ -24,6 +24,11 @@ export async function createSession(idToken: string): Promise<string> {
   console.log('[AUTH_TRACE] Creating session...');
   const adminAuth = getAuth(adminApp);
   const decodedIdToken = await adminAuth.verifyIdToken(idToken);
+
+  // Security check commented out for MVP development
+  // if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
+  //   throw new RecentSignInRequiredError('Recent sign-in required! Please try logging in again.');
+  // }
 
   const sessionCookie = await adminAuth.createSessionCookie(idToken, {
     expiresIn: SESSION_DURATION_MS,
@@ -128,7 +133,7 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function getAuthenticatedUser(): Promise<User> {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error('User not authenticated');
+    throw new NotAuthenticatedError();
   }
   return user;
 }

@@ -362,14 +362,22 @@ export default function ProjectDetailClientPage({
                 <TabsTrigger value="learning">Recommended Learning</TabsTrigger>
                 <TabsTrigger value="governance">Governance</TabsTrigger>
               </TabsList>
-              {isCurrentUserLead && (
-                  <Link href={`/projects/${project.id}/edit`}>
-                      <Button variant="outline" size="sm">
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit Project
-                      </Button>
-                  </Link>
-              )}
+              <div className="flex items-center gap-2">
+                {!isCurrentUserMember && (
+                    <Button onClick={handleJoinProject} disabled={isPending} size="sm">
+                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                        Join Project
+                    </Button>
+                )}
+                {isCurrentUserLead && (
+                    <Link href={`/projects/${project.id}/edit`}>
+                        <Button variant="outline" size="sm">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Project
+                        </Button>
+                    </Link>
+                )}
+              </div>
           </div>
 
           <TabsContent value="overview" className="space-y-6">

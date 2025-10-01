@@ -214,6 +214,7 @@ export async function updateProject(values: EditProjectFormValues): Promise<{ su
                     ? projectData.contributionNeeds.split(',').map(item => item.trim())
                     : project.contributionNeeds,
                 tags: processedTags,
+                team: project.team, // --- FIX: Preserve existing team members ---
                 updatedAt: new Date().toISOString(),
             };
             transaction.update(projectRef, updatedData);

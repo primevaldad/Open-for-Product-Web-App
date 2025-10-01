@@ -1,14 +1,21 @@
-/**
- * @fileoverview This file defines custom error classes for the application.
- */
 
-/**
- * Represents an error thrown when a user is authenticated with Firebase
- * but their corresponding record is not found in the Firestore database.
- */
 export class UserNotFoundError extends Error {
-  constructor(message = 'User not found in the database.') {
+  constructor(message: string) {
     super(message);
     this.name = 'UserNotFoundError';
   }
+}
+
+export class RecentSignInRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RecentSignInRequiredError';
+  }
+}
+
+export class NotAuthenticatedError extends Error {
+    constructor(message: string = 'User not authenticated') {
+        super(message);
+        this.name = 'NotAuthenticatedError';
+    }
 }

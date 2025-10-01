@@ -14,19 +14,22 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
 
   if (sessionCookie) {
+    // User is authenticated
     if (isAuthRoute) {
-      // Redirect authenticated users from login/signup to the home page
-      return NextResponse.redirect(new URL('/home', request.url));
+        // Allow user to proceed to the login page if they're navigating there directly.
+        // This is a special case to handle expired sessions where the user wants to re-login.
+        // The page logic on /login will handle the case where a user with a *valid* session lands there.
+        return NextResponse.next();
     }
-    // Allow access to all other routes for authenticated users
+    // For all other routes, allow access.
     return NextResponse.next();
   } else {
     // User is not authenticated
     if (isProtectedRoute) {
-        // Redirect unauthenticated users from protected routes to the login page
+        // Redirect unauthenticated users from protected routes to the login page.
         return NextResponse.redirect(new URL('/login', request.url));
     }
-    // Allow access to public and auth routes
+    // Allow access to public and other auth routes (like /signup).
     return NextResponse.next();
   }
 }
