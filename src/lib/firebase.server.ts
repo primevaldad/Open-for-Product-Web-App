@@ -1,3 +1,4 @@
+
 import 'server-only';
 import admin from 'firebase-admin';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
@@ -8,10 +9,20 @@ if (!serviceAccountKey) {
     throw new Error('The FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.');
 }
 
+// Parse the service account key to inspect its contents
+const parsedServiceAccount = JSON.parse(serviceAccountKey);
+
+// --- DIAGNOSTIC LOG ---
+// This will print the email of the service account being used to the server console on startup.
+console.log('--- Firebase Admin SDK Initialization ---');
+console.log(`Initializing with service account: ${parsedServiceAccount.client_email}`);
+console.log('------------------------------------');
+
+
 // Initialize the admin app if it doesn't already exist
 const adminApp = !getApps().length
     ? initializeApp({
-        credential: cert(JSON.parse(serviceAccountKey))
+        credential: cert(parsedServiceAccount)
       })
     : getApps()[0];
 

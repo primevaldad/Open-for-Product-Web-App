@@ -9,8 +9,6 @@ export const ai = genkit({
       apiKey: process.env.GEMINI_API_KEY,
     }),
   ],
-  logLevel: 'debug',
-  enableTracingAndMetrics: true,
-  // CORRECTED: Using the standard and likely correct model name
-  model: 'googleai/gemini-1.5-pro',
+  // enableTracingAndMetrics: true, // Removed as it's not a valid property
+  model: 'googleai/gemini-2.5-flash',
 });

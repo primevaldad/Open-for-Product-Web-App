@@ -20,6 +20,7 @@ export type User = {
   onboarded: boolean;
   createdAt?: string;
   lastLogin?: string;
+  notifications?: Notification[]; // Added optional notifications property
 };
 
 export const ROLES = ["lead", "contributor", "participant"] as const;
