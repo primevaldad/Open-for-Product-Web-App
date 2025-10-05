@@ -1,6 +1,4 @@
-
 import { notFound } from "next/navigation";
-
 import ProjectDetailClientPage from "./project-detail-client-page";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import {
@@ -18,121 +16,93 @@ import {
   joinProject,
   updateTask,
 } from "@/app/actions/projects";
-import type { Task, Project, Discussion, Tag, User, LearningPath } from "@/lib/types";
+import type { Project, Task, Discussion, User, LearningPath } from "@/lib/types";
 
-const toISOString = (timestamp: any): string | any => {
-    if (timestamp && typeof timestamp.toDate === 'function') {
-        return timestamp.toDate().toISOString();
-    }
-    if (timestamp instanceof Date) {
-        return timestamp.toISOString();
-    }
-    return timestamp;
-};
+// Props type for Next.js page
+interface PageProps {
+  params: { id: string };
+}
 
-// This is now a Server Component responsible for fetching all necessary data
-export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  // getAuthenticatedUser will redirect if the user is not logged in.
-  const rawCurrentUser = await getAuthenticatedUser();
-  const rawProjectData = await findProjectById(params.id);
+// Recursive timestamp serialization
+function serializeTimestamps<T>(data: T): T {
+  if (data === null || typeof data !== "object") return data;
 
-  if (!rawProjectData) {
-    notFound();
+  if ("toDate" in data && typeof (data as any).toDate === "function") {
+    return (data as any).toDate().toISOString() as any;
   }
 
-  // Fetch all raw data
-  const [rawAllUsers, rawProjectTasksData, rawDiscussionData, rawRecommendedLearningPaths] = await Promise.all([
+  if (Array.isArray(data)) return data.map(serializeTimestamps) as any;
+
+  const result: any = {};
+  for (const key in data) {
+    result[key] = serializeTimestamps((data as any)[key]);
+  }
+  return result;
+}
+
+export default async function ProjectDetailPage({ params }: PageProps) {
+  const { id: projectId } = params;
+
+  // Ensure user is authenticated
+  const currentUser = await getAuthenticatedUser();
+
+  // Fetch main project data
+  const projectData = await findProjectById(projectId);
+  if (!projectData) notFound();
+
+  // Fetch related data in parallel
+  const [allUsersRaw, tasksRaw, discussionsRaw, recommendedLearningPathsRaw] = await Promise.all([
     getAllUsers(),
-    findTasksByProjectId(params.id),
-    getDiscussionsByProjectId(params.id),
-    getRecommendedLearningPathsForProject(params.id),
+    findTasksByProjectId(projectId),
+    getDiscussionsByProjectId(projectId),
+    getRecommendedLearningPathsForProject(projectId),
   ]);
 
-  // --- SERIALIZATION --- 
-  // Convert all Firestore Timestamps to ISO strings before passing to client components
+  // --- SERIALIZE ---
+  const serializedCurrentUser = serializeTimestamps(currentUser);
+  const allUsers = allUsersRaw.map(u => serializeTimestamps(u)) as User[];
+  const tasks = tasksRaw.map(t => serializeTimestamps(t)) as Task[];
+  const discussions = discussionsRaw.map(d => serializeTimestamps(d)) as Discussion[];
+  const project = serializeTimestamps(projectData) as Project;
+  const recommendedLearningPaths = recommendedLearningPathsRaw.map(lp => serializeTimestamps(lp)) as LearningPath[];
 
-  const currentUser = {
-    ...rawCurrentUser,
-    createdAt: toISOString(rawCurrentUser.createdAt),
-    lastLogin: toISOString(rawCurrentUser.lastLogin),
-  };
+  // --- HYDRATE ---
+  const hydratedTasks = tasks.map(t => ({
+    ...t,
+    description: t.description ?? "",
+    assignedTo: t.assignedToId ? allUsers.find(u => u.id === t.assignedToId) : undefined,
+  })) as Task[];
 
-  const allUsers = rawAllUsers.map(user => ({
-    ...user,
-    createdAt: toISOString(user.createdAt),
-    lastLogin: toISOString(user.lastLogin),
-  }));
-
-  const projectTasksData = rawProjectTasksData.map(task => ({
-      ...task,
-      createdAt: toISOString(task.createdAt),
-      updatedAt: toISOString(task.updatedAt),
-  }));
-
-  const discussionData = rawDiscussionData.map(comment => ({
-      ...comment,
-      timestamp: toISOString(comment.timestamp),
-  }));
-
-  const projectData = {
-      ...rawProjectData,
-      createdAt: toISOString(rawProjectData.createdAt),
-      updatedAt: toISOString(rawProjectData.updatedAt),
-      startDate: rawProjectData.startDate ? toISOString(rawProjectData.startDate) : undefined,
-      endDate: rawProjectData.endDate ? toISOString(rawProjectData.endDate) : undefined,
-      tags: (rawProjectData.tags || []).map(tag => ({
-          ...tag,
-          createdAt: toISOString(tag.createdAt),
-          updatedAt: toISOString(tag.updatedAt),
-      })),
-  };
-
-  const recommendedLearningPaths = rawRecommendedLearningPaths.map(path => ({
-      ...path,
-      createdAt: toISOString(path.createdAt),
-      updatedAt: toISOString(path.updatedAt),
-  }));
-
-  // --- HYDRATION --- 
-  // Hydrate data on the server using the safe, serialized data
-
-  const projectTasks = projectTasksData.map(t => {
-    const assignedTo = t.assignedToId
-      ? allUsers.find((u) => u.id === t.assignedToId)
-      : undefined;
-    return { ...t, description: t.description ?? '', assignedTo };
-  }) as Task[];
-
-  const hydratedTeam = projectData.team.map(member => {
+  const hydratedTeam = project.team
+    .map(member => {
       const user = allUsers.find(u => u.id === member.userId);
       return user ? { ...member, user } : null;
-  }).filter(Boolean) as (typeof projectData.team[0] & { user: User })[];
+    })
+    .filter(Boolean) as (typeof project.team[0] & { user: User })[];
 
-  const hydratedDiscussions = discussionData.map(comment => {
-      const user = allUsers.find(u => u.id === comment.userId);
-      return user ? { ...comment, user } : null;
-  }).filter(Boolean) as (typeof discussionData[0] & { user: User })[];
+  const hydratedDiscussions = discussions
+    .map(d => {
+      const user = allUsers.find(u => u.id === d.userId);
+      return user ? { ...d, user } : null;
+    })
+    .filter(Boolean) as (typeof discussions[0] & { user: User })[];
 
-  const project = {
-      ...projectData,
-      team: hydratedTeam,
-  } as Project;
-
+  const hydratedProject = { ...project, team: hydratedTeam } as Project;
 
   return (
-      <ProjectDetailClientPage
-        project={project}
-        projectTasks={projectTasks}
-        projectDiscussions={hydratedDiscussions}
-        recommendedLearningPaths={recommendedLearningPaths}
-        currentUser={currentUser}
-        allUsers={allUsers}
-        joinProject={joinProject}
-        addTeamMember={addTeamMember}
-        addDiscussionComment={addDiscussionComment}
-        addTask={addTask}
-        updateTask={updateTask}
-        deleteTask={deleteTask}
-      />
+    <ProjectDetailClientPage
+      project={hydratedProject}
+      projectTasks={hydratedTasks}
+      projectDiscussions={hydratedDiscussions}
+      recommendedLearningPaths={recommendedLearningPaths}
+      currentUser={serializedCurrentUser as User}
+      allUsers={allUsers}
+      joinProject={joinProject}
+      addTeamMember={addTeamMember}
+      addDiscussionComment={addDiscussionComment}
+      addTask={addTask}
+      updateTask={updateTask}
+      deleteTask={deleteTask}
+    />
   );
 }
