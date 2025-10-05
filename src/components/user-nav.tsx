@@ -20,7 +20,7 @@ import { CreditCard, LogOut, Settings, User as UserIcon, Bell } from "lucide-rea
 import Link from "next/link"
 import type { User } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
-import { logout } from "@/app/actions/auth";
+import { useAuth } from "@/components/auth-provider"; // Import useAuth hook
 import { useRouter } from "next/navigation";
 
 interface UserNavProps {
@@ -29,10 +29,10 @@ interface UserNavProps {
 
 export function UserNav({ currentUser }: UserNavProps) {
   const router = useRouter();
+  const { signOut } = useAuth(); // Get the new signOut function from context
 
   const handleLogout = async () => {
-    await logout();
-    await fetch('/api/auth/session', { method: 'DELETE' });
+    await signOut(); // Use the new signOut function
     router.push('/login');
   };
 

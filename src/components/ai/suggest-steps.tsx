@@ -28,18 +28,26 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
 
   // Memoize the project finding logic so it doesn't re-run on every render
   const bestMatchProject = useMemo(() => {
-    if (!currentUser.interests || currentUser.interests.length === 0) {
-      return null;
+    // Filter out projects the user has already joined
+    const availableProjects = allProjects.filter(p => !p.team.some(member => member.userId === currentUser.id));
+
+    if (availableProjects.length === 0) {
+        return null; // No projects available to suggest
+    }
+    
+    // Try to find a project that matches the user's interests
+    if (currentUser.interests && currentUser.interests.length > 0) {
+      const matchingProjects = availableProjects.filter(p => 
+        p.contributionNeeds.some(need => currentUser.interests?.includes(need))
+      );
+      if (matchingProjects.length > 0) {
+        // For now, just pick the first match. Could be improved with better ranking.
+        return matchingProjects[0];
+      }
     }
 
-    // Find projects that match the user's interests and they haven't joined yet
-    const matchingProjects = allProjects.filter(p => 
-      !p.team.some(member => member.userId === currentUser.id) &&
-      p.contributionNeeds.some(need => currentUser.interests?.includes(need))
-    );
-
-    // For now, just pick the first match. Could be improved with better ranking.
-    return matchingProjects.length > 0 ? matchingProjects[0] : null;
+    // Fallback: If no interest match, suggest the first available project
+    return availableProjects[0];
   }, [allProjects, currentUser]);
 
   useEffect(() => {
