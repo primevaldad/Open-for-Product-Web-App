@@ -2,6 +2,7 @@
 .env*
 
 # Service account keys
+service-account-key.json
 serviceAccountKey.json
 /src/lib/serviceAccountKey.json
 
