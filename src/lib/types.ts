@@ -104,7 +104,7 @@ export type Task = {
 
 // -------------------- Learning --------------------
 export type Module = {
-  id: string;
+  moduleId: string;
   title: string;
   description: string;
   videoUrl?: string;
@@ -112,7 +112,7 @@ export type Module = {
 };
 
 export type LearningPath = {
-  id: string;
+  pathId: string;
   title: string;
   description: string;
   duration: string;
@@ -153,7 +153,7 @@ export type Interest = {
 
 // -------------------- Link Types --------------------
 export type ProjectPathLink = {
-  id: string;
+  pathId: string;
   projectId: string;
   learningPathId: string;
 };
@@ -167,14 +167,24 @@ export type ProjectBadgeLink = {
 
 // -------------------- Activity Page Props --------------------
 export interface CompletedModuleData {
-  path: { id: string; title: string };
+  path: { pathId: string; title: string };
   module: Module;
 }
+
+export type TaskFormValues = {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  assignedToId?: string;
+  estimatedHours?: number;
+};
 
 export interface ActivityClientPageProps {
   myTasks: Task[];
   completedModulesData: CompletedModuleData[];
   projects: Project[];
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
-  deleteTask: (taskId: string) => Promise<void>;
+  updateTask: (values: TaskFormValues) => Promise<void>;
+  deleteTask: (values: { id: string; projectId: string }) => Promise<void>;
 }

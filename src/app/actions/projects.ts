@@ -10,7 +10,7 @@ import {
     addDiscussionComment as addDiscussionCommentToDb,
     addNotification as addNotificationToDb,
     addTask as addTaskToDb,
-    deleteTask as deleteTaskFromDb,
+    deleteTaskFromDb,
     findProjectById,
     findUserById,
     getAllTasks,
@@ -346,19 +346,21 @@ export async function updateTask(values: z.infer<typeof TaskSchema>) {
 export async function deleteTask(values: z.infer<typeof DeleteTaskSchema>) {
     const validatedFields = DeleteTaskSchema.safeParse(values);
     if (!validatedFields.success) return { success: false, error: 'Invalid data.' };
+  
     const { id, projectId } = validatedFields.data;
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: "Authentication required." };
-    
+  
     const project = await findProjectById(projectId);
     if (!project || !project.team.some(m => m.userId === currentUser.id)) {
-        return { success: false, error: "Only team members can delete tasks." };
+      return { success: false, error: "Only team members can delete tasks." };
     }
+  
     await deleteTaskFromDb(id);
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
-}
-
+  }
+  
 export async function addDiscussionComment(values: z.infer<typeof DiscussionCommentSchema>) {
     const validatedFields = DiscussionCommentSchema.safeParse(values);
     if (!validatedFields.success) return { success: false, error: "Invalid data." };

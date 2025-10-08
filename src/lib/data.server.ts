@@ -300,9 +300,9 @@ export async function updateTask(updatedTask: Task): Promise<void> {
     await taskRef.update(taskData);
 }
 
-export async function deleteTask(taskId: string): Promise<void> {
+export async function deleteTaskFromDb(taskId: string): Promise<void> {
     await adminDb.collection('tasks').doc(taskId).delete();
-}
+  }
 
 // --- Learning Progress & Path Data Access ---
 

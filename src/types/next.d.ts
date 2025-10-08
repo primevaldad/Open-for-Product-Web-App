@@ -15,7 +15,7 @@ declare global {
   type DeleteTaskFunction = DeleteTaskFn;
 
   type CompletedModuleData = {
-    path: { id: string; title: string };
+    path: { pathid: string; title: string };
     module: Module;
   };
 }

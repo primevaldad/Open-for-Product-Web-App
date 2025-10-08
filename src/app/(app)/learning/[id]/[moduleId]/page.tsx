@@ -23,18 +23,22 @@ const toISOString = (timestamp: any): string | null => {
 /**
  * Server Component for displaying a specific learning module.
  */
-export default async function LearningModulePage({ params }: RoutePageProps<{ id: string; moduleId: string }>) {
-  const { id, moduleId } = params;
+export default async function LearningModulePage({ params }: RoutePageProps<{ pathId: string; moduleId: string }>): Promise<JSX.Element> {
+  const { pathId, moduleId } = params;
   
   // getAuthenticatedUser will redirect if the user is not logged in
   const rawCurrentUser = await getAuthenticatedUser();
 
   const learningPaths = await getAllLearningPaths();
-  const path = learningPaths.find((p) => p.id === id);
+  const path: LearningPath | undefined = learningPaths.find((p) => p.pathId === pathId);
+  if (!path) notFound();
+
+
 
   if (!path) notFound();
 
-  const module = path.modules.find((m) => m.id === moduleId);
+  const module: Module | undefined = path.modules.find((m) => m.moduleId === moduleId);
+  if (!module) notFound();
 
   if (!module) notFound();
   
@@ -46,11 +50,11 @@ export default async function LearningModulePage({ params }: RoutePageProps<{ id
   };
 
   // User progress
-  const userProgress = await findUserLearningProgress(currentUser.id, id);
+  const userProgress = await findUserLearningProgress(currentUser.id, pathId);
 
   // Previous and next modules for navigation
   const currentModuleIndex = path.modules.findIndex(
-    (m: Module) => m.id === moduleId
+    (m: Module) => m.moduleId === moduleId
   );
 
   const prevModule = currentModuleIndex > 0 ? path.modules[currentModuleIndex - 1] : null;

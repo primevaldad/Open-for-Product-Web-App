@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import type { Task, Project, Module, /*TeamMember,*/ User } from "@/lib/types";
-import type { updateTask as UpdateTaskFn, deleteTask as DeleteTaskFn } from "@/app/actions/projects";
+import { updateTask as updateTaskAction, deleteTask as deleteTaskAction } from "@/app/actions/projects";
 import type { ActivityClientPageProps } from "@/lib/types";
 
 
@@ -24,7 +24,6 @@ export default function ActivityClientPage({
   updateTask,
   deleteTask
 }: ActivityClientPageProps) {
-{
   return (
     <>
       <Card className="mx-auto max-w-3xl md:col-span-1">
@@ -48,8 +47,8 @@ export default function ActivityClientPage({
                       isTeamMember={true}
                       projectTeam={project.team}
                       updateTask={updateTask}
-                      deleteTask={deleteTask}
-                    >
+                      deleteTask={() => deleteTask({ id: task.id, projectId: task.projectId })}
+                      >
                       <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                         <div className="flex-grow">
                           <p className="font-semibold">{task.title}</p>
@@ -105,7 +104,7 @@ export default function ActivityClientPage({
           {completedModulesData.length > 0 ? (
             <ul className="space-y-1">
               {completedModulesData.map(({ path, module }, index) => (
-                <li key={`${path.id}-${module.id}-${index}`}>
+                <li key={`${path.pathId}-${module.moduleId}-${index}`}>
                   <div className="flex items-center gap-4 p-3">
                     <CheckCircle className="h-5 w-5 text-green-500" />
                     <div>
@@ -113,7 +112,7 @@ export default function ActivityClientPage({
                       <p className="text-sm text-muted-foreground">
                         From path:{" "}
                         <Link
-                          href={`/learning/${path.id}`}
+                          href={`/learning/${path.pathId}`}
                           className="font-medium text-primary hover:underline"
                         >
                           {path.title}
@@ -135,4 +134,4 @@ export default function ActivityClientPage({
       </Card>
     </>
   );
-}
+  }

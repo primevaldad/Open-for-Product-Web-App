@@ -92,9 +92,9 @@ export async function updateTask(updatedTask: Task): Promise<void> {
     await updateDoc(taskRef, taskData);
 }
 
-export async function deleteTask(taskId: string): Promise<void> {
+export async function deleteTaskFromDb(taskId: string): Promise<void> {
     await deleteDoc(doc(db, 'tasks', taskId));
-}
+  }
 
 // --- Learning Progress Data Access ---
 export async function getAllUserLearningProgress(): Promise<UserLearningProgress[]> {

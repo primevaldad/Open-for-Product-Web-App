@@ -19,10 +19,10 @@ import React from 'react';
 import type { RoutePageProps } from '@/types/next-page-helpers';
 
 // This is now a Server Component that fetches all necessary data
-export default async function LearningPathDetailPage({ params }: RoutePageProps<{ id: string }>) {
+export default async function LearningPathDetailPage({ params }: RoutePageProps<{ pathId: string }>) {
   // getAuthenticatedUser will redirect if the user is not logged in.
   const currentUser = await getAuthenticatedUser();
-  const path = (await getAllLearningPaths()).find((p) => p.id === params.id);
+  const path = (await getAllLearningPaths()).find((p) => p.pathId === params.pathId);
 
   // If the path doesn't exist, return a 404
   if (!path) {
@@ -33,14 +33,14 @@ export default async function LearningPathDetailPage({ params }: RoutePageProps<
   const Icon = iconMap[path.category as keyof typeof iconMap] || FlaskConical;
 
   // Fetch the user's progress for this path
-  const userProgress = await findUserLearningProgress(currentUser.id, params.id);
+  const userProgress = await findUserLearningProgress(currentUser.id, params.pathId);
 
   const completedModules = userProgress?.completedModules ?? [];
   const totalModules = path.modules.length;
   const progressPercentage =
     totalModules > 0 ? (completedModules.length / totalModules) * 100 : 0;
   const isCompleted = totalModules > 0 && completedModules.length === totalModules;
-  const firstModuleId = path.modules[0]?.id;
+  const firstModuleId = path.modules[0]?.moduleId;
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
@@ -90,11 +90,11 @@ export default async function LearningPathDetailPage({ params }: RoutePageProps<
               <h3 className="text-xl font-semibold mb-4">Modules</h3>
               <div className="space-y-2">
                 {path.modules.map((module, index) => (
-                  <React.Fragment key={module.id}>
+                  <React.Fragment key={module.moduleId}>
                     <LearningModuleListItem
-                      pathId={path.id}
+                      pathId={path.pathId}
                       module={module}
-                      isCompleted={completedModules.includes(module.id)}
+                      isCompleted={completedModules.includes(module.moduleId)}
                     />
                     {index < path.modules.length - 1 && <Separator />}
                   </React.Fragment>
@@ -103,7 +103,7 @@ export default async function LearningPathDetailPage({ params }: RoutePageProps<
             </div>
 
             {firstModuleId && (
-              <Link href={`/learning/${path.id}/${firstModuleId}`}>
+              <Link href={`/learning/${path.pathId}/${firstModuleId}`}>
                 <Button size="lg" className="w-full mt-6">
                   {isCompleted
                     ? "Review Path"
