@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from "lucide-react";
 
 // -------------------- Notifications --------------------
@@ -86,6 +87,15 @@ export type Project = {
   fallbackSuggestion?: string;
 };
 
+// -------------------- Discussions --------------------
+export type Discussion = {
+    id: string;
+    projectId: string;
+    userId: string;
+    content: string;
+    timestamp: string; // ISO 8601 format
+};
+
 // -------------------- Tasks --------------------
 export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
 
@@ -116,7 +126,7 @@ export type LearningPath = {
   title: string;
   description: string;
   duration: string;
-  category: string; // ✅ Added to match page.tsx usage
+  category: string; 
   Icon: LucideIcon;
   isLocked?: boolean;
   modules: Module[];
@@ -181,10 +191,13 @@ export type TaskFormValues = {
   estimatedHours?: number;
 };
 
+// Define a standard return type for server actions
+export type ServerActionResponse = Promise<{ success: boolean; error?: string; }>;
+
 export interface ActivityClientPageProps {
   myTasks: Task[];
   completedModulesData: CompletedModuleData[];
   projects: Project[];
-  updateTask: (values: TaskFormValues) => Promise<void>;
-  deleteTask: (values: { id: string; projectId: string }) => Promise<void>;
+  updateTask: (values: TaskFormValues) => ServerActionResponse;
+  deleteTask: (values: { id: string; projectId: string }) => ServerActionResponse;
 }

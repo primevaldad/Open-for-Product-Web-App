@@ -1,3 +1,4 @@
+
 import type { Task, Project, User, Module } from "@/lib/types";
 import type { updateTask as UpdateTaskFn, deleteTask as DeleteTaskFn } from "@/app/actions/projects";
 
@@ -14,8 +15,5 @@ declare global {
   type UpdateTaskFunction = UpdateTaskFn;
   type DeleteTaskFunction = DeleteTaskFn;
 
-  type CompletedModuleData = {
-    path: { pathid: string; title: string };
-    module: Module;
-  };
+  // CompletedModuleData is now defined in src/lib/types.ts
 }

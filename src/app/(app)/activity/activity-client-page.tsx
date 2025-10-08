@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -7,15 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
-import type { Task, Project, Module, /*TeamMember,*/ User } from "@/lib/types";
-import { updateTask as updateTaskAction, deleteTask as deleteTaskAction } from "@/app/actions/projects";
-import type { ActivityClientPageProps } from "@/lib/types";
-
-
-export interface CompletedModuleData {
-  path: { id: string; title: string };
-  module: Module;
-}
+// Import CompletedModuleData from the single source of truth
+import type { Task, Project, Module, User, CompletedModuleData, ActivityClientPageProps } from "@/lib/types";
 
 export default function ActivityClientPage({
   myTasks,
@@ -47,7 +41,7 @@ export default function ActivityClientPage({
                       isTeamMember={true}
                       projectTeam={project.team}
                       updateTask={updateTask}
-                      deleteTask={() => deleteTask({ id: task.id, projectId: task.projectId })}
+                      deleteTask={deleteTask}
                       >
                       <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                         <div className="flex-grow">

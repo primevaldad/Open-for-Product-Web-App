@@ -1,8 +1,9 @@
 
 import 'server-only';
+import admin from 'firebase-admin'; // Import the top-level admin object
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink, ProjectBadgeLink, UserBadge } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink, ProjectBadgeLink, UserBadge, ProjectTag } from './types';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
@@ -33,10 +34,10 @@ export async function findUsersByIds(userIds: string[]): Promise<User[]> {
     }
 
     const users: User[] = [];
-    // Firestore 'in' query is limited to 10 items, so we batch the requests.
     for (let i = 0; i < userIds.length; i += 10) {
         const chunk = userIds.slice(i, i + 10);
-        const q = adminDb.collection('users').where(FieldValue.documentId(), 'in', chunk);
+        // CORRECTED: Use admin.firestore.FieldPath.documentId()
+        const q = adminDb.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk);
         const userSnapshot = await q.get();
         const chunkUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
         users.push(...chunkUsers);
@@ -61,8 +62,6 @@ export async function findUsersByName(query: string): Promise<User[]> {
     if (!query) return [];
     const usersCol = adminDb.collection('users');
 
-    // Since Firestore doesn't support native OR queries on different fields,
-    // we perform two separate queries and merge the results.
     const nameQuery = usersCol.where('name', '>=', query).where('name', '<=', query + '\uf8ff');
     const emailQuery = usersCol.where('email', '>=', query).where('email', '<=', query + '\uf8ff');
 
@@ -127,28 +126,35 @@ export async function getAllProjects(): Promise<Project[]> {
     const projectsCol = adminDb.collection('projects');
     const tagsCol = adminDb.collection('tags');
 
-    // Fetch all projects and all tags in parallel
     const [projectSnapshot, tagsSnapshot] = await Promise.all([
         projectsCol.get(),
         tagsCol.get()
     ]);
 
-    // Create a map of tag IDs to tag objects for efficient lookup
     const tagsMap = new Map<string, Tag>();
     tagsSnapshot.docs.forEach(doc => {
         const tag = { id: doc.id, ...doc.data() } as Tag;
         tagsMap.set(tag.id, tag);
     });
 
-    // Process projects to embed the full tag objects
     const projectsWithTags = projectSnapshot.docs.map(doc => {
         const projectData = doc.data();
         const project = { id: doc.id, ...projectData } as Project;
 
         if (project.tags && Array.isArray(project.tags)) {
-            const hydratedTags = project.tags
-                .map(projectTag => tagsMap.get(projectTag.id))
-                .filter((tag): tag is Tag => !!tag);
+            // CORRECTED: Map full Tag objects to the simpler ProjectTag type
+            const hydratedTags: ProjectTag[] = project.tags
+                .map(projectTag => {
+                    const fullTag = tagsMap.get(projectTag.id);
+                    if (!fullTag) return null;
+                    // Ensure the returned object matches the ProjectTag type exactly
+                    return {
+                        id: fullTag.id,
+                        display: fullTag.display,
+                        role: fullTag.type, 
+                    };
+                })
+                .filter((tag): tag is ProjectTag => !!tag);
             
             project.tags = hydratedTags;
         } else {
@@ -368,5 +374,21 @@ export async function updateUserLearningProgress(progress: UserLearningProgress)
 export async function getAllLearningPaths(): Promise<LearningPath[]> {
     const pathsCol = adminDb.collection('learningPaths');
     const pathSnapshot = await pathsCol.get();
-    return pathSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningPath));
+    // CORRECTED: Ensure the data is correctly cast to the LearningPath type
+    return pathSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            pathId: doc.id, // Explicitly map id to pathId
+            title: data.title,
+            description: data.description,
+            duration: data.duration,
+            category: data.category,
+            Icon: data.Icon,
+            isLocked: data.isLocked,
+            modules: data.modules,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+        } as LearningPath;
+    });
 }

@@ -1,11 +1,12 @@
-import type { User, Project, Task, LearningPath, UserLearningProgress, Module, TeamMember } from "@/lib/types";
+
+import type { User, Project, Task, LearningPath, UserLearningProgress, Module, ProjectMember } from "@/lib/types";
 import { getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import ActivityClientPage from "./activity-client-page";
 import { updateTask as updateTaskAction, deleteTask as deleteTaskAction } from "@/app/actions/projects";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
-import type { CompletedModuleData } from "@/types/next";
+import type { CompletedModuleData } from "@/lib/types";
 
 const toISOString = (timestamp: any): string | any => {
     if (timestamp && typeof timestamp.toDate === 'function') {
@@ -60,7 +61,6 @@ export default async function ActivityPage() {
       );
     }
   
-    // Convert timestamps to ISO strings
     const currentUser = {
       ...rawCurrentUser,
       createdAt: toISOString(rawCurrentUser.createdAt),
@@ -74,12 +74,14 @@ export default async function ActivityPage() {
     }));
   
     const projects = rawProjects.map(p => {
-      const teamWithUsers = (p.team || [])
-        .map(member => {
-          const user = allUsers.find(u => u.id === member.userId);
-          return user ? { ...member, user } : null;
-        })
-        .filter((member): member is TeamMember & { user: User } => member !== null);
+      // Use reduce for a type-safe hydration, avoiding intermediate nulls
+      const teamWithUsers = (p.team || []).reduce<Array<ProjectMember & { user: User }>>((acc, member) => {
+        const user = allUsers.find(u => u.id === member.userId);
+        if (user) {
+          acc.push({ ...member, user });
+        }
+        return acc;
+      }, []);
   
       return {
         ...p,
