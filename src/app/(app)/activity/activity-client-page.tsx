@@ -1,34 +1,30 @@
-
 'use client';
 
 import Link from "next/link";
-import {
-  CheckCircle,
-  Pencil,
-} from "lucide-react";
+import { CheckCircle, Pencil } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
-import type { Task, Project, Module } from "@/lib/types";
-import type { deleteTask, updateTask } from "@/app/actions/projects";
+import type { Task, Project, Module, /*TeamMember,*/ User } from "@/lib/types";
+import type { updateTask as UpdateTaskFn, deleteTask as DeleteTaskFn } from "@/app/actions/projects";
+import type { ActivityClientPageProps } from "@/lib/types";
 
-interface CompletedModuleData {
-    path: { id: string; title: string; };
-    module: Module;
+
+export interface CompletedModuleData {
+  path: { id: string; title: string };
+  module: Module;
 }
 
-interface ActivityClientPageProps {
-    myTasks: Task[];
-    completedModulesData: CompletedModuleData[];
-    projects: Project[];
-    updateTask: typeof updateTask;
-    deleteTask: typeof deleteTask;
-}
-
-export default function ActivityClientPage({ myTasks, completedModulesData, projects, updateTask, deleteTask }: ActivityClientPageProps) {
-
+export default function ActivityClientPage({
+  myTasks,
+  completedModulesData,
+  projects,
+  updateTask,
+  deleteTask
+}: ActivityClientPageProps) {
+{
   return (
     <>
       <Card className="mx-auto max-w-3xl md:col-span-1">
@@ -47,23 +43,42 @@ export default function ActivityClientPage({ myTasks, completedModulesData, proj
 
                 return (
                   <li key={task.id}>
-                    <EditTaskDialog task={task} isTeamMember={true} projectTeam={project.team} updateTask={updateTask} deleteTask={deleteTask}>
-                       <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                    <EditTaskDialog
+                      task={task}
+                      isTeamMember={true}
+                      projectTeam={project.team}
+                      updateTask={updateTask}
+                      deleteTask={deleteTask}
+                    >
+                      <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                         <div className="flex-grow">
                           <p className="font-semibold">{task.title}</p>
                           <p className="text-sm text-muted-foreground">
-                            In project: <Link href={`/projects/${project?.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{project?.name}</Link>
+                            In project:{" "}
+                            <Link
+                              href={`/projects/${project.id}`}
+                              className="font-medium text-primary hover:underline"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {project.name}
+                            </Link>
                           </p>
                         </div>
                         <div className="flex items-center gap-4">
-                            <Badge variant={
-                                task.status === 'Done' ? 'secondary' :
-                                task.status === 'In Progress' ? 'default' :
-                                'outline'
-                            }>{task.status}</Badge>
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          <Badge
+                            variant={
+                              task.status === "Done"
+                                ? "secondary"
+                                : task.status === "In Progress"
+                                ? "default"
+                                : "outline"
+                            }
+                          >
+                            {task.status}
+                          </Badge>
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
                         </div>
-                       </div>
+                      </div>
                     </EditTaskDialog>
                     <Separator />
                   </li>
@@ -90,13 +105,19 @@ export default function ActivityClientPage({ myTasks, completedModulesData, proj
           {completedModulesData.length > 0 ? (
             <ul className="space-y-1">
               {completedModulesData.map(({ path, module }, index) => (
-                 <li key={`${path.id}-${module.id}-${index}`}>
+                <li key={`${path.id}-${module.id}-${index}`}>
                   <div className="flex items-center gap-4 p-3">
                     <CheckCircle className="h-5 w-5 text-green-500" />
                     <div>
                       <p className="font-semibold">{module.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        From path: <Link href={`/learning/${path.id}`} className="font-medium text-primary hover:underline">{path.title}</Link>
+                        From path:{" "}
+                        <Link
+                          href={`/learning/${path.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {path.title}
+                        </Link>
                       </p>
                     </div>
                   </div>

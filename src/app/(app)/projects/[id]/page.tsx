@@ -1,3 +1,4 @@
+
 import { notFound } from "next/navigation";
 import ProjectDetailClientPage from "./project-detail-client-page";
 import { getAuthenticatedUser } from "@/lib/session.server";
@@ -17,11 +18,7 @@ import {
   updateTask,
 } from "@/app/actions/projects";
 import type { Project, Task, Discussion, User, LearningPath } from "@/lib/types";
-
-// Props type for Next.js page
-interface PageProps {
-  params: { id: string };
-}
+import type { RoutePageProps } from "@/types/next-page-helpers";
 
 // Recursive timestamp serialization
 function serializeTimestamps<T>(data: T): T {
@@ -40,7 +37,7 @@ function serializeTimestamps<T>(data: T): T {
   return result;
 }
 
-export default async function ProjectDetailPage({ params }: PageProps) {
+export default async function ProjectDetailPage({ params }: RoutePageProps<{ id: string }>): Promise<JSX.Element> {
   const { id: projectId } = params;
 
   // Ensure user is authenticated

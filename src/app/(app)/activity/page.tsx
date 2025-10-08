@@ -1,4 +1,3 @@
-
 import type { User, Project, Task, LearningPath, UserLearningProgress, Module, TeamMember } from "@/lib/types";
 import { getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
@@ -6,6 +5,7 @@ import ActivityClientPage from "./activity-client-page";
 import { updateTask, deleteTask } from "@/app/actions/projects";
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
+import type { CompletedModuleData } from "@/types/next";
 
 const toISOString = (timestamp: any): string | any => {
     if (timestamp && typeof timestamp.toDate === 'function') {
@@ -35,23 +35,15 @@ async function getActivityPageData() {
     return { 
         currentUser: rawCurrentUser, 
         projects: rawProjects, 
-        myTasks: myTasks, 
+        myTasks, 
         learningPaths: rawLearningPaths, 
         userProgress: filteredUserProgress,
         allUsers: rawAllUsers,
     };
 }
 
-// This page is now a Server Component that fetches data and passes it to a Client Component.
 export default async function ActivityPage() {
-  const { 
-      currentUser: rawCurrentUser, 
-      projects: rawProjects, 
-      myTasks: rawMyTasks, 
-      learningPaths: rawLearningPaths, 
-      userProgress: rawUserProgress,
-      allUsers: rawAllUsers,
-  } = await getActivityPageData();
+  const { currentUser: rawCurrentUser, projects: rawProjects, myTasks: rawMyTasks, learningPaths: rawLearningPaths, userProgress: rawUserProgress, allUsers: rawAllUsers } = await getActivityPageData();
 
   if (!rawCurrentUser) {
     return (
@@ -60,18 +52,17 @@ export default async function ActivityPage() {
       </div>
     );
   }
-  
-  // --- SERIALIZATION & DATA HYDRATION ---
+
   const currentUser = {
       ...rawCurrentUser,
       createdAt: toISOString(rawCurrentUser.createdAt),
       lastLogin: toISOString(rawCurrentUser.lastLogin),
   };
 
-  const allUsers = rawAllUsers.map(user => ({
-      ...user,
-      createdAt: toISOString(user.createdAt),
-      lastLogin: toISOString(user.lastLogin),
+  const allUsers = rawAllUsers.map(u => ({
+      ...u,
+      createdAt: toISOString(u.createdAt),
+      lastLogin: toISOString(u.lastLogin),
   }));
 
   const projects = rawProjects.map(p => {
@@ -93,7 +84,7 @@ export default async function ActivityPage() {
               createdAt: toISOString(tag.createdAt),
               updatedAt: toISOString(tag.updatedAt),
           })),
-          team: teamWithUsers, // Replace original team with the hydrated & filtered version
+          team: teamWithUsers,
       };
   });
 
@@ -101,7 +92,6 @@ export default async function ActivityPage() {
       ...t,
       createdAt: toISOString(t.createdAt),
       updatedAt: toISOString(t.updatedAt),
-      // Also hydrate the assignedTo user for the task
       assignedTo: allUsers.find(u => u.id === t.assignedToId) ?? undefined,
   }));
 
@@ -112,19 +102,18 @@ export default async function ActivityPage() {
       Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
   }));
 
-  const userProgress = rawUserProgress; // Assuming no timestamps in userProgress
+  const userProgress = rawUserProgress;
 
-  const completedModulesData = (userProgress || []).flatMap(progress =>
+  const completedModulesData: CompletedModuleData[] = (userProgress || []).flatMap(progress =>
     (progress.completedModules || []).map(moduleId => {
       const path = learningPaths.find(p => p.id === progress.pathId);
       const module = path?.modules.find(m => m.id === moduleId);
 
       const serializablePath = path ? { id: path.id, title: path.title } : undefined;
 
-      return { path: serializablePath, module };
+      return serializablePath && module ? { path: serializablePath, module } : null;
     })
-  ).filter((item): item is { path: { id: string; title: string; }; module: Module; } => !!(item.path && item.module));
-
+  ).filter((item): item is CompletedModuleData => !!item);
 
   return (
     <div className="space-y-6">
@@ -135,7 +124,7 @@ export default async function ActivityPage() {
                 completedModulesData={completedModulesData}
                 projects={projects}
                 allUsers={allUsers}
-                updateTask={updateTask}
+                updateTask={async (values) => updateTask(values.id, values)}
                 deleteTask={deleteTask}
             />
         </div>

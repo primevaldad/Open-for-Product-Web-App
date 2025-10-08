@@ -1,13 +1,10 @@
+
 import { notFound } from 'next/navigation';
 import UserProfilePageClient from './profile-client-page';
 import { getAllProjects, findUserById, getAllLearningPaths, getAllProjectPathLinks } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import type { User, LearningPath, Project, ProjectPathLink } from '@/lib/types';
-
-// Props type for Next.js page
-interface PageProps {
-  params: { id: string };
-}
+import type { RoutePageProps } from '@/types/next-page-helpers';
 
 // Helper to serialize Firestore Timestamps to ISO strings
 function serializeTimestamps<T>(data: T): T {
@@ -59,8 +56,8 @@ async function getUserProfilePageData(userId: string) {
   };
 }
 
-// Server component for the profile page
-export default async function UserProfilePage({ params }: PageProps) {
+// Server component for the profile page, using the new RoutePageProps type
+export default async function UserProfilePage({ params }: RoutePageProps<{ id: string }>) {
   const { id: userId } = params;
 
   const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks } =

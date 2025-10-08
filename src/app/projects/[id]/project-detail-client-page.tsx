@@ -1,3 +1,19 @@
+export default function ComingSoonPage() {
+  return (
+    <div style={{ 
+      display: "flex", 
+      flexDirection: "column",
+      alignItems: "center", 
+      justifyContent: "center", 
+      height: "100vh",
+      fontSize: "1.5rem" 
+    }}>
+      Coming soon...
+    </div>
+  );
+}
+
+/*
 "use client";
 
 import {
@@ -440,5 +456,5 @@ export default function ProjectDetailClientPage({
       </SidebarInset>
   )
 }
-
+*/
     

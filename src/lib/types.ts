@@ -1,6 +1,6 @@
-
 import type { LucideIcon } from "lucide-react";
 
+// -------------------- Notifications --------------------
 export type Notification = {
   id: string;
   userId: string;
@@ -10,6 +10,7 @@ export type Notification = {
   timestamp: string; // ISO 8601 format
 };
 
+// -------------------- Users --------------------
 export type User = {
   id: string;
   name: string;
@@ -20,32 +21,33 @@ export type User = {
   onboarded: boolean;
   createdAt?: string;
   lastLogin?: string;
-  notifications?: Notification[]; // Added optional notifications property
+  notifications?: Notification[];
 };
 
 export const ROLES = ["lead", "contributor", "participant"] as const;
 export type UserRole = typeof ROLES[number];
 
+// -------------------- Projects --------------------
 export type ProjectMember = {
   userId: string;
   role: UserRole;
-  user?: User; // Populated for display, not stored in DB
+  user?: User; // Populated for display
 };
 
 export type ProjectStatus = 'published' | 'draft';
 
 export type Governance = {
-    contributorsShare: number;
-    communityShare: number;
-    sustainabilityShare: number;
-}
+  contributorsShare: number;
+  communityShare: number;
+  sustainabilityShare: number;
+};
 
-export type Discussion = {
+export type ProjectTag = {
   id: string;
-  projectId: string;
-  userId: string;
-  content: string;
-  timestamp: string; // ISO 8601 format
+  display: string;
+  role: 'category' | 'relational';
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type Tag = {
@@ -57,12 +59,6 @@ export type Tag = {
   updatedAt: string;
   createdBy?: string;
   usageCount?: number;
-};
-
-export type ProjectTag = {
-  id: string;
-  display: string;
-  role: 'category' | 'relational';
 };
 
 export type SelectableTag = Tag & {
@@ -82,41 +78,15 @@ export type Project = {
   isExpertReviewed?: boolean;
   status: ProjectStatus;
   governance?: Governance;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
+  startDate?: string;
+  endDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
   tags?: ProjectTag[];
-  fallbackSuggestion?: string; // A pre-written suggestion for when the AI fails
+  fallbackSuggestion?: string;
 };
 
-export type ProjectPathLink = {
-    id: string;
-    projectId: string;
-    learningPathId: string;
-};
-
-export type ProjectBadgeLink = {
-    id: string;
-    projectId: string;
-    badgeId: string;
-    isRequirement: boolean;
-}
-
-export type Badge = {
-    id: string;
-    name: string;
-    learningPathId: string;
-    moduleIds: string[];
-}
-
-export type UserBadge = {
-    id: string;
-    userId: string;
-    badgeId: string;
-    earnedAt: string;
-}
-
+// -------------------- Tasks --------------------
 export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
 
 export type Task = {
@@ -132,6 +102,7 @@ export type Task = {
   updatedAt?: string;
 };
 
+// -------------------- Learning --------------------
 export type Module = {
   id: string;
   title: string;
@@ -145,9 +116,12 @@ export type LearningPath = {
   title: string;
   description: string;
   duration: string;
+  category: string; // ✅ Added to match page.tsx usage
   Icon: LucideIcon;
   isLocked?: boolean;
   modules: Module[];
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type UserLearningProgress = {
@@ -156,7 +130,51 @@ export type UserLearningProgress = {
   completedModules: string[];
 };
 
+// -------------------- Badges --------------------
+export type Badge = {
+  id: string;
+  name: string;
+  learningPathId: string;
+  moduleIds: string[];
+};
+
+export type UserBadge = {
+  id: string;
+  userId: string;
+  badgeId: string;
+  earnedAt: string;
+};
+
+// -------------------- Misc --------------------
 export type Interest = {
   id: string;
   name: string;
 };
+
+// -------------------- Link Types --------------------
+export type ProjectPathLink = {
+  id: string;
+  projectId: string;
+  learningPathId: string;
+};
+
+export type ProjectBadgeLink = {
+  id: string;
+  projectId: string;
+  badgeId: string;
+  isRequirement: boolean;
+};
+
+// -------------------- Activity Page Props --------------------
+export interface CompletedModuleData {
+  path: { id: string; title: string };
+  module: Module;
+}
+
+export interface ActivityClientPageProps {
+  myTasks: Task[];
+  completedModulesData: CompletedModuleData[];
+  projects: Project[];
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
+}
