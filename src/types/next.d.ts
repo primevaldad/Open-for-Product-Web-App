@@ -9,7 +9,7 @@ declare module "*.svg" {
 
 declare global {
   interface Window {
-    // Add any global typings you might need
+    // Add unknown global typings you might need
   }
 
   type UpdateTaskFunction = UpdateTaskFn;

@@ -7,7 +7,7 @@ export async function POST() {
     // clearSession handles revoking tokens and clearing the session cookie.
     await clearSession();
     return NextResponse.json({ status: 'success' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in logout route:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

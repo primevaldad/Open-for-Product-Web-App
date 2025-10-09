@@ -42,7 +42,7 @@ export function SummarizeProgress({ project }: SummarizeProgressProps) {
           <Sparkles className="text-primary" />
           AI Summary
         </CardTitle>
-        <CardDescription>Get a quick overview of the project's current status.</CardDescription>
+        <CardDescription>Get a quick overview of the project&apos;s current status.</CardDescription>
       </CardHeader>
       <CardContent>
         {summary && (

@@ -9,7 +9,7 @@ import type { LearningPath, UserLearningProgress, Project, ProjectPathLink, User
 // Generic serializer using the centralized helper
 function serializeData<T>(data: T[]): T[] {
     return data.map(item => {
-        const serializedItem: any = { ...item };
+        const serializedItem: unknown = { ...item };
         for (const key in serializedItem) {
             if (Object.prototype.hasOwnProperty.call(serializedItem, key)) {
                 // Assuming properties like 'createdAt', 'updatedAt', 'lastLogin' are the ones with timestamps

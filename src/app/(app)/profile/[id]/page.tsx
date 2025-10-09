@@ -12,15 +12,15 @@ function serializeData<T>(data: T): T {
   if (data === null || typeof data !== 'object') return data;
 
   // Handle Firestore Timestamps or Date objects
-  if ('toDate' in data && typeof (data as any).toDate === 'function' || data instanceof Date) {
-    return serializeTimestamp(data) as any;
+  if ('toDate' in data && typeof (data as unknown).toDate === 'function' || data instanceof Date) {
+    return serializeTimestamp(data) as unknown;
   }
 
-  if (Array.isArray(data)) return data.map(serializeData) as any;
+  if (Array.isArray(data)) return data.map(serializeData) as unknown;
 
-  const result: any = {};
+  const result: unknown = {};
   for (const key in data) {
-    result[key] = serializeData((data as any)[key]);
+    result[key] = serializeData((data as unknown)[key]);
   }
   return result;
 }

@@ -63,7 +63,7 @@ type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
 type HydratedDiscussion = Discussion & { user: User };
 
 // Reusable Task Card component with typed props
-function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, [key: string]: any }) {
+function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, [key: string]: unknown }) {
     return (
         <div style={style} {...props}>
             <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>

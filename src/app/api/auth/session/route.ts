@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     await createSession(idToken);
 
     return NextResponse.json({ status: 'success' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in session POST route:', error);
 
     if (error instanceof RecentSignInRequiredError) {
@@ -45,7 +45,7 @@ export async function DELETE() {
     // clearSession handles cookie removal and token revocation.
     await clearSession();
     return NextResponse.json({ status: 'success' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in session DELETE route:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

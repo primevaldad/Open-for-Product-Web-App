@@ -89,7 +89,7 @@ export default function SignUpPage() {
         } else {
           setError(result.error || 'An unexpected server error occurred.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         let errorMessage = 'An unknown error occurred.';
         if (err.code === 'auth/email-already-in-use') {
           errorMessage = 'This email address is already in use by another account.';

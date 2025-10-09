@@ -66,11 +66,11 @@ export default function LoginPageClient() {
         
         // The router.push will be handled by the useEffect above.
         
-      } catch (error: any) {
-        if (error.code === 'auth/invalid-credential') {
+      } catch (error: unknown) {
+        if ((error as { code?: string }).code === 'auth/invalid-credential') {
             setError("Invalid email or password. Please try again.");
         } else {
-            setError(error.message || "An unexpected error occurred during login.");
+            setError((error as Error).message || "An unexpected error occurred during login.");
         }
       }
     });
@@ -129,7 +129,7 @@ export default function LoginPageClient() {
         </Form>
 
         <div className="text-center text-sm text-muted-foreground">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/signup" className="font-semibold text-primary hover:underline">
             Sign up
           </Link>

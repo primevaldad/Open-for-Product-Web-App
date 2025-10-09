@@ -94,7 +94,7 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
         <CardHeader>
           <CardTitle className="text-3xl font-bold">Welcome aboard!</CardTitle>
           <CardDescription>
-            Let's get your profile set up so you can start connecting with projects.
+            Let&apos;s get your profile set up so you can start connecting with projects.
           </CardDescription>
         </CardHeader>
         <CardContent>

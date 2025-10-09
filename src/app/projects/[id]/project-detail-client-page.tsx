@@ -74,7 +74,7 @@ type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
 
 type HydratedDiscussion = Discussion & { user: User };
 
-function TaskCard({ task, isTeamMember, team, updateTask, deleteTask }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask }) {
+function TaskCard({ task, isTeamMember, team, updateTask, deleteTask }: { task: Task, isTeamMember: boolean, team: unknown[], updateTask: typeof updateTask, deleteTask: typeof deleteTask }) {
   return (
     <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>
       <Card className="mb-2 bg-card/80 hover:bg-accent cursor-pointer">

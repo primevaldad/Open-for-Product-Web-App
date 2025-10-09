@@ -32,7 +32,7 @@ const serializeProject = (project: Project): Project => ({
   tags: (project.tags || []).map(tag => ({
     id: tag.id,
     display: tag.display,
-    role: (tag as any).type, // Map 'type' from Tag to 'role' in ProjectTag
+    role: (tag as unknown).type, // Map 'type' from Tag to 'role' in ProjectTag
     createdAt: serializeTimestamp(tag.createdAt) ?? undefined,
     updatedAt: serializeTimestamp(tag.updatedAt) ?? undefined,
   })) as ProjectTag[],
