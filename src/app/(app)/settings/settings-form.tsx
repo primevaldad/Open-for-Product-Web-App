@@ -66,7 +66,8 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
 
   function onSubmit(data: ProfileFormValues) {
     startTransition(async () => {
-        const { passwordConfirmation, ...updateData } = data;
+        // CORRECTED: Rename passwordConfirmation to _ to mark it as intentionally unused
+        const { passwordConfirmation: _, ...updateData } = data;
         if (!updateData.password) {
             delete updateData.password;
         }

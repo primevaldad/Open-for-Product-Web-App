@@ -19,20 +19,21 @@ import {
 } from "@/app/actions/projects";
 import type { Project, Task, Discussion, User, LearningPath } from "@/lib/types";
 import type { RoutePageProps } from "@/types/next-page-helpers";
+import { serializeTimestamp } from "@/lib/utils"; // Import the centralized helper
 
-// Recursive timestamp serialization
-function serializeTimestamps<T>(data: T): T {
+// Generic recursive serializer using the centralized helper
+function serializeData<T>(data: T): T {
   if (data === null || typeof data !== "object") return data;
 
-  if ("toDate" in data && typeof (data as any).toDate === "function") {
-    return (data as any).toDate().toISOString() as any;
+  if ('toDate' in data && typeof (data as any).toDate === 'function' || data instanceof Date) {
+    return serializeTimestamp(data) as any;
   }
 
-  if (Array.isArray(data)) return data.map(serializeTimestamps) as any;
+  if (Array.isArray(data)) return data.map(serializeData) as any;
 
   const result: any = {};
   for (const key in data) {
-    result[key] = serializeTimestamps((data as any)[key]);
+    result[key] = serializeData((data as any)[key]);
   }
   return result;
 }
@@ -56,12 +57,12 @@ export default async function ProjectDetailPage({ params }: RoutePageProps<{ id:
   ]);
 
   // --- SERIALIZE ---
-  const serializedCurrentUser = serializeTimestamps(currentUser);
-  const allUsers = allUsersRaw.map(u => serializeTimestamps(u)) as User[];
-  const tasks = tasksRaw.map(t => serializeTimestamps(t)) as Task[];
-  const discussions = discussionsRaw.map(d => serializeTimestamps(d)) as Discussion[];
-  const project = serializeTimestamps(projectData) as Project;
-  const recommendedLearningPaths = recommendedLearningPathsRaw.map(lp => serializeTimestamps(lp)) as LearningPath[];
+  const serializedCurrentUser = serializeData(currentUser);
+  const allUsers = allUsersRaw.map(u => serializeData(u)) as User[];
+  const tasks = tasksRaw.map(t => serializeData(t)) as Task[];
+  const discussions = discussionsRaw.map(d => serializeData(d)) as Discussion[];
+  const project = serializeData(projectData) as Project;
+  const recommendedLearningPaths = recommendedLearningPathsRaw.map(lp => serializeData(lp)) as LearningPath[];
 
   // --- HYDRATE ---
   const hydratedTasks = tasks.map(t => ({

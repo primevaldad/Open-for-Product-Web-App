@@ -5,20 +5,22 @@ import { getAllProjects, findUserById, getAllLearningPaths, getAllProjectPathLin
 import { getAuthenticatedUser } from '@/lib/session.server';
 import type { User, LearningPath, Project, ProjectPathLink } from '@/lib/types';
 import type { RoutePageProps } from '@/types/next-page-helpers';
+import { serializeTimestamp } from '@/lib/utils'; // Import the centralized helper
 
-// Helper to serialize Firestore Timestamps to ISO strings
-function serializeTimestamps<T>(data: T): T {
+// Generic recursive serializer using the centralized helper
+function serializeData<T>(data: T): T {
   if (data === null || typeof data !== 'object') return data;
 
-  if ('toDate' in data && typeof (data as any).toDate === 'function') {
-    return (data as any).toDate().toISOString() as any;
+  // Handle Firestore Timestamps or Date objects
+  if ('toDate' in data && typeof (data as any).toDate === 'function' || data instanceof Date) {
+    return serializeTimestamp(data) as any;
   }
 
-  if (Array.isArray(data)) return data.map(serializeTimestamps) as any;
+  if (Array.isArray(data)) return data.map(serializeData) as any;
 
   const result: any = {};
   for (const key in data) {
-    result[key] = serializeTimestamps((data as any)[key]);
+    result[key] = serializeData((data as any)[key]);
   }
   return result;
 }
@@ -32,7 +34,7 @@ async function getUserProfilePageData(userId: string) {
     return {
       user: null,
       userProjects: [],
-      currentUser: serializeTimestamps(currentUser),
+      currentUser: serializeData(currentUser),
       allLearningPaths: [],
       allProjectPathLinks: [],
     };
@@ -46,13 +48,13 @@ async function getUserProfilePageData(userId: string) {
 
   const userProjects = allProjects.filter(p => p.team.some(m => m.userId === userId));
 
-  // Serialize all timestamps
+  // Serialize all data before returning
   return {
-    user: { ...serializeTimestamps(user), bio: user.bio || '', location: user.location || '' } as User,
-    userProjects: serializeTimestamps(userProjects) as Project[],
-    currentUser: serializeTimestamps(currentUser) as User,
-    allLearningPaths: serializeTimestamps(allLearningPaths) as LearningPath[],
-    allProjectPathLinks: serializeTimestamps(allProjectPathLinks) as ProjectPathLink[],
+    user: { ...serializeData(user), bio: user.bio || '', location: user.location || '' } as User,
+    userProjects: serializeData(userProjects) as Project[],
+    currentUser: serializeData(currentUser) as User,
+    allLearningPaths: serializeData(allLearningPaths) as LearningPath[],
+    allProjectPathLinks: serializeData(allProjectPathLinks) as ProjectPathLink[],
   };
 }
 

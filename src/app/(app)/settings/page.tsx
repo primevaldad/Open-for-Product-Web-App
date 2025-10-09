@@ -4,35 +4,32 @@ import SettingsForm from "./settings-form";
 import { updateUserSettings } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
 import { getAllTags } from "@/lib/data.server";
-import type { Tag } from "@/lib/types";
+import type { Tag, User } from "@/lib/types";
 import { NotAuthenticatedError } from "@/lib/errors";
+import { serializeTimestamp } from "@/lib/utils"; // Import the centralized helper
 
-// Helper to serialize Firestore Timestamps
-const toISOString = (timestamp: any): string | any => {
-    if (timestamp && typeof timestamp.toDate === 'function') {
-      return timestamp.toDate().toISOString();
-    }
-    if (timestamp instanceof Date) {
-      return timestamp.toISOString();
-    }
-    return timestamp;
-};
-  
 const serializeTag = (tag: Tag): Tag => ({
     ...tag,
-    createdAt: toISOString(tag.createdAt),
-    updatedAt: toISOString(tag.updatedAt),
+    createdAt: serializeTimestamp(tag.createdAt) ?? undefined,
+    updatedAt: serializeTimestamp(tag.updatedAt) ?? undefined,
 });
 
 // The page is a Server Component responsible for fetching data.
 export default async function SettingsPage() {
   try {
-    const [currentUser, allTags] = await Promise.all([
+    const [rawCurrentUser, allTags] = await Promise.all([
         getAuthenticatedUser(),
         getAllTags()
     ]);
 
     const serializedTags = allTags.map(serializeTag);
+    
+    // Ensure currentUser is also serialized
+    const currentUser: User = {
+      ...rawCurrentUser,
+      createdAt: serializeTimestamp(rawCurrentUser.createdAt) ?? undefined,
+      lastLogin: serializeTimestamp(rawCurrentUser.lastLogin) ?? undefined,
+    };
 
     // It passes the user data, tags, and the server action to the client component.
     return (

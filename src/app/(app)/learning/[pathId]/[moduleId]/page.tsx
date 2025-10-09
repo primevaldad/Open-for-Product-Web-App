@@ -9,16 +9,7 @@ import LearningModuleClientPage from './learning-module-client-page';
 import { completeModule } from '@/app/actions/learning';
 import type { Module, LearningPath, User } from '@/lib/types';
 import type { RoutePageProps } from '@/types/next-page-helpers';
-
-/**
- * Converts Firestore timestamps or Date objects to ISO strings.
- */
-const toISOString = (timestamp: any): string | null => {
-  if (!timestamp) return null;
-  if (typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString();
-  if (timestamp instanceof Date) return timestamp.toISOString();
-  return timestamp.toString(); // Fallback for already serialized data
-};
+import { serializeTimestamp } from '@/lib/utils';
 
 /**
  * Server Component for displaying a specific learning module.
@@ -26,33 +17,28 @@ const toISOString = (timestamp: any): string | null => {
 export default async function LearningModulePage({ params }: RoutePageProps<{ pathId: string; moduleId: string }>): Promise<JSX.Element> {
   const { pathId, moduleId } = params;
   
-  // getAuthenticatedUser will redirect if the user is not logged in
+  if (!pathId || !moduleId) {
+    notFound();
+  }
+
   const rawCurrentUser = await getAuthenticatedUser();
 
   const learningPaths = await getAllLearningPaths();
   const path: LearningPath | undefined = learningPaths.find((p) => p.pathId === pathId);
   if (!path) notFound();
 
-
-
-  if (!path) notFound();
-
-  const module: Module | undefined = path.modules.find((m) => m.moduleId === moduleId);
-  if (!module) notFound();
-
-  if (!module) notFound();
+  const learningModule: Module | undefined = path.modules.find((m) => m.moduleId === moduleId);
+  if (!learningModule) notFound();
   
   // --- SERIALIZATION ---
   const currentUser: User = {
     ...rawCurrentUser,
-    createdAt: toISOString(rawCurrentUser.createdAt) ?? undefined,
-    lastLogin: toISOString(rawCurrentUser.lastLogin) ?? undefined,
+    createdAt: serializeTimestamp(rawCurrentUser.createdAt) ?? undefined,
+    lastLogin: serializeTimestamp(rawCurrentUser.lastLogin) ?? undefined,
   };
 
-  // User progress
   const userProgress = await findUserLearningProgress(currentUser.id, pathId);
 
-  // Previous and next modules for navigation
   const currentModuleIndex = path.modules.findIndex(
     (m: Module) => m.moduleId === moduleId
   );
@@ -65,7 +51,7 @@ export default async function LearningModulePage({ params }: RoutePageProps<{ pa
   return (
     <LearningModuleClientPage
       path={path}
-      module={module}
+      learningModule={learningModule} // Correctly pass the renamed prop
       userProgress={userProgress}
       currentUser={currentUser}
       prevModule={prevModule}

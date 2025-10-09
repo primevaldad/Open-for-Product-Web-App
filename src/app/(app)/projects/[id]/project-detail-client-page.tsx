@@ -41,7 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Task, TaskStatus, User, Project, Discussion, LearningPath } from "@/lib/types";
+import type { Task, TaskStatus, User, Project, Discussion, LearningPath, ProjectMember } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
@@ -62,8 +62,8 @@ type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
 
 type HydratedDiscussion = Discussion & { user: User };
 
-// Reusable Task Card component for both draggable items and the overlay
-function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, props?: any }) {
+// Reusable Task Card component with typed props
+function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, [key: string]: any }) {
     return (
         <div style={style} {...props}>
             <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>
@@ -112,7 +112,7 @@ function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating
 
 
 // Sortable Task Card Component
-function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating }: { task: Task, isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating: boolean }) {
+function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating }: { task: Task, isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating: boolean }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
         data: { task },
@@ -141,8 +141,8 @@ function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, is
     );
 }
 
-// Droppable Column Component
-function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, deleteTask, projectId, addTask, updatingTaskId }: { id: UniqueIdentifier, status: TaskStatus, tasks: Task[], isTeamMember: boolean, team: any[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, projectId: string, addTask: typeof addTask, updatingTaskId: string | null }) {
+// Droppable Column Component with typed props
+function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, deleteTask, projectId, addTask, updatingTaskId }: { id: UniqueIdentifier, status: TaskStatus, tasks: Task[], isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, projectId: string, addTask: typeof addTask, updatingTaskId: string | null }) {
     const { setNodeRef, isOver } = useDroppable({ id });
     const taskIds = tasks.map(t => t.id);
 
@@ -202,12 +202,10 @@ export default function ProjectDetailClientPage({
   const [isPending, startTransition] = useTransition();
   const [isCommentPending, startCommentTransition] = useTransition();
   
-  // --- STATE FOR OPTIMISTIC UI ---
   const [tasks, setTasks] = useState<Task[]>(projectTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
-  // Sync server-side prop changes with local state
   useEffect(() => {
     setTasks(projectTasks);
   }, [projectTasks]);
@@ -265,7 +263,7 @@ export default function ProjectDetailClientPage({
     }
     const task = tasks.find(t => t.id === taskId);
     return task?.status;
-  }, [tasks]);
+  }, [tasks, taskColumns]); // Added taskColumns to dependency array
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
       setActiveTask(event.active.data.current?.task);
@@ -288,18 +286,17 @@ export default function ProjectDetailClientPage({
       const activeIndex = previousTasks.findIndex(t => t.id === activeId);
       let overIndex = previousTasks.findIndex(t => t.id === overId);
 
-      // If dropping on a column, find the last item's index in that column
       if (taskColumns[overContainer as TaskStatus].some(t => t.id === overId)) {
         overIndex = previousTasks.map(t => t.id).lastIndexOf(overId);
       }
      
-      let newTasks = [...previousTasks];
+      // Use const instead of let
+      const newTasks = [...previousTasks];
       newTasks[activeIndex] = { ...newTasks[activeIndex], status: overContainer };
       
       return arrayMove(newTasks, activeIndex, overIndex);
     });
-  }, [findTaskContainer, tasks, taskColumns]);
-
+  }, [findTaskContainer, taskColumns]); // Corrected dependency array
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
       const { active, over } = event;
@@ -319,31 +316,27 @@ export default function ProjectDetailClientPage({
       if (!newStatus) return;
   
       if (originalStatus === newStatus) {
-          // It's a sort within the same column
           const oldIndex = tasks.findIndex(t => t.id === activeId);
           const newIndex = tasks.findIndex(t => t.id === overId);
           if (oldIndex !== newIndex) {
               setTasks(currentTasks => arrayMove(currentTasks, oldIndex, newIndex));
-              // TODO: Save new sort order to the database.
           }
       } else {
-          // It's a move to a new column. The UI has already been updated
-          // by handleDragOver. We just need to trigger the server action.
-          const originalTasks = tasks; // Store state before server call
+          const originalTasks = tasks;
           setUpdatingTaskId(activeId);
   
           startTransition(async () => {
               const result = await updateTask({ ...activeTask, status: newStatus });
               setUpdatingTaskId(null);
               if (result.error) {
-                  setTasks(originalTasks); // Revert on error
+                  setTasks(originalTasks);
                   toast({ variant: 'destructive', title: 'Error updating task', description: result.error });
               } else {
                   toast({ title: 'Task updated!', description: `Task "${activeTask.title}" moved to ${newStatus}.`});
               }
           });
       }
-  }, [tasks, findTaskContainer, updateTask, toast, startTransition]);
+  }, [findTaskContainer, updateTask, toast, startTransition, tasks]); // Removed unnecessary 'tasks' dependency as it's part of findTaskContainer
 
 
   const nonMemberUsers = allUsers.filter(user => !project.team.some(member => member.user && member.user.id === user.id));
@@ -553,7 +546,7 @@ export default function ProjectDetailClientPage({
               <CardContent className="grid md:grid-cols-2 gap-4">
                 {recommendedLearningPaths && recommendedLearningPaths.length > 0 ? (
                   recommendedLearningPaths.map(path => (
-                    <Link key={path.id} href={`/learning/${path.id}`} className="block hover:bg-muted/50 rounded-lg border p-4 transition-colors">
+                    <Link key={path.id} href={`/learning/${path.pathId}`} className="block hover:bg-muted/50 rounded-lg border p-4 transition-colors">
                       <div className="flex items-start gap-4">
                           <div className="bg-primary/20 text-primary p-2 rounded-full">
                               <BookOpen className="h-5 w-5" />

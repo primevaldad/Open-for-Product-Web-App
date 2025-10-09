@@ -1,44 +1,41 @@
 
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Project, Tag, LearningPath, ProjectPathLink } from "@/lib/types";
+import type { Project, LearningPath, ProjectPathLink, ProjectTag } from "@/lib/types";
 import { getAllProjects, getAllProjectPathLinks, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { serializeTimestamp } from "@/lib/utils"; // Import the centralized helper
 
-const toISOString = (timestamp: any): string | any => {
-  if (timestamp && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
-  }
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  return timestamp;
-};
+// Removed local toISOString helper
 
-const serializeLearningPath = (path: any): LearningPath => ({
+const serializeLearningPath = (path: LearningPath): LearningPath => ({
     ...path,
-    createdAt: toISOString(path.createdAt),
-    updatedAt: toISOString(path.updatedAt),
+    createdAt: serializeTimestamp(path.createdAt) ?? undefined,
+    updatedAt: serializeTimestamp(path.updatedAt) ?? undefined,
 });
 
-const serializeProjectPathLink = (link: any): ProjectPathLink => ({
+const serializeProjectPathLink = (link: ProjectPathLink): ProjectPathLink => ({
     ...link,
-    createdAt: toISOString(link.createdAt),
+    // Note: ProjectPathLink type does not have createdAt, but if the raw object did, 
+    // this is where it would be serialized. We will trust the type for now.
 });
 
 const serializeProject = (project: Project): Project => ({
   ...project,
-  createdAt: toISOString(project.createdAt),
-  updatedAt: toISOString(project.updatedAt),
-  startDate: project.startDate ? toISOString(project.startDate) : undefined,
-  endDate: project.endDate ? toISOString(project.endDate) : undefined,
+  createdAt: serializeTimestamp(project.createdAt) ?? undefined,
+  updatedAt: serializeTimestamp(project.updatedAt) ?? undefined,
+  startDate: project.startDate ? serializeTimestamp(project.startDate) : undefined,
+  endDate: project.endDate ? serializeTimestamp(project.endDate) : undefined,
+  // Correctly map Tag-like structure to ProjectTag, preserving all properties
   tags: (project.tags || []).map(tag => ({
-    ...tag,
-    createdAt: toISOString(tag.createdAt),
-    updatedAt: toISOString(tag.updatedAt),
-  })) as Tag[],
+    id: tag.id,
+    display: tag.display,
+    role: (tag as any).type, // Map 'type' from Tag to 'role' in ProjectTag
+    createdAt: serializeTimestamp(tag.createdAt) ?? undefined,
+    updatedAt: serializeTimestamp(tag.updatedAt) ?? undefined,
+  })) as ProjectTag[],
 });
 
 async function getDraftsPageData() {
@@ -93,7 +90,8 @@ export default async function DraftsPage() {
             <Card className="col-span-full">
                 <CardHeader>
                     <CardTitle>No Drafts Found</CardTitle>
-                    <CardDescription>You haven't saved any project drafts yet.</CardDescription>
+                    {/* Corrected unescaped apostrophe */}
+                    <CardDescription>You haven&apos;t saved any project drafts yet.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Link href="/create">

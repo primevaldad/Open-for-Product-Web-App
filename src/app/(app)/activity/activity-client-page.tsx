@@ -3,20 +3,23 @@
 
 import Link from "next/link";
 import { CheckCircle, Pencil } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// Unused Avatar imports removed
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
-// Import CompletedModuleData from the single source of truth
-import type { Task, Project, Module, User, CompletedModuleData, ActivityClientPageProps } from "@/lib/types";
+// Unused type imports removed, and ActivityClientPageProps is now the primary import
+import type { ActivityClientPageProps } from "@/lib/types";
+
+// The CompletedModuleData interface is now solely defined in lib/types.ts
 
 export default function ActivityClientPage({
   myTasks,
   completedModulesData,
   projects,
   updateTask,
-  deleteTask
+  deleteTask,
+  currentUser // Added currentUser to destructuring
 }: ActivityClientPageProps) {
   return (
     <>
@@ -24,7 +27,8 @@ export default function ActivityClientPage({
         <CardHeader>
           <CardTitle>Assigned Tasks</CardTitle>
           <CardDescription>
-            Here's a list of tasks that require your attention.
+            {/* Corrected unescaped apostrophe */}
+            Here&apos;s a list of tasks that require your attention.
           </CardDescription>
         </CardHeader>
         <CardContent>

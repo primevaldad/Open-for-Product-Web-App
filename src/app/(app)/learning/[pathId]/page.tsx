@@ -17,6 +17,7 @@ import LearningModuleListItem from '@/components/learning-module-list-item';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import type { RoutePageProps } from '@/types/next-page-helpers';
+import type { Module } from '@/lib/types'; // Import Module type
 
 // This is now a Server Component that fetches all necessary data
 export default async function LearningPathDetailPage({ params }: RoutePageProps<{ pathId: string }>) {
@@ -89,7 +90,7 @@ export default async function LearningPathDetailPage({ params }: RoutePageProps<
             <div>
               <h3 className="text-xl font-semibold mb-4">Modules</h3>
               <div className="space-y-2">
-                {path.modules.map((module, index) => (
+                {path.modules.map((module: Module, index: number) => ( // Explicitly type 'module' and 'index'
                   <React.Fragment key={module.moduleId}>
                     <LearningModuleListItem
                       pathId={path.pathId}

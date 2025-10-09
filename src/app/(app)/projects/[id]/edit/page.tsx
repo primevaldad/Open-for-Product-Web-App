@@ -9,33 +9,24 @@ import { findProjectById, getAllTags } from '@/lib/data.server';
 import EditProjectForm from './edit-project-form';
 import { updateProject } from '@/app/actions/projects';
 import type { RoutePageProps } from '@/types/next-page-helpers';
+import { serializeTimestamp } from "@/lib/utils"; // Import the centralized helper
 
 // --- Serialization Helpers ---
-
-const toISOString = (timestamp: any): string | any => {
-  if (timestamp && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
-  }
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  return timestamp;
-};
 
 const serializeProject = (project: Project): Project => {
   return {
     ...project,
-    createdAt: toISOString(project.createdAt),
-    updatedAt: toISOString(project.updatedAt),
-    startDate: toISOString(project.startDate),
-    endDate: toISOString(project.endDate),
+    createdAt: serializeTimestamp(project.createdAt) ?? undefined,
+    updatedAt: serializeTimestamp(project.updatedAt) ?? undefined,
+    startDate: serializeTimestamp(project.startDate) ?? undefined,
+    endDate: serializeTimestamp(project.endDate) ?? undefined,
   } as Project;
 };
 
 const serializeGlobalTag = (tag: GlobalTag): GlobalTag => ({
   ...tag,
-  createdAt: toISOString(tag.createdAt),
-  updatedAt: toISOString(tag.updatedAt),
+  createdAt: serializeTimestamp(tag.createdAt) ?? undefined,
+  updatedAt: serializeTimestamp(tag.updatedAt) ?? undefined,
 });
 
 async function getEditPageData(projectId: string) {
@@ -54,7 +45,9 @@ async function getEditPageData(projectId: string) {
 // --- Server Component: EditProjectPage ---
 
 export default async function EditProjectPage({ params }: RoutePageProps<{ id: string }>) {
-  const { currentUser, project, allTags } = await getEditPageData(params.id);
+  const { id } = params;
+
+  const { currentUser, project, allTags } = await getEditPageData(id);
 
   if (!project) {
     notFound();

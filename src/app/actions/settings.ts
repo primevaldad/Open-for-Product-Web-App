@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { findUserById, updateUser as updateUserInDb } from '@/lib/data.server';
 import { adminApp } from '@/lib/firebase.server';
 import { getAuth } from 'firebase-admin/auth';
+import { FirebaseError } from 'firebase-admin/app';
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -69,8 +70,11 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
 
     revalidatePath('/', 'layout');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "An unexpected error occurred." };
+  } catch (error) {
+    if (error instanceof FirebaseError || error instanceof Error) {
+        return { success: false, error: error.message };
+    }
+    return { success: false, error: "An unexpected error occurred." };
   }
 }
 

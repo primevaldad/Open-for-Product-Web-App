@@ -1,55 +1,46 @@
 
 import { redirect } from 'next/navigation';
-
 import { SuggestSteps } from "@/components/ai/suggest-steps";
 import { getAllProjects, getAllTags, getAllProjectPathLinks, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import { UserNotFoundError } from "@/lib/errors";
 import HomeClientPage from "./home-client-page";
 import type { Project, Tag, ProjectTag, ProjectPathLink, LearningPath, User } from "@/lib/types";
+import { serializeTimestamp } from '@/lib/utils'; // Import the centralized helper
 
 // --- Serialization Helpers ---
-const toISOString = (timestamp: any): string | any => {
-  if (timestamp && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
-  }
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  return timestamp;
-};
+// Local toISOString removed in favor of central serializeTimestamp
 
 const serializeGlobalTag = (tag: Tag): Tag => ({
   ...tag,
-  createdAt: toISOString(tag.createdAt),
-  updatedAt: toISOString(tag.updatedAt),
+  createdAt: serializeTimestamp(tag.createdAt) ?? undefined,
+  updatedAt: serializeTimestamp(tag.updatedAt) ?? undefined,
 });
 
 const serializeLearningPath = (path: LearningPath): LearningPath => ({
     ...path,
-    createdAt: toISOString(path.createdAt),
-    updatedAt: toISOString(path.updatedAt),
+    createdAt: serializeTimestamp(path.createdAt) ?? undefined,
+    updatedAt: serializeTimestamp(path.updatedAt) ?? undefined,
 });
 
 const serializeProjectPathLink = (link: ProjectPathLink): ProjectPathLink => ({
     ...link,
 });
 
-
-// Correctly serializes a project and transforms its tags
-const serializeProject = (project: any): Project => {
-  const projectTags: ProjectTag[] = (project.tags || []).map((tag: Tag) => ({
+// Correctly serializes a project and transforms its tags with strong types
+const serializeProject = (project: Project): Project => {
+  const projectTags: ProjectTag[] = (project.tags || []).map((tag: any) => ({ // Use any here temporarily as source type is mixed
       id: tag.id,
       display: tag.display,
-      role: tag.type,
+      role: tag.type, // Map type to role
   }));
 
   return {
     ...project,
-    createdAt: toISOString(project.createdAt),
-    updatedAt: toISOString(project.updatedAt),
-    startDate: project.startDate ? toISOString(project.startDate) : undefined,
-    endDate: project.endDate ? toISOString(project.endDate) : undefined,
+    createdAt: serializeTimestamp(project.createdAt) ?? undefined,
+    updatedAt: serializeTimestamp(project.updatedAt) ?? undefined,
+    startDate: project.startDate ? serializeTimestamp(project.startDate) : undefined,
+    endDate: project.endDate ? serializeTimestamp(project.endDate) : undefined,
     tags: projectTags,
   };
 };
@@ -77,7 +68,6 @@ async function getDashboardPageData() {
         const serializedProjectPathLinks = allProjectPathLinks.map(serializeProjectPathLink);
         const serializedLearningPaths = allLearningPaths.map(serializeLearningPath);
         
-        // Explicitly create a serializable User object
         const serializedUser: User = {
             id: currentUser.id,
             name: currentUser.name,
@@ -86,8 +76,8 @@ async function getDashboardPageData() {
             bio: currentUser.bio,
             interests: currentUser.interests || [],
             onboarded: currentUser.onboarded,
-            createdAt: toISOString(currentUser.createdAt),
-            lastLogin: toISOString(currentUser.lastLogin),
+            createdAt: serializeTimestamp(currentUser.createdAt) ?? undefined,
+            lastLogin: serializeTimestamp(currentUser.lastLogin) ?? undefined,
         };
 
         return {

@@ -1,5 +1,5 @@
 
-import type { User, Project, Task, LearningPath, UserLearningProgress, Module, ProjectMember } from "@/lib/types";
+import type { User, Project, ProjectMember } from "@/lib/types"; // Cleaned up unused imports
 import { getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import ActivityClientPage from "./activity-client-page";
@@ -7,16 +7,7 @@ import { updateTask as updateTaskAction, deleteTask as deleteTaskAction } from "
 import { iconMap } from '@/lib/static-data';
 import { FlaskConical } from 'lucide-react';
 import type { CompletedModuleData } from "@/lib/types";
-
-const toISOString = (timestamp: any): string | any => {
-    if (timestamp && typeof timestamp.toDate === 'function') {
-        return timestamp.toDate().toISOString();
-    }
-    if (timestamp instanceof Date) {
-        return timestamp.toISOString();
-    }
-    return timestamp;
-};
+import { serializeTimestamp } from "@/lib/utils"; // Import centralized helper
 
 async function getActivityPageData() {
     const rawCurrentUser = await getAuthenticatedUser();
@@ -63,18 +54,17 @@ export default async function ActivityPage() {
   
     const currentUser = {
       ...rawCurrentUser,
-      createdAt: toISOString(rawCurrentUser.createdAt),
-      lastLogin: toISOString(rawCurrentUser.lastLogin),
+      createdAt: serializeTimestamp(rawCurrentUser.createdAt),
+      lastLogin: serializeTimestamp(rawCurrentUser.lastLogin),
     };
   
     const allUsers = rawAllUsers.map(u => ({
       ...u,
-      createdAt: toISOString(u.createdAt),
-      lastLogin: toISOString(u.lastLogin),
+      createdAt: serializeTimestamp(u.createdAt),
+      lastLogin: serializeTimestamp(u.lastLogin),
     }));
   
     const projects = rawProjects.map(p => {
-      // Use reduce for a type-safe hydration, avoiding intermediate nulls
       const teamWithUsers = (p.team || []).reduce<Array<ProjectMember & { user: User }>>((acc, member) => {
         const user = allUsers.find(u => u.id === member.userId);
         if (user) {
@@ -85,14 +75,14 @@ export default async function ActivityPage() {
   
       return {
         ...p,
-        createdAt: toISOString(p.createdAt),
-        updatedAt: toISOString(p.updatedAt),
-        startDate: p.startDate ? toISOString(p.startDate) : undefined,
-        endDate: p.endDate ? toISOString(p.endDate) : undefined,
+        createdAt: serializeTimestamp(p.createdAt),
+        updatedAt: serializeTimestamp(p.updatedAt),
+        startDate: p.startDate ? serializeTimestamp(p.startDate) : undefined,
+        endDate: p.endDate ? serializeTimestamp(p.endDate) : undefined,
         tags: (p.tags || []).map(tag => ({
           ...tag,
-          createdAt: toISOString(tag.createdAt),
-          updatedAt: toISOString(tag.updatedAt),
+          createdAt: serializeTimestamp(tag.createdAt),
+          updatedAt: serializeTimestamp(tag.updatedAt),
         })),
         team: teamWithUsers,
       };
@@ -100,15 +90,15 @@ export default async function ActivityPage() {
   
     const myTasks = rawMyTasks.map(t => ({
       ...t,
-      createdAt: toISOString(t.createdAt),
-      updatedAt: toISOString(t.updatedAt),
+      createdAt: serializeTimestamp(t.createdAt),
+      updatedAt: serializeTimestamp(t.updatedAt),
       assignedTo: allUsers.find(u => u.id === t.assignedToId) ?? undefined,
     }));
   
     const learningPaths = rawLearningPaths.map(lp => ({
       ...lp,
-      createdAt: toISOString(lp.createdAt),
-      updatedAt: toISOString(lp.updatedAt),
+      createdAt: serializeTimestamp(lp.createdAt),
+      updatedAt: serializeTimestamp(lp.updatedAt),
       Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
     }));
   
@@ -117,11 +107,12 @@ export default async function ActivityPage() {
     const completedModulesData: CompletedModuleData[] = (userProgress || []).flatMap(progress =>
       (progress.completedModules || []).map(moduleId => {
         const path = learningPaths.find(p => p.pathId === progress.pathId);
-        const module = path?.modules.find(m => m.moduleId === moduleId);
+        // Renamed 'module' to 'learningModule' to avoid reserved keyword conflict
+        const learningModule = path?.modules.find(m => m.moduleId === moduleId);
   
         const serializablePath = path ? { pathId: path.pathId, title: path.title } : undefined;
   
-        return serializablePath && module ? { path: serializablePath, module } : null;
+        return serializablePath && learningModule ? { path: serializablePath, module: learningModule } : null;
       })
     ).filter((item): item is CompletedModuleData => !!item);
   
@@ -130,6 +121,7 @@ export default async function ActivityPage() {
         <h1 className="text-2xl font-bold">My Activity</h1>
         <div className="grid md:grid-cols-2 gap-6">
           <ActivityClientPage
+            currentUser={currentUser} // Pass currentUser as a prop
             myTasks={myTasks}
             completedModulesData={completedModulesData}
             projects={projects}

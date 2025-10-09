@@ -127,7 +127,7 @@ export default function UserProfilePageClient({ user, userProjects, isCurrentUse
             ) : (
               <Card className="flex flex-col items-center justify-center text-center p-8 border-dashed">
                 <CardHeader>
-                  <CardTitle>Let's Get Started!</CardTitle>
+                  <CardTitle>Let&apos;s Get Started!</CardTitle>
                   <CardDescription>Your portfolio is ready to be filled with amazing projects.</CardDescription>
                 </CardHeader>
                 <CardContent>

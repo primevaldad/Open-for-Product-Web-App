@@ -195,6 +195,7 @@ export type TaskFormValues = {
 export type ServerActionResponse = Promise<{ success: boolean; error?: string; }>;
 
 export interface ActivityClientPageProps {
+  currentUser: User; // Added currentUser
   myTasks: Task[];
   completedModulesData: CompletedModuleData[];
   projects: Project[];

@@ -4,9 +4,10 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
-import { adminDb, findUserByEmail, logOrphanedUser } from '@/lib/data.server';
+import { adminDb, logOrphanedUser } from '@/lib/data.server'; // Removed unused findUserByEmail
 import { createSession, clearSession } from '@/lib/session.server';
 import type { User } from '@/lib/types';
+import { FirebaseError } from 'firebase-admin/app'; // Import FirebaseError for specific typing
 
 const SignUpSchema = z.object({
   idToken: z.string(),
@@ -33,10 +34,12 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
     await createSession(idToken);
     revalidatePath('/home');
     return { success: true };
-  } catch (error: any) {
-    console.error("[AUTH_ACTION_TRACE] Login Server Action Error:", error.message);
-    // Return the specific error message from the catch block to the client.
-    return { success: false, error: error.message || "An unknown error occurred while creating the session." };
+  } catch (error) { // Type error as FirebaseError or generic Error
+    if (error instanceof FirebaseError || error instanceof Error) {
+        console.error("[AUTH_ACTION_TRACE] Login Server Action Error:", error.message);
+        return { success: false, error: error.message };
+    }
+    return { success: false, error: "An unknown error occurred while creating the session." };
   }
 }
 
@@ -51,33 +54,23 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
   const { idToken, name, email } = validatedFields.data;
 
   try {
-    // Create the session and get the new UID from the valid token.
     const uid = await createSession(idToken);
 
-    // ** ATOMIC TRANSACTION **
-    // This ensures that finding, logging, deleting, and creating the user profile happen as a single, indivisible operation.
     await adminDb.runTransaction(async (transaction) => {
         const usersCollection = adminDb.collection('users');
         
-        // 1. Find potential orphan using the transaction
         const orphanQuery = usersCollection.where('email', '==', email).limit(1);
         const orphanSnapshot = await transaction.get(orphanQuery);
 
         if (!orphanSnapshot.empty) {
             const orphanDoc = orphanSnapshot.docs[0];
-            // Ensure we don't accidentally delete the profile for the UID we just created
             if (orphanDoc.id !== uid) {
                 const orphanData = { id: orphanDoc.id, ...orphanDoc.data() } as User;
-
-                // 2. Log the orphan for auditing (not part of the transaction itself, but good practice)
                 await logOrphanedUser(orphanData);
-
-                // 3. Delete the orphan within the transaction
                 transaction.delete(orphanDoc.ref);
             }
         }
 
-        // 4. Create the new user profile within the transaction
         const newUserRef = usersCollection.doc(uid);
         const newUser: Omit<User, 'id'> = {
             name,
@@ -93,12 +86,15 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
     revalidatePath('/onboarding');
     return { success: true, userId: uid };
 
-  } catch (error: any) {
+  } catch (error) { // Type error as FirebaseError or generic Error
     console.error('[AUTH_ACTION_TRACE] Signup Server Action Error:', error);
     await clearSession();
+    if (error instanceof FirebaseError || error instanceof Error) {
+        return { success: false, error: error.message };
+    }
     return {
       success: false,
-      error: error.message || 'An unknown error occurred during signup.',
+      error: 'An unknown error occurred during signup.',
     };
   }
 }
