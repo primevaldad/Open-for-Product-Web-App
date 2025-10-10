@@ -66,8 +66,9 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
 
   function onSubmit(data: ProfileFormValues) {
     startTransition(async () => {
-        // CORRECTED: Rename passwordConfirmation to _ to mark it as intentionally unused
-        const { passwordConfirmation: _, ...updateData } = data;
+        // This variable is intentionally unused to separate it from the update payload.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { passwordConfirmation, ...updateData } = data;
         if (!updateData.password) {
             delete updateData.password;
         }

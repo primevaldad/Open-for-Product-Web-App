@@ -6,10 +6,9 @@ import { getAuthenticatedUser } from "@/lib/session.server";
 import { UserNotFoundError } from "@/lib/errors";
 import HomeClientPage from "./home-client-page";
 import type { Project, Tag, ProjectTag, ProjectPathLink, LearningPath, User } from "@/lib/types";
-import { serializeTimestamp } from '@/lib/utils'; // Import the centralized helper
+import { serializeTimestamp } from '@/lib/utils';
 
 // --- Serialization Helpers ---
-// Local toISOString removed in favor of central serializeTimestamp
 
 const serializeGlobalTag = (tag: Tag): Tag => ({
   ...tag,
@@ -27,12 +26,11 @@ const serializeProjectPathLink = (link: ProjectPathLink): ProjectPathLink => ({
     ...link,
 });
 
-// Correctly serializes a project and transforms its tags with strong types
 const serializeProject = (project: Project): Project => {
-  const projectTags: ProjectTag[] = (project.tags || []).map((tag: any) => ({ // Use any here temporarily as source type is mixed
+  const projectTags: ProjectTag[] = (project.tags || []).map((tag: Tag) => ({
       id: tag.id,
       display: tag.display,
-      role: tag.type, // Map type to role
+      role: tag.type,
   }));
 
   return {

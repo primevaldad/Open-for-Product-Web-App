@@ -12,17 +12,21 @@ function serializeData<T>(data: T): T {
   if (data === null || typeof data !== 'object') return data;
 
   // Handle Firestore Timestamps or Date objects
-  if ('toDate' in data && typeof (data as unknown).toDate === 'function' || data instanceof Date) {
-    return serializeTimestamp(data) as unknown;
+  if (('toDate' in data && typeof (data as { toDate: () => Date }).toDate === 'function') || data instanceof Date) {
+    return serializeTimestamp(data) as T;
   }
 
-  if (Array.isArray(data)) return data.map(serializeData) as unknown;
+  if (Array.isArray(data)) {
+    return data.map(serializeData) as T;
+  }
 
-  const result: unknown = {};
+  const result: { [key: string]: any } = {};
   for (const key in data) {
-    result[key] = serializeData((data as unknown)[key]);
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      result[key] = serializeData((data as any)[key]);
+    }
   }
-  return result;
+  return result as T;
 }
 
 // Fetch all data needed for user profile page

@@ -1,5 +1,5 @@
 
-import type { User, Project, ProjectMember } from "@/lib/types"; // Cleaned up unused imports
+import type { User, ProjectMember } from "@/lib/types"; // Cleaned up unused imports
 import { getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import ActivityClientPage from "./activity-client-page";
@@ -107,7 +107,6 @@ export default async function ActivityPage() {
     const completedModulesData: CompletedModuleData[] = (userProgress || []).flatMap(progress =>
       (progress.completedModules || []).map(moduleId => {
         const path = learningPaths.find(p => p.pathId === progress.pathId);
-        // Renamed 'module' to 'learningModule' to avoid reserved keyword conflict
         const learningModule = path?.modules.find(m => m.moduleId === moduleId);
   
         const serializablePath = path ? { pathId: path.pathId, title: path.title } : undefined;
@@ -121,7 +120,7 @@ export default async function ActivityPage() {
         <h1 className="text-2xl font-bold">My Activity</h1>
         <div className="grid md:grid-cols-2 gap-6">
           <ActivityClientPage
-            currentUser={currentUser} // Pass currentUser as a prop
+            currentUser={currentUser}
             myTasks={myTasks}
             completedModulesData={completedModulesData}
             projects={projects}

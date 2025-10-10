@@ -112,7 +112,7 @@ async function main() {
     for (const projectDoc of projectsSnapshot.docs) {
         const project = projectDoc.data();
         let team = project.team || [];
-        let teamNeedsUpdate = false;
+        const teamNeedsUpdate = false;
 
         // Find the user in the team array
         const userMembership = team.find((member: any) => member.userId === user.id);
