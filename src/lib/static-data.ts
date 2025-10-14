@@ -1,6 +1,6 @@
 
 import type { Interest, ProjectCategory } from './types';
-import { Code, BookText, Users as UsersIcon, Handshake, Briefcase, FlaskConical, type LucideIcon } from 'lucide-react';
+import { Code, BookText, Users as UsersIcon, Briefcase, FlaskConical, type LucideIcon } from 'lucide-react';
 
 
 // This file contains static data that is safe to be shared between server and client components.

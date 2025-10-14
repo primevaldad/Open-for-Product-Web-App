@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useTransition, useState, useEffect } from 'react';
+import { useTransition, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { User, LearningPath, UserLearningProgress, Module } from '@/lib/types';
 import type { completeModule } from '@/app/actions/learning';
@@ -23,7 +23,7 @@ interface LearningModuleClientPageProps {
     completeModule: typeof completeModule;
 }
 
-function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { path: any, module: any, prevModule: any, nextModule: any, onNextModule: () => void }) {
+function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { path: LearningPath, module: Module, prevModule: Module | null, nextModule: Module | null, onNextModule: () => void }) {
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
             <div className='flex items-center gap-4'>

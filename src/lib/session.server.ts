@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from './firebase.server';
 import { findUserById } from './data.server';
-import { UserNotFoundError, RecentSignInRequiredError, NotAuthenticatedError } from './errors';
+import { UserNotFoundError, NotAuthenticatedError } from './errors';
 import type { User } from './types';
 
 const SESSION_COOKIE_NAME = '__session';
@@ -70,7 +70,7 @@ export async function clearSession(): Promise<void> {
       );
       await adminAuth.revokeRefreshTokens(decodedClaims.sub);
       console.log(`[AUTH_TRACE] Revoked tokens for UID: ${decodedClaims.sub}`);
-    } catch (error) {
+    } catch {
       console.log(
         '[AUTH_TRACE] Could not revoke tokens; session cookie may have been invalid.'
       );

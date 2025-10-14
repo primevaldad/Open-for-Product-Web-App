@@ -5,11 +5,11 @@ const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
     // This will force the build to succeed even if there are TypeScript errors.
-    ignoreBuildErrors: true,
+    // ignoreBuildErrors: true,
   },
   eslint: {
     // This will skip ESLint checks during the build process.
-    ignoreDuringBuilds: true,
+    // ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [

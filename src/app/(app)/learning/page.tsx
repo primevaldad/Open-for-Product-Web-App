@@ -3,20 +3,25 @@ import { getAllLearningPaths, getAllUserLearningProgress, getAllProjects, getAll
 import { getAuthenticatedUser } from "@/lib/session.server";
 import LearningClientPage from "./learning-client-page";
 import { redirect } from 'next/navigation';
+import { Timestamp } from "firebase-admin/firestore";
 
-function serializeTimestamps(data: any): any {
+type Serializable = string | number | boolean | null | { [key: string]: Serializable } | Serializable[];
+
+function serializeTimestamps(data: unknown): Serializable {
     if (data === null || typeof data !== 'object') {
-        return data;
+        return data as Serializable;
     }
-    if ('toDate' in data && typeof data.toDate === 'function') {
+    if (data instanceof Timestamp) {
         return data.toDate().toISOString();
     }
     if (Array.isArray(data)) {
         return data.map(serializeTimestamps);
     }
-    const serialized: { [key: string]: any } = {};
+    const serialized: { [key: string]: Serializable } = {};
     for (const key in data) {
-        serialized[key] = serializeTimestamps(data[key]);
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            serialized[key] = serializeTimestamps((data as { [key: string]: unknown })[key]);
+        }
     }
     return serialized;
 }
@@ -55,10 +60,10 @@ export default async function LearningPage() {
     <div className="space-y-6">
         <h1 className="text-2xl font-bold">Learning Paths</h1>
         <LearningClientPage
-            learningPaths={learningPaths}
-            userProgress={userProgress}
-            projects={projects}
-            allProjectPathLinks={allProjectPathLinks}
+            learningPaths={learningPaths as any}
+            userProgress={userProgress as any}
+            projects={projects as any}
+            allProjectPathLinks={allProjectPathLinks as any}
         />
     </div>
   );

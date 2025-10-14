@@ -7,17 +7,24 @@ import {
 } from '@/lib/data.server';
 import LearningModuleClientPage from './learning-module-client-page';
 import { completeModule } from '@/app/actions/learning';
-import type { Module, LearningPath, User } from '@/lib/types';
+import type { Module, User } from '@/lib/types';
 import type { RoutePageProps } from '@/types/next-page-helpers';
 
 /**
  * Converts Firestore timestamps or Date objects to ISO strings.
  */
-const toISOString = (timestamp: any): string | null => {
+const toISOString = (timestamp: unknown): string | null => {
   if (!timestamp) return null;
-  if (typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString();
   if (timestamp instanceof Date) return timestamp.toISOString();
-  return timestamp.toString(); // Fallback for already serialized data
+  if (
+    typeof timestamp === 'object' &&
+    timestamp !== null &&
+    'toDate' in timestamp &&
+    typeof (timestamp as { toDate: unknown }).toDate === 'function'
+  ) {
+    return ((timestamp as { toDate: () => Date }).toDate()).toISOString();
+  }
+  return timestamp.toString();
 };
 
 /**

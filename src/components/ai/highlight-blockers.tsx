@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { highlightProjectBlockers } from "@/ai/flows/highlight-project-blockers";
 import type { Task, Discussion } from "@/lib/types";
 
+interface Blocker {
+  title: string;
+  description: string;
+  riskLevel: string;
+}
+
+interface Blockers {
+  potentialBlockers: Blocker[];
+}
+
 interface HighlightBlockersProps {
   tasks: Task[];
   discussions: Discussion[];
@@ -17,7 +27,7 @@ interface HighlightBlockersProps {
 export function HighlightBlockers({ tasks, discussions }: HighlightBlockersProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [blockers, setBlockers] = useState<any | null>(null);
+  const [blockers, setBlockers] = useState<Blockers | null>(null);
 
   const getBlockers = async () => {
     try {
@@ -56,7 +66,7 @@ export function HighlightBlockers({ tasks, discussions }: HighlightBlockersProps
       <CardContent>
         {blockers ? (
           <div className="space-y-4">
-            {blockers.potentialBlockers.map((blocker: any, index: number) => (
+            {blockers.potentialBlockers.map((blocker: Blocker, index: number) => (
               <div key={index} className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <p className="font-semibold text-destructive">{blocker.title}</p>
                 <p className="text-sm text-destructive-foreground/80">{blocker.description}</p>

@@ -1,5 +1,4 @@
 
-import type { Task, Project, User, Module } from "@/lib/types";
 import type { updateTask as UpdateTaskFn, deleteTask as DeleteTaskFn } from "@/app/actions/projects";
 
 declare module "*.svg" {

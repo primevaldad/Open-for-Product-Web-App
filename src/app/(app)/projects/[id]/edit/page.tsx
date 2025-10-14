@@ -12,14 +12,23 @@ import type { RoutePageProps } from '@/types/next-page-helpers';
 
 // --- Serialization Helpers ---
 
-const toISOString = (timestamp: any): string | any => {
-  if (timestamp && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
-  }
+const toISOString = (timestamp: unknown): string | undefined => {
+  if (!timestamp) return undefined;
   if (timestamp instanceof Date) {
     return timestamp.toISOString();
   }
-  return timestamp;
+  if (
+    typeof timestamp === 'object' &&
+    timestamp !== null &&
+    'toDate' in timestamp &&
+    typeof (timestamp as { toDate: unknown }).toDate === 'function'
+  ) {
+    return ((timestamp as { toDate: () => Date }).toDate()).toISOString();
+  }
+  if (typeof timestamp === 'string') {
+    return timestamp;
+  }
+  return undefined;
 };
 
 const serializeProject = (project: Project): Project => {

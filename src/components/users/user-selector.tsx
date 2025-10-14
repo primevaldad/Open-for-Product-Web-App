@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Check, X, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +33,7 @@ export function UserSelector({ value, onChange, placeholder = "Add members..." }
     const fetchInitialUsers = async () => {
       if (value && value.length > 0) {
         const userIds = value.map(member => member.userId);
-        // @ts-ignore
+        // @ts-expect-error
         const users = await findUsersByIds(userIds);
         const usersWithRoles = users.map((user: User) => ({
           ...user,

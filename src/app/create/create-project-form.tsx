@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { publishProject, saveProjectDraft } from '../actions/projects';
 import { TagSelector } from '@/components/tags/tag-selector';
-import type { Tag, ProjectTag } from '@/lib/types';
+import type { Tag } from '@/lib/types';
 import { CreateProjectSchema, CreateProjectFormValues } from '@/lib/schemas';
 import { UserSelector } from '@/components/users/user-selector';
 

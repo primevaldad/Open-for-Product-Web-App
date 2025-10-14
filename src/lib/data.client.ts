@@ -1,7 +1,7 @@
 import 'client-only';
 import { db } from './firebase';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
-import type { Project, User, Discussion, ProjectMember, Task, LearningPath, UserLearningProgress } from './types';
+import type { Project, User, Task, LearningPath, UserLearningProgress } from './types';
 
 // --- User Data Access ---
 export async function getAllUsers(): Promise<User[]> {
@@ -104,7 +104,6 @@ export async function getAllUserLearningProgress(): Promise<UserLearningProgress
 }
 
 export async function findUserLearningProgress(userId: string, pathId: string): Promise<UserLearningProgress | undefined> {
-    const progressCol = collection(db, 'userLearningProgress');
     // Firestore doesn't support compound unique keys well, so we create a custom ID
     const docId = `${userId}_${pathId}`;
     const progressRef = doc(db, 'userLearningProgress', docId);

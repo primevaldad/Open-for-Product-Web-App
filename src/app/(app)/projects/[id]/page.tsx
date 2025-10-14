@@ -19,22 +19,28 @@ import {
 } from "@/app/actions/projects";
 import type { Project, Task, Discussion, User, LearningPath } from "@/lib/types";
 import type { RoutePageProps } from "@/types/next-page-helpers";
+import { Timestamp } from "firebase-admin/firestore";
 
 // Recursive timestamp serialization
-function serializeTimestamps<T>(data: T): T {
-  if (data === null || typeof data !== "object") return data;
+type Serializable = string | number | boolean | null | { [key: string]: Serializable } | Serializable[];
 
-  if ("toDate" in data && typeof (data as any).toDate === "function") {
-    return (data as any).toDate().toISOString() as any;
-  }
-
-  if (Array.isArray(data)) return data.map(serializeTimestamps) as any;
-
-  const result: any = {};
-  for (const key in data) {
-    result[key] = serializeTimestamps((data as any)[key]);
-  }
-  return result;
+function serializeTimestamps(data: unknown): Serializable {
+    if (data === null || typeof data !== 'object') {
+        return data as Serializable;
+    }
+    if (data instanceof Timestamp) {
+        return data.toDate().toISOString();
+    }
+    if (Array.isArray(data)) {
+        return data.map(serializeTimestamps);
+    }
+    const serialized: { [key: string]: Serializable } = {};
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            serialized[key] = serializeTimestamps((data as { [key: string]: unknown })[key]);
+        }
+    }
+    return serialized;
 }
 
 export default async function ProjectDetailPage({ params }: RoutePageProps<{ id: string }>): Promise<JSX.Element> {

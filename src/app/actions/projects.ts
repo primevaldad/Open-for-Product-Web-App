@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
-import type { Project, ProjectStatus, ProjectTag, Tag as GlobalTag, User, ProjectMember } from '@/lib/types';
+import type { Project, ProjectStatus, ProjectTag, Tag as GlobalTag, User } from '@/lib/types';
 import {
     adminDb,
     addDiscussionComment as addDiscussionCommentToDb,

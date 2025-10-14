@@ -37,7 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { User, Interest } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { interests } from '@/lib/static-data';
 import type { updateOnboardingInfo } from '../actions/settings';
 

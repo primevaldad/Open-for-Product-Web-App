@@ -1,9 +1,9 @@
 
 import 'server-only';
 import admin from 'firebase-admin'; // Import the top-level admin object
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink, ProjectBadgeLink, UserBadge, ProjectTag } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink, ProjectTag } from './types';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
@@ -217,46 +217,6 @@ export async function getAllTags(): Promise<Tag[]> {
     const tagsSnapshot = await tagsCol.get();
     return tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
 }
-
-async function manageTagsForProject(
-  transaction: FirebaseFirestore.Transaction,
-  newTags: SelectableTag[],
-  currentTags: Tag[]
-): Promise<Tag[]> {
-  const newTagIds = new Set(newTags.map(t => t.id));
-  const currentTagIds = new Set(currentTags.map(t => t.id));
-
-  const tagsToAdd = newTags.filter(t => !currentTagIds.has(t.id));
-  const tagsToRemove = currentTags.filter(t => !newTagIds.has(t.id));
-  const finalTags: Tag[] = [...newTags];
-
-  const tagsCollection = adminDb.collection('tags');
-
-  for (const tag of tagsToAdd) {
-    const tagRef = tagsCollection.doc(tag.id);
-    const tagSnap = await transaction.get(tagRef);
-    if (tagSnap.exists) {
-      transaction.update(tagRef, { usageCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
-    } else {
-      transaction.set(tagRef, {
-        id: tag.id,
-        display: tag.display,
-        type: tag.type,
-        usageCount: 1,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-    }
-  }
-
-  for (const tag of tagsToRemove) {
-    const tagRef = tagsCollection.doc(tag.id);
-    transaction.update(tagRef, { usageCount: FieldValue.increment(-1), updatedAt: FieldValue.serverTimestamp() });
-  }
-  
-  return finalTags;
-}
-
 
 // --- Discussion Data Access ---
 export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>): Promise<string> {

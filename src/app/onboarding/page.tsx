@@ -1,6 +1,6 @@
 
 import OnboardingForm from "./onboarding-form";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+// import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateOnboardingInfo } from "../actions/settings";
 import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
 import { redirect } from "next/navigation";
