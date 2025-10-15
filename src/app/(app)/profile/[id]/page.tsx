@@ -11,24 +11,24 @@ import { RoutePageProps } from "@/types/next-page-helpers";
 // Helper to serialize Firestore Timestamps to ISO strings
 type Serializable = string | number | boolean | null | { [key: string]: Serializable } | Serializable[];
 
-function serializeTimestamps(data: unknown): Serializable {
-    if (data === null || typeof data !== 'object') {
-        return data as Serializable;
-    }
-    if (data instanceof Timestamp) {
-        return data.toDate().toISOString();
-    }
-    if (Array.isArray(data)) {
-        return data.map(serializeTimestamps);
-    }
-    const serialized: { [key: string]: Serializable } = {};
-    for (const key in data) {
-        if (Object.prototype.hasOwnProperty.call(data, key)) {
-            serialized[key] = serializeTimestamps((data as { [key: string]: unknown })[key]);
-        }
-    }
-    return serialized;
-}
+// function serializeTimestamps(data: unknown): Serializable {
+//     if (data === null || typeof data !== 'object') {
+//         return data as Serializable;
+//     }
+//     if (data instanceof Timestamp) {
+//         return data.toDate().toISOString();
+//     }
+//     if (Array.isArray(data)) {
+//         return data.map(serializeTimestamps);
+//     }
+//     const serialized: { [key: string]: Serializable } = {};
+//     for (const key in data) {
+//         if (Object.prototype.hasOwnProperty.call(data, key)) {
+//             serialized[key] = serializeTimestamps((data as { [key: string]: unknown })[key]);
+//         }
+//     }
+//     return serialized;
+// }
 
 function deepSerialize<T>(obj: T): T {
  if (obj === null || typeof obj !== 'object') {
@@ -43,10 +43,10 @@ function deepSerialize<T>(obj: T): T {
  return obj.map(deepSerialize) as T;
  }
 
- const serializedObj: { [key: string]: any } = {};
+ const serializedObj: { [key: string]: unknown } = {};
  for (const key in obj) {
  if (Object.prototype.hasOwnProperty.call(obj, key)) {
- serializedObj[key] = deepSerialize((obj as any)[key]);
+ serializedObj[key] = deepSerialize((obj as Record<string, unknown>)[key]);
  }
  }
  return serializedObj as T;
