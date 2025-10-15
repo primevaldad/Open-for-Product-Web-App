@@ -285,18 +285,16 @@ export async function findLearningPathsByIds(ids: string[]): Promise<LearningPat
             if (!doc.exists) return null;
             const data = doc.data();
             return {
-                id: doc.id,
-                // Assuming LearningPath has these properties in doc.data()
-                pathId: data.pathId,
+                pathId: doc.id, // Use the document's ID as the pathId
                 title: data.title,
                 description: data.description,
                 duration: data.duration,
                 category: data.category,
-                Icon: data.Icon, // Include the Icon property
-                modules: data.modules, // Include the modules property
-                // Add other properties of LearningPath as needed
-                ...data, // Include any other properties from doc.data() that are in LearningPath
+                Icon: data.Icon,
+                modules: data.modules,
+                ...data,
             } as LearningPath;
+
         })
         .filter((path): path is LearningPath => path !== null);
 }
@@ -361,7 +359,6 @@ export async function getAllLearningPaths(): Promise<LearningPath[]> {
     return pathSnapshot.docs.map(doc => {
         const data = doc.data();
         return {
-            id: doc.id,
             pathId: doc.id, // Explicitly map id to pathId
             title: data.title,
             description: data.description,

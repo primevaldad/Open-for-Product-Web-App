@@ -37,11 +37,11 @@ export default async function LearningModulePage({ params }: RoutePageProps<{ id
   const rawCurrentUser = await getAuthenticatedUser();
 
   const learningPaths = await getAllLearningPaths();
-  const path = learningPaths.find((p) => p.id === id);
+  const path = learningPaths.find((p) => p.pathId === id);
 
   if (!path) notFound();
 
-  const module = path.modules.find((m) => m.id === moduleId);
+  const module = path.modules.find((m) => m.moduleId === moduleId);
 
   if (!module) notFound();
   
@@ -57,7 +57,7 @@ export default async function LearningModulePage({ params }: RoutePageProps<{ id
 
   // Previous and next modules for navigation
   const currentModuleIndex = path.modules.findIndex(
-    (m: Module) => m.id === moduleId
+    (m: Module) => m.moduleId === moduleId
   );
 
   const prevModule = currentModuleIndex > 0 ? path.modules[currentModuleIndex - 1] : null;
