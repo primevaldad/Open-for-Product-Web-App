@@ -39,7 +39,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { User } from '@/lib/types';
 import { interests } from '@/lib/static-data';
-import type { updateOnboardingInfo } from '../actions/settings';
+// import type { updateOnboardingInfo } from '../actions/settings';
 
 
 const onboardingSchema = z.object({

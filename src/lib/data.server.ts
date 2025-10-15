@@ -3,7 +3,7 @@ import 'server-only';
 import admin from 'firebase-admin'; // Import the top-level admin object
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, SelectableTag, ProjectPathLink, ProjectTag } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag } from './types';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
@@ -283,10 +283,24 @@ export async function findLearningPathsByIds(ids: string[]): Promise<LearningPat
     return docs
         .map(doc => {
             if (!doc.exists) return null;
-            return { id: doc.id, ...doc.data() } as LearningPath;
+            const data = doc.data();
+            return {
+                id: doc.id,
+                // Assuming LearningPath has these properties in doc.data()
+                pathId: data.pathId,
+                title: data.title,
+                description: data.description,
+                duration: data.duration,
+                category: data.category,
+                Icon: data.Icon, // Include the Icon property
+                modules: data.modules, // Include the modules property
+                // Add other properties of LearningPath as needed
+                ...data, // Include any other properties from doc.data() that are in LearningPath
+            } as LearningPath;
         })
         .filter((path): path is LearningPath => path !== null);
 }
+
 
 export async function getRecommendedPathIdsForProject(projectId: string): Promise<string[]> {
     const linksSnapshot = await adminDb.collection('projectPathLinks').where('projectId', '==', projectId).get();
@@ -298,7 +312,16 @@ export async function getRecommendedPathIdsForProject(projectId: string): Promis
 
 export async function getAllProjectPathLinks(): Promise<ProjectPathLink[]> {
     const linksSnapshot = await adminDb.collection('projectPathLinks').get();
-    return linksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectPathLink));
+    return linksSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            pathId: data.pathId, // Assuming pathId exists in doc.data()
+            projectId: data.projectId, // Assuming projectId exists in doc.data()
+            learningPathId: data.learningPathId, // Assuming learningPathId exists in doc.data()
+            ...data, // Include any other properties from doc.data() that are in ProjectPathLink
+        } as ProjectPathLink;
+    });
 }
 
 export async function getRecommendedLearningPathsForProject(projectId: string): Promise<LearningPath[]> {

@@ -3,9 +3,10 @@ import { notFound } from 'next/navigation';
 import UserProfilePageClient from './profile-client-page';
 import { getAllProjects, findUserById, getAllLearningPaths, getAllProjectPathLinks } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
-// import type { User, LearningPath, Project, ProjectPathLink } from '@/lib/types';
-import type { RoutePageProps } from '@/types/next-page-helpers';
+import type { User, LearningPath, Project, ProjectPathLink } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
+import { RoutePageProps } from "@/types/next-page-helpers";
+
 
 // Helper to serialize Firestore Timestamps to ISO strings
 type Serializable = string | number | boolean | null | { [key: string]: Serializable } | Serializable[];
@@ -29,21 +30,43 @@ function serializeTimestamps(data: unknown): Serializable {
     return serialized;
 }
 
+function deepSerialize<T>(obj: T): T {
+ if (obj === null || typeof obj !== 'object') {
+ return obj;
+ }
+
+ if (obj instanceof Timestamp) {
+ return obj.toDate().toISOString() as T;
+ }
+
+ if (Array.isArray(obj)) {
+ return obj.map(deepSerialize) as T;
+ }
+
+ const serializedObj: { [key: string]: any } = {};
+ for (const key in obj) {
+ if (Object.prototype.hasOwnProperty.call(obj, key)) {
+ serializedObj[key] = deepSerialize((obj as any)[key]);
+ }
+ }
+ return serializedObj as T;
+}
+
 // Fetch all data needed for user profile page
 async function getUserProfilePageData(userId: string) {
   const currentUser = await getAuthenticatedUser();
-  const user = await findUserById(userId);
+  const user: User | null = await findUserById(userId);
 
   if (!user) {
-    return {
-      user: null,
-      userProjects: [],
-      currentUser: serializeTimestamps(currentUser),
-      allLearningPaths: [],
-      allProjectPathLinks: [],
-    };
+ return {
+ user: null,
+      userProjects: [] as Project[],
+ currentUser: currentUser ? deepSerialize(currentUser) : null,
+ allLearningPaths: [] as LearningPath[],
+ allProjectPathLinks: [] as ProjectPathLink[],
+ };
   }
-
+  
   const [allProjects, allLearningPaths, allProjectPathLinks] = await Promise.all([
     getAllProjects(),
     getAllLearningPaths(),
@@ -51,14 +74,13 @@ async function getUserProfilePageData(userId: string) {
   ]);
 
   const userProjects = allProjects.filter(p => p.team.some(m => m.userId === userId));
-
   // Serialize all timestamps
   return {
-    user: { ...serializeTimestamps(user) as object, bio: user.bio || '', location: user.location || '' } as any,
-    userProjects: serializeTimestamps(userProjects) as any,
-    currentUser: serializeTimestamps(currentUser) as any,
-    allLearningPaths: serializeTimestamps(allLearningPaths) as any,
-    allProjectPathLinks: serializeTimestamps(allProjectPathLinks) as any,
+ user: deepSerialize(user),
+ userProjects: deepSerialize(userProjects),
+ currentUser: currentUser ? deepSerialize(currentUser) : null,
+ allLearningPaths: deepSerialize(allLearningPaths),
+ allProjectPathLinks: deepSerialize(allProjectPathLinks),
   };
 }
 
@@ -66,7 +88,7 @@ async function getUserProfilePageData(userId: string) {
 export default async function UserProfilePage({ params }: RoutePageProps<{ id: string }>) {
   const { id: userId } = params;
 
-  const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks } =
+  const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks }: { user: User | null; userProjects: Project[]; currentUser: Serializable; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] } =
     await getUserProfilePageData(userId);
 
   if (!user || !currentUser) {

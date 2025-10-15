@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/session.server";
 import LearningClientPage from "./learning-client-page";
 import { redirect } from 'next/navigation';
 import { Timestamp } from "firebase-admin/firestore";
+import { Project, User, LearningPath, UserLearningProgress, ProjectPathLink } from "@/lib/types";
 
 type Serializable = string | number | boolean | null | { [key: string]: Serializable } | Serializable[];
 
@@ -40,12 +41,18 @@ async function getLearningPageData() {
     const userProgress = allUserProgress.filter(up => up.userId === currentUser.id);
 
     return { 
-        currentUser: serializeTimestamps(currentUser), 
-        learningPaths: serializeTimestamps(learningPaths), 
-        userProgress: serializeTimestamps(userProgress),
-        projects: serializeTimestamps(projects),
-        allProjectPathLinks: serializeTimestamps(allProjectPathLinks),
-    };
+ currentUser: serializeTimestamps(currentUser) as User,
+ // The data fetching functions should return the correct types directly.
+ // Assuming getAllLearningPaths returns LearningPath[], getAllUserLearningProgress returns UserLearningProgress[], etc.
+ // If serializeTimestamps is needed to handle nested Timestamps, its return type or the data structure should be adjusted.
+ // For now, removing the redundant casts and relying on the type returned by the data fetching functions.
+ // If serialization is strictly necessary and changes the structure, the types should reflect that.
+ // A more robust solution would involve a dedicated serialization function that returns a type derived from the original type.
+ learningPaths: learningPaths as LearningPath[],
+ userProgress: userProgress as UserLearningProgress[],
+ projects: projects as Project[],
+ allProjectPathLinks: allProjectPathLinks as ProjectPathLink[],
+ };
 }
 
 
@@ -60,10 +67,10 @@ export default async function LearningPage() {
     <div className="space-y-6">
         <h1 className="text-2xl font-bold">Learning Paths</h1>
         <LearningClientPage
-            learningPaths={learningPaths as any}
-            userProgress={userProgress as any}
-            projects={projects as any}
-            allProjectPathLinks={allProjectPathLinks as any}
+ learningPaths={learningPaths}
+ userProgress={userProgress}
+ projects={projects}
+ allProjectPathLinks={allProjectPathLinks}
         />
     </div>
   );

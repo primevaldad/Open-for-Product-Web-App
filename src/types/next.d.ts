@@ -7,7 +7,7 @@ declare module "*.svg" {
 }
 
 declare global {
-  interface Window {
+  interface Window { // This can likely be replaced with `object` or `unknown` depending on usage
     // Add unknown global typings you might need
   }
 

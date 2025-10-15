@@ -33,7 +33,6 @@ export function UserSelector({ value, onChange, placeholder = "Add members..." }
     const fetchInitialUsers = async () => {
       if (value && value.length > 0) {
         const userIds = value.map(member => member.userId);
-        // @ts-expect-error
         const users = await findUsersByIds(userIds);
         const usersWithRoles = users.map((user: User) => ({
           ...user,
