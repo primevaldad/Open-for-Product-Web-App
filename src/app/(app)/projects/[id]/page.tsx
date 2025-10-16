@@ -17,7 +17,7 @@ import {
   joinProject,
   updateTask,
 } from "@/app/actions/projects";
-import type { Project, Task, Discussion, User, LearningPath } from "@/lib/types";
+import type { Project, Task, Discussion, User, LearningPath, HydratedProject } from "@/lib/types";
 import type { RoutePageProps } from "@/types/next-page-helpers";
 import { Timestamp } from "firebase-admin/firestore";
 
@@ -90,7 +90,7 @@ export default async function ProjectDetailPage({ params }: RoutePageProps<{ id:
     })
     .filter(Boolean) as (typeof discussions[0] & { user: User })[];
 
-  const hydratedProject = { ...project, team: hydratedTeam } as Project;
+  const hydratedProject = { ...project, team: hydratedTeam } as HydratedProject;
 
   return (
     <ProjectDetailClientPage

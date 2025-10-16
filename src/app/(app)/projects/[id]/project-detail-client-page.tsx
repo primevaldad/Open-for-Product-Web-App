@@ -41,7 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Task, TaskStatus, User, Project, Discussion, LearningPath, ProjectMember } from "@/lib/types";
+import type { Task, TaskStatus, User, Discussion, LearningPath, HydratedProject, HydratedProjectMember, ServerActionResponse, TaskFormValues } from "@/lib/types";
 import { EditTaskDialog } from "@/components/edit-task-dialog";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddMemberDialog } from "@/components/add-member-dialog";
@@ -49,7 +49,6 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { formatDistanceToNow } from 'date-fns';
-import type { addDiscussionComment, addTeamMember, joinProject, addTask, updateTask, deleteTask } from "@/app/actions/projects";
 import { cn } from "@/lib/utils";
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
@@ -63,7 +62,7 @@ type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
 type HydratedDiscussion = Discussion & { user: User };
 
 // Reusable Task Card component with typed props
-function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, [key: string]: unknown }) {
+function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: HydratedProjectMember[], updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>, deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, [key: string]: unknown }) {
     return (
         <div style={style} {...props}>
             <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>
@@ -112,7 +111,7 @@ function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating
 
 
 // Sortable Task Card Component
-function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating }: { task: Task, isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, isUpdating: boolean }) {
+function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating }: { task: Task, isTeamMember: boolean, team: HydratedProjectMember[], updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>, deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>, isUpdating: boolean }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
         data: { task },
@@ -142,7 +141,7 @@ function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, is
 }
 
 // Droppable Column Component with typed props
-function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, deleteTask, projectId, addTask, updatingTaskId }: { id: UniqueIdentifier, status: TaskStatus, tasks: Task[], isTeamMember: boolean, team: (ProjectMember & { user: User })[], updateTask: typeof updateTask, deleteTask: typeof deleteTask, projectId: string, addTask: typeof addTask, updatingTaskId: string | null }) {
+function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, deleteTask, projectId, addTask, updatingTaskId }: { id: UniqueIdentifier, status: TaskStatus, tasks: Task[], isTeamMember: boolean, team: HydratedProjectMember[], updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>, deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>, projectId: string, addTask: (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>, updatingTaskId: string | null }) {
     const { setNodeRef, isOver } = useDroppable({ id });
     const taskIds = tasks.map(t => t.id);
 
@@ -169,18 +168,18 @@ function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, de
 
 
 interface ProjectDetailClientPageProps {
-    project: Project;
+    project: HydratedProject;
     projectTasks: Task[];
     projectDiscussions: HydratedDiscussion[];
     recommendedLearningPaths: LearningPath[];
     currentUser: User;
     allUsers: User[];
-    joinProject: typeof joinProject;
-    addTeamMember: typeof addTeamMember;
-    addDiscussionComment: typeof addDiscussionComment;
-    addTask: typeof addTask;
-    updateTask: typeof updateTask;
-    deleteTask: typeof deleteTask;
+    joinProject: (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
+    addTeamMember: (data: { projectId: string; userId: string; role: 'contributor' | 'lead' | 'participant'; }) => Promise<ServerActionResponse<HydratedProjectMember>>;
+    addDiscussionComment: (data: { projectId: string, userId: string, content: string }) => Promise<ServerActionResponse<Discussion>>;
+    addTask: (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>;
+    updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>;
+    deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
 }
 
 export default function ProjectDetailClientPage({ 
@@ -225,7 +224,7 @@ export default function ProjectDetailClientPage({
     startTransition(async () => {
       if (typeof params.id !== 'string') return;
       const result = await joinProject(params.id);
-      if (result.error) {
+      if (!result.success) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Welcome!', description: `You've successfully joined ${project.name}.` });
@@ -242,7 +241,7 @@ export default function ProjectDetailClientPage({
         content: values.content,
       });
 
-      if (result.error) {
+      if (!result.success) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Comment added!' });
@@ -258,15 +257,16 @@ export default function ProjectDetailClientPage({
   }
 
   const findTaskContainer = useCallback((taskId: string) => {
-    if (taskId in taskColumns) {
+    if (Object.keys(taskColumns).includes(taskId)) {
       return taskId as TaskStatus;
     }
     const task = tasks.find(t => t.id === taskId);
     return task?.status;
-  }, [tasks, taskColumns]); // Added taskColumns to dependency array
+  }, [tasks, taskColumns]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-      setActiveTask(event.active.data.current?.task);
+      const { active } = event;
+      setActiveTask(active.data.current?.task as Task);
   }, []);
   
   const handleDragOver = useCallback((event: DragOverEvent) => {
@@ -283,60 +283,68 @@ export default function ProjectDetailClientPage({
     }
 
     setTasks(previousTasks => {
-      const activeIndex = previousTasks.findIndex(t => t.id === activeId);
-      let overIndex = previousTasks.findIndex(t => t.id === overId);
+        const activeIndex = previousTasks.findIndex(t => t.id === activeId);
+        let overIndex = previousTasks.findIndex(t => t.id === overId);
+  
+        // If dropping into a column, find the last task in that column
+        if (Object.keys(taskColumns).includes(overId)) {
+            const tasksInColumn = taskColumns[overContainer as TaskStatus];
+            const lastTask = tasksInColumn[tasksInColumn.length - 1];
+            overIndex = lastTask ? previousTasks.findIndex(t => t.id === lastTask.id) + 1 : overIndex;
+        }
+       
+        let newTasks = [...previousTasks];
+        if (activeIndex !== -1) {
+            const movedTask = { ...newTasks[activeIndex], status: overContainer as TaskStatus };
+            newTasks.splice(activeIndex, 1);
+            newTasks.splice(overIndex, 0, movedTask);
+        }
+        
+        return newTasks;
+      });
+  }, [findTaskContainer, taskColumns]);
 
-      if (taskColumns[overContainer as TaskStatus].some(t => t.id === overId)) {
-        overIndex = previousTasks.map(t => t.id).lastIndexOf(overId);
-      }
-     
-      // Use const instead of let
-      const newTasks = [...previousTasks];
-      newTasks[activeIndex] = { ...newTasks[activeIndex], status: overContainer };
-      
-      return arrayMove(newTasks, activeIndex, overIndex);
-    });
-  }, [findTaskContainer, taskColumns]); // Corrected dependency array
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveTask(null);
   
       if (!over) return;
   
       const activeId = active.id.toString();
+      const activeTaskInState = tasks.find(t => t.id === activeId);
+  
+      if (!activeTaskInState) return;
+  
+      const originalStatus = activeTaskInState.status;
+      const newContainer = findTaskContainer(over.id.toString());
+
+      if (!newContainer) return;
+      
+      const newStatus = newContainer;
+
+      // Optimistically update the UI
+      const oldTasks = tasks;
+      const activeIndex = oldTasks.findIndex(t => t.id === activeId);
       const overId = over.id.toString();
-      const activeTask = tasks.find(t => t.id === activeId);
-  
-      if (!activeTask) return;
-  
-      const originalStatus = activeTask.status;
-      const newStatus = findTaskContainer(overId);
-  
-      if (!newStatus) return;
-  
-      if (originalStatus === newStatus) {
-          const oldIndex = tasks.findIndex(t => t.id === activeId);
-          const newIndex = tasks.findIndex(t => t.id === overId);
-          if (oldIndex !== newIndex) {
-              setTasks(currentTasks => arrayMove(currentTasks, oldIndex, newIndex));
-          }
-      } else {
-          const originalTasks = tasks;
-          setUpdatingTaskId(activeId);
-  
-          startTransition(async () => {
-              const result = await updateTask({ ...activeTask, status: newStatus });
-              setUpdatingTaskId(null);
-              if (result.error) {
-                  setTasks(originalTasks);
-                  toast({ variant: 'destructive', title: 'Error updating task', description: result.error });
-              } else {
-                  toast({ title: 'Task updated!', description: `Task "${activeTask.title}" moved to ${newStatus}.`});
-              }
-          });
+      const overIndex = oldTasks.findIndex(t => t.id === overId);
+      
+      setTasks(currentTasks => arrayMove(currentTasks, activeIndex, overIndex));
+
+      // Only call the API if the status actually changed
+      if (originalStatus !== newStatus) {
+        setUpdatingTaskId(activeId);
+        const result = await updateTask({ ...activeTaskInState, status: newStatus });
+        setUpdatingTaskId(null);
+
+        if (!result.success) {
+            // Revert on failure
+            setTasks(oldTasks);
+            toast({ variant: 'destructive', title: 'Error updating task', description: result.error });
+        } else {
+            toast({ title: 'Task updated!', description: `Task "${activeTaskInState.title}" moved to ${newStatus}.`});
+        }
       }
-  }, [findTaskContainer, updateTask, toast, startTransition, tasks]); // Removed unnecessary 'tasks' dependency as it's part of findTaskContainer
+  }, [findTaskContainer, updateTask, toast, tasks]);
 
 
   const nonMemberUsers = allUsers.filter(user => !project.team.some(member => member.user && member.user.id === user.id));
@@ -393,23 +401,25 @@ export default function ProjectDetailClientPage({
                           <div className="flex -space-x-2">
                               {project.team.map(member => (
                                 member.user && (
-                                <Tooltip key={member.user.id}>
-                                  <TooltipTrigger asChild>
-                                      <Link href={`/profile/${member.user.id}`}>
-                                          <Avatar className={cn(
-                                              "h-8 w-8 border-2 border-background",
-                                              member.role === 'lead' && "border-yellow-500"
-                                          )}>
-                                              <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
-                                              <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
-                                          </Avatar>
-                                      </Link>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="font-semibold">{member.user.name}</p>
-                                    <p className="capitalize text-muted-foreground">{member.role}</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                <TooltipProvider key={member.user.id}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Link href={`/profile/${member.user.id}`}>
+                                            <Avatar className={cn(
+                                                "h-8 w-8 border-2 border-background",
+                                                member.role === 'lead' && "border-yellow-500"
+                                            )}>
+                                                <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
+                                                <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
+                                            </Avatar>
+                                        </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="font-semibold">{member.user.name}</p>
+                                      <p className="capitalize text-muted-foreground">{member.role}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                                 )
                               ))}
                           </div>
@@ -439,7 +449,7 @@ export default function ProjectDetailClientPage({
           </TabsContent>
 
           <TabsContent value="tasks">
-              <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragOver={handleDragOver} collisionDetection={closestCorners}>
+               <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragOver={handleDragOver} collisionDetection={closestCorners}>
                 <Card>
                   <CardHeader><CardTitle>Task Board</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">

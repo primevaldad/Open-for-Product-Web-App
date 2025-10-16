@@ -30,30 +30,28 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { ProjectMember, Task, TaskStatus } from '@/lib/types';
+import type { HydratedProjectMember, ServerActionResponse, Task, TaskFormValues, TaskStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import type { deleteTask, updateTask } from '@/app/actions/projects';
 import { Trash } from 'lucide-react';
 
 interface EditTaskDialogProps extends PropsWithChildren {
   task: Task;
   isTeamMember: boolean;
-  projectTeam: ProjectMember[];
-  updateTask: typeof updateTask;
-  deleteTask: typeof deleteTask;
+  projectTeam: HydratedProjectMember[];
+  updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>;
+  deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
 }
 
+// This schema MUST be kept in sync with the TaskFormValues type in lib/types.ts
 const TaskSchema = z.object({
   id: z.string(),
   projectId: z.string(),
   title: z.string().min(1, "Title is required."),
   description: z.string().optional(),
   status: z.enum(["To Do", "In Progress", "Done"]),
-  assignedToId: z.string().optional().nullable(),
+  assignedToId: z.string().optional(),
   estimatedHours: z.coerce.number().optional(),
 });
-
-type TaskFormValues = z.infer<typeof TaskSchema>;
 
 const taskStatuses: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
@@ -69,10 +67,10 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
       id: task.id,
       projectId: task.projectId,
       title: task.title,
-      description: task.description ?? '',
+      description: task.description ?? undefined,
       status: task.status,
-      assignedToId: task.assignedTo?.id ?? 'unassigned',
-      estimatedHours: task.estimatedHours ?? 0,
+      assignedToId: task.assignedToId ?? undefined,
+      estimatedHours: task.estimatedHours ?? undefined,
     },
   });
 
@@ -83,18 +81,13 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
     }
 
     startTransition(async () => {
-      // Handle "unassigned" case
-      const submissionValues = {
-        ...values,
-        assignedToId: values.assignedToId === 'unassigned' ? undefined : values.assignedToId,
-      };
-
-      const result = await updateTask(submissionValues);
-      if (result?.error) {
+      const result = await updateTask(values);
+      if (!result.success) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Task Updated!', description: 'Your changes have been saved.' });
         setIsOpen(false);
+        form.reset(); // Reset form state on successful submission
       }
     });
   };
@@ -102,7 +95,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
   const handleDelete = () => {
     startDeleteTransition(async () => {
         const result = await deleteTask({ id: task.id, projectId: task.projectId });
-        if (result?.error) {
+        if (!result.success) {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         } else {
             toast({ title: 'Task Deleted', description: 'The task has been removed.' });
@@ -111,9 +104,24 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
     });
   };
 
+  // Reset form values when the dialog is opened or task data changes
+  // This ensures the form is always up-to-date with the task prop
+  useState(() => {
+    form.reset({
+        id: task.id,
+        projectId: task.projectId,
+        title: task.title,
+        description: task.description ?? undefined,
+        status: task.status,
+        assignedToId: task.assignedToId ?? undefined,
+        estimatedHours: task.estimatedHours ?? undefined,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task, form.reset]);
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild disabled={!isTeamMember} onClick={() => setIsOpen(true)}>
+      <DialogTrigger asChild disabled={!isTeamMember} onClick={(e) => { if (isTeamMember) { setIsOpen(true); e.preventDefault();} }}>
         {children}
       </DialogTrigger>
       {isOpen && (
@@ -146,7 +154,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                     <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                        <Textarea {...field} placeholder="Add more details about the task..." />
+                        <Textarea {...field} value={field.value ?? ''} placeholder="Add more details about the task..." />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -156,7 +164,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                     <FormField
                     control={form.control}
                     name="status"
-                    render={({ field }) => (
+                    render={({ field })_ => (
                         <FormItem>
                         <FormLabel>Status</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -177,16 +185,18 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Assigned To</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value || 'unassigned'}>
+                        <Select onValueChange={field.onChange} value={field.value ?? 'unassigned'}>
                             <FormControl>
                             <SelectTrigger><SelectValue placeholder="Assign to a member" /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
                                 <SelectItem value="unassigned">Unassigned</SelectItem>
                                 {projectTeam.map(member => (
-                                    <SelectItem key={member.user.id} value={member.user.id}>
-                                        {member.user.name}
-                                    </SelectItem>
+                                    member.user && (
+                                        <SelectItem key={member.user.id} value={member.user.id}>
+                                            {member.user.name}
+                                        </SelectItem>
+                                    )
                                 ))}
                             </SelectContent>
                         </Select>
@@ -202,7 +212,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                         <FormItem>
                         <FormLabel>Estimated Hours</FormLabel>
                         <FormControl>
-                            <Input type="number" {...field} placeholder="0" />
+                            <Input type="number" {...field} value={field.value ?? 0} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

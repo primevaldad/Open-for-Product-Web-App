@@ -35,6 +35,8 @@ export type ProjectMember = {
   user?: User; // Populated for display
 };
 
+export type HydratedProjectMember = ProjectMember & { user: User };
+
 export type ProjectStatus = 'published' | 'draft';
 
 export type Governance = {
@@ -85,6 +87,10 @@ export type Project = {
   updatedAt?: string;
   tags?: ProjectTag[];
   fallbackSuggestion?: string;
+};
+
+export type HydratedProject = Omit<Project, 'team'> & {
+  team: HydratedProjectMember[];
 };
 
 // -------------------- Discussions --------------------
@@ -192,13 +198,15 @@ export type TaskFormValues = {
 };
 
 // Define a standard return type for server actions
-export type ServerActionResponse = Promise<{ success: boolean; error?: string; }>;
+export type ServerActionResponse<T = unknown> = 
+  | { success: true; data?: T }
+  | { success: false; error: string };
 
 export interface ActivityClientPageProps {
   currentUser: User; // Added currentUser
   myTasks: Task[];
   completedModulesData: CompletedModuleData[];
   projects: Project[];
-  updateTask: (values: TaskFormValues) => ServerActionResponse;
-  deleteTask: (values: { id: string; projectId: string }) => ServerActionResponse;
+  updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>;
+  deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
 }

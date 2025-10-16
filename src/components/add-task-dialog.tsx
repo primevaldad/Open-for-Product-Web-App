@@ -18,14 +18,13 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import type { TaskStatus } from '@/lib/types';
+import type { ServerActionResponse, TaskFormValues, TaskStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import type { addTask } from '@/app/actions/projects';
 
 interface AddTaskDialogProps extends PropsWithChildren {
   projectId: string;
   status: TaskStatus;
-  addTask: typeof addTask;
+  addTask: (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>;
 }
 
 const CreateTaskSchema = z.object({
@@ -55,7 +54,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
   const onSubmit = (values: CreateTaskFormValues) => {
     startTransition(async () => {
       const result = await addTask(values);
-      if (result?.error) {
+      if (!result.success) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Task Created!', description: 'The new task has been added to the board.' });
