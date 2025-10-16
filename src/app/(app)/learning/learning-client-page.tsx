@@ -37,7 +37,7 @@ export default function LearningClientPage({ learningPaths, userProgress, projec
 
     const filteredPaths = learningPaths.filter(path => {
         const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(path.category);
-        const myPathsMatch = !showMyPaths || startedPathIds.includes(path.id);
+        const myPathsMatch = !showMyPaths || startedPathIds.includes(path.pathId);
         return categoryMatch && myPathsMatch;
     });
 
@@ -74,17 +74,17 @@ export default function LearningClientPage({ learningPaths, userProgress, projec
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {filteredPaths.map((path) => {
-                    const progress = userProgress.find(p => p.pathId === path.id);
+                    const progress = userProgress.find(p => p.pathId === path.pathId);
                     const isCompleted = progress && path.modules.length > 0 && progress.completedModules.length === path.modules.length;
                     const Icon = iconMap[path.category as keyof typeof iconMap] || FlaskConical;
 
-                    const recommendingProjectLinks = allProjectPathLinks.filter(link => link.learningPathId === path.id);
+                    const recommendingProjectLinks = allProjectPathLinks.filter(link => link.learningPathId === path.pathId);
                     const recommendingProjects = recommendingProjectLinks
                         .map(link => projects.find(p => p.id === link.projectId))
                         .filter((p): p is Project => !!p);
 
                     return (
-                        <Link key={path.id} href={path.isLocked ? '#' : `/learning/${path.id}`} className={cn("flex flex-col", path.isLocked && "pointer-events-none")}>
+                        <Link key={path.pathId} href={path.isLocked ? '#' : `/learning/${path.pathId}`} className={cn("flex flex-col", path.isLocked && "pointer-events-none")}>
                             <Card className={cn("flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1", path.isLocked && "bg-muted/50", isCompleted && "border-primary/50")}>
                                 <CardHeader>
                                     <div className="flex items-start justify-between">

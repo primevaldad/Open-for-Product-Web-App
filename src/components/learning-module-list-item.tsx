@@ -12,7 +12,7 @@ interface LearningModuleListItemProps {
 
 export default function LearningModuleListItem({ pathId, module, isCompleted }: LearningModuleListItemProps) {
     return (
-        <Link href={`/learning/${pathId}/${module.id}`} className="block">
+        <Link href={`/learning/${pathId}/${module.moduleId}`} className="block">
             <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors">
                 {isCompleted ? (
                     <CheckCircle className="h-6 w-6 text-green-500" />

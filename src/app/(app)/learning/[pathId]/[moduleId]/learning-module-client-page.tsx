@@ -27,13 +27,13 @@ function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { 
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
             <div className='flex items-center gap-4'>
-                <Link href={`/learning/${path.id}`}>
+                <Link href={`/learning/${path.pathId}`}>
                     <Button variant="outline" size="icon">
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                 </Link>
                 <div>
-                    <Link href={`/learning/${path.id}`} className="text-sm text-primary hover:underline">{path.title}</Link>
+                    <Link href={`/learning/${path.pathId}`} className="text-sm text-primary hover:underline">{path.title}</Link>
                     <h1 className="text-lg font-semibold md:text-xl">
                         {module.title}
                     </h1>
@@ -41,7 +41,7 @@ function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { 
             </div>
             <div className="flex items-center gap-2">
                 {prevModule && (
-                    <Link href={`/learning/${path.id}/${prevModule.id}`}>
+                    <Link href={`/learning/${path.pathId}/${prevModule.moduleId}`}>
                         <Button variant="outline">Previous</Button>
                     </Link>
                 )}
@@ -74,7 +74,7 @@ export default function LearningModuleClientPage({
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
-  const isCompleted = userProgress?.completedModules.includes(module.id) ?? false;
+  const isCompleted = userProgress?.completedModules.includes(module.moduleId) ?? false;
   
   // Effect to auto-enroll user if they visit a module without having any progress for the path.
   useEffect(() => {
@@ -84,20 +84,20 @@ export default function LearningModuleClientPage({
       startTransition(async () => {
         await completeModule({ 
           userId: currentUser.id, 
-          pathId: path.id, 
-          moduleId: module.id, 
+          pathId: path.pathId, 
+          moduleId: module.moduleId, 
           completed: false 
         });
       });
     }
-  }, [userProgress, currentUser, path.id, module.id, completeModule]);
+  }, [userProgress, currentUser, path.pathId, module.moduleId, completeModule]);
 
   const handleCompletionToggle = (checked: boolean) => {
     startTransition(async () => {
       const result = await completeModule({ 
         userId: currentUser.id, 
-        pathId: path.id, 
-        moduleId: module.id, 
+        pathId: path.pathId, 
+        moduleId: module.moduleId, 
         completed: checked 
       });
 
@@ -112,7 +112,7 @@ export default function LearningModuleClientPage({
         handleCompletionToggle(true);
     }
     if (nextModule) {
-        router.push(`/learning/${path.id}/${nextModule.id}`);
+        router.push(`/learning/${path.pathId}/${nextModule.moduleId}`);
     }
   };
 

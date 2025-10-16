@@ -30,14 +30,14 @@ const toISOString = (timestamp: unknown): string | null => {
 /**
  * Server Component for displaying a specific learning module.
  */
-export default async function LearningModulePage({ params }: RoutePageProps<{ id: string; moduleId: string }>) {
-  const { id, moduleId } = params;
+export default async function LearningModulePage({ params }: RoutePageProps<{ pathId: string; moduleId: string }>) {
+  const { pathId, moduleId } = params;
   
   // getAuthenticatedUser will redirect if the user is not logged in
   const rawCurrentUser = await getAuthenticatedUser();
 
   const learningPaths = await getAllLearningPaths();
-  const path = learningPaths.find((p) => p.pathId === id);
+  const path = learningPaths.find((p) => p.pathId === pathId);
 
   if (!path) notFound();
 
@@ -53,7 +53,7 @@ export default async function LearningModulePage({ params }: RoutePageProps<{ id
   };
 
   // User progress
-  const userProgress = await findUserLearningProgress(currentUser.id, id);
+  const userProgress = await findUserLearningProgress(currentUser.id, pathId);
 
   // Previous and next modules for navigation
   const currentModuleIndex = path.modules.findIndex(

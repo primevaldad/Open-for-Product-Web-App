@@ -546,7 +546,7 @@ export default function ProjectDetailClientPage({
               <CardContent className="grid md:grid-cols-2 gap-4">
                 {recommendedLearningPaths && recommendedLearningPaths.length > 0 ? (
                   recommendedLearningPaths.map(path => (
-                    <Link key={path.id} href={`/learning/${path.pathId}`} className="block hover:bg-muted/50 rounded-lg border p-4 transition-colors">
+                    <Link key={path.pathId} href={`/learning/${path.pathId}`} className="block hover:bg-muted/50 rounded-lg border p-4 transition-colors">
                       <div className="flex items-start gap-4">
                           <div className="bg-primary/20 text-primary p-2 rounded-full">
                               <BookOpen className="h-5 w-5" />
