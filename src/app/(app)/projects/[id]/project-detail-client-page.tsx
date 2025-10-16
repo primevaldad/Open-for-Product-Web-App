@@ -293,7 +293,7 @@ export default function ProjectDetailClientPage({
             overIndex = lastTask ? previousTasks.findIndex(t => t.id === lastTask.id) + 1 : overIndex;
         }
        
-        let newTasks = [...previousTasks];
+        const newTasks = [...previousTasks];
         if (activeIndex !== -1) {
             const movedTask = { ...newTasks[activeIndex], status: overContainer as TaskStatus };
             newTasks.splice(activeIndex, 1);

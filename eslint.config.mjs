@@ -1,3 +1,4 @@
+
 // eslint.config.mjs — fully flat-config ready
 
 import js from "@eslint/js";
@@ -5,6 +6,7 @@ import tseslint from "typescript-eslint";
 import globals from "globals";
 import nextPlugin from "@next/eslint-plugin-next";
 import importPlugin from "eslint-plugin-import";
+import reactHooksPlugin from "eslint-plugin-react-hooks";
 
 export default [
   js.configs.recommended,
@@ -23,8 +25,10 @@ export default [
     plugins: {
       "@next/next": nextPlugin,
       import: importPlugin,
+      "react-hooks": reactHooksPlugin,
     },
     rules: {
+      ...reactHooksPlugin.configs.recommended.rules,
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "no-console": "off",
       "import/no-unused-modules": ["warn", { unusedExports: true }],
