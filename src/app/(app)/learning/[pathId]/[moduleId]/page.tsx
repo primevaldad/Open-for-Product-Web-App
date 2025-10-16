@@ -8,7 +8,6 @@ import {
 import LearningModuleClientPage from './learning-module-client-page';
 import { completeModule } from '@/app/actions/learning';
 import type { Module, User } from '@/lib/types';
-import type { RoutePageProps } from '@/types/next-page-helpers';
 
 /**
  * Converts Firestore timestamps or Date objects to ISO strings.
@@ -30,7 +29,7 @@ const toISOString = (timestamp: unknown): string | null => {
 /**
  * Server Component for displaying a specific learning module.
  */
-export default async function LearningModulePage({ params }: RoutePageProps<{ pathId: string; moduleId: string }>) {
+export default async function LearningModulePage({ params }: { params: { pathId: string; moduleId: string } }) {
   const { pathId, moduleId } = params;
   
   // getAuthenticatedUser will redirect if the user is not logged in
@@ -67,7 +66,8 @@ export default async function LearningModulePage({ params }: RoutePageProps<{ pa
 
   return (
     <LearningModuleClientPage
-      path={path}
+      pathId={path.pathId}
+      pathTitle={path.title}
       module={module}
       userProgress={userProgress}
       currentUser={currentUser}

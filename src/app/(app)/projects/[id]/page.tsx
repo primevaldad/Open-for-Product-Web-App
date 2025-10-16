@@ -18,7 +18,6 @@ import {
   updateTask,
 } from "@/app/actions/projects";
 import type { Project, Task, Discussion, User, LearningPath, HydratedProject } from "@/lib/types";
-import type { RoutePageProps } from "@/types/next-page-helpers";
 import { Timestamp } from "firebase-admin/firestore";
 
 // Recursive timestamp serialization
@@ -43,7 +42,7 @@ function serializeTimestamps(data: unknown): Serializable {
     return serialized;
 }
 
-export default async function ProjectDetailPage({ params }: RoutePageProps<{ id: string }>): Promise<JSX.Element> {
+export default async function ProjectDetailPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
   const { id: projectId } = params;
 
   // Ensure user is authenticated

@@ -10,11 +10,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useTransition, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import type { User, LearningPath, UserLearningProgress, Module } from '@/lib/types';
+import type { User, UserLearningProgress, Module } from '@/lib/types';
 import type { completeModule } from '@/app/actions/learning';
 
 interface LearningModuleClientPageProps {
-    path: LearningPath;
+    pathId: string;
+    pathTitle: string;
     module: Module;
     userProgress: UserLearningProgress | undefined;
     currentUser: User;
@@ -23,17 +24,17 @@ interface LearningModuleClientPageProps {
     completeModule: typeof completeModule;
 }
 
-function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { path: LearningPath, module: Module, prevModule: Module | null, nextModule: Module | null, onNextModule: () => void }) {
+function ModuleHeader({ pathId, pathTitle, module, prevModule, nextModule, onNextModule }: { pathId: string, pathTitle: string, module: Module, prevModule: Module | null, nextModule: Module | null, onNextModule: () => void }) {
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
             <div className='flex items-center gap-4'>
-                <Link href={`/learning/${path.pathId}`}>
+                <Link href={`/learning/${pathId}`}>
                     <Button variant="outline" size="icon">
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                 </Link>
                 <div>
-                    <Link href={`/learning/${path.pathId}`} className="text-sm text-primary hover:underline">{path.title}</Link>
+                    <Link href={`/learning/${pathId}`} className="text-sm text-primary hover:underline">{pathTitle}</Link>
                     <h1 className="text-lg font-semibold md:text-xl">
                         {module.title}
                     </h1>
@@ -41,7 +42,7 @@ function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { 
             </div>
             <div className="flex items-center gap-2">
                 {prevModule && (
-                    <Link href={`/learning/${path.pathId}/${prevModule.moduleId}`}>
+                    <Link href={`/learning/${pathId}/${prevModule.moduleId}`}>
                         <Button variant="outline">Previous</Button>
                     </Link>
                 )}
@@ -62,7 +63,8 @@ function ModuleHeader({ path, module, prevModule, nextModule, onNextModule }: { 
 }
 
 export default function LearningModuleClientPage({ 
-    path, 
+    pathId,
+    pathTitle,
     module, 
     userProgress, 
     currentUser, 
@@ -84,19 +86,19 @@ export default function LearningModuleClientPage({
       startTransition(async () => {
         await completeModule({ 
           userId: currentUser.id, 
-          pathId: path.pathId, 
+          pathId: pathId, 
           moduleId: module.moduleId, 
           completed: false 
         });
       });
     }
-  }, [userProgress, currentUser, path.pathId, module.moduleId, completeModule]);
+  }, [userProgress, currentUser, pathId, module.moduleId, completeModule]);
 
   const handleCompletionToggle = (checked: boolean) => {
     startTransition(async () => {
       const result = await completeModule({ 
         userId: currentUser.id, 
-        pathId: path.pathId, 
+        pathId: pathId, 
         moduleId: module.moduleId, 
         completed: checked 
       });
@@ -112,13 +114,13 @@ export default function LearningModuleClientPage({
         handleCompletionToggle(true);
     }
     if (nextModule) {
-        router.push(`/learning/${path.pathId}/${nextModule.moduleId}`);
+        router.push(`/learning/${pathId}/${nextModule.moduleId}`);
     }
   };
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
-      <ModuleHeader {...{ path, module, userProgress, currentUser, prevModule, nextModule, onNextModule: handleNextModule }} />
+      <ModuleHeader {...{ pathId, pathTitle, module, userProgress, currentUser, prevModule, nextModule, onNextModule: handleNextModule }} />
       <main className="flex-1 overflow-auto p-4 md:p-6">
          <div className="mx-auto max-w-3xl space-y-6">
             {module.videoUrl && (

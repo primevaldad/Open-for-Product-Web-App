@@ -164,7 +164,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
                     <FormField
                     control={form.control}
                     name="status"
-                    render={({ field })_ => (
+                    render={({ field }) => (
                         <FormItem>
                         <FormLabel>Status</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>

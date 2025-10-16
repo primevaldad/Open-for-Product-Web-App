@@ -16,10 +16,9 @@ import {
 import LearningModuleListItem from '@/components/learning-module-list-item';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
-import type { RoutePageProps } from '@/types/next-page-helpers';
 
 // This is now a Server Component that fetches all necessary data
-export default async function LearningPathDetailPage({ params }: RoutePageProps<{ pathId: string }>) {
+export default async function LearningPathDetailPage({ params }: { params: { pathId: string } }) {
   // getAuthenticatedUser will redirect if the user is not logged in.
   const currentUser = await getAuthenticatedUser();
   const path = (await getAllLearningPaths()).find((p) => p.pathId === params.pathId);
