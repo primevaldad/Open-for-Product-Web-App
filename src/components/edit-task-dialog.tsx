@@ -257,3 +257,4 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
     </Dialog>
   );
 }
+export default EditTaskDialog;

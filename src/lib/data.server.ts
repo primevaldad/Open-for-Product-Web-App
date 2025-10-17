@@ -224,7 +224,7 @@ export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>):
     return commentRef.id;
 }
 
-export async function getDiscussionsByProjectId(projectId: string): Promise<Discussion[]> {
+export async function getDiscussionsForProjectId(projectId: string): Promise<Discussion[]> {
     const discussionsCol = adminDb.collection('discussions');
     const q = discussionsCol.where('projectId', '==', projectId).orderBy('timestamp', 'asc');
     const snapshot = await q.get();

@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { redirect } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import SettingsForm from "./settings-form";
-import { updateUserSettings } from "@/app/actions/users";
+import { updateUserSettings } from '@/app/actions/settings';
 import { getAllTags } from "@/lib/data.server";
 import type { Tag, User } from "@/lib/types";
 

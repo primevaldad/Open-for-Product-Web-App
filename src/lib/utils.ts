@@ -2,6 +2,15 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Project, HydratedProject, User, HydratedProjectMember } from './types';
 
+export function getInitials(name: string) {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  }
+  
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

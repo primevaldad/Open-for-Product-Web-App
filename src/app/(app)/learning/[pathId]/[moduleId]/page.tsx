@@ -1,4 +1,3 @@
-
 import { notFound } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import {
@@ -26,13 +25,16 @@ const toISOString = (timestamp: unknown): string | null => {
   return timestamp.toString();
 };
 
-/**
- * Server Component for displaying a specific learning module.
- */
-export default async function LearningModulePage({ params }: { params: { pathId: string; moduleId: string } }) {
-  const { pathId, moduleId } = params;
+type LearningModulePageProps = {
+  params: {
+    pathId: string;
+    moduleId: string;
+  };
+};
+
+export default async function LearningModulePage(props: LearningModulePageProps) {
+  const { pathId, moduleId } = props.params;
   
-  // getAuthenticatedUser will redirect if the user is not logged in
   const rawCurrentUser = await getAuthenticatedUser();
 
   const learningPaths = await getAllLearningPaths();
@@ -41,7 +43,6 @@ export default async function LearningModulePage({ params }: { params: { pathId:
   if (!path) notFound();
 
   const module = path.modules.find((m) => m.moduleId === moduleId);
-
   if (!module) notFound();
   
   // --- SERIALIZATION ---
@@ -51,14 +52,9 @@ export default async function LearningModulePage({ params }: { params: { pathId:
     lastLogin: toISOString(rawCurrentUser.lastLogin) ?? undefined,
   };
 
-  // User progress
   const userProgress = await findUserLearningProgress(currentUser.id, pathId);
 
-  // Previous and next modules for navigation
-  const currentModuleIndex = path.modules.findIndex(
-    (m: Module) => m.moduleId === moduleId
-  );
-
+  const currentModuleIndex = path.modules.findIndex((m: Module) => m.moduleId === moduleId);
   const prevModule = currentModuleIndex > 0 ? path.modules[currentModuleIndex - 1] : null;
   const nextModule = currentModuleIndex < path.modules.length - 1
     ? path.modules[currentModuleIndex + 1]

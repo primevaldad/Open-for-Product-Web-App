@@ -21,7 +21,7 @@ import type {
     ProjectMember
 } from '@/lib/types';
 import { toHydratedProject } from '@/lib/utils';
-import { getLearningPathsForProject } from '@/lib/data.server';
+import { getRecommendedLearningPathsForProject } from '@/lib/data.server';
 
 // Action type definitions, ensuring they match the client component's expectations
 type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
@@ -39,7 +39,7 @@ async function getProjectPageData(projectId: string) {
         getAllTasks(projectId),
         getAllUsers(),
         getAuthenticatedUser(),
-        getLearningPathsForProject(projectId)
+        getRecommendedLearningPathsForProject(projectId)
     ]);
 
     if (!project) {
