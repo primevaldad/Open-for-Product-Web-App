@@ -231,6 +231,8 @@ export async function getDiscussionsForProjectId(projectId: string): Promise<Dis
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Discussion));
 }
 
+export const getDiscussionsForProject = getDiscussionsForProjectId;
+
 
 // --- Task Data Access ---
 export async function getAllTasks(): Promise<Task[]> {
