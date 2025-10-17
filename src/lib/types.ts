@@ -48,7 +48,7 @@ export type Governance = {
 export type ProjectTag = {
   id: string;
   display: string;
-  role: 'category' | 'relational';
+  type: 'category' | 'relational';
   createdAt?: string;
   updatedAt?: string;
 };
@@ -87,6 +87,7 @@ export type Project = {
   updatedAt?: string;
   tags?: ProjectTag[];
   fallbackSuggestion?: string;
+  category: string;
 };
 
 export type HydratedProject = Omit<Project, 'team'> & {
@@ -132,7 +133,7 @@ export type LearningPath = {
   title: string;
   description: string;
   duration: string;
-  category: string; 
+  category: string;
   Icon: LucideIcon;
   isLocked?: boolean;
   modules: Module[];
@@ -202,11 +203,15 @@ export type ServerActionResponse<T = unknown> =
   | { success: true; data?: T }
   | { success: false; error: string };
 
+export type AddTaskAction = (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>;
+export type UpdateTaskAction = (values: TaskFormValues) => Promise<ServerActionResponse>;
+export type DeleteTaskAction = (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
+
 export interface ActivityClientPageProps {
   currentUser: User; // Added currentUser
   myTasks: Task[];
   completedModulesData: CompletedModuleData[];
   projects: Project[];
-  updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>;
-  deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
+  updateTask: UpdateTaskAction;
+  deleteTask: DeleteTaskAction;
 }

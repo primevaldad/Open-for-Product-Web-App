@@ -1,31 +1,48 @@
-
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+import type { Project, HydratedProject, User, HydratedProjectMember } from './types';
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const getInitials = (name: string | null | undefined) => {
-  if (!name) return 'U';
-  const names = name.split(' ')
-  if (names.length === 0) return 'U'
-  const firstInitial = names[0][0]
-  const lastInitial = names.length > 1 ? names[names.length - 1][0] : ''
-  return `${firstInitial}${lastInitial}`.toUpperCase()
+  return twMerge(clsx(inputs));
 }
 
 /**
- * A type-safe serializer for Firestore Timestamps or JS Date objects.
- * Returns an ISO string or null.
+ * Converts a server-side timestamp (string | Date | Firestore Timestamp) to a serializable string.
+ * Returns an empty string if the timestamp is null or undefined, or keeps it as a string if it already is.
  */
-export const serializeTimestamp = (timestamp: { toDate: () => Date } | Date | null | undefined): string | null => {
-  if (!timestamp) return null;
-  if (typeof (timestamp as { toDate: () => Date }).toDate === 'function') {
-    return (timestamp as { toDate: () => Date }).toDate().toISOString();
-  }
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  return null; // Return null if the input is not a recognized type
-}
+export const serializeTimestamp = (timestamp: any): string => {
+    if (!timestamp) return '';
+    if (typeof timestamp === 'string') return timestamp;
+    if (timestamp.toDate) return timestamp.toDate().toISOString(); // Firestore Timestamp
+    if (timestamp instanceof Date) return timestamp.toISOString(); // Javascript Date
+    return '';
+};
+
+/**
+ * Converts a timestamp string from a serialized object back into a Date object.
+ */
+export const toDate = (timestamp: string | undefined): Date | undefined => {
+    return timestamp ? new Date(timestamp) : undefined;
+};
+
+/**
+ * Hydrates a project by embedding full user objects into the team array.
+ * Timestamps are preserved as they are on the source Project object.
+ * @param project The raw project object.
+ * @param usersMap A Map of userId to User object.
+ * @returns A HydratedProject.
+ */
+export const toHydratedProject = (project: Project, usersMap: Map<string, User>): HydratedProject => {
+    const hydratedTeam = project.team
+        .map(member => {
+            const user = usersMap.get(member.userId);
+            // Ensure we have a user before creating the hydrated member
+            return user ? { ...member, user } : null;
+        })
+        .filter((member): member is HydratedProjectMember => member !== null);
+
+    return {
+        ...project,
+        team: hydratedTeam,
+    };
+};

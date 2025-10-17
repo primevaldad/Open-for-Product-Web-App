@@ -1,49 +1,43 @@
 
 import { getAuthenticatedUser } from "@/lib/session.server";
-import SettingsForm from "./settings-form";
-import { updateUserSettings } from "@/app/actions/settings";
+import { format } from "date-fns";
 import { redirect } from "next/navigation";
+import { Separator } from "@/components/ui/separator";
+import SettingsForm from "./settings-form";
+import { updateUserSettings } from "@/app/actions/users";
 import { getAllTags } from "@/lib/data.server";
 import type { Tag, User } from "@/lib/types";
-import { NotAuthenticatedError } from "@/lib/errors";
-import { serializeTimestamp } from "@/lib/utils"; // Import the centralized helper
 
-const serializeTag = (tag: Tag): Tag => ({
-    ...tag,
-    createdAt: serializeTimestamp(tag.createdAt) ?? undefined,
-    updatedAt: serializeTimestamp(tag.updatedAt) ?? undefined,
-});
+const toDate = (timestamp: string | undefined): Date | undefined => {
+    return timestamp ? new Date(timestamp) : undefined;
+};
 
-// The page is a Server Component responsible for fetching data.
 export default async function SettingsPage() {
-  try {
-    const [rawCurrentUser, allTags] = await Promise.all([
-        getAuthenticatedUser(),
-        getAllTags()
-    ]);
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        redirect("/login");
+    }
 
-    const serializedTags = allTags.map(serializeTag);
-    
-    // Ensure currentUser is also serialized
-    const currentUser: User = {
-      ...rawCurrentUser,
-      createdAt: serializeTimestamp(rawCurrentUser.createdAt) ?? undefined,
-      lastLogin: serializeTimestamp(rawCurrentUser.lastLogin) ?? undefined,
+    // Convert server timestamps to Date objects for the form
+    const safeUser: User = {
+        ...user,
+        createdAt: toDate(user.createdAt)?.toISOString(),
+        lastLogin: toDate(user.lastLogin)?.toISOString(),
     };
 
-    // It passes the user data, tags, and the server action to the client component.
     return (
-        <SettingsForm
-            currentUser={currentUser}
-            allTags={serializedTags}
-            updateUserSettings={updateUserSettings}
-        />
+        <div className="space-y-6">
+            <div>
+                <h3 className="text-lg font-medium">Settings</h3>
+                <p className="text-sm text-muted-foreground">
+                    Manage your account settings and preferences.
+                </p>
+            </div>
+            <Separator />
+            <SettingsForm 
+                currentUser={safeUser} 
+                updateUserSettings={updateUserSettings} 
+            />
+        </div>
     );
-  } catch (error) {
-    if (error instanceof NotAuthenticatedError) {
-      redirect("/login");
-    }
-    // Re-throw other errors to be handled by Next.js error boundaries
-    throw error;
-  }
 }

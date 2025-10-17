@@ -151,7 +151,7 @@ export async function getAllProjects(): Promise<Project[]> {
                     return {
                         id: fullTag.id,
                         display: fullTag.display,
-                        role: fullTag.type, 
+                        type: fullTag.type,
                     };
                 })
                 .filter((tag): tag is ProjectTag => !!tag);

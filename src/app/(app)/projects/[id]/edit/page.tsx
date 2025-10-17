@@ -1,5 +1,5 @@
 
-import type { Project, Tag as GlobalTag } from "@/lib/types";
+import type { Project, Tag as GlobalTag, ProjectTag } from "@/lib/types";
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
@@ -8,7 +8,6 @@ import { getAuthenticatedUser } from '@/lib/session.server';
 import { findProjectById, getAllTags } from '@/lib/data.server';
 import EditProjectForm from './edit-project-form';
 import { updateProject } from '@/app/actions/projects';
-import type { RoutePageProps } from '@/types/next-page-helpers';
 
 // --- Serialization Helpers ---
 
@@ -56,13 +55,32 @@ async function getEditPageData(projectId: string) {
 
     if (!project) return { currentUser: null, project: null, allTags: [] };
 
+    const tagsMap = new Map<string, GlobalTag>();
+    allTagsData.forEach(tag => tagsMap.set(tag.id, tag));
+
+    if (project.tags && Array.isArray(project.tags)) {
+        const hydratedTags: ProjectTag[] = project.tags
+            .map(projectTag => {
+                const fullTag = tagsMap.get(projectTag.id);
+                if (!fullTag) return null;
+                return {
+                    id: fullTag.id,
+                    display: fullTag.display,
+                    type: fullTag.type,
+                };
+            })
+            .filter((tag): tag is ProjectTag => !!tag); 
+        
+        project.tags = hydratedTags;
+    }
+
     const serializedTags = allTagsData.map(serializeGlobalTag);
     return { currentUser, project, allTags: serializedTags };
 }
 
 // --- Server Component: EditProjectPage ---
 
-export default async function EditProjectPage({ params }: RoutePageProps<{ id: string }>) {
+export default async function EditProjectPage({ params }: { params: { id: string } }) {
   const { currentUser, project, allTags } = await getEditPageData(params.id);
 
   if (!project) {

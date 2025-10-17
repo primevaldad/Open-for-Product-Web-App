@@ -5,7 +5,6 @@ import { getAllProjects, findUserById, getAllLearningPaths, getAllProjectPathLin
 import { getAuthenticatedUser } from '@/lib/session.server';
 import type { User, LearningPath, Project, ProjectPathLink } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
-import { RoutePageProps } from "@/types/next-page-helpers";
 
 
 // Helper to serialize Firestore Timestamps to ISO strings
@@ -84,11 +83,11 @@ async function getUserProfilePageData(userId: string) {
   };
 }
 
-// Server component for the profile page, using the new RoutePageProps type
-export default async function UserProfilePage({ params }: RoutePageProps<{ id: string }>) {
+// Server component for the profile page
+export default async function UserProfilePage({ params }: { params: { id: string } }) {
   const { id: userId } = params;
 
-  const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks }: { user: User | null; userProjects: Project[]; currentUser: Serializable; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] } =
+  const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks }: { user: User | null; userProjects: Project[]; currentUser: any; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] } =
     await getUserProfilePageData(userId);
 
   if (!user || !currentUser) {

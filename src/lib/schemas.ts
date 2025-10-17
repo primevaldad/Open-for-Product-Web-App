@@ -8,7 +8,7 @@ const MAX_TAG_LENGTH = 35;
 export const ProjectTagSchema = z.object({
     id: z.string().max(MAX_TAG_LENGTH),
     display: z.string().max(MAX_TAG_LENGTH),
-    role: z.enum(['category', 'relational']),
+    type: z.enum(['category', 'relational']),
 });
 
 export const ProjectMemberSchema = z.object({
@@ -31,7 +31,7 @@ export const ProjectBaseSchema = z.object({
 
 // Reusable refinement for the create schema.
 const tagValidationRefinement = (data: { tags: z.infer<typeof ProjectTagSchema>[] }) => {
-    return data.tags.filter(t => t.role === 'category').length <= 3;
+    return data.tags.filter(t => t.type === 'category').length <= 3;
 };
 
 
@@ -54,7 +54,7 @@ export const EditProjectSchema = ProjectBaseSchema.extend({
   }).optional(),
 }).superRefine((data, ctx) => {
   // 1. Validate category tag count
-  if (data.tags.filter(t => t.role === 'category').length > 3) {
+  if (data.tags.filter(t => t.type === 'category').length > 3) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "A project can have a maximum of 3 category tags.",

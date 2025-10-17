@@ -1,150 +1,107 @@
 
-"use client";
+'use client';
 
 import * as React from "react";
-import { Check, X, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { searchUsers, findUsersByIds } from "@/app/actions/users"; 
-import { useDebounce } from "@/hooks/use-debounce";
-import { type User, type ProjectMember, ROLES, type UserRole } from "@/lib/types";
-
-type UserWithRole = User & { role: UserRole };
+import type { User, ProjectMember } from "@/lib/types";
 
 interface UserSelectorProps {
+  users: User[];
   value: ProjectMember[];
   onChange: (value: ProjectMember[]) => void;
-  placeholder?: string;
 }
 
-export function UserSelector({ value, onChange, placeholder = "Add members..." }: UserSelectorProps) {
+export default function UserSelector({ users, value, onChange }: UserSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [searchResults, setSearchResults] = React.useState<User[]>([]);
-  const [selectedUsers, setSelectedUsers] = React.useState<UserWithRole[]>([]);
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  // Maps for quick lookups
+  const userMap = React.useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+  const selectedUserIds = React.useMemo(() => new Set(value.map(pm => pm.userId)), [value]);
 
-  React.useEffect(() => {
-    const fetchInitialUsers = async () => {
-      if (value && value.length > 0) {
-        const userIds = value.map(member => member.userId);
-        const users = await findUsersByIds(userIds);
-        const usersWithRoles = users.map((user: User) => ({
-          ...user,
-          role: value.find(member => member.userId === user.id)?.role || 'contributor',
-        }));
-        setSelectedUsers(usersWithRoles);
-      }
-    };
-    fetchInitialUsers();
-  }, [value]);
-
-  React.useEffect(() => {
-    const performSearch = async () => {
-      if (debouncedSearchTerm) {
-        const users = await searchUsers(debouncedSearchTerm);
-        const filteredUsers = users.filter(user => !selectedUsers.some(su => su.id === user.id));
-        setSearchResults(filteredUsers);
-      } else {
-        setSearchResults([]);
-      }
-    };
-    performSearch();
-  }, [debouncedSearchTerm, selectedUsers]);
-
-  const handleSelect = (user: User) => {
-    const newSelectedUsers = [...selectedUsers, { ...user, role: 'contributor' as const }];
-    setSelectedUsers(newSelectedUsers);
-    onChange(newSelectedUsers.map(u => ({ userId: u.id, role: u.role })));
-    setSearchTerm("");
+  const handleSelect = (userId: string) => {
+    if (selectedUserIds.has(userId)) return; // Already selected
+    // Assume a default role when adding a new member via the selector
+    const newMember: ProjectMember = { userId, role: 'participant' }; 
+    onChange([...value, newMember]);
   };
 
   const handleRemove = (userId: string) => {
-    const newSelectedUsers = selectedUsers.filter(user => user.id !== userId);
-    setSelectedUsers(newSelectedUsers);
-    onChange(newSelectedUsers.map(u => ({ userId: u.id, role: u.role })));
+    onChange(value.filter(pm => pm.userId !== userId));
   };
 
-  const handleRoleChange = (userId: string, role: UserRole) => {
-    const newSelectedUsers = selectedUsers.map(user => 
-      user.id === userId ? { ...user, role } : user
-    );
-    setSelectedUsers(newSelectedUsers);
-    onChange(newSelectedUsers.map(u => ({ userId: u.id, role: u.role })));
+  const getDisplayName = (userId: string) => {
+    return userMap.get(userId)?.name || userId;
   };
 
   return (
-    <div className="space-y-3">
-      <p className='text-sm text-muted-foreground'>Assign roles to your team members. Leads have special permissions.</p>
+    <div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div
+          <Button
+            variant="outline"
             role="combobox"
             aria-expanded={open}
-            className={cn(buttonVariants({ variant: "outline" }), "w-full justify-between h-auto min-h-10")}
-            onClick={() => setOpen(!open)}
+            className="w-full justify-between h-auto"
           >
-            <div className="flex flex-wrap items-center gap-2">
-              {selectedUsers.length > 0 ? (
-                selectedUsers.map(user => (
-                  <Badge
-                    key={user.id}
-                    variant={user.role === 'lead' ? 'default' : 'secondary'}
-                    className="flex items-center gap-1.5 py-1"
+            <div className="flex flex-wrap gap-1">
+              {value.length === 0 && "Select users..."}
+              {value.map((member) => (
+                <Badge key={member.userId} variant="secondary" className="flex items-center gap-1">
+                  {getDisplayName(member.userId)}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent opening the popover
+                      handleRemove(member.userId);
+                    }}
+                    className="rounded-full hover:bg-muted-foreground/20 p-0.5"
                   >
-                    {user.name}
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Select onValueChange={(role: UserRole) => handleRoleChange(user.id, role)} value={user.role}>
-                          <SelectTrigger className="w-[110px] h-6 ml-2 -mr-1 text-xs focus:ring-0">
-                            <SelectValue placeholder="Role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {ROLES.map(role => (
-                                  <SelectItem key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                    </div>
-                    <button
-                      type="button"
-                      className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      onClick={(e) => { e.stopPropagation(); handleRemove(user.id); }}
-                      aria-label={`Remove ${user.name}`}
-                    >
-                      <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    </button>
-                  </Badge>
-                ))
-              ) : (
-                <span className="font-normal text-muted-foreground">{placeholder}</span>
-              )}
+                    <X size={12} />
+                  </button>
+                </Badge>
+              ))}
             </div>
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-          </div>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-          <Command shouldFilter={false}>
-            <CommandInput
-              value={searchTerm}
-              onValueChange={setSearchTerm}
-              placeholder="Search by name or email..."
-            />
+          <Command>
+            <CommandInput placeholder="Search users..." />
             <CommandList>
-              <CommandEmpty>No users found for "{searchTerm}".</CommandEmpty>
+              <CommandEmpty>No users found.</CommandEmpty>
               <CommandGroup>
-                {searchResults.map(user => (
+                {users.map((user) => (
                   <CommandItem
                     key={user.id}
-                    value={user.name}
-                    onSelect={() => handleSelect(user)}
+                    value={user.id} // Use user ID for the command value
+                    onSelect={() => {
+                      handleSelect(user.id);
+                      setOpen(false);
+                    }}
+                    disabled={selectedUserIds.has(user.id)}
                   >
-                    <Check className={cn("mr-2 h-4 w-4", selectedUsers.some(su => su.id === user.id) ? "opacity-100" : "opacity-0")} />
-                    {user.name} - <span className="text-xs text-muted-foreground">{user.email}</span>
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedUserIds.has(user.id) ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {user.name}
                   </CommandItem>
                 ))}
               </CommandGroup>

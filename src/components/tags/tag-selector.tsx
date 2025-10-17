@@ -1,266 +1,141 @@
 
-"use client";
+'use client';
 
 import * as React from "react";
-import { Check, X, Circle, CircleDot, GripVertical } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import type { ProjectTag, Tag as GlobalTag } from "@/lib/types";
-
-const MAX_TAG_LENGTH = 35;
-const MAX_CATEGORY_TAGS = 3;
-
-// --- Helper: TagChip Component ---
-
-interface TagChipProps {
-  tag: ProjectTag;
-  onUpdate: (updatedTag: ProjectTag) => void;
-  onRemove: () => void;
-  isCategoryDisabled: boolean;
-  isEditable: boolean;
-}
-
-const TagChip: React.FC<TagChipProps> = ({ tag, onUpdate, onRemove, isCategoryDisabled, isEditable }) => {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editText, setEditText] = React.useState(tag.display);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleSave = () => {
-    if (editText.trim()) {
-      onUpdate({ ...tag, display: editText.trim() });
-    }
-    setIsEditing(false);
-  };
-
-  React.useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
-
-  if (!isEditable) {
-    return (
-        <Badge
-            variant={tag.role === 'category' ? "default" : "secondary"}
-            className="flex items-center gap-1.5 py-1 px-2 text-sm font-medium"
-        >
-            <span>{tag.display}</span>
-            <button
-                type="button"
-                className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                aria-label={`Remove ${tag.display}`}
-            >
-                <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </button>
-        </Badge>
-    );
-  }
-
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge
-            variant={tag.role === 'category' ? "default" : "secondary"}
-            className="flex items-center gap-1.5 py-1.5 px-3 text-sm font-medium transition-all duration-200"
-            onClick={() => !isEditing && setIsEditing(true)}
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
-            {isEditing ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                onBlur={handleSave}
-                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                maxLength={MAX_TAG_LENGTH}
-                className="w-auto bg-transparent focus:outline-none focus:ring-0 p-0 m-0"
-                style={{ width: `${Math.max(editText.length, 5)}ch` }}
-              />
-            ) : (
-              <span className="cursor-text">{tag.display}</span>
-            )}
-            <Separator orientation="vertical" className="h-4 mx-1" />
-            <div className="flex items-center gap-1">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); onUpdate({ ...tag, role: 'category' }); }}
-                            disabled={tag.role === 'category' || isCategoryDisabled}
-                            className={cn(
-                                "rounded-full p-1 transition-colors",
-                                tag.role === 'category' ? "bg-primary text-primary-foreground" : "hover:bg-muted",
-                                isCategoryDisabled && tag.role !== 'category' && "cursor-not-allowed opacity-50"
-                            )}
-                            aria-label="Set as category"
-                        >
-                            <CircleDot className="h-3.5 w-3.5" />
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Set as Category Tag</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); onUpdate({ ...tag, role: 'relational' }); }}
-                            disabled={tag.role === 'relational'}
-                            className={cn(
-                                "rounded-full p-1 transition-colors",
-                                tag.role === 'relational' ? "bg-secondary text-secondary-foreground" : "hover:bg-muted"
-                            )}
-                            aria-label="Set as relational"
-                        >
-                            <Circle className="h-3.5 w-3.5" />
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Set as Relational Tag</p></TooltipContent>
-                </Tooltip>
-            </div>
-            <button
-              type="button"
-              className="ml-1.5 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              onClick={(e) => { e.stopPropagation(); onRemove(); }}
-              aria-label={`Remove ${tag.display}`}
-            >
-              <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </button>
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Display name: <strong>{tag.display}</strong></p>
-          <p className="text-xs text-muted-foreground">Normalized ID: {tag.id}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
-
-// --- Main TagSelector Component ---
+import type { Tag as GlobalTag, ProjectTag } from "@/lib/types";
 
 interface TagSelectorProps {
+  tags: GlobalTag[];
   value: ProjectTag[];
-  onChange: (tags: ProjectTag[]) => void;
-  allTags?: GlobalTag[];
-  placeholder?: string;
-  isEditable?: boolean;
+  onChange: (value: ProjectTag[]) => void;
 }
 
-export function TagSelector({
-  value = [],
-  onChange,
-  allTags = [],
-  placeholder = "Add tags...",
-  isEditable = true,
-}: TagSelectorProps) {
+// Normalize a tag string for consistent matching
+const normalizeTag = (tag: string) => tag.toLowerCase().trim();
+
+export default function TagSelector({ tags, value, onChange }: TagSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchTerm, setSearchTerm] = React.useState("");
+  const [inputValue, setInputValue] = React.useState("");
 
-  const categoryTagsCount = value.filter(t => t.role === 'category').length;
-  const isCategoryDisabled = categoryTagsCount >= MAX_CATEGORY_TAGS;
+  // Memoize for performance
+  const globalTagsMap = React.useMemo(() => new Map(tags.map(t => [normalizeTag(t.id), t])), [tags]);
+  const selectedTagsMap = React.useMemo(() => new Map(value.map(pt => [normalizeTag(pt.id), pt])), [value]);
 
-  const handleSelect = (tag: Pick<GlobalTag, 'id' | 'display'>) => {
-    if (!value.some(t => t.id === tag.id)) {
-      const newTag: ProjectTag = { id: tag.id, display: tag.display, role: 'relational' };
-      onChange([...value, newTag]);
-    }
-    setSearchTerm("");
+  const handleSelect = (tagId: string, display: string) => {
+    const normalizedId = normalizeTag(tagId);
+    if (selectedTagsMap.has(normalizedId)) return;
+
+    const existingGlobalTag = globalTagsMap.get(normalizedId);
+    const newProjectTag: ProjectTag = {
+      id: normalizedId,
+      display: display,
+      type: existingGlobalTag?.type || 'custom',
+    };
+    onChange([...value, newProjectTag]);
   };
 
-  const handleCreate = (userInput: string) => {
-    const trimmed = userInput.trim();
-    if (!isEditable || !trimmed || value.some(t => t.id === trimmed.toLowerCase())) {
-      setSearchTerm("");
-      return;
-    }
-    const newTag: ProjectTag = { id: trimmed.toLowerCase(), display: trimmed, role: 'relational' };
-    onChange([...value, newTag]);
-    setSearchTerm("");
+  const handleRemove = (tagId: string) => {
+    const normalizedId = normalizeTag(tagId);
+    onChange(value.filter(pt => normalizeTag(pt.id) !== normalizedId));
   };
 
-  const handleRemove = (index: number) => {
-    onChange(value.filter((_, i) => i !== index));
+  const handleCreate = (newTagDisplay: string) => {
+    if (!newTagDisplay) return;
+    const newTagId = newTagDisplay.replace(/\s+/g, '-'); // Simple slugification
+    handleSelect(newTagId, newTagDisplay);
+    setInputValue(""); // Clear input after creation
   };
 
-  const handleUpdate = (index: number, updatedTag: ProjectTag) => {
-    const newValue = [...value];
-    newValue[index] = updatedTag;
-    onChange(newValue);
-  };
-
-  const suggestions = React.useMemo(() => {
-    const available = allTags.filter(at => !value.some(st => st.id === at.id));
-    if (!searchTerm) return available.slice(0, 10);
-    return available.filter(tag => tag.display.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [searchTerm, allTags, value]);
-
-  const showCreateOption = isEditable && searchTerm && !suggestions.some(s => s.display.toLowerCase() === searchTerm.toLowerCase()) && !value.some(v => v.id.toLowerCase() === searchTerm.toLowerCase()) && searchTerm.length <= MAX_TAG_LENGTH;
+  const filteredGlobalTags = React.useMemo(() => {
+    return tags.filter(tag => !selectedTagsMap.has(normalizeTag(tag.id)));
+  }, [tags, selectedTagsMap]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <div className="space-y-3">
-        {isEditable && (
-            <div className="flex justify-between items-center px-1">
-                <p className="text-sm text-muted-foreground">Select up to {MAX_CATEGORY_TAGS} category tags.</p>
-                <p className={cn("text-sm font-medium", isCategoryDisabled ? "text-amber-600" : "text-muted-foreground")}>
-                    Categories: {categoryTagsCount}/{MAX_CATEGORY_TAGS}
-                </p>
-            </div>
-        )}
-        <div className="flex flex-wrap items-center gap-2 min-h-[2.5rem]">
-            {value.map((tag, index) => (
-                <TagChip
-                    key={`${tag.id}-${index}`}
-                    tag={tag}
-                    onUpdate={(updatedTag) => handleUpdate(index, updatedTag)}
-                    onRemove={() => handleRemove(index)}
-                    isCategoryDisabled={isCategoryDisabled}
-                    isEditable={isEditable}
-                />
-            ))}
-        </div>
+    <div>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-            <button
-                type="button"
-                className="flex items-center justify-center rounded-md border border-dashed border-input bg-transparent px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/50 w-full font-normal mt-2"
-            >
-                + {placeholder}
-            </button>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between h-auto"
+          >
+            <div className="flex flex-wrap gap-1">
+              {value.length === 0 && "Select tags..."}
+              {value.map((tag) => (
+                <Badge key={tag.id} variant="secondary" className="flex items-center gap-1">
+                  {tag.display}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(tag.id);
+                    }}
+                    className="rounded-full hover:bg-muted-foreground/20 p-0.5"
+                  >
+                    <X size={12} />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
         </PopoverTrigger>
-         {isEditable && value.find(v => v.display.length > MAX_TAG_LENGTH) && <p className="text-xs text-destructive">A tag exceeds the {MAX_TAG_LENGTH} character limit.</p>}
-      </div>
-      <PopoverContent className="w-[300px] p-0">
-        <Command shouldFilter={false}>
-          <CommandInput value={searchTerm} onValueChange={setSearchTerm} placeholder="Search tags..." maxLength={MAX_TAG_LENGTH} autoFocus />
-          <CommandList>
-            {suggestions.length > 0 && (
-              <CommandGroup heading="Suggestions">
-                {suggestions.map(tag => (
-                  <CommandItem key={tag.id} value={tag.display} onSelect={() => handleSelect(tag)}>
-                    <Check className={cn("mr-2 h-4 w-4", value.some(t => t.id === tag.id) ? "opacity-100" : "opacity-0")} />
-                    {tag.display}
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+          <Command shouldFilter={false}> {/* Custom filtering logic handled via inputValue */}
+            <CommandInput 
+                placeholder="Search or create tags..." 
+                value={inputValue}
+                onValueChange={setInputValue}
+            />
+            <CommandList>
+              <CommandEmpty>No tags found.</CommandEmpty>
+              <CommandGroup>
+                {inputValue && !globalTagsMap.has(normalizeTag(inputValue)) && !selectedTagsMap.has(normalizeTag(inputValue)) && (
+                  <CommandItem onSelect={() => handleCreate(inputValue)} className="cursor-pointer">
+                    <Plus className="mr-2 h-4 w-4" /> Create "{inputValue}"
                   </CommandItem>
-                ))}
+                )}
+                {filteredGlobalTags
+                  .filter(tag => 
+                    normalizeTag(tag.display).includes(normalizeTag(inputValue))
+                  )
+                  .map((tag) => (
+                    <CommandItem
+                      key={tag.id}
+                      value={tag.id}
+                      onSelect={() => {
+                        handleSelect(tag.id, tag.display);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn("mr-2 h-4 w-4", "opacity-0")}
+                      />
+                      {tag.display}
+                    </CommandItem>
+                  ))}
               </CommandGroup>
-            )}
-            {showCreateOption && (
-              <CommandGroup heading="Create New Tag">
-                <CommandItem value={searchTerm} onSelect={() => handleCreate(searchTerm)}>
-                    <span className="mr-2">+</span>Create "{searchTerm}"
-                </CommandItem>
-              </CommandGroup>
-            )}
-            {!showCreateOption && !suggestions.length && <CommandEmpty>No tags found.</CommandEmpty>}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

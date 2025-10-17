@@ -1,612 +1,232 @@
 
-"use client";
+'use client';
 
-import {
-  Users,
-  Clock,
-  Target,
-  FileText,
-  DollarSign,
-  UserPlus,
-  Pencil,
-  PlusCircle,
-  MessageSquare,
-  BookOpen,
-  Loader2,
-} from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState, useEffect, useTransition, useCallback } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from 'zod';
-import ReactMarkdown from 'react-markdown';
-import { DndContext, DragOverlay, closestCorners, useDroppable } from '@dnd-kit/core';
-import type { UniqueIdentifier, DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
-import { SortableContext, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
 
+import ProjectHeader from '@/components/project-header';
+import TaskBoard from '@/components/task-board';
+import DiscussionForum from '@/components/discussion-forum';
+import ProjectTeam from '@/components/project-team';
+import EditTaskDialog from '@/components/edit-task-dialog';
+import { Button } from '@/components/ui/button';
 
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SummarizeProgress } from "@/components/ai/summarize-progress";
-import { HighlightBlockers } from "@/components/ai/highlight-blockers";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import type { Task, TaskStatus, User, Discussion, LearningPath, HydratedProject, HydratedProjectMember, ServerActionResponse, TaskFormValues } from "@/lib/types";
-import { EditTaskDialog } from "@/components/edit-task-dialog";
-import { AddTaskDialog } from "@/components/add-task-dialog";
-import { AddMemberDialog } from "@/components/add-member-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from "@/lib/utils";
+import type { 
+    HydratedProject, 
+    Discussion, 
+    Task, 
+    User, 
+    LearningPath, 
+    ServerActionResponse, 
+    HydratedProjectMember,
+    ProjectMember
+} from '@/lib/types';
+import { toDate } from '@/lib/utils';
 
-const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+// Action Prop Types
+type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
+type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
+type AddDiscussionCommentAction = (data: { projectId: string; userId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
+type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ServerActionResponse<Task>>;
+type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
+type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
 
-const DiscussionSchema = z.object({
-  content: z.string().min(1, "Comment cannot be empty."),
-});
-
-type DiscussionFormValues = z.infer<typeof DiscussionSchema>;
-
-type HydratedDiscussion = Discussion & { user: User };
-
-// Reusable Task Card component with typed props
-function TaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating = false, isDragging = false, style, ...props }: { task: Task, isTeamMember: boolean, team: HydratedProjectMember[], updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>, deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>, isUpdating?: boolean, isDragging?: boolean, style?: React.CSSProperties, [key: string]: unknown }) {
-    return (
-        <div style={style} {...props}>
-            <EditTaskDialog task={task} isTeamMember={isTeamMember} projectTeam={team} updateTask={updateTask} deleteTask={deleteTask}>
-                <Card className={cn(
-                    "mb-2 bg-card/80 hover:bg-accent cursor-pointer relative",
-                    isUpdating && "opacity-50",
-                    isDragging && "shadow-lg z-10"
-                )}>
-                    {isUpdating && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-lg">
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        </div>
-                    )}
-                    <CardContent className="p-3">
-                    <p className="text-sm font-medium mb-2">{task.title}</p>
-                    <div className="flex items-center justify-between">
-                        {task.assignedTo ? (
-                        <TooltipProvider>
-                            <Tooltip>
-                            <TooltipTrigger>
-                                <Avatar className="h-6 w-6">
-                                <AvatarImage src={task.assignedTo.avatarUrl} alt={task.assignedTo.name} />
-                                <AvatarFallback>{getInitials(task.assignedTo.name)}</AvatarFallback>
-                                </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{task.assignedTo.name}</p>
-                            </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        ) : (
-                            <div className="h-6 w-6" />
-                        )}
-                        {task.estimatedHours && (
-                            <Badge variant="outline" className="text-xs">
-                                {task.estimatedHours}h
-                            </Badge>
-                        )}
-                    </div>
-                    </CardContent>
-                </Card>
-            </EditTaskDialog>
-        </div>
-    );
+export interface ProjectDetailClientPageProps {
+    project: HydratedProject;
+    discussions: (Discussion & { user?: User })[];
+    tasks: Task[];
+    users: User[];
+    currentUser: User | null;
+    learningPaths: LearningPath[];
+    joinProject: JoinProjectAction;
+    addTeamMember: AddTeamMemberAction;
+    addDiscussionComment: AddDiscussionCommentAction;
+    addTask: AddTaskAction;
+    updateTask: UpdateTaskAction;
+    deleteTask: DeleteTaskAction;
 }
 
+export default function ProjectDetailClientPage(props: ProjectDetailClientPageProps) {
+    const {
+        project: initialProject,
+        discussions: initialDiscussions,
+        tasks: initialTasks,
+        users,
+        currentUser,
+        learningPaths,
+        joinProject,
+        addTeamMember,
+        addDiscussionComment,
+        addTask,
+        updateTask,
+        deleteTask,
+    } = props;
 
-// Sortable Task Card Component
-function SortableTaskCard({ task, isTeamMember, team, updateTask, deleteTask, isUpdating }: { task: Task, isTeamMember: boolean, team: HydratedProjectMember[], updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>, deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>, isUpdating: boolean }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-        id: task.id,
-        data: { task },
-    });
-    
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
+    // --- State Management ---
+    const [project, setProject] = useState(initialProject);
+    const [discussions, setDiscussions] = useState(initialDiscussions);
+    const [tasks, setTasks] = useState(initialTasks.map(t => ({...t, createdAt: toDate(t.createdAt), updatedAt: toDate(t.updatedAt)})));
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+
+    const isMember = currentUser ? project.team.some(m => m.userId === currentUser.id) : false;
+
+    // --- Action Handlers ---
+
+    const handleJoinProject = async () => {
+        if (!currentUser) return toast.error("You must be logged in to join.");
+        
+        const result = await joinProject(project.id);
+        if (result.success) {
+            toast.success("Welcome to the project!");
+            if (result.data) {
+                setProject(prev => ({ ...prev, team: [...prev.team, result.data!] }));
+            }
+        } else {
+            toast.error(`Failed to join: ${result.error}`);
+        }
     };
 
-    return (
-        <TaskCard 
-            ref={setNodeRef}
-            style={style}
-            task={task} 
-            isTeamMember={isTeamMember} 
-            team={team} 
-            updateTask={updateTask} 
-            deleteTask={deleteTask} 
-            isUpdating={isUpdating} 
-            isDragging={isDragging}
-            {...attributes} 
-            {...listeners} 
-        />
-    );
-}
-
-// Droppable Column Component with typed props
-function DroppableColumn({ id, status, tasks, isTeamMember, team, updateTask, deleteTask, projectId, addTask, updatingTaskId }: { id: UniqueIdentifier, status: TaskStatus, tasks: Task[], isTeamMember: boolean, team: HydratedProjectMember[], updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>, deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>, projectId: string, addTask: (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>, updatingTaskId: string | null }) {
-    const { setNodeRef, isOver } = useDroppable({ id });
-    const taskIds = tasks.map(t => t.id);
-
-    return (
-        <div ref={setNodeRef} className={cn("bg-muted/50 rounded-lg p-4 transition-colors duration-200", isOver && "bg-primary/10")}>
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">{status} ({tasks.length})</h3>
-                {isTeamMember && (
-                    <AddTaskDialog projectId={projectId} status={status} addTask={addTask}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <PlusCircle className="h-4 w-4" />
-                        </Button>
-                    </AddTaskDialog>
-                )}
-            </div>
-            <div className="space-y-2 min-h-[100px]">
-                <SortableContext items={taskIds}>
-                    {tasks.map(task => <SortableTaskCard key={task.id} task={task} isTeamMember={isTeamMember} team={team} updateTask={updateTask} deleteTask={deleteTask} isUpdating={task.id === updatingTaskId} />)}
-                </SortableContext>
-            </div>
-        </div>
-    )
-}
-
-
-interface ProjectDetailClientPageProps {
-    project: HydratedProject;
-    projectTasks: Task[];
-    projectDiscussions: HydratedDiscussion[];
-    recommendedLearningPaths: LearningPath[];
-    currentUser: User;
-    allUsers: User[];
-    joinProject: (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
-    addTeamMember: (data: { projectId: string; userId: string; role: 'contributor' | 'lead' | 'participant'; }) => Promise<ServerActionResponse<HydratedProjectMember>>;
-    addDiscussionComment: (data: { projectId: string, userId: string, content: string }) => Promise<ServerActionResponse<Discussion>>;
-    addTask: (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>;
-    updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>;
-    deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
-}
-
-export default function ProjectDetailClientPage({ 
-    project, 
-    projectTasks, 
-    projectDiscussions,
-    recommendedLearningPaths,
-    currentUser,
-    allUsers,
-    joinProject,
-    addTeamMember,
-    addDiscussionComment,
-    addTask,
-    updateTask,
-    deleteTask
-}: ProjectDetailClientPageProps) {
-  const params = useParams();
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [isCommentPending, startCommentTransition] = useTransition();
-  
-  const [tasks, setTasks] = useState<Task[]>(projectTasks);
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setTasks(projectTasks);
-  }, [projectTasks]);
-
-
-  const isCurrentUserMember = project.team.some(member => member.user && member.user.id === currentUser.id);
-  const isCurrentUserLead = project.team.some(member => member.user && member.user.id === currentUser.id && member.role === 'lead');
-
-  const form = useForm<DiscussionFormValues>({
-    resolver: zodResolver(DiscussionSchema),
-    defaultValues: {
-      content: "",
-    },
-  });
-
-  const handleJoinProject = () => {
-    startTransition(async () => {
-      if (typeof params.id !== 'string') return;
-      const result = await joinProject(params.id);
-      if (!result.success) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      } else {
-        toast({ title: 'Welcome!', description: `You've successfully joined ${project.name}.` });
-      }
-    });
-  };
-
-  const handleAddComment = (values: DiscussionFormValues) => {
-    startCommentTransition(async () => {
-      if (typeof params.id !== 'string') return;
-      const result = await addDiscussionComment({
-        projectId: params.id,
-        userId: currentUser.id,
-        content: values.content,
-      });
-
-      if (!result.success) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      } else {
-        toast({ title: 'Comment added!' });
-        form.reset();
-      }
-    });
-  };
-
-  const taskColumns: { [key in TaskStatus]: Task[] } = {
-    'To Do': tasks.filter(t => t.status === 'To Do'),
-    'In Progress': tasks.filter(t => t.status === 'In Progress'),
-    'Done': tasks.filter(t => t.status === 'Done'),
-  }
-
-  const findTaskContainer = useCallback((taskId: string) => {
-    if (Object.keys(taskColumns).includes(taskId)) {
-      return taskId as TaskStatus;
-    }
-    const task = tasks.find(t => t.id === taskId);
-    return task?.status;
-  }, [tasks, taskColumns]);
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-      const { active } = event;
-      setActiveTask(active.data.current?.task as Task);
-  }, []);
-  
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id.toString();
-    const overId = over.id.toString();
-    const activeContainer = findTaskContainer(activeId);
-    const overContainer = findTaskContainer(overId);
-
-    if (!activeContainer || !overContainer || activeContainer === overContainer) {
-      return;
-    }
-
-    setTasks(previousTasks => {
-        const activeIndex = previousTasks.findIndex(t => t.id === activeId);
-        let overIndex = previousTasks.findIndex(t => t.id === overId);
-  
-        // If dropping into a column, find the last task in that column
-        if (Object.keys(taskColumns).includes(overId)) {
-            const tasksInColumn = taskColumns[overContainer as TaskStatus];
-            const lastTask = tasksInColumn[tasksInColumn.length - 1];
-            overIndex = lastTask ? previousTasks.findIndex(t => t.id === lastTask.id) + 1 : overIndex;
-        }
-       
-        const newTasks = [...previousTasks];
-        if (activeIndex !== -1) {
-            const movedTask = { ...newTasks[activeIndex], status: overContainer as TaskStatus };
-            newTasks.splice(activeIndex, 1);
-            newTasks.splice(overIndex, 0, movedTask);
-        }
-        
-        return newTasks;
-      });
-  }, [findTaskContainer, taskColumns]);
-
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-      const { active, over } = event;
-      setActiveTask(null);
-  
-      if (!over) return;
-  
-      const activeId = active.id.toString();
-      const activeTaskInState = tasks.find(t => t.id === activeId);
-  
-      if (!activeTaskInState) return;
-  
-      const originalStatus = activeTaskInState.status;
-      const newContainer = findTaskContainer(over.id.toString());
-
-      if (!newContainer) return;
-      
-      const newStatus = newContainer;
-
-      // Optimistically update the UI
-      const oldTasks = tasks;
-      const activeIndex = oldTasks.findIndex(t => t.id === activeId);
-      const overId = over.id.toString();
-      const overIndex = oldTasks.findIndex(t => t.id === overId);
-      
-      setTasks(currentTasks => arrayMove(currentTasks, activeIndex, overIndex));
-
-      // Only call the API if the status actually changed
-      if (originalStatus !== newStatus) {
-        setUpdatingTaskId(activeId);
-        const result = await updateTask({ ...activeTaskInState, status: newStatus });
-        setUpdatingTaskId(null);
-
-        if (!result.success) {
-            // Revert on failure
-            setTasks(oldTasks);
-            toast({ variant: 'destructive', title: 'Error updating task', description: result.error });
+    const handleAddTeamMember = async (userId: string, role: ProjectMember['role']) => {
+        const result = await addTeamMember({ projectId: project.id, userId, role });
+        if (result.success) {
+            toast.success("Team member added!");
+            if (result.data) {
+                setProject(prev => ({ ...prev, team: [...prev.team, result.data!] }));
+            }
         } else {
-            toast({ title: 'Task updated!', description: `Task "${activeTaskInState.title}" moved to ${newStatus}.`});
+            toast.error(`Error adding member: ${result.error}`);
         }
-      }
-  }, [findTaskContainer, updateTask, toast, tasks]);
+    };
 
+    const handleAddComment = async (content: string) => {
+        if (!currentUser) return toast.error("You must be logged in to comment.");
 
-  const nonMemberUsers = allUsers.filter(user => !project.team.some(member => member.user && member.user.id === user.id));
+        const result = await addDiscussionComment({ projectId: project.id, userId: currentUser.id, content });
+        if (result.success) {
+            toast.success("Comment posted!");
+            if (result.data) {
+                // Hydrate comment with current user for immediate UI update
+                const newComment = { ...result.data, user: currentUser };
+                setDiscussions(prev => [newComment, ...prev]);
+            }
+        } else {
+            toast.error(`Error posting comment: ${result.error}`);
+        }
+    };
 
-  return (
-    <div className="max-w-7xl mx-auto">
-      <Tabs defaultValue="overview">
-          <div className="flex items-center justify-between mb-4">
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                <TabsTrigger value="discussions">
-                  Discussions
-                  {projectDiscussions && projectDiscussions.length > 0 && <Badge className="ml-2">{projectDiscussions.length}</Badge>}
-                </TabsTrigger>
-                <TabsTrigger value="learning">Recommended Learning</TabsTrigger>
-                <TabsTrigger value="governance">Governance</TabsTrigger>
-              </TabsList>
-              <div className="flex items-center gap-2">
-                {!isCurrentUserMember && (
-                    <Button onClick={handleJoinProject} disabled={isPending} size="sm">
-                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                        Join Project
-                    </Button>
-                )}
-                {isCurrentUserLead && (
-                    <Link href={`/projects/${project.id}/edit`}>
-                        <Button variant="outline" size="sm">
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit Project
-                        </Button>
-                    </Link>
-                )}
-              </div>
-          </div>
+    // --- Task Handling ---
 
-          <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                  <CardTitle>Project Details</CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-6">
-                  <div>
-                      <h3 className="font-semibold mb-2">Description</h3>
-                      <div className="prose text-muted-foreground max-w-none">
-                          <ReactMarkdown>{project.description}</ReactMarkdown>
-                      </div>
-                  </div>
-                  <div className="space-y-4">
-                      <div className="flex items-center"><Target className="h-5 w-5 mr-3 text-primary" /> <span>Skills Needed: {project.contributionNeeds.join(', ')}</span></div>
-                      <div className="flex items-center"><Clock className="h-5 w-5 mr-3 text-primary" /> <span>Timeline: {project.timeline}</span></div>
-                      <div className="flex items-center gap-4">
-                          <Users className="h-5 w-5 text-primary flex-shrink-0" />
-                          <div className="flex -space-x-2">
-                              {project.team.map(member => (
-                                member.user && (
-                                <TooltipProvider key={member.user.id}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Link href={`/profile/${member.user.id}`}>
-                                            <Avatar className={cn(
-                                                "h-8 w-8 border-2 border-background",
-                                                member.role === 'lead' && "border-yellow-500"
-                                            )}>
-                                                <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
-                                                <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
-                                            </Avatar>
-                                        </Link>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="font-semibold">{member.user.name}</p>
-                                      <p className="capitalize text-muted-foreground">{member.role}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                                )
-                              ))}
-                          </div>
-                          {isCurrentUserLead && (
-                              <AddMemberDialog 
-                                  projectId={project.id}
-                                  nonMemberUsers={nonMemberUsers}
-                                  addTeamMember={addTeamMember}
-                              >
-                                  <Button variant="outline" size="icon" className="h-8 w-8">
-                                      <UserPlus className="h-4 w-4" />
-                                  </Button>
-                              </AddMemberDialog>
-                          )}
-                      </div>
-                       <div className="space-y-2">
-                          <div className="flex justify-between text-sm text-muted-foreground"><span>Progress</span><span>{project.progress}%</span></div>
-                          <Progress value={project.progress} />
-                      </div>
-                  </div>
-              </CardContent>
-            </Card>
-            <div className="grid md:grid-cols-2 gap-6">
-              <SummarizeProgress project={project} />
-              <HighlightBlockers tasks={projectTasks} discussions={projectDiscussions} />
-            </div>
-          </TabsContent>
+    const handleOpenTaskDialog = (task?: Task) => {
+        setSelectedTask(task || null);
+        setIsTaskDialogOpen(true);
+    };
 
-          <TabsContent value="tasks">
-               <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragOver={handleDragOver} collisionDetection={closestCorners}>
-                <Card>
-                  <CardHeader><CardTitle>Task Board</CardTitle></CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {(Object.keys(taskColumns) as TaskStatus[]).map((status) => (
-                        <DroppableColumn
-                            key={status}
-                            id={status}
-                            status={status}
-                            tasks={taskColumns[status]}
-                            isTeamMember={isCurrentUserMember}
-                            team={project.team}
-                            updateTask={updateTask}
-                            deleteTask={deleteTask}
-                            projectId={project.id}
-                            addTask={addTask}
-                            updatingTaskId={updatingTaskId}
+    const handleCloseTaskDialog = () => {
+        setSelectedTask(null);
+        setIsTaskDialogOpen(false);
+    };
+
+    const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> | Task) => {
+        const isUpdating = 'id' in taskData;
+        const action = isUpdating ? updateTask : addTask;
+        
+        // The action expects a specific payload, so we construct it carefully
+        const payload = isUpdating ? taskData as Task : { ...taskData, projectId: project.id };
+
+        // @ts-ignore - The dynamic action type is correct but TS struggles here.
+        const result = await action(payload);
+
+        if (result.success && result.data) {
+            const savedTask = { ...result.data, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt) };
+            setTasks(prevTasks => {
+                const existingIndex = prevTasks.findIndex(t => t.id === savedTask.id);
+                if (existingIndex > -1) {
+                    const newTasks = [...prevTasks];
+                    newTasks[existingIndex] = savedTask;
+                    return newTasks;
+                } else {
+                    return [savedTask, ...prevTasks];
+                }
+            });
+            toast.success(`Task ${isUpdating ? 'updated' : 'created'} successfully!`);
+            handleCloseTaskDialog();
+        } else {
+            toast.error(`Failed to ${isUpdating ? 'update' : 'create'} task: ${result.error}`);
+        }
+    };
+
+    const handleDeleteTask = async (taskId: string) => {
+        if (!window.confirm("Are you sure you want to delete this task?")) return;
+
+        const result = await deleteTask({ id: taskId, projectId: project.id });
+        if (result.success) {
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+            toast.success("Task deleted.");
+        } else {
+            toast.error(`Failed to delete task: ${result.error}`);
+        }
+    };
+    
+
+    return (
+        <div>
+            <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} />
+            
+            <div className="mt-8">
+                <Tabs>
+                    <TabList>
+                        <Tab>Tasks</Tab>
+                        <Tab>Discussion</Tab>
+                        <Tab>Team</Tab>
+                        <Tab>Learning Paths</Tab>
+                    </TabList>
+
+                    <TabPanel>
+                        <div className="flex justify-end my-4">
+                            {isMember && <Button onClick={() => handleOpenTaskDialog()}>Add Task</Button>}
+                        </div>
+                        <TaskBoard 
+                            tasks={tasks} 
+                            onEditTask={handleOpenTaskDialog}
+                            onDeleteTask={handleDeleteTask}
                         />
-                    ))}
-                  </CardContent>
-                </Card>
-                <DragOverlay>
-                    {activeTask ? <TaskCard task={activeTask} isTeamMember={isCurrentUserMember} team={project.team} updateTask={updateTask} deleteTask={deleteTask} isDragging /> : null}
-                </DragOverlay>
-              </DndContext>
-          </TabsContent>
+                    </TabPanel>
+                    <TabPanel>
+                        <DiscussionForum 
+                            discussions={discussions} 
+                            onAddComment={handleAddComment} 
+                            isMember={isMember}
+                            currentUser={currentUser}
+                        />
+                    </TabPanel>
+                    <TabPanel>
+                        <ProjectTeam 
+                            team={project.team} 
+                            users={users}
+                            currentUser={currentUser}
+                            addTeamMember={handleAddTeamMember}
+                            isLead={project.team.some(m => m.userId === currentUser?.id && m.role === 'lead')}
+                        />
+                    </TabPanel>
+                    <TabPanel>
+                        {/* Learning Paths Content Here */}
+                    </TabPanel>
+                </Tabs>
+            </div>
 
-          <TabsContent value="discussions">
-              <Card>
-                  <CardHeader>
-                      <CardTitle>Discussions</CardTitle>
-                      <CardDescription>Ask questions, share ideas, and collaborate with the project team.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                      {isCurrentUserMember ? (
-                      <Form {...form}>
-                          <form onSubmit={form.handleSubmit(handleAddComment)} className="flex items-start gap-4">
-                              <Avatar className="h-10 w-10 border">
-                                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                  <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
-                              </Avatar>
-                              <div className="flex-grow space-y-2">
-                                  <FormField
-                                      control={form.control}
-                                      name="content"
-                                      render={({ field }) => (
-                                          <FormItem>
-                                              <FormControl>
-                                                  <Textarea {...field} placeholder="Add to the discussion..." className="min-h-[60px]" />
-                                              </FormControl>
-                                              <FormMessage />
-                                          </FormItem>
-                                      )}
-                                  />
-                                  <div className="flex justify-end">
-                                      <Button type="submit" disabled={isCommentPending}>
-                                          {isCommentPending ? "Posting..." : "Post Comment"}
-                                      </Button>
-                                  </div>
-                              </div>
-                          </form>
-                      </Form>
-                      ) : (
-                          <div className="text-center text-muted-foreground text-sm p-4 border rounded-lg">
-                              <p>You must be a member of this project to join the discussion.</p>
-                          </div>
-                      )}
-
-                      <div className="space-y-4">
-                         {projectDiscussions && projectDiscussions.length > 0 ? (
-                              [...projectDiscussions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(comment => (
-                              <div key={comment.id} className="flex items-start gap-4">
-                                  <Avatar className="h-10 w-10 border">
-                                      <AvatarImage src={comment.user.avatarUrl} alt={comment.user.name} />
-                                      <AvatarFallback>{getInitials(comment.user.name)}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-grow rounded-lg border p-3">
-                                      <div className="flex items-center justify-between mb-1">
-                                          <p className="font-semibold">{comment.user.name}</p>
-                                          <p className="text-xs text-muted-foreground">
-                                              {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true })}
-                                          </p>
-                                      </div>
-                                      <p className="text-sm text-foreground">{comment.content}</p>
-                                  </div>
-                              </div>
-                              ))
-                         ) : (
-                           <div key="no-discussions" className="text-center text-muted-foreground text-sm py-8">
-                              <MessageSquare className="h-8 w-8 mx-auto mb-2" />
-                              <p>No discussions yet. Be the first to start the conversation!</p>
-                           </div>
-                         )}
-                      </div>
-                  </CardContent>
-              </Card>
-          </TabsContent>
-
-          <TabsContent value="learning">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recommended Learning</CardTitle>
-                <CardDescription>Courses and resources to help you get up to speed on this project.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-4">
-                {recommendedLearningPaths && recommendedLearningPaths.length > 0 ? (
-                  recommendedLearningPaths.map(path => (
-                    <Link key={path.pathId} href={`/learning/${path.pathId}`} className="block hover:bg-muted/50 rounded-lg border p-4 transition-colors">
-                      <div className="flex items-start gap-4">
-                          <div className="bg-primary/20 text-primary p-2 rounded-full">
-                              <BookOpen className="h-5 w-5" />
-                          </div>
-                          <div>
-                              <p className="font-semibold">{path.title}</p>
-                              <p className="text-sm text-muted-foreground mt-1">{path.description}</p>
-                          </div>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center text-muted-foreground text-sm py-12">
-                      <BookOpen className="h-8 w-8 mx-auto mb-2" />
-                      <p>No recommended learning paths for this project yet.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="governance">
-              <Card>
-                  <CardHeader><CardTitle>Value & Governance</CardTitle><CardDescription>Transparent value distribution for all contributors.</CardDescription></CardHeader>
-                  <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                              <DollarSign className="h-6 w-6 text-green-500" />
-                              <span className="font-medium">Contributors Share</span>
-                          </div>
-                          <span className="text-2xl font-bold">{project.governance?.contributorsShare ?? 75}%</span>
-                      </div>
-                       <div className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                              <Users className="h-6 w-6 text-blue-500" />
-                              <span className="font-medium">Community Growth Stake</span>
-                          </div>
-                          <span className="text-2xl font-bold">{project.governance?.communityShare ?? 10}%</span>
-                      </div>
-                       <div className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                              <FileText className="h-6 w-6 text-purple-500" />
-                              <span className="font-medium">Sustainability (Burn)</span>
-                          </div>
-                          <span className="text-2xl font-bold">{project.governance?.sustainabilityShare ?? 15}%</span>
-                      </div>
-                  </CardContent>
-              </Card>
-          </TabsContent>
-      </Tabs>
-      </div>
-  )
+            {isTaskDialogOpen && (
+                <EditTaskDialog
+                    isOpen={isTaskDialogOpen}
+                    onClose={handleCloseTaskDialog}
+                    // @ts-ignore
+                    onSave={handleSaveTask}
+                    task={selectedTask}
+                    projectTeam={project.team}
+                />
+            )}
+        </div>
+    );
 }

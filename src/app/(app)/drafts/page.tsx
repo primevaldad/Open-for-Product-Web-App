@@ -1,106 +1,51 @@
 
-import ProjectCard from "@/components/project-card";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Project, LearningPath, ProjectPathLink, ProjectTag } from "@/lib/types";
-import { getAllProjects, getAllProjectPathLinks, getAllLearningPaths } from "@/lib/data.server";
+import type { User } from "@/lib/types";
+import { getAllProjects, getAllUsers } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { serializeTimestamp } from "@/lib/utils"; // Import the centralized helper
+import ProjectCard from "@/components/project-card";
+import { HydratedProject } from "@/lib/types";
+import { toHydratedProject } from "@/lib/utils";
 
-// Removed local toISOString helper
-
-const serializeLearningPath = (path: LearningPath): LearningPath => ({
-    ...path,
-    createdAt: serializeTimestamp(path.createdAt) ?? undefined,
-    updatedAt: serializeTimestamp(path.updatedAt) ?? undefined,
-});
-
-const serializeProjectPathLink = (link: ProjectPathLink): ProjectPathLink => ({
-    ...link,
-    // Note: ProjectPathLink type does not have createdAt, but if the raw object did, 
-    // this is where it would be serialized. We will trust the type for now.
-});
-
-const serializeProject = (project: Project): Project => ({
-  ...project,
-  createdAt: serializeTimestamp(project.createdAt) ?? undefined,
-  updatedAt: serializeTimestamp(project.updatedAt) ?? undefined,
-  startDate: project.startDate ? serializeTimestamp(project.startDate) : undefined,
-  endDate: project.endDate ? serializeTimestamp(project.endDate) : undefined,
-  // Correctly map Tag-like structure to ProjectTag, preserving all properties
-  tags: (project.tags || []).map(tag => ({
-    id: tag.id,
-    display: tag.display,
-    role: (tag as unknown).type, // Map 'type' from Tag to 'role' in ProjectTag
-    createdAt: serializeTimestamp(tag.createdAt) ?? undefined,
-    updatedAt: serializeTimestamp(tag.updatedAt) ?? undefined,
-  })) as ProjectTag[],
-});
-
-async function getDraftsPageData() {
-    const currentUser = await getAuthenticatedUser();
-    const [projects, allProjectPathLinks, allLearningPaths] = await Promise.all([
+async function getDraftsPageData(currentUser: User): Promise<{
+    drafts: HydratedProject[];
+}> {
+    const [projectsData, usersData] = await Promise.all([
         getAllProjects(),
-        getAllProjectPathLinks(),
-        getAllLearningPaths(),
+        getAllUsers(),
     ]);
 
-    const serializedProjects = projects.map(serializeProject);
-    const serializedProjectPathLinks = allProjectPathLinks.map(serializeProjectPathLink);
-    const serializedLearningPaths = allLearningPaths.map(serializeLearningPath);
+    const usersMap = new Map(usersData.map((user) => [user.id, user]));
 
-    return {
-        currentUser,
-        projects: serializedProjects,
-        allProjectPathLinks: serializedProjectPathLinks,
-        allLearningPaths: serializedLearningPaths
-    };
+    const hydratedDrafts = projectsData
+        .filter(p => 
+            p.status === 'draft' && 
+            p.team.some(member => member.userId === currentUser.id && member.role === 'lead')
+        )
+        .map(p => toHydratedProject(p, usersMap));
+
+    return { drafts: hydratedDrafts };
 }
 
 export default async function DraftsPage() {
-  const { currentUser, projects, allProjectPathLinks, allLearningPaths } = await getDraftsPageData();
+    const currentUser = await getAuthenticatedUser();
+    
+    // Should not happen as route is protected, but good practice
+    if (!currentUser) return <p>You must be logged in to view drafts.</p>;
 
-  if (!currentUser) {
+    const { drafts } = await getDraftsPageData(currentUser);
+
     return (
-        <div className="flex h-screen items-center justify-center">
-            <p>Loading user...</p>
+        <div className="container mx-auto p-4">
+            <h1 className="text-2xl font-bold mb-4">My Drafts</h1>
+            {drafts.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {drafts.map((draft) => (
+                        <ProjectCard key={draft.id} project={draft} />
+                    ))}
+                </div>
+            ) : (
+                <p>You have no drafts.</p>
+            )}
         </div>
     );
-  }
-
-  const draftProjects = projects.filter(p => p.status === 'draft' && p.team.some(m => m.userId === currentUser.id));
-
-  return (
-    <div className="space-y-6">
-        <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">My Drafts</h1>
-        </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {draftProjects.length > 0 ? (
-            draftProjects.map((project) => (
-                <ProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    allProjectPathLinks={allProjectPathLinks} 
-                    allLearningPaths={allLearningPaths} 
-                />
-            ))
-        ) : (
-            <Card className="col-span-full">
-                <CardHeader>
-                    <CardTitle>No Drafts Found</CardTitle>
-                    {/* Corrected unescaped apostrophe */}
-                    <CardDescription>You haven&apos;t saved any project drafts yet.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/create">
-                        <Button>Create a New Project</Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        )}
-        </div>
-    </div>
-  );
 }

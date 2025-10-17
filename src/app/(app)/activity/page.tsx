@@ -1,133 +1,83 @@
 
-import type { User, ProjectMember } from "@/lib/types"; // Cleaned up unused imports
-import { getAllProjects, getAllTasks, getAllUsers, getAllUserLearningProgress, getAllLearningPaths } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
-import ActivityClientPage from "./activity-client-page";
-import { updateTask as updateTaskAction, deleteTask as deleteTaskAction } from "@/app/actions/projects";
-import { iconMap } from '@/lib/static-data';
-import { FlaskConical } from 'lucide-react';
-import type { CompletedModuleData } from "@/lib/types";
-import { serializeTimestamp } from "@/lib/utils"; // Import centralized helper
+import { getAllProjects, getAllTasks, getAllUsers } from "@/lib/data.server";
+import { ActivityClientPage } from "./activity-client-page";
+import { updateTask, deleteTask } from "@/app/actions/projects";
+import type { Task, Project, User } from "@/lib/types";
+
+// A specific type for tasks enriched with project and user details
+export type HydratedTask = Task & { 
+    project?: { id: string, name: string }; 
+    assignedUser?: { id: string, name: string | null, avatarUrl?: string | null };
+};
 
 async function getActivityPageData() {
-    const rawCurrentUser = await getAuthenticatedUser();
-    if (!rawCurrentUser) return { currentUser: null, projects: [], myTasks: [], learningPaths: [], userProgress: [], allUsers: [] };
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { 
+        currentUser: null, 
+        tasks: [], 
+        projects: [], 
+        users: []
+    };
 
-    const [rawProjects, rawAllTasks, rawUserProgress, rawLearningPaths, rawAllUsers] = await Promise.all([
-        getAllProjects(),
+    const [tasks, projects, users] = await Promise.all([
         getAllTasks(),
-        getAllUserLearningProgress(),
-        getAllLearningPaths(),
+        getAllProjects(),
         getAllUsers(),
     ]);
-    
-    const myTasks = rawAllTasks.filter(t => t.assignedToId === rawCurrentUser.id);
-    const filteredUserProgress = rawUserProgress.filter(p => p.userId === rawCurrentUser.id);
 
-    return { 
-        currentUser: rawCurrentUser, 
-        projects: rawProjects, 
-        myTasks, 
-        learningPaths: rawLearningPaths, 
-        userProgress: filteredUserProgress,
-        allUsers: rawAllUsers,
-    };
+    return { currentUser, tasks, projects, users };
 }
 
-export default async function ActivityPage() {
-    const {
-      currentUser: rawCurrentUser,
-      projects: rawProjects,
-      myTasks: rawMyTasks,
-      learningPaths: rawLearningPaths,
-      userProgress: rawUserProgress,
-      allUsers: rawAllUsers
-    } = await getActivityPageData();
-  
-    if (!rawCurrentUser) {
-      return (
-        <div className="flex h-screen items-center justify-center">
-          <p>Loading activity...</p>
-        </div>
-      );
-    }
-  
-    const currentUser = {
-      ...rawCurrentUser,
-      createdAt: serializeTimestamp(rawCurrentUser.createdAt),
-      lastLogin: serializeTimestamp(rawCurrentUser.lastLogin),
+// This function runs on the server to prepare serializable props for the client
+const toSerializableHydratedTask = (task: Task, projects: Map<string, Project>, users: Map<string, User>): HydratedTask => {
+    const project = projects.get(task.projectId);
+    const assignedUser = task.assignedToId ? users.get(task.assignedToId) : undefined;
+
+    return {
+        ...task,
+        // Ensure timestamps are ISO strings for serialization
+        createdAt: task.createdAt ? new Date(task.createdAt).toISOString() : new Date().toISOString(),
+        updatedAt: task.updatedAt ? new Date(task.updatedAt).toISOString() : new Date().toISOString(),
+        project: project ? { id: project.id, name: project.name } : undefined,
+        assignedUser: assignedUser ? { id: assignedUser.id, name: assignedUser.name, avatarUrl: assignedUser.avatarUrl } : undefined,
     };
-  
-    const allUsers = rawAllUsers.map(u => ({
-      ...u,
-      createdAt: serializeTimestamp(u.createdAt),
-      lastLogin: serializeTimestamp(u.lastLogin),
-    }));
-  
-    const projects = rawProjects.map(p => {
-      const teamWithUsers = (p.team || []).reduce<Array<ProjectMember & { user: User }>>((acc, member) => {
-        const user = allUsers.find(u => u.id === member.userId);
-        if (user) {
-          acc.push({ ...member, user });
-        }
-        return acc;
-      }, []);
-  
-      return {
-        ...p,
-        createdAt: serializeTimestamp(p.createdAt),
-        updatedAt: serializeTimestamp(p.updatedAt),
-        startDate: p.startDate ? serializeTimestamp(p.startDate) : undefined,
-        endDate: p.endDate ? serializeTimestamp(p.endDate) : undefined,
-        tags: (p.tags || []).map(tag => ({
-          ...tag,
-          createdAt: serializeTimestamp(tag.createdAt),
-          updatedAt: serializeTimestamp(tag.updatedAt),
-        })),
-        team: teamWithUsers,
-      };
-    });
-  
-    const myTasks = rawMyTasks.map(t => ({
-      ...t,
-      createdAt: serializeTimestamp(t.createdAt),
-      updatedAt: serializeTimestamp(t.updatedAt),
-      assignedTo: allUsers.find(u => u.id === t.assignedToId) ?? undefined,
-    }));
-  
-    const learningPaths = rawLearningPaths.map(lp => ({
-      ...lp,
-      createdAt: serializeTimestamp(lp.createdAt),
-      updatedAt: serializeTimestamp(lp.updatedAt),
-      Icon: iconMap[lp.category as keyof typeof iconMap] || FlaskConical,
-    }));
-  
-    const userProgress = rawUserProgress;
-  
-    const completedModulesData: CompletedModuleData[] = (userProgress || []).flatMap(progress =>
-      (progress.completedModules || []).map(moduleId => {
-        const path = learningPaths.find(p => p.pathId === progress.pathId);
-        const learningModule = path?.modules.find(m => m.moduleId === moduleId);
-  
-        const serializablePath = path ? { pathId: path.pathId, title: path.title } : undefined;
-  
-        return serializablePath && learningModule ? { path: serializablePath, module: learningModule } : null;
-      })
-    ).filter((item): item is CompletedModuleData => !!item);
-  
+};
+
+export default async function ActivityPage() {
+    const { currentUser, tasks, projects, users } = await getActivityPageData();
+
+    if (!currentUser) {
+        // This could be a redirect to the login page as well
+        return <p>Please log in to see your activity.</p>;
+    }
+
+    const projectsMap = new Map(projects.map(p => [p.id, p]));
+    const usersMap = new Map(users.map(u => [u.id, u]));
+
+    // My Tasks: tasks assigned to the current user
+    const myTasks = tasks
+        .filter(task => task.assignedToId === currentUser.id)
+        .map(task => toSerializableHydratedTask(task, projectsMap, usersMap));
+
+    // Created by Me: tasks where the current user is part of the project team
+    const createdByMeProjects = projects.filter(p => p.team.some(member => member.userId === currentUser.id));
+    const createdByMeProjectIds = new Set(createdByMeProjects.map(p => p.id));
+    const createdTasks = tasks
+        .filter(task => createdByMeProjectIds.has(task.projectId))
+        .map(task => toSerializableHydratedTask(task, projectsMap, usersMap));
+
+    const userProjects = projects.filter(p => p.team.some(member => member.userId === currentUser.id));
+
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">My Activity</h1>
-        <div className="grid md:grid-cols-2 gap-6">
-          <ActivityClientPage
+        <ActivityClientPage
             currentUser={currentUser}
             myTasks={myTasks}
-            completedModulesData={completedModulesData}
-            projects={projects}
-            updateTask={updateTaskAction}
-            deleteTask={deleteTaskAction}
-          />
-        </div>
-      </div>
+            createdTasks={createdTasks}
+            projects={userProjects}
+            users={users}
+            updateTask={updateTask}
+            deleteTask={deleteTask}
+        />
     );
-  }
+}

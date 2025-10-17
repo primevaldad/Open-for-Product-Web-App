@@ -1,110 +1,101 @@
 
-import { notFound } from "next/navigation";
-import ProjectDetailClientPage from "./project-detail-client-page";
-import { getAuthenticatedUser } from "@/lib/session.server";
+import { notFound } from 'next/navigation';
+import { findProjectById, getDiscussionsForProject, getAllTasks, getAllUsers } from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import ProjectDetailClientPage from './project-detail-client-page';
 import {
-  findProjectById,
-  findTasksByProjectId,
-  getAllUsers,
-  getDiscussionsByProjectId,
-  getRecommendedLearningPathsForProject,
-} from "@/lib/data.server";
-import {
-  addTask,
-  addDiscussionComment,
-  addTeamMember,
-  deleteTask,
-  joinProject,
-  updateTask,
-} from "@/app/actions/projects";
-import type { Project, Task, Discussion, User, LearningPath, HydratedProject } from "@/lib/types";
-import { Timestamp } from "firebase-admin/firestore";
+    joinProject, 
+    addTeamMember, 
+    addDiscussionComment,
+    addTask,
+    updateTask,
+    deleteTask
+} from '@/app/actions/projects';
+import type { 
+    HydratedProject, 
+    User, 
+    HydratedProjectMember,
+    Discussion,
+    Task,
+    ServerActionResponse,
+    ProjectMember
+} from '@/lib/types';
+import { toHydratedProject } from '@/lib/utils';
+import { getLearningPathsForProject } from '@/lib/data.server';
 
-// Recursive timestamp serialization
-type Serializable = string | number | boolean | null | { [key: string]: Serializable } | Serializable[];
+// Action type definitions, ensuring they match the client component's expectations
+type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
+type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
+type AddDiscussionCommentAction = (data: { projectId: string; userId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
+type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ServerActionResponse<Task>>;
+type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
+type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
 
-function serializeTimestamps(data: unknown): Serializable {
-    if (data === null || typeof data !== 'object') {
-        return data as Serializable;
+
+async function getProjectPageData(projectId: string) {
+    const [project, discussions, tasks, users, currentUser, learningPaths] = await Promise.all([
+        findProjectById(projectId),
+        getDiscussionsForProject(projectId),
+        getAllTasks(projectId),
+        getAllUsers(),
+        getAuthenticatedUser(),
+        getLearningPathsForProject(projectId)
+    ]);
+
+    if (!project) {
+        return { project: null };
     }
-    if (data instanceof Timestamp) {
-        return data.toDate().toISOString();
-    }
-    if (Array.isArray(data)) {
-        return data.map(serializeTimestamps);
-    }
-    const serialized: { [key: string]: Serializable } = {};
-    for (const key in data) {
-        if (Object.prototype.hasOwnProperty.call(data, key)) {
-            serialized[key] = serializeTimestamps((data as { [key: string]: unknown })[key]);
-        }
-    }
-    return serialized;
+
+    const usersMap = new Map(users.map((user) => [user.id, user]));
+    const hydratedProject = toHydratedProject(project, usersMap);
+
+    // Hydrate discussions with user info
+    const hydratedDiscussions = discussions.map(discussion => {
+        const user = usersMap.get(discussion.userId);
+        return { ...discussion, user };
+    });
+
+    return {
+        project: hydratedProject,
+        discussions: hydratedDiscussions,
+        tasks,
+        users,
+        currentUser,
+        learningPaths,
+    };
 }
 
-export default async function ProjectDetailPage({ params }: { params: { id: string } }): Promise<JSX.Element> {
-  const { id: projectId } = params;
+export default async function ProjectPage({ params }: { params: { id: string } }) {
+    const data = await getProjectPageData(params.id);
 
-  // Ensure user is authenticated
-  const currentUser = await getAuthenticatedUser();
+    if (!data.project) {
+        notFound();
+    }
 
-  // Fetch main project data
-  const projectData = await findProjectById(projectId);
-  if (!projectData) notFound();
+    const { 
+        project, 
+        discussions, 
+        tasks, 
+        users, 
+        currentUser, 
+        learningPaths 
+    } = data;
 
-  // Fetch related data in parallel
-  const [allUsersRaw, tasksRaw, discussionsRaw, recommendedLearningPathsRaw] = await Promise.all([
-    getAllUsers(),
-    findTasksByProjectId(projectId),
-    getDiscussionsByProjectId(projectId),
-    getRecommendedLearningPathsForProject(projectId),
-  ]);
-
-  // --- SERIALIZE ---
-  const serializedCurrentUser = serializeTimestamps(currentUser);
-  const allUsers = allUsersRaw.map(u => serializeTimestamps(u)) as User[];
-  const tasks = tasksRaw.map(t => serializeTimestamps(t)) as Task[];
-  const discussions = discussionsRaw.map(d => serializeTimestamps(d)) as Discussion[];
-  const project = serializeTimestamps(projectData) as Project;
-  const recommendedLearningPaths = recommendedLearningPathsRaw.map(lp => serializeTimestamps(lp)) as LearningPath[];
-
-  // --- HYDRATE ---
-  const hydratedTasks = tasks.map(t => ({
-    ...t,
-    description: t.description ?? "",
-    assignedTo: t.assignedToId ? allUsers.find(u => u.id === t.assignedToId) : undefined,
-  })) as Task[];
-
-  const hydratedTeam = project.team
-    .map(member => {
-      const user = allUsers.find(u => u.id === member.userId);
-      return user ? { ...member, user } : null;
-    })
-    .filter(Boolean) as (typeof project.team[0] & { user: User })[];
-
-  const hydratedDiscussions = discussions
-    .map(d => {
-      const user = allUsers.find(u => u.id === d.userId);
-      return user ? { ...d, user } : null;
-    })
-    .filter(Boolean) as (typeof discussions[0] & { user: User })[];
-
-  const hydratedProject = { ...project, team: hydratedTeam } as HydratedProject;
-
-  return (
-    <ProjectDetailClientPage
-      project={hydratedProject}
-      projectTasks={hydratedTasks}
-      projectDiscussions={hydratedDiscussions}
-      recommendedLearningPaths={recommendedLearningPaths}
-      currentUser={serializedCurrentUser as User}
-      allUsers={allUsers}
-      joinProject={joinProject}
-      addTeamMember={addTeamMember}
-      addDiscussionComment={addDiscussionComment}
-      addTask={addTask}
-      updateTask={updateTask}
-      deleteTask={deleteTask}
-    />
-  );
+    return (
+        <ProjectDetailClientPage
+            project={project}
+            discussions={discussions}
+            tasks={tasks}
+            users={users}
+            currentUser={currentUser}
+            learningPaths={learningPaths}
+            // Pass the server actions directly to the client component
+            joinProject={joinProject as JoinProjectAction}
+            addTeamMember={addTeamMember as AddTeamMemberAction}
+            addDiscussionComment={addDiscussionComment as AddDiscussionCommentAction}
+            addTask={addTask as AddTaskAction}
+            updateTask={updateTask as UpdateTaskAction}
+            deleteTask={deleteTask as DeleteTaskAction}
+        />
+    );
 }
