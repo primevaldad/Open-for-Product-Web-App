@@ -1,29 +1,35 @@
 // src/app/(app)/learning/[pathId]/[moduleId]/page.tsx
 import { notFound } from 'next/navigation';
 
-interface LearningModulePageProps {
-  params: {
-    pathId: string;
-    moduleId: string;
-  };
+// 1️⃣ Define the type for params
+interface LearningModulePageParams {
+  pathId: string;
+  moduleId: string;
 }
 
-export default async function LearningModulePage({ params }: { params: Record<string, string> }) {
+// 2️⃣ Define the props type for the server component
+interface LearningModulePageProps {
+  params: LearningModulePageParams;
+}
+
+// 3️⃣ Export the page component
+export default async function LearningModulePage({ params }: LearningModulePageProps) {
   const { pathId, moduleId } = params;
 
+  // 4️⃣ Optional: verify params exist
   if (!pathId || !moduleId) {
-    notFound();
+    notFound(); // built-in 404
   }
 
+  // 5️⃣ Minimal placeholder
   return (
     <div className="container mx-auto p-8 text-center">
-      <h1 className="text-2xl font-bold mb-4">Coming Soon!</h1>
+      <h1 className="text-3xl font-bold mb-4">Hello World!</h1>
       <p>
-        Individual modules within learning paths are on the way.
-        Stay tuned while we get this feature ready!
+        This is a placeholder for the module page.
       </p>
-      <p className="mt-4 text-gray-500">
-        Path ID: {pathId} | Module ID: {moduleId}
+      <p>
+        pathId: {pathId} | moduleId: {moduleId}
       </p>
     </div>
   );
