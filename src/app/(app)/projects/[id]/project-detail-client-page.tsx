@@ -12,6 +12,7 @@ import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
 import EditTaskDialog from '@/components/edit-task-dialog';
 import { Button } from '@/components/ui/button';
+import Markdown from '@/components/ui/markdown';
 
 import type { 
     HydratedProject, 
@@ -178,12 +179,18 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
             <div className="mt-8">
                 <Tabs>
                     <TabList>
+                        <Tab>About</Tab>
                         <Tab>Tasks</Tab>
                         <Tab>Discussion</Tab>
                         <Tab>Team</Tab>
                         <Tab>Learning Paths</Tab>
                     </TabList>
 
+                    <TabPanel>
+                        <div className="py-4">
+                            <Markdown content={project.description} />
+                        </div>
+                    </TabPanel>
                     <TabPanel>
                         <div className="flex justify-end my-4">
                             {isMember && <Button onClick={() => handleOpenTaskDialog()}>Add Task</Button>}

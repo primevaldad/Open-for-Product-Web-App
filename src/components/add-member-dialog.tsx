@@ -1,115 +1,106 @@
 
 'use client';
 
-import { useState, useTransition, type PropsWithChildren } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import type { addTeamMember } from '@/app/actions/projects';
-import type { User } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { HydratedProjectMember, User, ProjectMember } from '@/lib/types';
 
-interface AddMemberDialogProps extends PropsWithChildren {
-  projectId: string;
-  nonMemberUsers: User[];
-  addTeamMember: typeof addTeamMember;
+interface AddMemberDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddMember: (userId: string, role: ProjectMember['role']) => void;
+  currentTeam: HydratedProjectMember[];
+  users: User[];
 }
 
-const AddMemberSchema = z.object({
-  projectId: z.string(),
-  userId: z.string().min(1, 'Please select a user to add.'),
-});
+export default function AddMemberDialog({
+  isOpen,
+  onClose,
+  onAddMember,
+  currentTeam,
+  users,
+}: AddMemberDialogProps) {
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [role, setRole] = useState<ProjectMember['role']>('participant');
+  const [searchTerm, setSearchTerm] = useState('');
 
-type AddMemberFormValues = z.infer<typeof AddMemberSchema>;
+  const availableUsers = useMemo(() => {
+    const teamUserIds = new Set(currentTeam.map(member => member.userId));
+    return users.filter(user => !teamUserIds.has(user.id));
+  }, [users, currentTeam]);
 
-export function AddMemberDialog({ projectId, nonMemberUsers, addTeamMember, children }: AddMemberDialogProps) {
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [isOpen, setIsOpen] = useState(false);
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm) return availableUsers;
+    return availableUsers.filter(user =>
+      user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [availableUsers, searchTerm]);
 
-  const form = useForm<AddMemberFormValues>({
-    resolver: zodResolver(AddMemberSchema),
-    defaultValues: {
-      projectId: projectId,
-      userId: '',
-    },
-  });
-
-  const onSubmit = (values: AddMemberFormValues) => {
-    startTransition(async () => {
-      const result = await addTeamMember(values);
-      if (result?.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      } else {
-        toast({ title: 'Member Added!', description: 'The user has been added to the project team.' });
-        setIsOpen(false);
-        form.reset();
-      }
-    });
+  const handleAddClick = () => {
+    if (selectedUserId && role) {
+      onAddMember(selectedUserId, role);
+      onClose();
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild onClick={() => setIsOpen(true)}>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Team Member</DialogTitle>
-          <DialogDescription>
-            Invite a new member to collaborate on this project.
-          </DialogDescription>
+          <DialogTitle>Add New Team Member</DialogTitle>
         </DialogHeader>
-        {nonMemberUsers.length > 0 ? (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-              <FormField
-                control={form.control}
-                name="userId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>User</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select a user to invite" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {nonMemberUsers.map(user => (
-                                <SelectItem key={user.id} value={user.id}>
-                                    {user.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Adding...' : 'Add Member'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        ) : (
-            <div className="text-center text-sm text-muted-foreground py-8">
-                <p>All users are already members of this project.</p>
-            </div>
-        )}
+        <div className="space-y-4 py-4">
+          <Input
+            placeholder="Search for a user..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+          <Select onValueChange={setSelectedUserId} value={selectedUserId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a user" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredUsers.map(user => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.name} ({user.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select onValueChange={value => setRole(value as ProjectMember['role'])} value={role}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="participant">Participant</SelectItem>
+              <SelectItem value="contributor">Contributor</SelectItem>
+              <SelectItem value="lead">Lead</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleAddClick} disabled={!selectedUserId}>
+            Add Member
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

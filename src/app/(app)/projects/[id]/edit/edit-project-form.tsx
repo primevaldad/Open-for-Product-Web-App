@@ -14,12 +14,12 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import TagSelector from "@/components/tags/tag-selector";
 import { EditProjectSchema, EditProjectFormValues } from "@/lib/schemas";
 import type { HydratedProject, ServerActionResponse, Tag } from "@/lib/types";
 import { toast } from 'sonner';
 import { updateProject } from "@/app/actions/projects";
+import MarkdownEditor from "@/components/ui/markdown-editor";
 
 interface EditProjectFormProps {
     project: HydratedProject;
@@ -63,6 +63,25 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
                         <FormItem>
                             <FormLabel>Project Name</FormLabel>
                             <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                                <MarkdownEditor 
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Provide a detailed description of your project..."
+                                />
+                            </FormControl>
+                            <FormDescription>A detailed description of your project, including its goals, features, and technology stack. Markdown is supported.</FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}

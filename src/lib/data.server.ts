@@ -3,7 +3,8 @@ import 'server-only';
 import admin from 'firebase-admin'; // Import the top-level admin object
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module } from './types';
+import { serializeTimestamp } from './utils';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
@@ -11,7 +12,27 @@ import type { Project, User, Discussion, Notification, Task, LearningPath, UserL
 // Export adminDb to be used for transactions in server actions
 export { adminDb };
 
-// --- User Data Access ---
+// --- Helper Functions ---
+/**
+ * Ensures that every module within a learning path has a unique moduleId.
+ * If a moduleId is missing, it generates a stable one based on the path ID and module index.
+ * @param path The learning path to process.
+ * @returns The learning path with guaranteed moduleIds.
+ */
+function ensureModulesHaveIds(path: LearningPath): LearningPath {
+    if (path.modules && Array.isArray(path.modules)) {
+        path.modules.forEach((module, index) => {
+            if (!module.moduleId) {
+                // Generate a stable, unique ID if one doesn't exist
+                module.moduleId = `${path.pathId}-module-${index}`;
+            }
+        });
+    }
+    return path;
+}
+
+
+// --- User Data Access -- -
 export async function getAllUsers(): Promise<User[]> {
     const usersCol = adminDb.collection('users');
     const userSnapshot = await usersCol.get();
@@ -107,7 +128,7 @@ export async function logOrphanedUser(orphanedUserData: User): Promise<void> {
     });
 }
 
-// --- Notification Data Access ---
+// --- Notification Data Access -- -
 export async function addNotification(notificationData: Omit<Notification, 'id'>): Promise<string> {
     const notificationRef = await adminDb.collection('notifications').add(notificationData);
     return notificationRef.id;
@@ -121,7 +142,7 @@ export async function getNotificationsByUserId(userId: string): Promise<Notifica
 }
 
 
-// --- Project Data Access ---
+// --- Project Data Access -- -
 export async function getAllProjects(): Promise<Project[]> {
     const projectsCol = adminDb.collection('projects');
     const tagsCol = adminDb.collection('tags');
@@ -211,14 +232,14 @@ export async function addTeamMember(projectId: string, userId: string): Promise<
 }
 
 
-// --- Tag Data Access ---
+// --- Tag Data Access -- -
 export async function getAllTags(): Promise<Tag[]> {
     const tagsCol = adminDb.collection('tags').orderBy('usageCount', 'desc');
     const tagsSnapshot = await tagsCol.get();
     return tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
 }
 
-// --- Discussion Data Access ---
+// --- Discussion Data Access -- -
 export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>): Promise<string> {
     const commentRef = await adminDb.collection('discussions').add(commentData);
     return commentRef.id;
@@ -234,7 +255,7 @@ export async function getDiscussionsForProjectId(projectId: string): Promise<Dis
 export const getDiscussionsForProject = getDiscussionsForProjectId;
 
 
-// --- Task Data Access ---
+// --- Task Data Access -- -
 export async function getAllTasks(): Promise<Task[]> {
     const tasksCol = adminDb.collection('tasks');
     const taskSnapshot = await tasksCol.get();
@@ -272,7 +293,7 @@ export async function deleteTaskFromDb(taskId: string): Promise<void> {
     await adminDb.collection('tasks').doc(taskId).delete();
   }
 
-// --- Learning Progress & Path Data Access ---
+// --- Learning Progress & Path Data Access -- -
 
 export async function findLearningPathsByIds(ids: string[]): Promise<LearningPath[]> {
     if (!ids || ids.length === 0) {
@@ -285,18 +306,15 @@ export async function findLearningPathsByIds(ids: string[]): Promise<LearningPat
     return docs
         .map(doc => {
             if (!doc.exists) return null;
-            const data = doc.data();
-            return {
+            let path = {
                 pathId: doc.id, // Use the document's ID as the pathId
-                title: data.title,
-                description: data.description,
-                duration: data.duration,
-                category: data.category,
-                Icon: data.Icon,
-                modules: data.modules,
-                ...data,
+                ...doc.data(),
             } as LearningPath;
+            
+            // Ensure all modules have a unique ID
+            path = ensureModulesHaveIds(path);
 
+            return path;
         })
         .filter((path): path is LearningPath => path !== null);
 }
@@ -359,18 +377,16 @@ export async function getAllLearningPaths(): Promise<LearningPath[]> {
     const pathSnapshot = await pathsCol.get();
     // CORRECTED: Ensure the data is correctly cast to the LearningPath type
     return pathSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
+        let path = {
             pathId: doc.id, // Explicitly map id to pathId
-            title: data.title,
-            description: data.description,
-            duration: data.duration,
-            category: data.category,
-            Icon: data.Icon,
-            isLocked: data.isLocked,
-            modules: data.modules,
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
+            ...doc.data(),
+            createdAt: serializeTimestamp(doc.data().createdAt),
+            updatedAt: serializeTimestamp(doc.data().updatedAt),
         } as LearningPath;
+        
+        // Ensure all modules have a unique ID
+        path = ensureModulesHaveIds(path);
+
+        return path;
     });
 }

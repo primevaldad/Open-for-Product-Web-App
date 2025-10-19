@@ -82,15 +82,25 @@ export default function TagSelector({ tags, value, onChange }: TagSelectorProps)
               {value.map((tag) => (
                 <Badge key={tag.id} variant="secondary" className="flex items-center gap-1">
                   {tag.display}
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       handleRemove(tag.id);
                     }}
-                    className="rounded-full hover:bg-muted-foreground/20 p-0.5"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleRemove(tag.id);
+                        }
+                    }}
+                    className="rounded-full hover:bg-muted-foreground/20 p-0.5 cursor-pointer"
                   >
                     <X size={12} />
-                  </button>
+                  </div>
                 </Badge>
               ))}
             </div>

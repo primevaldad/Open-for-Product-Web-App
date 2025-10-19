@@ -4,52 +4,8 @@ import UserProfilePageClient from './profile-client-page';
 import { getAllProjects, findUserById, getAllLearningPaths, getAllProjectPathLinks } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import type { User, LearningPath, Project, ProjectPathLink } from '@/lib/types';
-import { Timestamp } from 'firebase-admin/firestore';
+import { deepSerialize } from '@/lib/utils';
 
-
-// Helper to serialize Firestore Timestamps to ISO strings
-type Serializable = string | number | boolean | null | { [key: string]: Serializable } | Serializable[];
-
-// function serializeTimestamps(data: unknown): Serializable {
-//     if (data === null || typeof data !== 'object') {
-//         return data as Serializable;
-//     }
-//     if (data instanceof Timestamp) {
-//         return data.toDate().toISOString();
-//     }
-//     if (Array.isArray(data)) {
-//         return data.map(serializeTimestamps);
-//     }
-//     const serialized: { [key: string]: Serializable } = {};
-//     for (const key in data) {
-//         if (Object.prototype.hasOwnProperty.call(data, key)) {
-//             serialized[key] = serializeTimestamps((data as { [key: string]: unknown })[key]);
-//         }
-//     }
-//     return serialized;
-// }
-
-function deepSerialize<T>(obj: T): T {
- if (obj === null || typeof obj !== 'object') {
- return obj;
- }
-
- if (obj instanceof Timestamp) {
- return obj.toDate().toISOString() as T;
- }
-
- if (Array.isArray(obj)) {
- return obj.map(deepSerialize) as T;
- }
-
- const serializedObj: { [key: string]: unknown } = {};
- for (const key in obj) {
- if (Object.prototype.hasOwnProperty.call(obj, key)) {
- serializedObj[key] = deepSerialize((obj as Record<string, unknown>)[key]);
- }
- }
- return serializedObj as T;
-}
 
 // Fetch all data needed for user profile page
 async function getUserProfilePageData(userId: string) {
