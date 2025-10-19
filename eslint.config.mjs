@@ -1,5 +1,4 @@
-
-// eslint.config.mjs — fully flat-config ready
+// eslint.config.mjs — Next.js 15 flat-config compatible
 
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
@@ -9,8 +8,21 @@ import importPlugin from "eslint-plugin-import";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 
 export default [
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
+  // Global ignores
+  {
+    ignores: [
+      "node_modules",
+      ".next",
+      "out",
+      "dist",
+      "build",
+      "coverage",
+      "**/*.config.*",
+      "scripts/",
+    ],
+  },
+
+  // Main configuration for your files
   {
     files: ["**/*.{js,ts,jsx,tsx}"],
     languageOptions: {
@@ -29,19 +41,20 @@ export default [
     },
     rules: {
       ...reactHooksPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "no-console": "off",
       "import/no-unused-modules": ["warn", { unusedExports: true }],
+
+      // ✅ optional but common Next tweaks
+      "@next/next/no-html-link-for-pages": "off",
+      "@next/next/no-img-element": "warn",
     },
-    ignores: [
-      "node_modules",
-      ".next",
-      "out",
-      "dist",
-      "build",
-      "coverage",
-      "**/*.config.*",
-      "scripts/",
-    ],
   },
+
+  // Typescript specific configuration
+  ...tseslint.configs.recommended,
+
+  // Recommended JS configuration
+  js.configs.recommended,
 ];

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition, type PropsWithChildren } from 'react';
+import { useState, useTransition, type PropsWithChildren, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -106,7 +106,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
 
   // Reset form values when the dialog is opened or task data changes
   // This ensures the form is always up-to-date with the task prop
-  useState(() => {
+  useEffect(() => {
     form.reset({
         id: task.id,
         projectId: task.projectId,
@@ -116,7 +116,6 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
         assignedToId: task.assignedToId ?? undefined,
         estimatedHours: task.estimatedHours ?? undefined,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task, form.reset]);
 
   return (

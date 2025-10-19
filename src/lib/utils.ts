@@ -19,10 +19,10 @@ export function cn(...inputs: ClassValue[]) {
  * Converts a server-side timestamp (string | Date | Firestore Timestamp) to a serializable string.
  * Returns an empty string if the timestamp is null or undefined, or keeps it as a string if it already is.
  */
-export const serializeTimestamp = (timestamp: any): string => {
+export const serializeTimestamp = (timestamp: string | Date | { toDate: () => Date } | null | undefined): string => {
     if (!timestamp) return '';
     if (typeof timestamp === 'string') return timestamp;
-    if (timestamp.toDate) return timestamp.toDate().toISOString(); // Firestore Timestamp
+    if ('toDate' in timestamp && typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString(); // Firestore Timestamp
     if (timestamp instanceof Date) return timestamp.toISOString(); // Javascript Date
     return '';
 };

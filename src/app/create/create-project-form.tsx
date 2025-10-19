@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import UserSelector from "@/components/users/user-selector";
 import TagSelector from "@/components/tags/tag-selector";
 import { CreateProjectSchema, CreateProjectFormValues } from "@/lib/schemas";
-import type { User, Tag, ServerActionResponse } from "@/lib/types";
+import type { User, Tag } from "@/lib/types";
 import { toast } from 'sonner';
 import { saveProjectDraft, publishProject } from "@/app/actions/projects";
 
