@@ -1,64 +1,41 @@
 
+import { getProjectsByUserId, getAuthenticatedUser } from '@/lib/data.server';
 import { notFound } from 'next/navigation';
 import UserProfilePageClient from './profile-client-page';
-import { getAllProjects, findUserById, getAllLearningPaths, getAllProjectPathLinks } from '@/lib/data.server';
-import { getAuthenticatedUser } from '@/lib/session.server';
-import type { User, LearningPath, Project, ProjectPathLink } from '@/lib/types';
+import { getAllLearningPaths, getAllProjectPathLinks, findUserById } from '@/lib/data.server';
 import { deepSerialize } from '@/lib/utils';
 
+// This is a server component
+async function getUserProfileData(userId: string) {
+    const [user, userProjects, allLearningPaths, allProjectPathLinks, currentUser] = await Promise.all([
+        findUserById(userId),
+        getProjectsByUserId(userId),
+        getAllLearningPaths(),
+        getAllProjectPathLinks(),
+        getAuthenticatedUser(),
+    ]);
 
-// Fetch all data needed for user profile page
-async function getUserProfilePageData(userId: string) {
-  const currentUser = await getAuthenticatedUser();
-  const user: User | null = await findUserById(userId);
+    if (!user) {
+        return { notFound: true };
+    }
 
-  if (!user) {
- return {
- user: null,
-      userProjects: [] as Project[],
- currentUser: currentUser ? deepSerialize(currentUser) : null,
- allLearningPaths: [] as LearningPath[],
- allProjectPathLinks: [] as ProjectPathLink[],
- };
-  }
-  
-  const [allProjects, allLearningPaths, allProjectPathLinks] = await Promise.all([
-    getAllProjects(),
-    getAllLearningPaths(),
-    getAllProjectPathLinks(),
-  ]);
-
-  const userProjects = allProjects.filter(p => p.team.some(m => m.userId === userId));
-  // Serialize all timestamps
-  return {
- user: deepSerialize(user),
- userProjects: deepSerialize(userProjects),
- currentUser: currentUser ? deepSerialize(currentUser) : null,
- allLearningPaths: deepSerialize(allLearningPaths),
- allProjectPathLinks: deepSerialize(allProjectPathLinks),
-  };
+    return deepSerialize({
+        user,
+        userProjects,
+        isCurrentUserProfile: user.id === currentUser?.id,
+        allLearningPaths,
+        allProjectPathLinks,
+        currentUser,
+    });
 }
 
-// Server component for the profile page
 export default async function UserProfilePage({ params }: { params: { id: string } }) {
-  const { id: userId } = params;
+    const { notFound: isNotFound, ...props } = await getUserProfileData(params.id);
 
-  const { user, userProjects, currentUser, allLearningPaths, allProjectPathLinks }: { user: User | null; userProjects: Project[]; currentUser: any; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] } =
-    await getUserProfilePageData(userId);
+    if (isNotFound) {
+        notFound();
+    }
 
-  if (!user || !currentUser) {
-    notFound();
-  }
-
-  const isCurrentUserProfile = currentUser.id === user.id;
-
-  return (
-    <UserProfilePageClient
-      user={user}
-      userProjects={userProjects}
-      isCurrentUserProfile={isCurrentUserProfile}
-      allLearningPaths={allLearningPaths}
-      allProjectPathLinks={allProjectPathLinks}
-    />
-  );
+    // @ts-ignore
+    return <UserProfilePageClient {...props} />;
 }
