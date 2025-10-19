@@ -4,8 +4,6 @@ import { AuthProvider } from '@/components/auth-provider';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { UserNav } from '@/components/user-nav';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { ThemeProvider } from '@/components/theme-provider';
 
@@ -47,15 +45,6 @@ export default async function AppLayout({
                     <h1 className="hidden text-lg font-semibold md:block">
                     Project Discovery
                     </h1>
-                </div>
-                <div className="flex w-full max-w-sm items-center gap-4 md:max-w-md lg:max-w-lg">
-                    <div className="relative w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search projects..."
-                        className="w-full rounded-full bg-muted pl-10"
-                    />
-                    </div>
                 </div>
                 <UserNav currentUser={currentUser} />
                 </header>

@@ -1,57 +1,69 @@
 
-import type { User, LearningPath, ProjectPathLink } from "@/lib/types";
-import {
-    getAllProjects,
-    getAllUsers,
-    getAllLearningPaths,
-    getAllProjectPathLinks,
-} from "@/lib/data.server";
-import ProjectCard from "@/components/project-card";
+import { getAuthenticatedUser } from "@/lib/session.server";
+import { redirect } from "next/navigation";
 import { HydratedProject } from "@/lib/types";
-import { toHydratedProject } from "@/lib/utils";
+import {
+  getAllProjects,
+  getAllUsers,
+  getAllTags,
+  getAllLearningPaths,
+  getAllProjectPathLinks,
+} from "@/lib/data.server";
+import { toHydratedProject, deepSerialize } from "@/lib/utils";
+import HomeClientPage from "./home-client-page";
+import type { LearningPath, ProjectPathLink, Tag, User } from "@/lib/types";
 
 async function getHomePageData(): Promise<{
-    projects: HydratedProject[];
-    allLearningPaths: LearningPath[];
-    allProjectPathLinks: ProjectPathLink[];
+  allPublishedProjects: HydratedProject[];
+  currentUser: User;
+  allTags: Tag[];
+  allLearningPaths: LearningPath[];
+  allProjectPathLinks: ProjectPathLink[];
 }> {
-    const [projectsData, usersData, allLearningPaths, allProjectPathLinks] =
-        await Promise.all([
-            getAllProjects(),
-            getAllUsers(),
-            getAllLearningPaths(),
-            getAllProjectPathLinks(),
-        ]);
+  const [user, projectsData, usersData, allTags, allLearningPaths, allProjectPathLinks] = await Promise.all([
+    getAuthenticatedUser(),
+    getAllProjects(),
+    getAllUsers(),
+    getAllTags(),
+    getAllLearningPaths(),
+    getAllProjectPathLinks(),
+  ]);
 
-    const usersMap = new Map(usersData.map((user) => [user.id, user]));
+  if (!user) {
+    redirect("/login");
+  }
 
-    const hydratedProjects = projectsData
-        .filter((p) => p.status === 'published')
-        .map((p) => toHydratedProject(p, usersMap));
+  const usersMap = new Map(usersData.map((user) => [user.id, user]));
 
-    return {
-        projects: hydratedProjects,
-        allLearningPaths,
-        allProjectPathLinks,
-    };
+  const allPublishedProjects = projectsData
+    .filter((p) => p.status === 'published')
+    .map((p) => toHydratedProject(p, usersMap));
+
+  return deepSerialize({
+    allPublishedProjects,
+    currentUser: user,
+    allTags,
+    allLearningPaths,
+    allProjectPathLinks,
+  });
 }
 
 export default async function HomePage() {
-    const { projects, allLearningPaths, allProjectPathLinks } =
-        await getHomePageData();
+  const {
+    allPublishedProjects,
+    currentUser,
+    allTags,
+    allLearningPaths,
+    allProjectPathLinks
+  } = await getHomePageData();
 
-    return (
-        <div className="container mx-auto p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects.map((project) => (
-                    <ProjectCard
-                        key={project.id}
-                        project={project}
-                        allLearningPaths={allLearningPaths}
-                        allProjectPathLinks={allProjectPathLinks}
-                    />
-                ))}
-            </div>
-        </div>
-    );
+  return (
+    <HomeClientPage
+      allPublishedProjects={allPublishedProjects}
+      currentUser={currentUser}
+      allTags={allTags}
+      allLearningPaths={allLearningPaths}
+      allProjectPathLinks={allProjectPathLinks}
+    />
+  );
 }

@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { Project, User, Tag as GlobalTag, ProjectTag, ProjectPathLink, LearningPath } from "@/lib/types";
-import { TagSelector } from "@/components/tags/tag-selector";
+import TagSelector from "@/components/tags/tag-selector";
 import {
   Select,
   SelectContent,
@@ -67,10 +67,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
             <TagSelector 
               value={selectedTags}
               onChange={setSelectedTags}
-              // @ts-ignore
-              allTags={allTags}
-              placeholder="Filter by tags..."
-              isEditable={false}
+              tags={allTags}
             />
           </div>
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6 pt-2 md:pt-8">
