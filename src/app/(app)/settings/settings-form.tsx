@@ -30,11 +30,14 @@ import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/lib/types';
 import type { updateUserSettings } from '@/app/actions/settings';
 
-// We can infer the schema from Zod and reuse it in the form
 const SettingsSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  bio: z.string().optional(),
+  username: z.string().min(3, 'Username must be at least 3 characters'),
+  bio: z.string().max(160, 'Bio must not be longer than 160 characters.').optional(),
   interests: z.array(z.string()).optional(),
+  company: z.string().optional(),
+  location: z.string().optional(),
+  website: z.string().url('Please enter a valid URL.').optional(),
 });
 
 type SettingsFormValues = z.infer<typeof SettingsSchema>;
@@ -52,8 +55,12 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
     resolver: zodResolver(SettingsSchema),
     defaultValues: {
       name: currentUser.name,
+      username: currentUser.username || '',
       bio: currentUser.bio || '',
       interests: currentUser.interests || [],
+      company: currentUser.company || '',
+      location: currentUser.location || '',
+      website: currentUser.website || '',
     },
   });
 
@@ -101,6 +108,22 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
             />
             <FormField
               control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your Username" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    This is your public display name. It can be your real name or a pseudonym.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="bio"
               render={({ field }) => (
                 <FormItem>
@@ -112,6 +135,9 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
                       {...field}
                     />
                   </FormControl>
+                  <FormDescription>
+                    You can @-mention other users and organizations to link to them.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -131,6 +157,56 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
                    <FormDescription>
                     Select your interests to help us recommend relevant projects and learning paths.
                   </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Work</CardTitle>
+            <CardDescription>
+              Showcase your professional background.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your Company" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your Location" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="website"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Website</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
