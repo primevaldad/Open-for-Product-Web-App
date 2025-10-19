@@ -18,16 +18,26 @@ export default async function LearningPathPage({ params }: { params: { pathId: s
     const { path } = await getLearningPathDetails(params.pathId);
 
     if (!path) {
-        return <div>Learning path not found.</div>;
+        return (
+            <div className="container mx-auto p-4 text-center">
+                <h1 className="text-2xl font-bold">Learning path not found.</h1>
+            </div>
+        );
     }
 
     return (
         <div className="container mx-auto p-4">
-            <h1 className="text-4xl font-bold mb-4">{path.title}</h1>
-            <p className="text-lg text-gray-600 mb-6">{path.description}</p>
-            {path.modules.map(module => (
-                <ModuleAccordion key={module.moduleId} module={module} />
-            ))}
+            <header className="bg-card p-6 rounded-lg shadow-md mb-8">
+                <h1 className="text-4xl font-bold text-primary mb-2">{path.title}</h1>
+                <p className="text-lg text-muted-foreground">{path.description}</p>
+            </header>
+
+            <div className="space-y-4">
+                <h2 className="text-2xl font-semibold mb-4">Modules</h2>
+                {path.modules.map((module, index) => (
+                    <ModuleAccordion key={module.moduleId} module={{...module, order: index + 1}} />
+                ))}
+            </div>
         </div>
     );
 }
