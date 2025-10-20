@@ -1,5 +1,5 @@
 
-import type { Project, Task, Discussion, Notification, User } from '@/lib/types';
+import type { Project, Task, Discussion, Notification, User, ServerActionResponse, HydratedTask } from '@/lib/types';
 
 export type HydratedActivityItem = {
     id: string;
@@ -53,3 +53,19 @@ export const toHydratedActivityItem = (
         user: user ? { id: user.id, name: user.name, avatarUrl: user.avatarUrl } : undefined,
     };
 };
+
+// Define Action Prop Types
+type UpdateTaskAction = (values: Task) => Promise<ServerActionResponse<Task>>;
+type DeleteTaskAction = (values: { id: string, projectId: string }) => Promise<ServerActionResponse<{}>>;
+
+export interface ActivityClientPageProps {
+    currentUser: User;
+    myTasks: HydratedTask[];
+    createdTasks: HydratedTask[];
+    projects: Project[];
+    users: User[];
+    updateTask: UpdateTaskAction;
+    deleteTask: DeleteTaskAction;
+}
+
+export { HydratedTask };

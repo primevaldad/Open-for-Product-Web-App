@@ -30,7 +30,6 @@ export const ProjectBaseSchema = z.object({
 
 // --- Refinement Logic ---
 
-// Reusable refinement for the create schema.
 const tagValidationRefinement = (data: { tags: z.infer<typeof ProjectTagSchema>[] }) => {
     return data.tags.filter(t => t.type === 'category').length <= 3;
 };
@@ -44,9 +43,16 @@ export const CreateProjectSchema = ProjectBaseSchema.refine(tagValidationRefinem
     path: ["tags"],
 });
 
-// Schema for editing an existing project, using superRefine for more robust validation
-export const EditProjectSchema = ProjectBaseSchema.omit({ team: true }).extend({
+// Schema for editing an existing project. This is defined more explicitly
+// to avoid type inference issues with omit() and extend().
+export const EditProjectSchema = z.object({
   id: z.string(),
+  name: z.string().min(1, 'Project name is required.'),
+  tagline: z.string().min(1, 'Tagline is required.'),
+  description: z.string().min(1, 'Description is required.'),
+  photoUrl: z.string().url("Please enter a valid URL.").or(z.literal('')).optional(),
+  contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
+  tags: z.array(ProjectTagSchema),
   governance: z.object({
     contributorsShare: z.number(),
     communityShare: z.number(),

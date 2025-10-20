@@ -32,18 +32,14 @@ export interface Project {
     ownerId: UserId;
     team: ProjectMember[];
     status: 'draft' | 'published' | 'archived';
-    // Tags are now required to be an array of ProjectTag objects
     tags: ProjectTag[];
     contributionNeeds: string[];
-    // A fallback suggestion to be shown if AI suggestions fail
     fallbackSuggestion?: string;
-    // New governance model
     governance?: {
         contributorsShare: number; // Percentage of ownership for contributors
         communityShare: number;    // Percentage of ownership for the community
         sustainabilityShare: number; // Percentage for project sustainability
     };
-    // Progress percentage
     progress?: number;
 }
 
@@ -51,7 +47,6 @@ export interface Project {
 export interface ProjectTag {
     id: string;
     display: string;
-    // The type helps categorize the tag, e.g., for filtering or display logic.
     type: 'category' | 'relational' | 'custom'; 
 }
 
@@ -61,7 +56,6 @@ export interface Tag {
     id: string;
     display: string;
     type: 'category' | 'relational'; 
-    // A count of how many times the tag has been used across all projects.
     usageCount: number;
 }
 
@@ -70,13 +64,32 @@ export interface ProjectMember {
     role: 'lead' | 'contributor' | 'participant';
 }
 
-export interface HydratedProject extends Omit<Project, 'team' | 'ownerId'> {
+// This is a more explicit definition of a hydrated project to avoid type inference issues.
+export interface HydratedProject {
+    id: ProjectId;
+    name: string;
+    photoUrl?: string;
+    tagline: string;
+    description: string;
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
     owner: User;
     team: HydratedProjectMember[];
+    status: 'draft' | 'published' | 'archived';
+    tags: ProjectTag[];
+    contributionNeeds: string[];
+    fallbackSuggestion?: string;
+    governance?: {
+        contributorsShare: number;
+        communityShare: number;
+        sustainabilityShare: number;
+    };
+    progress?: number;
 }
 
 export interface HydratedProjectMember {
     user: User;
+    userId: UserId;
     role: 'lead' | 'contributor' | 'participant';
 }
 
@@ -97,6 +110,12 @@ export interface Task {
     createdBy: UserId;
     assignee?: UserId;
     dueDate?: Timestamp | string;
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+}
+
+export interface HydratedTask extends Omit<Task, 'assignee'> {
+    assignee?: User;
 }
 
 export interface Notification {
@@ -122,7 +141,6 @@ export interface LearningPath {
     pathId: string;
     title: string;
     description: string;
-    // An array of Module objects that make up the learning path.
     modules: Module[];
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
@@ -131,11 +149,8 @@ export interface LearningPath {
 export interface Module {
     moduleId: string;
     title: string;
-    // Type of content, which can be used to determine how to render the module.
     contentType: 'video' | 'article' | 'quiz' | 'code-challenge';
-    // URL or reference to the content for the module.
     contentUrl: string; 
-    // Estimated time to complete the module, in minutes.
     duration: number; 
 }
 
@@ -143,16 +158,15 @@ export interface Module {
 export interface UserLearningProgress {
     userId: UserId;
     pathId: string;
-    // A map where the key is the moduleId and the value is the completion status.
     completedModules: Record<string, boolean>;
-    // The last time the user made progress on this path.
     lastAccessed: Timestamp | string;
 }
 
 
 // --- Server Action Responses ---
 
-export interface ServerActionResponse {
+export interface ServerActionResponse<T = any> {
     success: boolean;
     error?: string;
+    data?: T;
 }

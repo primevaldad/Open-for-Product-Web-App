@@ -27,6 +27,7 @@ import {
     findUserById,
     updateProject as updateProjectInDb,
     updateTask as updateTaskInDb,
+    getAllTags as getAllGlobalTags, // Import the new function
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
@@ -115,6 +116,19 @@ async function handleProjectSubmission(
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: "Authentication required." };
 
+  // Hydrate tag strings into ProjectTag objects
+  const allGlobalTags = await getAllGlobalTags();
+  const globalTagsMap = new Map(allGlobalTags.map(t => [t.id, t]));
+  const hydratedTags: ProjectTag[] = tags.map(tagId => {
+      const normalizedId = normalizeTag(tagId);
+      const existingTag = globalTagsMap.get(normalizedId);
+      if (existingTag) {
+          return { id: existingTag.id, display: existingTag.display, type: existingTag.type };
+      }
+      // For new tags, the display name is the tagId itself. The type is 'custom'.
+      return { id: tagId, display: tagId, type: 'custom' };
+  });
+
   const finalTeam: ProjectMember[] = team.filter(member => member.userId && member.role) as ProjectMember[];
   const creatorIsLead = finalTeam.some(member => member.userId === currentUser.id && member.role === 'lead');
 
@@ -129,8 +143,7 @@ async function handleProjectSubmission(
         const newProjectRef = adminDb.collection('projects').doc();
         newProjectId = newProjectRef.id;
 
-        const validTags = tags.filter(t => t.id && t.display && t.type) as ProjectTag[];
-        const processedTags = await manageTagsForProject(transaction, validTags, [], currentUser);
+        const processedTags = await manageTagsForProject(transaction, hydratedTags, [], currentUser);
 
         const newProjectData: Omit<Project, 'id' | 'category' | 'fallbackSuggestion'> = {
             name, tagline, description, tags: processedTags,
@@ -141,6 +154,7 @@ async function handleProjectSubmission(
             governance: { contributorsShare: 75, communityShare: 10, sustainabilityShare: 15 },
             startDate: new Date().toISOString(), endDate: '',
             createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+            ownerId: currentUser.id
         };
         transaction.set(newProjectRef, newProjectData);
     });
@@ -208,6 +222,18 @@ export async function updateProject(values: EditProjectFormValues): Promise<Serv
     if (!currentUser) return { success: false, error: "Authentication required." };
 
     try {
+        // Hydrate tag strings into ProjectTag objects
+        const allGlobalTags = await getAllGlobalTags();
+        const globalTagsMap = new Map(allGlobalTags.map(t => [t.id, t]));
+        const hydratedTags: ProjectTag[] = tags.map(tagId => {
+            const normalizedId = normalizeTag(tagId);
+            const existingTag = globalTagsMap.get(normalizedId);
+            if (existingTag) {
+                return { id: existingTag.id, display: existingTag.display, type: existingTag.type };
+            }
+            return { id: tagId, display: tagId, type: 'custom' };
+        });
+
         await adminDb.runTransaction(async (transaction) => {
             const projectRef = adminDb.collection('projects').doc(id);
             const projectSnap = await transaction.get(projectRef);
@@ -217,8 +243,7 @@ export async function updateProject(values: EditProjectFormValues): Promise<Serv
             const isLead = project.team.some(m => m.role === 'lead' && m.userId === currentUser.id);
             if (!isLead) throw new Error("Only a project lead can edit.");
 
-            const validTags = tags.filter(t => t.id && t.display && t.type) as ProjectTag[];
-            const processedTags = await manageTagsForProject(transaction, validTags, project.tags || [], currentUser);
+            const processedTags = await manageTagsForProject(transaction, hydratedTags, project.tags || [], currentUser);
             
             const finalGovernance: Governance = {
                 contributorsShare: governance?.contributorsShare ?? 75,
@@ -302,7 +327,7 @@ export async function addTeamMember(data: { projectId: string, userId: string, r
         
         await addNotificationToDb({ 
             userId: user.id, 
-            message: `You have been added to the project "${project.name}" as a ${role}.`, 
+            message: `You have been added to the project \"${project.name}\" as a ${role}.`, 
             link: `/projects/${projectId}`, 
             read: false, 
             timestamp: new Date().toISOString() 
@@ -349,6 +374,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>): Promise
         estimatedHours: estimatedHours || 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        createdBy: currentUser.id,
     };
 
     const newTaskId = await addTaskToDb(newTaskData);

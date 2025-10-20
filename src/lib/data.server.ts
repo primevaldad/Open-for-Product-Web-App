@@ -211,11 +211,47 @@ export async function getProjectsByOwnerId(ownerId: string): Promise<Project[]> 
 export async function findProjectById(projectId: string): Promise<Project | undefined> {
     const projectRef = adminDb.collection('projects').doc(projectId);
     const projectSnap = await projectRef.get();
+
     if (projectSnap.exists) {
-        return { id: projectSnap.id, ...projectSnap.data() } as Project;
+        const project = { id: projectSnap.id, ...projectSnap.data() } as Project;
+
+        // Hydrate the tags to ensure they conform to the ProjectTag type
+        if (project.tags && Array.isArray(project.tags)) {
+            const tagsCol = adminDb.collection('tags');
+            const tagsSnapshot = await tagsCol.get();
+            const tagsMap = new Map<string, Tag>();
+            tagsSnapshot.docs.forEach(doc => {
+                const tag = { id: doc.id, ...doc.data() } as Tag;
+                tagsMap.set(tag.id, tag);
+            });
+
+            const hydratedTags: ProjectTag[] = project.tags
+                .map(projectTag => {
+                    const tagId = typeof projectTag === 'string' ? projectTag : (projectTag as ProjectTag).id;
+                    if (!tagId) return null;
+
+                    const fullTag = tagsMap.get(tagId);
+                    if (!fullTag) return null;
+
+                    return {
+                        id: fullTag.id,
+                        display: fullTag.display,
+                        type: fullTag.type,
+                    };
+                })
+                .filter((tag): tag is ProjectTag => !!tag);
+
+            project.tags = hydratedTags;
+        } else {
+            project.tags = [];
+        }
+
+        return project;
     }
+
     return undefined;
 }
+
 
 export async function addProject(newProjectData: Omit<Project, 'id'>): Promise<string> {
     const projectRef = await adminDb.collection('projects').add(newProjectData);

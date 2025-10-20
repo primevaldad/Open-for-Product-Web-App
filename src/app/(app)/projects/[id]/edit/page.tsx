@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { findProjectById, getAllTags } from '@/lib/data.server';
 import EditProjectForm from './edit-project-form';
-import { updateProject } from '@/app/actions/projects';
 
 // --- Serialization Helpers ---
 
@@ -81,7 +80,8 @@ async function getEditPageData(projectId: string) {
 // --- Server Component: EditProjectPage ---
 
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
-  const { currentUser, project, allTags } = await getEditPageData(params.id);
+  const { id } = params;
+  const { currentUser, project, allTags } = await getEditPageData(id);
 
   if (!project) {
     notFound();
@@ -118,7 +118,6 @@ export default async function EditProjectPage({ params }: { params: { id: string
         <EditProjectForm 
             project={serializableProject} 
             allTags={allTags} 
-            updateProject={updateProject} 
         />
       </main>
     </div>

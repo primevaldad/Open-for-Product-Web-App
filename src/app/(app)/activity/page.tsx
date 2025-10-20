@@ -50,7 +50,7 @@ export default async function ActivityPage() {
 
     // My Tasks: tasks assigned to the current user
     const myTasks = activity.tasks
-        .filter(task => task.assignedToId === currentUser.id)
+        .filter(task => task.assignee === currentUser.id)
         .map(task => toHydratedActivityItem(task, 'task', projectsMap, usersMap));
 
     // Created by Me: tasks where the current user is the creator

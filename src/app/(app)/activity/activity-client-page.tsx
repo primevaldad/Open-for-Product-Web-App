@@ -6,24 +6,10 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import TaskCard from '@/components/task-card';
 import EditTaskDialog from '@/components/edit-task-dialog';
-import { HydratedTask } from './page'; // Import the specific hydrated type
-import type { ServerActionResponse, User, Project, Task, HydratedProjectMember } from '@/lib/types';
+import { HydratedTask, ActivityClientPageProps } from './utils'; // Import the specific hydrated type
+import type { ServerActionResponse, Task } from '@/lib/types';
 import { toDate } from '@/lib/utils';
 import { toast } from 'sonner';
-
-// Define Action Prop Types
-type UpdateTaskAction = (values: Task) => Promise<ServerActionResponse<Task>>;
-type DeleteTaskAction = (values: { id: string, projectId: string }) => Promise<ServerActionResponse<{}>>;
-
-export interface ActivityClientPageProps {
-    currentUser: User;
-    myTasks: HydratedTask[];
-    createdTasks: HydratedTask[];
-    projects: Project[];
-    users: User[];
-    updateTask: UpdateTaskAction;
-    deleteTask: DeleteTaskAction;
-}
 
 export function ActivityClientPage(props: ActivityClientPageProps) {
     const { myTasks, createdTasks, projects, users, updateTask, deleteTask } = props;
@@ -37,10 +23,10 @@ export function ActivityClientPage(props: ActivityClientPageProps) {
     };
 
     const handleDeleteClick = async (task: HydratedTask) => {
-        if (window.confirm("Are you sure you want to delete this task?")) {
+        if (window.confirm('Are you sure you want to delete this task?')) {
             const result = await deleteTask({ id: task.id, projectId: task.projectId! });
             if (result.success) {
-                toast.success("Task deleted successfully!");
+                toast.success('Task deleted successfully!');
             } else {
                 toast.error(`Failed to delete task: ${result.error}`);
             }
@@ -55,14 +41,14 @@ export function ActivityClientPage(props: ActivityClientPageProps) {
     const handleUpdateTask = async (updatedValues: Task) => {
         const result = await updateTask(updatedValues);
         if (result.success) {
-            toast.success("Task updated successfully!");
+            toast.success('Task updated successfully!');
             handleDialogClose();
         } else {
             toast.error(`Failed to update task: ${result.error}`);
         }
     };
 
-    const getProjectTeam = (projectId: string): HydratedProjectMember[] => {
+    const getProjectTeam = (projectId: string) => {
         const project = projects.find(p => p.id === projectId);
         if (!project) return [];
         const usersMap = new Map(users.map(u => [u.id, u]));
@@ -70,16 +56,15 @@ export function ActivityClientPage(props: ActivityClientPageProps) {
         return project.team
             .map(member => {
                 const user = usersMap.get(member.userId);
-                return user ? { ...member, user } : null;
+                return user ? { ...member, user, userId: user.id } : null;
             })
-            .filter((m): m is HydratedProjectMember => m !== null);
+            .filter(Boolean);
     };
 
-    // Convert ISO strings back to Date objects for the components
     const parseTasks = (tasks: HydratedTask[]): HydratedTask[] => tasks.map(task => ({
         ...task,
-        createdAt: toDate(task.createdAt as unknown as string),
-        updatedAt: toDate(task.updatedAt as unknown as string),
+        createdAt: toDate(task.createdAt as string),
+        updatedAt: toDate(task.updatedAt as string),
     }));
 
     return (
