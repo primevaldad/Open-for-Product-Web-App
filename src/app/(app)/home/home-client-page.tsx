@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from "react";
-import type { Project, User, Tag as GlobalTag, ProjectTag, ProjectPathLink, LearningPath, HydratedProject } from "@/lib/types";
+import type { User, Tag as GlobalTag, ProjectTag, ProjectPathLink, LearningPath, HydratedProject } from "@/lib/types";
 import TagSelector from "@/components/tags/tag-selector";
 import {
   Select,
@@ -14,8 +14,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { SuggestSteps } from "@/components/ai/suggest-steps";
 import ProjectCard from "@/components/project-card";
-import {hardcodedProject} from "@/lib/hardcoded-project";
 
 interface HomeClientPageProps {
     allPublishedProjects: HydratedProject[];
@@ -23,10 +23,9 @@ interface HomeClientPageProps {
     allTags: GlobalTag[];
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
-    aiSuggestedProjects: HydratedProject[] | null;
 }
 
-export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths, aiSuggestedProjects }: HomeClientPageProps) {
+export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths }: HomeClientPageProps) {
   const [showMyProjects, setShowMyProjects] = useState(false);
   const [selectedTags, setSelectedTags] = useState<ProjectTag[]>([]);
   const [matchAllTags, setMatchAllTags] = useState(false);
@@ -62,34 +61,12 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
   return (
     <>
         <div className="mb-8">
-            <h2 className="text-2xl font-bold tracking-tight mb-4">✨ AI Suggested for you</h2>
-            {aiSuggestedProjects && aiSuggestedProjects.length > 0 ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {aiSuggestedProjects.map((project) => (
-                        <ProjectCard
-                            key={project.id}
-                            project={project}
-                            currentUser={currentUser}
-                            allProjectPathLinks={allProjectPathLinks}
-                            allLearningPaths={allLearningPaths}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 text-center">
-                    <p className="text-muted-foreground mb-4">
-                        Your personalized project suggestions from Gemini will appear here once you've been active for a bit. In the meantime, why not check out this popular project?
-                    </p>
-                    <div className="max-w-md mx-auto">
-                        <ProjectCard
-                            project={hardcodedProject}
-                            currentUser={currentUser}
-                            allProjectPathLinks={allProjectPathLinks}
-                            allLearningPaths={allLearningPaths}
-                        />
-                    </div>
-                </div>
-            )}
+            <SuggestSteps
+                currentUser={currentUser}
+                allProjects={allPublishedProjects}
+                allProjectPathLinks={allProjectPathLinks}
+                allLearningPaths={allLearningPaths}
+            />
         </div>
 
       <div className="mb-6 flex flex-col gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { FilePenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import Markdown from '@/components/ui/markdown';
 import type { HydratedProject, User } from '@/lib/types';
 
 interface ProjectHeaderProps {
@@ -22,9 +21,9 @@ export default function ProjectHeader({ project, currentUser, onJoin }: ProjectH
       <div className="flex justify-between items-start mb-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
-          <div className="text-gray-600 dark:text-gray-300 mt-2">
-            <Markdown content={project.description} />
-          </div>
+          <p className="text-lg text-gray-600 dark:text-gray-300 mt-2 italic">
+            {project.tagline}
+          </p>
         </div>
         <div className="flex-shrink-0 flex items-center space-x-2">
             {isLead && (

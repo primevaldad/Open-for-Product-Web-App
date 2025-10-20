@@ -23,7 +23,6 @@ interface SuggestStepsProps {
 export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, allLearningPaths }: SuggestStepsProps) {
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [suggestedProject, setSuggestedProject] = useState<Project | null>(null);
 
   // Memoize the project finding logic so it doesn't re-run on every render
@@ -62,7 +61,6 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
 
       try {
         setLoading(true);
-        setError(null);
         const res = await suggestNextSteps({
           userSkills: currentUser.interests || [], // Using interests as a proxy for skills
           projectNeeds: bestMatchProject.contributionNeeds.join(', '),
@@ -72,6 +70,12 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
         setSuggestion(res);
       } catch (e) {
         console.error("AI suggestion failed:", e);
+        // When AI fails, gracefully fall back to a predefined suggestion
+        if (e instanceof Error && e.message === 'AI_SERVICE_DISABLED') {
+            // Log the specific error for developers, but show the same fallback to the user
+            console.error("AI Service is disabled. Falling back to default suggestion.");
+        }
+
         if (bestMatchProject.fallbackSuggestion) {
             setSuggestion({
                 suggestedNextSteps: [bestMatchProject.fallbackSuggestion],
@@ -111,8 +115,7 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         )}
-        {error && !loading && <p className="text-destructive text-center py-4">{error}</p>}
-        {!loading && !error && projectWithSuggestion && (
+        {!loading && projectWithSuggestion && (
             <ProjectCard
                 project={projectWithSuggestion}
                 currentUser={currentUser}
@@ -121,7 +124,7 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
                 suggestionText={suggestionText}
             />
         )}
-        {!loading && !suggestedProject && (
+        {!loading && !projectWithSuggestion && (
             <div className="text-center text-muted-foreground p-4">
                 <p>No new project suggestions right now. Explore all projects below!</p>
             </div>

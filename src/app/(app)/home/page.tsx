@@ -8,7 +8,6 @@ import {
   getAllTags,
   getAllLearningPaths,
   getAllProjectPathLinks,
-  getAiSuggestedProjects,
 } from "@/lib/data.server";
 import { toHydratedProject, deepSerialize } from "@/lib/utils";
 import HomeClientPage from "./home-client-page";
@@ -20,7 +19,6 @@ async function getHomePageData(): Promise<{
   allTags: Tag[];
   allLearningPaths: LearningPath[];
   allProjectPathLinks: ProjectPathLink[];
-  aiSuggestedProjects: HydratedProject[] | null;
 }> {
   const [user, projectsData, usersData, allTags, allLearningPaths, allProjectPathLinks] = await Promise.all([
     getAuthenticatedUser(),
@@ -41,19 +39,12 @@ async function getHomePageData(): Promise<{
     .filter((p) => p.status === 'published')
     .map((p) => toHydratedProject(p, usersMap));
 
-  // Get AI-suggested projects, but don't block the page load if it fails
-  const aiSuggestedProjects = await getAiSuggestedProjects(user, allPublishedProjects).catch(err => {
-    console.error("Failed to get AI suggested projects:", err);
-    return null;
-  });
-
   return deepSerialize({
     allPublishedProjects,
     currentUser: user,
     allTags,
     allLearningPaths,
     allProjectPathLinks,
-    aiSuggestedProjects
   });
 }
 
@@ -64,7 +55,6 @@ export default async function HomePage() {
     allTags,
     allLearningPaths,
     allProjectPathLinks,
-    aiSuggestedProjects
   } = await getHomePageData();
 
   return (
@@ -74,7 +64,6 @@ export default async function HomePage() {
       allTags={allTags}
       allLearningPaths={allLearningPaths}
       allProjectPathLinks={allProjectPathLinks}
-      aiSuggestedProjects={aiSuggestedProjects}
     />
   );
 }

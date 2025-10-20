@@ -20,7 +20,7 @@ import type {
     ServerActionResponse,
     ProjectMember
 } from '@/lib/types';
-import { toHydratedProject } from '@/lib/utils';
+import { toHydratedProject, deepSerialize } from '@/lib/utils';
 import { getRecommendedLearningPathsForProject } from '@/lib/data.server';
 
 // Action type definitions, ensuring they match the client component's expectations
@@ -83,12 +83,12 @@ export default async function ProjectPage({ params }: { params: { id: string } }
 
     return (
         <ProjectDetailClientPage
-            project={project}
-            discussions={discussions}
-            tasks={tasks}
-            users={users}
-            currentUser={currentUser}
-            learningPaths={learningPaths}
+            project={deepSerialize(project)}
+            discussions={deepSerialize(discussions)}
+            tasks={deepSerialize(tasks)}
+            users={deepSerialize(users)}
+            currentUser={deepSerialize(currentUser)}
+            learningPaths={deepSerialize(learningPaths)}
             // Pass the server actions directly to the client component
             joinProject={joinProject as JoinProjectAction}
             addTeamMember={addTeamMember as AddTeamMemberAction}
