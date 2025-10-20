@@ -22,12 +22,12 @@ import { Badge } from "@/components/ui/badge";
 import type { User, ProjectMember } from "@/lib/types";
 
 interface UserSelectorProps {
-  users: User[];
+  users?: User[]; // Made optional
   value: ProjectMember[];
   onChange: (value: ProjectMember[]) => void;
 }
 
-export default function UserSelector({ users, value, onChange }: UserSelectorProps) {
+export default function UserSelector({ users = [], value, onChange }: UserSelectorProps) {
   const [open, setOpen] = React.useState(false);
 
   // Maps for quick lookups

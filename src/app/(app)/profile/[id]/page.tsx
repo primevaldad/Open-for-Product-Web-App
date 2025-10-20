@@ -1,8 +1,8 @@
 
-import { getProjectsByUserId, getAuthenticatedUser } from '@/lib/data.server';
+import { getProjectsByUserId, getAllLearningPaths, getAllProjectPathLinks, findUserById } from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
 import { notFound } from 'next/navigation';
 import UserProfilePageClient from './profile-client-page';
-import { getAllLearningPaths, getAllProjectPathLinks, findUserById } from '@/lib/data.server';
 import { deepSerialize } from '@/lib/utils';
 
 // This is a server component
@@ -16,7 +16,7 @@ async function getUserProfileData(userId: string) {
     ]);
 
     if (!user) {
-        return { notFound: true };
+        return null;
     }
 
     return deepSerialize({
@@ -30,12 +30,11 @@ async function getUserProfileData(userId: string) {
 }
 
 export default async function UserProfilePage({ params }: { params: { id: string } }) {
-    const { notFound: isNotFound, ...props } = await getUserProfileData(params.id);
+    const props = await getUserProfileData(params.id);
 
-    if (isNotFound) {
+    if (!props) {
         notFound();
     }
 
-    // @ts-ignore
     return <UserProfilePageClient {...props} />;
 }

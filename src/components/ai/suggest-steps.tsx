@@ -9,8 +9,8 @@ import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 
 type Suggestion = {
-  suggestedNextSteps: string[];
-  matchingOpportunities: string[];
+  suggestedNextSteps?: string[];
+  matchingOpportunities?: string[];
 };
 
 interface SuggestStepsProps {
@@ -92,10 +92,10 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
   }, [bestMatchProject, currentUser]);
 
   const projectWithSuggestion = suggestion && suggestedProject
-    ? { ...suggestedProject, tagline: suggestion.matchingOpportunities[0] || suggestedProject.tagline }
+    ? { ...suggestedProject, tagline: suggestion.matchingOpportunities?.[0] || suggestedProject.tagline }
     : suggestedProject;
 
-  const suggestionText = suggestion?.suggestedNextSteps[0];
+  const suggestionText = suggestion?.suggestedNextSteps?.[0];
 
   return (
     <Card className="bg-gradient-to-br from-primary/20 to-background">

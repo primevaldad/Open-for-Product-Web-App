@@ -21,6 +21,7 @@ export type User = {
   interests?: string[];
   onboarded: boolean;
   createdAt?: string;
+  updatedAt?: string;
   lastLogin?: string;
   notifications?: Notification[];
 };

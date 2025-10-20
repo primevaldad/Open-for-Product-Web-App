@@ -2,8 +2,9 @@
 import 'server-only';
 import admin from 'firebase-admin'; // Import the top-level admin object
 import { FieldValue } from 'firebase-admin/firestore';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module, HydratedProject } from './types';
 import { serializeTimestamp } from './utils';
 
 // This file contains server-side data access functions.
@@ -57,7 +58,6 @@ export async function findUsersByIds(userIds: string[]): Promise<User[]> {
     const users: User[] = [];
     for (let i = 0; i < userIds.length; i += 10) {
         const chunk = userIds.slice(i, i + 10);
-        // CORRECTED: Use admin.firestore.FieldPath.documentId()
         const q = adminDb.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk);
         const userSnapshot = await q.get();
         const chunkUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
@@ -163,12 +163,10 @@ export async function getAllProjects(): Promise<Project[]> {
         const project = { id: doc.id, ...projectData } as Project;
 
         if (project.tags && Array.isArray(project.tags)) {
-            // CORRECTED: Map full Tag objects to the simpler ProjectTag type
             const hydratedTags: ProjectTag[] = project.tags
                 .map(projectTag => {
                     const fullTag = tagsMap.get(projectTag.id);
                     if (!fullTag) return null;
-                    // Ensure the returned object matches the ProjectTag type exactly
                     return {
                         id: fullTag.id,
                         display: fullTag.display,
@@ -186,6 +184,14 @@ export async function getAllProjects(): Promise<Project[]> {
     });
 
     return projectsWithTags;
+}
+
+export async function getProjectsByUserId(userId: string): Promise<Project[]> {
+    if (!userId) return [];
+    const projectsCol = adminDb.collection('projects');
+    const q = projectsCol.where('memberIds', 'array-contains', userId);
+    const projectSnapshot = await q.get();
+    return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
 }
 
 export async function findProjectById(projectId: string): Promise<Project | undefined> {
@@ -311,7 +317,6 @@ export async function findLearningPathsByIds(ids: string[]): Promise<LearningPat
                 ...doc.data(),
             } as LearningPath;
             
-            // Ensure all modules have a unique ID
             path = ensureModulesHaveIds(path);
 
             return path;
@@ -334,10 +339,10 @@ export async function getAllProjectPathLinks(): Promise<ProjectPathLink[]> {
         const data = doc.data();
         return {
             id: doc.id,
-            pathId: data.pathId, // Assuming pathId exists in doc.data()
-            projectId: data.projectId, // Assuming projectId exists in doc.data()
-            learningPathId: data.learningPathId, // Assuming learningPathId exists in doc.data()
-            ...data, // Include any other properties from doc.data() that are in ProjectPathLink
+            pathId: data.pathId, 
+            projectId: data.projectId, 
+            learningPathId: data.learningPathId, 
+            ...data, 
         } as ProjectPathLink;
     });
 }
@@ -375,18 +380,94 @@ export async function updateUserLearningProgress(progress: UserLearningProgress)
 export async function getAllLearningPaths(): Promise<LearningPath[]> {
     const pathsCol = adminDb.collection('learningPaths');
     const pathSnapshot = await pathsCol.get();
-    // CORRECTED: Ensure the data is correctly cast to the LearningPath type
     return pathSnapshot.docs.map(doc => {
         let path = {
-            pathId: doc.id, // Explicitly map id to pathId
+            pathId: doc.id, 
             ...doc.data(),
             createdAt: serializeTimestamp(doc.data().createdAt),
             updatedAt: serializeTimestamp(doc.data().updatedAt),
         } as LearningPath;
         
-        // Ensure all modules have a unique ID
         path = ensureModulesHaveIds(path);
 
         return path;
     });
 }
+
+// --- AI Data Access ---
+
+export async function getAiSuggestedProjects(
+    currentUser: User,
+    allProjects: HydratedProject[]
+  ): Promise<HydratedProject[] | null> {
+    if (process.env.AI_SUGGESTIONS_ENABLED !== 'true') {
+        console.log("AI suggestions are disabled via environment variable. Skipping.");
+        return null;
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY is not set. Skipping AI project suggestions.");
+      return null;
+    }
+  
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  
+      const userProjectIds = new Set(
+          allProjects.filter(p => p.team.some(member => member.userId === currentUser.id)).map(p => p.id)
+      );
+      const candidateProjects = allProjects.filter(p => !userProjectIds.has(p.id));
+  
+      const projectsForPrompt = candidateProjects.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        tags: p.tags.map(t => t.display),
+      }));
+  
+      const userProfile = {
+        name: currentUser.name,
+      };
+  
+      const prompt = `
+        You are an expert project recommender for a developer collaboration platform.
+        Your task is to recommend the top 3 most relevant projects for a user from the provided list.
+        
+        Here is the user's profile:
+        ${JSON.stringify(userProfile, null, 2)}
+  
+        Here is the list of available projects:
+        ${JSON.stringify(projectsForPrompt, null, 2)}
+  
+        Based on the user's profile and the project descriptions and tags, please suggest the 3 best projects for them to join.
+        
+        Respond with ONLY a JSON array of the project IDs, ordered by relevance (most relevant first). For example: ["project-id-1", "project-id-2", "project-id-3"]
+      `;
+      
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+  
+      const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      const recommendedIds = JSON.parse(cleanedText) as string[];
+  
+      if (!Array.isArray(recommendedIds)) {
+          throw new Error("AI response was not a valid array of project IDs.");
+      }
+  
+      const allProjectsMap = new Map(allProjects.map(p => [p.id, p]));
+      
+      const recommendedProjects = recommendedIds
+          .map(id => allProjectsMap.get(id))
+          .filter((p): p is HydratedProject => !!p); 
+  
+      return recommendedProjects;
+  
+    } catch (error) {
+      console.error("Error fetching AI suggestions:", error);
+      return null;
+    }
+  }

@@ -1,9 +1,9 @@
 
 import { getAuthenticatedUser } from "@/lib/session.server";
 import { CreateProjectForm } from "./create-project-form";
-import { getAllTags } from "@/lib/data.server";
+import { getAllTags, getAllUsers } from "@/lib/data.server";
 import { redirect } from 'next/navigation';
-import type { Tag } from "@/lib/types";
+import type { Tag, User } from "@/lib/types";
 
 // --- Serialization Helpers ---
 const toISOString = (timestamp: unknown): string | undefined => {
@@ -31,18 +31,26 @@ const serializeTag = (tag: Tag): Tag => ({
   updatedAt: toISOString(tag.updatedAt),
 });
 
+const serializeUser = (user: User): User => ({
+    ...user,
+    createdAt: toISOString(user.createdAt),
+    updatedAt: toISOString(user.updatedAt),
+  });
+
 async function getCreatePageData() {
-    const [currentUser, allTags] = await Promise.all([
+    const [currentUser, allTags, allUsers] = await Promise.all([
         getAuthenticatedUser(),
-        getAllTags()
+        getAllTags(),
+        getAllUsers(),
     ]);
     const serializedTags = allTags.map(serializeTag);
-    return { currentUser, allTags: serializedTags };
+    const serializedUsers = allUsers.map(serializeUser);
+    return { currentUser, allTags: serializedTags, allUsers: serializedUsers };
 }
 
 // The page is a Server Component responsible for fetching data and rendering the layout.
 export default async function CreateProjectPage() {
-    const { currentUser, allTags } = await getCreatePageData();
+    const { currentUser, allTags, allUsers } = await getCreatePageData();
 
     if (!currentUser) {
         redirect('/login');
@@ -50,7 +58,8 @@ export default async function CreateProjectPage() {
 
     return (
         <CreateProjectForm 
-            availableTags={allTags} 
+            tags={allTags} 
+            users={allUsers}
         />
     );
 }
