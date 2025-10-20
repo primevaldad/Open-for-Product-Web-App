@@ -33,27 +33,31 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
     // --- Data Sanitization ---
     // This is the crucial step. We ensure that the data passed to the form
     // strictly adheres to the ProjectTag schema, preventing type errors downstream.
-    const sanitizedTags = project.tags?.filter(
-        (tag): tag is ProjectTag => !!tag.id && !!tag.display && !!tag.type
-    ) || [];
+    const sanitizedTags: ProjectTag[] = (project.tags ?? [])
+  .filter((t): t is ProjectTag => Boolean(t && t.id && t.display && t.type))
+  .map(t => ({
+    id: t.id!,
+    display: t.display!,
+    type: t.type!,
+  }));
+
 
     const form = useForm<EditProjectFormValues>({
         resolver: zodResolver(EditProjectSchema),
-        // Use the project data to populate the form's default state.
         defaultValues: {
-            id: project.id,
-            name: project.name || '',
-            tagline: project.tagline || '',
-            description: project.description || '',
-            photoUrl: project.photoUrl || '',
-            contributionNeeds: Array.isArray(project.contributionNeeds)
-                ? project.contributionNeeds.join(', ')
-                : '',
-            // Use the sanitized tags for a clean initial form state.
-            tags: sanitizedTags,
-            governance: project.governance || { contributorsShare: 75, communityShare: 10, sustainabilityShare: 15 },
+          id: project.id,
+          name: project.name || '',
+          tagline: project.tagline || '',
+          description: project.description || '',
+          photoUrl: project.photoUrl || '',
+          contributionNeeds: Array.isArray(project.contributionNeeds)
+            ? project.contributionNeeds.join(', ')
+            : '',
+          tags: sanitizedTags as ProjectTag[], // ✅ ensure fully typed array
+          governance: project.governance || { contributorsShare: 75, communityShare: 10, sustainabilityShare: 15 },
         },
-    });
+      });
+      
 
     // --- Submission Handler ---
     async function onSubmit(values: EditProjectFormValues) {
@@ -142,36 +146,20 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
                     name="tags"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Tags</FormLabel>
-                            <FormControl>
-                                <TagSelector
-                                    tags={allTags}
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                />
-                            </FormControl>
-                            <FormDescription>Select up to 3 category tags. Add any other relevant tags.</FormDescription>
-                            <FormMessage />
+                        <FormLabel>Tags</FormLabel>
+                        <FormControl>
+                            <TagSelector
+                            tags={allTags}
+                            value={field.value as ProjectTag[]}
+                            onChange={(v: ProjectTag[]) => field.onChange(v)}
+                            />
+                        </FormControl>
+                        <FormDescription>Select up to 3 category tags. Add any other relevant tags.</FormDescription>
+                        <FormMessage />
                         </FormItem>
                     )}
                 />
-                
-                <FormField
-                    control={form.control}
-                    name="contributionNeeds"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Contribution Needs</FormLabel>
-                            <FormControl>
-                                <Input placeholder="e.g., UI/UX Design, Backend Development" {...field} />
-                            </FormControl>
-                            <FormDescription>
-                                Comma-separated list of skills or roles you're looking for.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+
 
                 {/* Action Buttons */}
                 <div className="flex space-x-4">

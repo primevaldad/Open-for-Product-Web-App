@@ -21,11 +21,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Tag as GlobalTag, ProjectTag } from "@/lib/types";
 
-interface TagSelectorProps {
+export interface TagSelectorProps {
   tags: GlobalTag[];
   value: ProjectTag[];
   onChange: (value: ProjectTag[]) => void;
 }
+
 
 // Normalize a tag string for consistent matching
 const normalizeTag = (tag: string) => tag.toLowerCase().trim();
