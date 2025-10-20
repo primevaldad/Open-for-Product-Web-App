@@ -1,0 +1,30 @@
+name: Firebase Hosting Deploy
+
+on:
+  push:
+    branches:
+      - main   # only deploy when main is updated
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to Firebase
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "${GOOGLE_APPLICATION_CREDENTIALS}" > $HOME/service-account-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS="$HOME/service-account-key.json"
+          firebase deploy --only hosting
