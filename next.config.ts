@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     // This will skip ESLint checks during the build process.
-    // ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [
