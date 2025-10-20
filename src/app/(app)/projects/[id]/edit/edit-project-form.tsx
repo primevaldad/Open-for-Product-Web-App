@@ -16,10 +16,11 @@ import {
 import { Input } from "@/components/ui/input";
 import TagSelector from "@/components/tags/tag-selector";
 import { EditProjectSchema, EditProjectFormValues } from "@/lib/schemas";
-import type { HydratedProject, ServerActionResponse, Tag } from "@/lib/types";
+import type { HydratedProject, ServerActionResponse, Tag, ProjectTag } from "@/lib/types";
 import { toast } from 'sonner';
-import { updateProject } from "@/app/actions/projects";
+import { updateProject, publishProject } from "@/app/actions/projects";
 import MarkdownEditor from "@/components/ui/markdown-editor";
+import { useRouter } from 'next/navigation';
 
 interface EditProjectFormProps {
     project: HydratedProject;
@@ -27,7 +28,17 @@ interface EditProjectFormProps {
 }
 
 export default function EditProjectForm({ project, allTags }: EditProjectFormProps) {
-    
+    const router = useRouter();
+
+    const sanitizedTags = project.tags
+        ?.map(tag => {
+            if (tag && tag.id && tag.display && tag.type) {
+                return tag;
+            }
+            return null;
+        })
+        .filter((tag): tag is ProjectTag => tag !== null);
+
     const form = useForm<EditProjectFormValues>({
         resolver: zodResolver(EditProjectSchema),
         defaultValues: {
@@ -35,10 +46,11 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
             name: project.name,
             tagline: project.tagline,
             description: project.description,
+            photoUrl: project.photoUrl || '',
             contributionNeeds: Array.isArray(project.contributionNeeds) 
                 ? project.contributionNeeds.join(', ') 
                 : '',
-            tags: project.tags || [],
+            tags: sanitizedTags || [],
             governance: project.governance || { contributorsShare: 75, communityShare: 10, sustainabilityShare: 15 },
         },
     });
@@ -52,6 +64,16 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
         }
     }
 
+    async function handlePublish() {
+        const result = await publishProject(project.id);
+        if (result.success) {
+            toast.success("Project published successfully!");
+            router.push(`/projects/${project.id}`);
+        } else {
+            toast.error(`Failed to publish project: ${result.error}`);
+        }
+    }
+
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -62,6 +84,30 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Project Name</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="tagline"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Tagline</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                
+                <FormField
+                    control={form.control}
+                    name="photoUrl"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Project Photo URL</FormLabel>
                             <FormControl><Input {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
@@ -105,10 +151,13 @@ export default function EditProjectForm({ project, allTags }: EditProjectFormPro
                         </FormItem>
                     )}
                 />
-
-                <Button type="submit">Save Changes</Button>
+                <div className="flex space-x-4">
+                    <Button type="submit">Save Changes</Button>
+                    {project.status === 'draft' && (
+                        <Button type="button" onClick={handlePublish} variant="secondary">Publish</Button>
+                    )}
+                </div>
             </form>
         </Form>
     );
 }
-

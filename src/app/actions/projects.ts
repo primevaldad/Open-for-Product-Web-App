@@ -162,8 +162,38 @@ export async function saveProjectDraft(values: CreateProjectFormValues): Promise
     return handleProjectSubmission(values, 'draft');
 }
 
-export async function publishProject(values: CreateProjectFormValues): Promise<ServerActionResponse<{ projectId: string }>> {
-    return handleProjectSubmission(values, 'published');
+export async function publishProject(projectId: string): Promise<ServerActionResponse<{}>> {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { success: false, error: "Authentication required." };
+
+    try {
+        await adminDb.runTransaction(async (transaction) => {
+            const projectRef = adminDb.collection('projects').doc(projectId);
+            const projectSnap = await transaction.get(projectRef);
+            if (!projectSnap.exists) throw new Error("Project not found");
+
+            const project = projectSnap.data() as Project;
+            const isLead = project.team.some(m => m.role === 'lead' && m.userId === currentUser.id);
+            if (!isLead) throw new Error("Only a project lead can publish.");
+
+            if (project.status === 'published') return; // Already published
+
+            transaction.update(projectRef, { 
+                status: 'published',
+                updatedAt: new Date().toISOString(),
+             });
+        });
+
+        revalidatePath('/', 'layout');
+        revalidatePath(`/projects/${projectId}`);
+        revalidatePath(`/drafts`);
+
+        return { success: true, data: {} };
+    } catch (error) {
+        console.error("Failed to publish project:", error);
+        const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+        return { success: false, error: `Project publication failed: ${message}` };
+    }
 }
 
 export async function updateProject(values: EditProjectFormValues): Promise<ServerActionResponse<{}>> {

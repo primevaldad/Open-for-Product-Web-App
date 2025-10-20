@@ -1,6 +1,6 @@
 
 import { notFound } from 'next/navigation';
-import { findProjectById, getDiscussionsForProject, getAllTasks, getAllUsers } from '@/lib/data.server';
+import { findProjectById, getDiscussionsForProject, findTasksByProjectId, getAllUsers } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import ProjectDetailClientPage from './project-detail-client-page';
 import {
@@ -36,7 +36,7 @@ async function getProjectPageData(projectId: string) {
     const [project, discussions, tasks, users, currentUser, learningPaths] = await Promise.all([
         findProjectById(projectId),
         getDiscussionsForProject(projectId),
-        getAllTasks(projectId),
+        findTasksByProjectId(projectId),
         getAllUsers(),
         getAuthenticatedUser(),
         getRecommendedLearningPathsForProject(projectId)

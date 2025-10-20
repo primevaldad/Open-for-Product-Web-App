@@ -13,6 +13,7 @@ import ProjectTeam from '@/components/project-team';
 import EditTaskDialog from '@/components/edit-task-dialog';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
+import ProjectGovernance from '@/components/project-governance';
 
 import type { 
     HydratedProject, 
@@ -184,6 +185,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                         <Tab>Discussion</Tab>
                         <Tab>Team</Tab>
                         <Tab>Learning Paths</Tab>
+                        <Tab>Governance</Tab>
                     </TabList>
 
                     <TabPanel>
@@ -220,6 +222,9 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                     </TabPanel>
                     <TabPanel>
                         {/* Learning Paths Content Here */}
+                    </TabPanel>
+                    <TabPanel>
+                        <ProjectGovernance governance={project.governance} />
                     </TabPanel>
                 </Tabs>
             </div>

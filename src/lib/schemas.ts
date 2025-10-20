@@ -8,7 +8,7 @@ const MAX_TAG_LENGTH = 35;
 export const ProjectTagSchema = z.object({
     id: z.string().max(MAX_TAG_LENGTH),
     display: z.string().max(MAX_TAG_LENGTH),
-    type: z.enum(['category', 'relational']),
+    type: z.enum(['category', 'relational', 'custom']),
 });
 
 export const ProjectMemberSchema = z.object({
@@ -21,6 +21,7 @@ export const ProjectBaseSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
   tagline: z.string().min(1, 'Tagline is required.'),
   description: z.string().min(1, 'Description is required.'),
+  photoUrl: z.string().url("Please enter a valid URL.").or(z.literal('')).optional(),
   contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
   tags: z.array(ProjectTagSchema),
   team: z.array(ProjectMemberSchema),
@@ -44,9 +45,8 @@ export const CreateProjectSchema = ProjectBaseSchema.refine(tagValidationRefinem
 });
 
 // Schema for editing an existing project, using superRefine for more robust validation
-export const EditProjectSchema = ProjectBaseSchema.extend({
+export const EditProjectSchema = ProjectBaseSchema.omit({ team: true }).extend({
   id: z.string(),
-  timeline: z.string().min(1, "Timeline is required."),
   governance: z.object({
     contributorsShare: z.number(),
     communityShare: z.number(),

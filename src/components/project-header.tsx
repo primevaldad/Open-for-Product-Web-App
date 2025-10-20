@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { FilePenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,14 +14,23 @@ interface ProjectHeaderProps {
 }
 
 export default function ProjectHeader({ project, currentUser, onJoin }: ProjectHeaderProps) {
-  const isMember = currentUser ? project.team.some(member => member.userId === currentUser.id) : false;
-  const isLead = currentUser ? project.team.some(member => member.userId === currentUser.id && member.role === 'lead') : false;
+  const isMember = currentUser ? project.team.some(member => member.user.id === currentUser.id) : false;
+  const isLead = currentUser ? project.team.some(member => member.user.id === currentUser.id && member.role === 'lead') : false;
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+      {/* Project Image */}
+      <div className="w-full h-64 relative mb-4 rounded-lg overflow-hidden">
+        <Image 
+          src={project.photoUrl || '/images/project-placeholder.jpg'}
+          alt={`${project.name} photo`}
+          layout="fill"
+          objectFit="cover"
+        />
+      </div>
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{project.name}</h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 mt-2 italic">
             {project.tagline}
           </p>

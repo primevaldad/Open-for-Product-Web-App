@@ -1,218 +1,158 @@
 
-import type { LucideIcon } from "lucide-react";
+import { z } from 'zod';
+import { Timestamp } from 'firebase-admin/firestore';
 
-// -------------------- Notifications --------------------
-export type Notification = {
-  id: string;
-  userId: string;
-  message: string;
-  link: string;
-  read: boolean;
-  timestamp: string; // ISO 8601 format
-};
+// A string representing a user's unique ID. This will typically be a Firebase Auth UID.
+export type UserId = string;
 
-// -------------------- Users --------------------
-export type User = {
-  id: string;
-  name: string;
-  email?: string;
-  avatarUrl: string;
-  bio?: string;
-  interests?: string[];
-  onboarded: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  lastLogin?: string;
-  notifications?: Notification[];
-};
+// A string representing a project's unique ID. This will be a Firestore document ID.
+export type ProjectId = string;
 
-export const ROLES = ["lead", "contributor", "participant"] as const;
-export type UserRole = typeof ROLES[number];
+// --- Core Data Models ---
 
-// -------------------- Projects --------------------
-export type ProjectMember = {
-  userId: string;
-  role: UserRole;
-  user?: User; // Populated for display
-};
-
-export type HydratedProjectMember = ProjectMember & { user: User };
-
-export type ProjectStatus = 'published' | 'draft';
-
-export type Governance = {
-  contributorsShare: number;
-  communityShare: number;
-  sustainabilityShare: number;
-};
-
-export type ProjectTag = {
-  id: string;
-  display: string;
-  type: 'category' | 'relational';
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-export type Tag = {
-  id: string;
-  normalized: string;
-  display: string;
-  type: 'category' | 'relational';
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: string;
-  usageCount?: number;
-};
-
-export type SelectableTag = Tag & {
-  isSelected: boolean;
-};
-
-export type Project = {
-  id: string;
-  name: string;
-  tagline: string;
-  description: string;
-  timeline: string;
-  contributionNeeds: string[];
-  progress: number;
-  team: ProjectMember[];
-  votes: number;
-  isExpertReviewed?: boolean;
-  status: ProjectStatus;
-  governance?: Governance;
-  startDate?: string;
-  endDate?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  tags?: ProjectTag[];
-  fallbackSuggestion?: string;
-  category: string;
-};
-
-export type HydratedProject = Omit<Project, 'team'> & {
-  team: HydratedProjectMember[];
-};
-
-// -------------------- Discussions --------------------
-export type Discussion = {
-    id: string;
-    projectId: string;
-    userId: string;
-    content: string;
-    timestamp: string; // ISO 8601 format
-};
-
-// -------------------- Tasks --------------------
-export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
-
-export type Task = {
-  id: string;
-  projectId: string;
-  title: string;
-  description?: string;
-  status: TaskStatus;
-  assignedTo?: User;
-  assignedToId?: string;
-  estimatedHours?: number;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-// -------------------- Learning --------------------
-export type Module = {
-  moduleId: string;
-  title: string;
-  description: string;
-  videoUrl?: string;
-  content: string;
-};
-
-export type LearningPath = {
-  pathId: string;
-  title: string;
-  description: string;
-  duration: string;
-  category: string;
-  Icon: LucideIcon;
-  isLocked?: boolean;
-  modules: Module[];
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-export type UserLearningProgress = {
-  userId: string;
-  pathId: string;
-  completedModules: string[];
-};
-
-// -------------------- Badges --------------------
-export type Badge = {
-  id: string;
-  name: string;
-  learningPathId: string;
-  moduleIds: string[];
-};
-
-export type UserBadge = {
-  id: string;
-  userId: string;
-  badgeId: string;
-  earnedAt: string;
-};
-
-// -------------------- Misc --------------------
-export type Interest = {
-  id: string;
-  name: string;
-};
-
-// -------------------- Link Types --------------------
-export type ProjectPathLink = {
-  pathId: string;
-  projectId: string;
-  learningPathId: string;
-};
-
-export type ProjectBadgeLink = {
-  id: string;
-  projectId: string;
-  badgeId: string;
-  isRequirement: boolean;
-};
-
-// -------------------- Activity Page Props --------------------
-export interface CompletedModuleData {
-  path: { pathId: string; title: string };
-  module: Module;
+export interface User {
+    id: UserId;
+    name: string;
+    email: string;
+    avatarUrl?: string;
+    interests?: string[];
+    bio?: string;
+    draftProjects?: ProjectId[]; // IDs of projects the user is drafting
+    onboardingCompleted: boolean;
 }
 
-export type TaskFormValues = {
-  id: string;
-  projectId: string;
-  title: string;
-  description?: string;
-  status: TaskStatus;
-  assignedToId?: string;
-  estimatedHours?: number;
-};
+export interface Project {
+    id: ProjectId;
+    name: string;
+    photoUrl?: string;
+    tagline: string;
+    description: string;
+    createdAt: Timestamp | string; 
+    updatedAt: Timestamp | string; 
+    ownerId: UserId;
+    team: ProjectMember[];
+    status: 'draft' | 'published' | 'archived';
+    // Tags are now required to be an array of ProjectTag objects
+    tags: ProjectTag[];
+    contributionNeeds: string[];
+    // A fallback suggestion to be shown if AI suggestions fail
+    fallbackSuggestion?: string;
+    // New governance model
+    governance?: {
+        contributorsShare: number; // Percentage of ownership for contributors
+        communityShare: number;    // Percentage of ownership for the community
+        sustainabilityShare: number; // Percentage for project sustainability
+    };
+    // Progress percentage
+    progress?: number;
+}
 
-// Define a standard return type for server actions
-export type ServerActionResponse<T = unknown> = 
-  | { success: true; data?: T }
-  | { success: false; error: string };
+// This represents a tag that is associated with a project.
+export interface ProjectTag {
+    id: string;
+    display: string;
+    // The type helps categorize the tag, e.g., for filtering or display logic.
+    type: 'category' | 'relational' | 'custom'; 
+}
 
-export type AddTaskAction = (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>;
-export type UpdateTaskAction = (values: TaskFormValues) => Promise<ServerActionResponse>;
-export type DeleteTaskAction = (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
 
-export interface ActivityClientPageProps {
-  currentUser: User; // Added currentUser
-  myTasks: Task[];
-  completedModulesData: CompletedModuleData[];
-  projects: Project[];
-  updateTask: UpdateTaskAction;
-  deleteTask: DeleteTaskAction;
+// This represents a globally available tag that can be added to projects.
+export interface Tag {
+    id: string;
+    display: string;
+    type: 'category' | 'relational'; 
+    // A count of how many times the tag has been used across all projects.
+    usageCount: number;
+}
+
+export interface ProjectMember {
+    userId: UserId;
+    role: 'lead' | 'contributor' | 'participant';
+}
+
+export interface HydratedProject extends Omit<Project, 'team' | 'ownerId'> {
+    owner: User;
+    team: HydratedProjectMember[];
+}
+
+export interface HydratedProjectMember {
+    user: User;
+    role: 'lead' | 'contributor' | 'participant';
+}
+
+export interface Discussion {
+    id: string;
+    projectId: ProjectId;
+    userId: UserId;
+    timestamp: Timestamp | string;
+    content: string;
+}
+
+export interface Task {
+    id: string;
+    projectId: ProjectId;
+    title: string;
+    description: string;
+    status: 'todo' | 'in-progress' | 'done' | 'archived';
+    createdBy: UserId;
+    assignee?: UserId;
+    dueDate?: Timestamp | string;
+}
+
+export interface Notification {
+    id: string;
+    userId: UserId;
+    message: string;
+    link?: string;
+    read: boolean;
+    timestamp: Timestamp | string;
+}
+
+// Represents a link between a Project and a Learning Path.
+export interface ProjectPathLink {
+    id: string; // Unique ID for the link itself
+    projectId: ProjectId;
+    pathId: string; // ID of the linked LearningPath
+    learningPathId: string;
+}
+
+// --- Learning Path Data Models ---
+
+export interface LearningPath {
+    pathId: string;
+    title: string;
+    description: string;
+    // An array of Module objects that make up the learning path.
+    modules: Module[];
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+}
+  
+export interface Module {
+    moduleId: string;
+    title: string;
+    // Type of content, which can be used to determine how to render the module.
+    contentType: 'video' | 'article' | 'quiz' | 'code-challenge';
+    // URL or reference to the content for the module.
+    contentUrl: string; 
+    // Estimated time to complete the module, in minutes.
+    duration: number; 
+}
+
+// Represents the progress of a user on a specific learning path.
+export interface UserLearningProgress {
+    userId: UserId;
+    pathId: string;
+    // A map where the key is the moduleId and the value is the completion status.
+    completedModules: Record<string, boolean>;
+    // The last time the user made progress on this path.
+    lastAccessed: Timestamp | string;
+}
+
+
+// --- Server Action Responses ---
+
+export interface ServerActionResponse {
+    success: boolean;
+    error?: string;
 }

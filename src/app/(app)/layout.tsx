@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { UserNav } from '@/components/user-nav';
 import { redirect } from 'next/navigation';
 import { ThemeProvider } from '@/components/theme-provider';
+import { PageHeader } from '@/components/page-header';
 
 export default async function AppLayout({
   children,
@@ -42,9 +43,7 @@ export default async function AppLayout({
                 <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 bg-background/80 px-4 shadow-sm backdrop-blur-sm md:px-6">
                 <div className="flex items-center gap-2">
                     <SidebarTrigger className="md:hidden" />
-                    <h1 className="hidden text-lg font-semibold md:block">
-                    Project Discovery
-                    </h1>
+                    <PageHeader />
                 </div>
                 <UserNav currentUser={currentUser} />
                 </header>

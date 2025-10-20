@@ -165,18 +165,24 @@ export async function getAllProjects(): Promise<Project[]> {
         if (project.tags && Array.isArray(project.tags)) {
             const hydratedTags: ProjectTag[] = project.tags
                 .map(projectTag => {
-                    const fullTag = tagsMap.get(projectTag.id);
-                    if (!fullTag) return null;
-                    return {
-                        id: fullTag.id,
-                        display: fullTag.display,
-                        type: fullTag.type,
-                    };
+                    // If the project tag is just a string, convert it to a ProjectTag object
+                    if (typeof projectTag === 'string') {
+                        const fullTag = tagsMap.get(projectTag);
+                        if (!fullTag) return null;
+                        return {
+                            id: fullTag.id,
+                            display: fullTag.display,
+                            type: fullTag.type,
+                        };
+                    }
+                    // If the project tag is already an object, use it directly
+                    return projectTag;
                 })
                 .filter((tag): tag is ProjectTag => !!tag);
             
             project.tags = hydratedTags;
         } else {
+            // Ensure project.tags is always an array
             project.tags = [];
         }
 
@@ -190,6 +196,14 @@ export async function getProjectsByUserId(userId: string): Promise<Project[]> {
     if (!userId) return [];
     const projectsCol = adminDb.collection('projects');
     const q = projectsCol.where('memberIds', 'array-contains', userId);
+    const projectSnapshot = await q.get();
+    return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+}
+
+export async function getProjectsByOwnerId(ownerId: string): Promise<Project[]> {
+    if (!ownerId) return [];
+    const projectsCol = adminDb.collection('projects');
+    const q = projectsCol.where('ownerId', '==', ownerId);
     const projectSnapshot = await q.get();
     return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
 }
@@ -258,6 +272,13 @@ export async function getDiscussionsForProjectId(projectId: string): Promise<Dis
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Discussion));
 }
 
+export async function getDiscussionsByUserId(userId: string): Promise<Discussion[]> {
+    const discussionsCol = adminDb.collection('discussions');
+    const q = discussionsCol.where('userId', '==', userId).orderBy('timestamp', 'desc');
+    const snapshot = await q.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Discussion));
+}
+
 export const getDiscussionsForProject = getDiscussionsForProjectId;
 
 
@@ -271,6 +292,13 @@ export async function getAllTasks(): Promise<Task[]> {
 export async function findTasksByProjectId(projectId: string): Promise<Task[]> {
     const tasksCol = adminDb.collection('tasks');
     const q = tasksCol.where("projectId", "==", projectId);
+    const taskSnapshot = await q.get();
+    return taskSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+}
+
+export async function getTasksCreatedByUser(userId: string): Promise<Task[]> {
+    const tasksCol = adminDb.collection('tasks');
+    const q = tasksCol.where("createdBy", "==", userId);
     const taskSnapshot = await q.get();
     return taskSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
 }
@@ -298,6 +326,23 @@ export async function updateTask(updatedTask: Task): Promise<void> {
 export async function deleteTaskFromDb(taskId: string): Promise<void> {
     await adminDb.collection('tasks').doc(taskId).delete();
   }
+
+// --- User Activity Data Access ---
+export async function getUserActivity(userId: string) {
+    const [ownedProjects, tasks, discussions, notifications] = await Promise.all([
+        getProjectsByOwnerId(userId),
+        getTasksCreatedByUser(userId),
+        getDiscussionsByUserId(userId),
+        getNotificationsByUserId(userId)
+    ]);
+
+    return {
+        projects: ownedProjects,
+        tasks,
+        discussions,
+        notifications,
+    };
+}
 
 // --- Learning Progress & Path Data Access -- -
 
