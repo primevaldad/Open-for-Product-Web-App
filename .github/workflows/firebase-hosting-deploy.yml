@@ -23,6 +23,7 @@ jobs:
 
       - name: Deploy to Firebase
         env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
         run: |
           echo "${GOOGLE_APPLICATION_CREDENTIALS}" > $HOME/service-account-key.json
