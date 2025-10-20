@@ -1,17 +1,37 @@
+
 # Local environment variables
 .env*
 
-# Service account keys
+# Secrets (e.g. keys)
 service-account-key.json
 serviceAccountKey.json
 /src/lib/serviceAccountKey.json
 
-# Node dependencies
+# dependencies
 /node_modules
+/.pnp
+.pnp.js
 
-# Build output
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build and Production
 /.next/
 /out/
+/build
+
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+
+# Testing
+/coverage
 
 # Other
 .DS_Store

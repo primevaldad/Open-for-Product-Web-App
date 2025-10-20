@@ -6,7 +6,6 @@ import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import type { 
     Project, 
-    ProjectStatus, 
     ProjectTag, 
     Tag as GlobalTag, 
     User,
@@ -14,8 +13,7 @@ import type {
     Discussion,
     Task,
     HydratedProjectMember,
-    ProjectMember,
-    Governance
+    ProjectMember
 } from '@/lib/types';
 import {
     adminDb,
@@ -27,7 +25,7 @@ import {
     findUserById,
     updateProject as updateProjectInDb,
     updateTask as updateTaskInDb,
-    getAllTags as getAllGlobalTags, // Import the new function
+    getAllTags as getAllGlobalTags,
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
@@ -38,6 +36,16 @@ const MAX_TAG_LENGTH = 35;
 
 const normalizeTag = (tag: string): string => {
   return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '').slice(0, MAX_TAG_LENGTH);
+};
+
+const statusMap: Record<string, 'todo' | 'in-progress' | 'done' | 'archived'> = {
+    'To Do': 'todo',
+    'In Progress': 'in-progress',
+    'Done': 'done',
+    'todo': 'todo',
+    'in-progress': 'in-progress',
+    'done': 'done',
+    'archived': 'archived'
 };
 
 async function manageTagsForProject(
@@ -104,7 +112,7 @@ async function manageTagsForProject(
 
 async function handleProjectSubmission(
   values: CreateProjectFormValues,
-  status: ProjectStatus
+  status: Project['status']
 ): Promise<ServerActionResponse<{ projectId: string }>> {
   const validatedFields = CreateProjectSchema.safeParse(values);
 
@@ -116,16 +124,16 @@ async function handleProjectSubmission(
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: "Authentication required." };
 
-  // Hydrate tag strings into ProjectTag objects
   const allGlobalTags = await getAllGlobalTags();
   const globalTagsMap = new Map(allGlobalTags.map(t => [t.id, t]));
-  const hydratedTags: ProjectTag[] = tags.map(tagId => {
+  
+  const hydratedTags: ProjectTag[] = tags.map(tagIdOrObject => {
+      const tagId = typeof tagIdOrObject === 'string' ? tagIdOrObject : (tagIdOrObject as ProjectTag).id;
       const normalizedId = normalizeTag(tagId);
       const existingTag = globalTagsMap.get(normalizedId);
       if (existingTag) {
           return { id: existingTag.id, display: existingTag.display, type: existingTag.type };
       }
-      // For new tags, the display name is the tagId itself. The type is 'custom'.
       return { id: tagId, display: tagId, type: 'custom' };
   });
 
@@ -145,15 +153,15 @@ async function handleProjectSubmission(
 
         const processedTags = await manageTagsForProject(transaction, hydratedTags, [], currentUser);
 
-        const newProjectData: Omit<Project, 'id' | 'category' | 'fallbackSuggestion'> = {
+        const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> = {
             name, tagline, description, tags: processedTags,
             contributionNeeds: contributionNeeds.split(',').map(item => item.trim()),
-            timeline: 'TBD', progress: 0, 
+            progress: 0, 
             team: finalTeam,
-            votes: 0, status, 
+            status, 
             governance: { contributorsShare: 75, communityShare: 10, sustainabilityShare: 15 },
-            startDate: new Date().toISOString(), endDate: '',
-            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(), 
+            updatedAt: new Date().toISOString(),
             ownerId: currentUser.id
         };
         transaction.set(newProjectRef, newProjectData);
@@ -222,10 +230,11 @@ export async function updateProject(values: EditProjectFormValues): Promise<Serv
     if (!currentUser) return { success: false, error: "Authentication required." };
 
     try {
-        // Hydrate tag strings into ProjectTag objects
         const allGlobalTags = await getAllGlobalTags();
         const globalTagsMap = new Map(allGlobalTags.map(t => [t.id, t]));
-        const hydratedTags: ProjectTag[] = tags.map(tagId => {
+        
+        const hydratedTags: ProjectTag[] = tags.map(tagIdOrObject => {
+            const tagId = typeof tagIdOrObject === 'string' ? tagIdOrObject : (tagIdOrObject as ProjectTag).id;
             const normalizedId = normalizeTag(tagId);
             const existingTag = globalTagsMap.get(normalizedId);
             if (existingTag) {
@@ -245,7 +254,7 @@ export async function updateProject(values: EditProjectFormValues): Promise<Serv
 
             const processedTags = await manageTagsForProject(transaction, hydratedTags, project.tags || [], currentUser);
             
-            const finalGovernance: Governance = {
+            const finalGovernance: Project['governance'] = {
                 contributorsShare: governance?.contributorsShare ?? 75,
                 communityShare: governance?.communityShare ?? 10,
                 sustainabilityShare: governance?.sustainabilityShare ?? 15,
@@ -270,7 +279,7 @@ export async function updateProject(values: EditProjectFormValues): Promise<Serv
         return { success: true, data: {} };
     } catch (error) {
         console.error("Failed to update project:", error);
-        if (error && typeof error === 'object' && 'code' in error) { // Check for Firebase-like error
+        if (error && typeof error === 'object' && 'code' in error) { 
             return { success: false, error: (error as { message: string }).message };
         }
         if (error instanceof Error) {
@@ -346,7 +355,7 @@ const CreateTaskSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  status: z.enum(['To Do', 'In Progress', 'Done']),
+  status: z.enum(['To Do', 'In Progress', 'Done', 'todo', 'in-progress', 'done']),
   assignedToId: z.string().optional(),
   estimatedHours: z.coerce.number().optional(),
 });
@@ -368,7 +377,7 @@ export async function addTask(values: z.infer<typeof CreateTaskSchema>): Promise
     const newTaskData: Omit<Task, 'id'> = {
         projectId,
         title,
-        status,
+        status: statusMap[status],
         description: description || '',
         assignedToId: assignedToId || '',
         estimatedHours: estimatedHours || 0,
@@ -410,7 +419,7 @@ export async function updateTask(values: z.infer<typeof UpdateTaskSchema>): Prom
         ...existingTask,
         ...taskUpdateData,
         title: taskUpdateData.title ?? existingTask.title,
-        status: taskUpdateData.status ?? existingTask.status,
+        status: taskUpdateData.status ? statusMap[taskUpdateData.status] : existingTask.status,
         updatedAt: new Date().toISOString(),
     };
     await updateTaskInDb(updatedTask);

@@ -54,9 +54,13 @@ export interface ProjectTag {
 // This represents a globally available tag that can be added to projects.
 export interface Tag {
     id: string;
+    normalized: string;
     display: string;
-    type: 'category' | 'relational'; 
+    type: 'category' | 'relational' | 'custom'; 
     usageCount: number;
+    createdAt: Timestamp | string; 
+    updatedAt: Timestamp | string; 
+    createdBy: UserId;
 }
 
 export interface ProjectMember {
@@ -108,13 +112,14 @@ export interface Task {
     description: string;
     status: 'todo' | 'in-progress' | 'done' | 'archived';
     createdBy: UserId;
-    assignee?: UserId;
+    assignedToId?: UserId;
+    estimatedHours?: number;
     dueDate?: Timestamp | string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
 }
 
-export interface HydratedTask extends Omit<Task, 'assignee'> {
+export interface HydratedTask extends Omit<Task, 'assignedToId'> {
     assignee?: User;
 }
 
@@ -158,7 +163,7 @@ export interface Module {
 export interface UserLearningProgress {
     userId: UserId;
     pathId: string;
-    completedModules: Record<string, boolean>;
+    completedModules: string[];
     lastAccessed: Timestamp | string;
 }
 
