@@ -22,10 +22,15 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Deploy to Firebase
-        env:
-          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
         run: |
-          echo "${GOOGLE_APPLICATION_CREDENTIALS}" > $HOME/service-account-key.json
-          export GOOGLE_APPLICATION_CREDENTIALS="$HOME/service-account-key.json"
+          # Write the secrets to files
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" > $HOME/firebase-service-account.json
+          echo "${{ secrets.GCP_SA_KEY }}" > $HOME/gcp-sa-key.json
+
+          # Export env vars pointing to the correct files
+          export FIREBASE_SERVICE_ACCOUNT_KEY="$HOME/firebase-service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$HOME/gcp-sa-key.json"
+
+          # Deploy
           firebase deploy --only hosting
+
