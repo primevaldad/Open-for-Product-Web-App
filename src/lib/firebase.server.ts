@@ -12,6 +12,19 @@ try {
       const parsedServiceAccount =
         typeof key === "string" ? JSON.parse(key) : key;
 
+      // --- Reintroduce newline fix for private_key ---
+      if (parsedServiceAccount.private_key) {
+        parsedServiceAccount.private_key = parsedServiceAccount.private_key.replace(/\\n/g, "\n");
+
+        // Optional: remove surrounding brackets if present
+        if (
+          parsedServiceAccount.private_key.startsWith("[") &&
+          parsedServiceAccount.private_key.endsWith("]")
+        ) {
+          parsedServiceAccount.private_key = parsedServiceAccount.private_key.slice(1, -1);
+        }
+      }
+
       adminApp = initializeApp({
         credential: cert(parsedServiceAccount),
       });
@@ -25,10 +38,7 @@ try {
     adminApp = getApp();
   }
 } catch (error) {
-  console.error(
-    "[firebase.server] Error initializing Firebase Admin:",
-    error
-  );
+  console.error("[firebase.server] Error initializing Firebase Admin:", error);
   // Allow build to continue even if Firebase fails
   adminApp = undefined;
 }
