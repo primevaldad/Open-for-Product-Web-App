@@ -9,6 +9,18 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      # 🔐 Firebase service account key for Admin SDK
+      FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+
+      # 🌐 Client-side Firebase configuration
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -27,7 +39,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      # Cache .next intelligently
+      # Cache Next.js build
       - name: Cache Next.js build
         uses: actions/cache@v3
         with:
