@@ -64,15 +64,24 @@ export default function UserSelector({ users = [], value, onChange }: UserSelect
               {value.map((member) => (
                 <Badge key={member.userId} variant="secondary" className="flex items-center gap-1">
                   {getDisplayName(member.userId)}
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Remove ${getDisplayName(member.userId)}`}
                     onClick={(e) => {
                       e.stopPropagation(); // Prevent opening the popover
                       handleRemove(member.userId);
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        handleRemove(member.userId);
+                      }
+                    }}
                     className="rounded-full hover:bg-muted-foreground/20 p-0.5"
                   >
                     <X size={12} />
-                  </button>
+                  </span>
                 </Badge>
               ))}
             </div>

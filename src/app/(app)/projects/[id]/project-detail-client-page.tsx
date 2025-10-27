@@ -30,7 +30,7 @@ import { toDate } from '@/lib/utils';
 // Action Prop Types
 type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
 type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
-type AddDiscussionCommentAction = (data: { projectId: string; userId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
+type AddDiscussionCommentAction = (data: { projectId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
 type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ServerActionResponse<Task>>;
 type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
 type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
@@ -68,7 +68,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
 
     // --- State Management ---
     const [project, setProject] = useState(initialProject);
-    const [discussions, setDiscussions] = useState(initialDiscussions);
+    const [discussions, setDiscussions] = useState(initialDiscussions.map(d => ({ ...d, createdAt: toDate(d.createdAt), updatedAt: toDate(d.updatedAt) })));
     const [tasks, setTasks] = useState(initialTasks.map(t => ({...t, createdAt: toDate(t.createdAt), updatedAt: toDate(t.updatedAt)})));
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -104,18 +104,33 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
     };
 
     const handleAddComment = async (content: string) => {
-        if (!currentUser) return toast.error("You must be logged in to comment.");
+        if (!currentUser) {
+            toast.error("You must be logged in to comment.");
+            return;
+        }
 
-        const result = await addDiscussionComment({ projectId: project.id, userId: currentUser.id, content });
-        if (result.success) {
+        const tempId = `temp-${Date.now()}`;
+        const optimisticComment = {
+            id: tempId,
+            projectId: project.id,
+            userId: currentUser.id,
+            content,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            user: currentUser,
+        };
+
+        setDiscussions(prev => [optimisticComment, ...prev]);
+
+        const result = await addDiscussionComment({ projectId: project.id, content });
+
+        if (result.success && result.data) {
+            const finalComment = { ...result.data, user: currentUser, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt) };
+            setDiscussions(prev => prev.map(d => d.id === tempId ? finalComment : d));
             toast.success("Comment posted!");
-            if (result.data) {
-                // Hydrate comment with current user for immediate UI update
-                const newComment = { ...result.data, user: currentUser };
-                setDiscussions(prev => [newComment, ...prev]);
-            }
         } else {
             toast.error(`Error posting comment: ${result.error}`);
+            setDiscussions(prev => prev.filter(d => d.id !== tempId));
         }
     };
 
@@ -135,7 +150,6 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         const isUpdating = 'id' in taskData;
         const action = isUpdating ? updateTask : addTask;
         
-        // The action expects a specific payload, so we construct it carefully
         const payload = isUpdating ? taskData as Task : { ...taskData, projectId: project.id };
 
         // @ts-ignore - The dynamic action type is correct but TS struggles here.
@@ -221,7 +235,22 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                         />
                     </TabPanel>
                     <TabPanel>
-                        {/* Learning Paths Content Here */}
+                        <div className="p-4">
+                            <h2 className="text-xl font-bold mb-4">Recommended Learning Paths</h2>
+                            {learningPaths.length > 0 ? (
+                                <ul className="space-y-4">
+                                    {learningPaths.map(path => (
+                                        <li key={path.id} className="bg-gray-100 p-4 rounded-lg">
+                                            <h3 className="font-bold text-lg">{path.name}</h3>
+                                            <p className="text-gray-600">{path.description}</p>
+                                            <a href={`/learning-paths/${path.id}`} className="text-blue-500 hover:underline mt-2 inline-block">View Path</a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>No recommended learning paths for this project yet.</p>
+                            )}
+                        </div>
                     </TabPanel>
                     <TabPanel>
                         <ProjectGovernance governance={project.governance} />

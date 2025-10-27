@@ -1,11 +1,11 @@
 
-import type { Project, Tag as GlobalTag, ProjectTag } from "@/lib/types";
+import type { Project, Tag as GlobalTag, ProjectTag, User } from "@/lib/types";
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getAuthenticatedUser } from '@/lib/session.server';
-import { findProjectById, getAllTags } from '@/lib/data.server';
+import { findProjectById, getAllTags, getAllUsers } from '@/lib/data.server';
 import EditProjectForm from './edit-project-form';
 
 // --- Serialization Helpers ---
@@ -45,14 +45,21 @@ const serializeGlobalTag = (tag: GlobalTag): GlobalTag => ({
   updatedAt: toISOString(tag.updatedAt),
 });
 
+const serializeUser = (user: User): User => ({
+    ...user,
+    createdAt: toISOString(user.createdAt),
+    updatedAt: toISOString(user.updatedAt),
+  });
+
 async function getEditPageData(projectId: string) {
-    const [currentUser, project, allTagsData] = await Promise.all([
+    const [currentUser, project, allTagsData, allUsersData] = await Promise.all([
         getAuthenticatedUser(),
         findProjectById(projectId),
-        getAllTags()
+        getAllTags(),
+        getAllUsers(),
     ]);
 
-    if (!project) return { currentUser: null, project: null, allTags: [] };
+    if (!project) return { currentUser: null, project: null, allTags: [], users: [] };
 
     const tagsMap = new Map<string, GlobalTag>();
     allTagsData.forEach(tag => tagsMap.set(tag.id, tag));
@@ -74,14 +81,16 @@ async function getEditPageData(projectId: string) {
     }
 
     const serializedTags = allTagsData.map(serializeGlobalTag);
-    return { currentUser, project, allTags: serializedTags };
+    const serializedUsers = allUsersData.map(serializeUser);
+
+    return { currentUser, project, allTags: serializedTags, users: serializedUsers };
 }
 
 // --- Server Component: EditProjectPage ---
 
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const { currentUser, project, allTags } = await getEditPageData(id);
+  const { currentUser, project, allTags, users } = await getEditPageData(id);
 
   if (!project) {
     notFound();
@@ -117,7 +126,8 @@ export default async function EditProjectPage({ params }: { params: { id: string
       <main className="flex-1 overflow-auto p-4 md:p-6">
         <EditProjectForm 
             project={serializableProject} 
-            allTags={allTags} 
+            allTags={allTags}
+            users={users} 
         />
       </main>
     </div>

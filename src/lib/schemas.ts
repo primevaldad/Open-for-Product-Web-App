@@ -6,9 +6,12 @@ const MAX_TAG_LENGTH = 35;
 // --- Base Schemas ---
 
 export const ProjectTagSchema = z.object({
-  id: z.string().min(1, "Tag ID required").max(35),
-  display: z.string().min(1, "Display text required").max(35),
-  type: z.enum(['category', 'relational', 'custom']),
+  id: z.string().min(1, "Tag ID required").max(MAX_TAG_LENGTH),
+  display: z.string().min(1, "Display text required").max(MAX_TAG_LENGTH),
+  type: z.enum(['category', 'relational', 'custom'], {
+    required_error: "Tag type is required.",
+    invalid_type_error: "Invalid tag type. Must be one of 'category', 'relational', or 'custom'.",
+  }),
 });
 
 
