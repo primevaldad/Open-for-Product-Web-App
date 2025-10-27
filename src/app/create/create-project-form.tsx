@@ -14,13 +14,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import UserSelector from "@/components/users/user-selector";
 import TagSelector from "@/components/tags/tag-selector";
 import { CreateProjectSchema, CreateProjectFormValues } from "@/lib/schemas";
 import type { User, Tag } from "@/lib/types";
 import { toast } from 'sonner';
 import { saveProjectDraft, publishProject } from "@/app/actions/projects";
-import MarkdownEditor from "@/components/ui/markdown-editor";
 
 interface CreateProjectFormProps {
   users: User[];
@@ -90,11 +90,7 @@ export function CreateProjectForm(props: CreateProjectFormProps) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <MarkdownEditor 
-                    value={field.value} 
-                    onChange={field.onChange} 
-                    placeholder="Describe your project in detail..."
-                />
+                <Textarea placeholder="Describe your project in detail..." {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
