@@ -129,10 +129,20 @@ export default function LoginPageClient() {
         </Form>
 
         <div className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-semibold text-primary hover:underline">
-            Sign up
-          </Link>
+          <p>
+            Don&apos;t have an account?{' '}
+            <Link href="/signup" className="font-semibold text-primary hover:underline">
+              Sign up
+            </Link>
+          </p>
+          <p className="mt-2">
+            Or,{' '}
+            <Link href="/home" className="font-semibold text-primary hover:underline">
+              take a peek
+            </Link>
+            {' '}
+            at what people are building.
+            </p>
         </div>
 
       </div>

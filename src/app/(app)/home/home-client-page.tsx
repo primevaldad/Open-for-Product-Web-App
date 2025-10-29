@@ -19,7 +19,7 @@ import ProjectCard from "@/components/project-card";
 
 interface HomeClientPageProps {
     allPublishedProjects: HydratedProject[];
-    currentUser: User;
+    currentUser: User | null;
     allTags: GlobalTag[];
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
@@ -32,7 +32,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
   const [sortBy, setSortBy] = useState('latest');
 
   const filteredProjects = allPublishedProjects.filter(p => {
-    const myProjectsMatch = !showMyProjects || p.team.some(member => member.userId === currentUser.id);
+    const myProjectsMatch = !showMyProjects || (currentUser && p.team.some(member => member.userId === currentUser.id));
     
     if (selectedTags.length === 0) {
         return myProjectsMatch;
@@ -60,6 +60,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
 
   return (
     <>
+      {currentUser && (
         <div className="mb-8">
             <SuggestSteps
                 currentUser={currentUser}
@@ -68,6 +69,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                 allLearningPaths={allLearningPaths}
             />
         </div>
+      )}
 
       <div className="mb-6 flex flex-col gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
         <h2 className="text-xl font-bold tracking-tight">Filter Projects</h2>
@@ -85,10 +87,12 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
               <Switch id="match-all" checked={matchAllTags} onCheckedChange={setMatchAllTags} />
               <Label htmlFor="match-all">Match All Tags</Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="my-projects" checked={showMyProjects} onCheckedChange={(checked) => setShowMyProjects(!!checked)} />
-              <Label htmlFor="my-projects">My Projects Only</Label>
-            </div>
+            {currentUser && (
+              <div className="flex items-center space-x-2">
+                <Checkbox id="my-projects" checked={showMyProjects} onCheckedChange={(checked) => setShowMyProjects(!!checked)} />
+                <Label htmlFor="my-projects">My Projects Only</Label>
+              </div>
+            )}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Sort by" />

@@ -2,9 +2,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
+import { LockKeyhole } from 'lucide-react';
 
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
@@ -50,6 +53,19 @@ export interface ProjectDetailClientPageProps {
     deleteTask: DeleteTaskAction;
 }
 
+// A component to block content for logged-out users
+const LoginWall = ({ message, currentPath }: { message: string, currentPath: string }) => (
+    <div className="relative">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-lg bg-background/80 p-8 text-center">
+            <LockKeyhole className="h-12 w-12 text-muted-foreground" />
+            <p className="text-lg font-semibold text-foreground">{message}</p>
+            <Button asChild>
+                <Link href={`/login?redirect=${encodeURIComponent(currentPath)}`}>Login to View</Link>
+            </Button>
+        </div>
+    </div>
+);
+
 export default function ProjectDetailClientPage(props: ProjectDetailClientPageProps) {
     const {
         project: initialProject,
@@ -65,6 +81,8 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         updateTask,
         deleteTask,
     } = props;
+
+    const currentPath = usePathname();
 
     // --- State Management ---
     const [project, setProject] = useState(initialProject);
@@ -152,7 +170,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         
         const payload = isUpdating ? taskData as Task : { ...taskData, projectId: project.id };
 
-        // @ts-ignore - The dynamic action type is correct but TS struggles here.
+        // @ts-ignore
         const result = await action(payload);
 
         if (result.success && result.data) {
@@ -203,36 +221,63 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                     </TabList>
 
                     <TabPanel>
-                        <div className="py-4">
-                            <Markdown content={project.description} />
+                        <div className="py-4 relative">
+                            {currentUser ? (
+                                <Markdown content={project.description} />
+                            ) : (
+                                <div className="blur-sm select-none">
+                                    <Markdown content={project.description} />
+                                    <LoginWall message="Login to read the full project description" currentPath={currentPath} />
+                                </div>
+                            )}
                         </div>
                     </TabPanel>
                     <TabPanel>
-                        <div className="flex justify-end my-4">
-                            {isMember && <Button onClick={() => handleOpenTaskDialog()}>Add Task</Button>}
-                        </div>
-                        <TaskBoard 
-                            tasks={tasks} 
-                            onEditTask={handleOpenTaskDialog}
-                            onDeleteTask={handleDeleteTask}
-                        />
+                        {currentUser ? (
+                            <>
+                                <div className="flex justify-end my-4">
+                                    {isMember && <Button onClick={() => handleOpenTaskDialog()}>Add Task</Button>}
+                                </div>
+                                <TaskBoard 
+                                    tasks={tasks} 
+                                    onEditTask={handleOpenTaskDialog}
+                                    onDeleteTask={handleDeleteTask}
+                                />
+                            </>
+                        ) : (
+                            <div className="py-4 relative h-60">
+                                <LoginWall message="Login to view project tasks" currentPath={currentPath} />
+                            </div>
+                        )}
                     </TabPanel>
                     <TabPanel>
-                        <DiscussionForum 
-                            discussions={discussions} 
-                            onAddComment={handleAddComment} 
-                            isMember={isMember}
-                            currentUser={currentUser}
-                        />
+                         {currentUser ? (
+                            <DiscussionForum 
+                                discussions={discussions} 
+                                onAddComment={handleAddComment} 
+                                isMember={isMember}
+                                currentUser={currentUser}
+                            />
+                        ) : (
+                            <div className="py-4 relative h-60">
+                                <LoginWall message="Login to join the discussion" currentPath={currentPath} />
+                            </div>
+                        )}
                     </TabPanel>
                     <TabPanel>
-                        <ProjectTeam 
-                            team={project.team} 
-                            users={users}
-                            currentUser={currentUser}
-                            addTeamMember={handleAddTeamMember}
-                            isLead={project.team.some(m => m.userId === currentUser?.id && m.role === 'lead')}
-                        />
+                         {currentUser ? (
+                            <ProjectTeam 
+                                team={project.team} 
+                                users={users}
+                                currentUser={currentUser}
+                                addTeamMember={handleAddTeamMember}
+                                isLead={project.team.some(m => m.userId === currentUser?.id && m.role === 'lead')}
+                            />
+                        ) : (
+                            <div className="py-4 relative h-60">
+                                <LoginWall message="Login to see the project team" currentPath={currentPath} />
+                            </div>
+                        )}
                     </TabPanel>
                     <TabPanel>
                         <div className="p-4">

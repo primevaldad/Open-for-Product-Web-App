@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BookOpen, CheckCircle, Sparkles } from 'lucide-react';
+import { BookOpen, CheckCircle, Sparkles, User as UserIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,13 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { Project, User, ProjectTag, ProjectPathLink, LearningPath } from '@/lib/types';
+import type { HydratedProject, User, ProjectTag, ProjectPathLink, LearningPath } from '@/lib/types';
 import { cn, getInitials } from '@/lib/utils';
 import { findUserById } from '@/lib/data.client';
 
 interface ProjectCardProps {
-  project: Project;
-  currentUser?: User;
+  project: HydratedProject;
+  currentUser: User | null;
   className?: string;
   allProjectPathLinks: ProjectPathLink[];
   allLearningPaths: LearningPath[];
@@ -39,7 +39,6 @@ export default function ProjectCard({
 
   const displayTags = project.tags || [];
 
-  // Find recommended paths for this specific project
   const recommendedPathLinks = allProjectPathLinks.filter(link => link.projectId === project.id);
   const recommendedPaths = recommendedPathLinks
       .map(link => allLearningPaths.find(p => p.id === link.learningPathId))
@@ -59,10 +58,10 @@ export default function ProjectCard({
       setTeamMembers(members.filter((m): m is User & { role: string } => !!m));
     };
 
-    if (project.team) {
+    if (currentUser && project.team) {
         fetchTeamMembers();
     }
-  }, [project.team]);
+  }, [project.team, currentUser]);
   
   const sortedTeamMembers = [...teamMembers].sort((a, b) => {
     const roleOrder = { lead: 0, contributor: 1, participant: 2 };
@@ -156,52 +155,72 @@ export default function ProjectCard({
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4 mt-auto">
         <div className="flex items-end">
-          <div className="flex items-end -space-x-2">
-            {visibleMembers.map((member) => (
-              <TooltipProvider key={member.id}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link href={`/profile/${member.id}`}>
-                      <Avatar className={cn(
-                          "border-2 border-background h-8 w-8",
-                          member.role === 'lead' && "border-yellow-500",
-                          {
-                              'h-10 w-10 opacity-100': member.role === 'lead',
-                              'opacity-70': member.role === 'contributor',
-                              'opacity-50': member.role === 'participant',
-                          }
-                      )}>
-                      <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person portrait" />
-                      <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                    </Avatar>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      {member.name} - {member.role}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ))}
-          </div>
-
-          {hiddenMembersCount > 0 && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                    +{hiddenMembersCount}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {sortedTeamMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.name).join(', ')}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+            {currentUser ? (
+                <>
+                    <div className="flex items-end -space-x-2">
+                        {visibleMembers.map((member) => (
+                        <TooltipProvider key={member.id}>
+                            <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link href={`/profile/${member.id}`}>
+                                <Avatar className={cn(
+                                    "border-2 border-background h-8 w-8",
+                                    member.role === 'lead' && "border-yellow-500",
+                                    {
+                                        'h-10 w-10 opacity-100': member.role === 'lead',
+                                        'opacity-70': member.role === 'contributor',
+                                        'opacity-50': member.role === 'participant',
+                                    }
+                                )}>
+                                <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person portrait" />
+                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                </Avatar>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>
+                                {member.name} - {member.role}
+                                </p>
+                            </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        ))}
+                    </div>
+                    {hiddenMembersCount > 0 && (
+                        <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                            <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                                +{hiddenMembersCount}
+                            </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                            <p>
+                                {sortedTeamMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.name).join(', ')}
+                            </p>
+                            </TooltipContent>
+                        </Tooltip>
+                        </TooltipProvider>
+                    )}
+                </>
+            ) : (
+                <>
+                    <div className="flex items-end -space-x-2">
+                        {project.team.slice(0, MAX_VISIBLE_MEMBERS).map((member, index) => (
+                            <Avatar key={index} className="border-2 border-background h-8 w-8">
+                                <AvatarFallback>
+                                    <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                </AvatarFallback>
+                            </Avatar>
+                        ))}
+                    </div>
+                    {project.team.length > MAX_VISIBLE_MEMBERS && (
+                        <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                            +{project.team.length - MAX_VISIBLE_MEMBERS}
+                        </div>
+                    )}
+                </>
+            )}
         </div>
       </CardFooter>
     </Card>

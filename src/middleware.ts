@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 const SESSION_COOKIE_NAME = '__session';
 
 const AUTH_ROUTES = ['/login', '/signup'];
-const PROTECTED_ROUTES = ['/home', '/create', '/drafts', '/learning', '/activity', '/profile', '/settings', '/onboarding'];
+const PROTECTED_ROUTES = ['/create', '/drafts', '/learning', '/activity', '/profile', '/settings', '/onboarding'];
 
 export async function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
