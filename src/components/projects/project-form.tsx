@@ -136,9 +136,10 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
           name="photoUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Project Photo</FormLabel>
+              <FormLabel htmlFor="photoUrl">Project Photo</FormLabel>
               <FormControl>
                 <ImageUpload
+                  id="photoUrl"
                   folder={`project-images/${initialData?.id || 'new-project'}`}
                   initialImageUrl={field.value}
                   onUploadComplete={(url) => {
@@ -169,9 +170,9 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
           )}
         />
 
-        <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel>Tags</FormLabel><FormControl><TagSelector id="tags" availableTags={tags} value={field.value} onChange={field.onChange} /></FormControl><FormDescription>Add tags to help people discover your project.</FormDescription><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel htmlFor="tags">Tags</FormLabel><FormControl><TagSelector id="tags" availableTags={tags} value={field.value} onChange={field.onChange} /></FormControl><FormDescription>Add tags to help people discover your project.</FormDescription><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="contributionNeeds" render={({ field }) => (<FormItem><FormLabel>Contribution Needs</FormLabel><FormControl><Input placeholder="e.g., UI/UX, Backend" {...field} /></FormControl><FormDescription>What kind of help are you looking for? (comma-separated)</FormDescription><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="team" render={({ field }) => (<FormItem><FormLabel>Team Members</FormLabel><FormControl><UserSelector id="team" users={users} value={field.value} onChange={field.onChange}/></FormControl><FormDescription>{isEditMode ? 'Manage the project team.' : 'You will be added as project lead.'}</FormDescription><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="team" render={({ field }) => (<FormItem><FormLabel htmlFor="team">Team Members</FormLabel><FormControl><UserSelector id="team" users={users} value={field.value} onChange={field.onChange}/></FormControl><FormDescription>{isEditMode ? 'Manage the project team.' : 'You will be added as project lead.'}</FormDescription><FormMessage /></FormItem>)} />
 
         <div className="flex justify-end space-x-4">
           <Button type="button" variant="outline" onClick={() => form.handleSubmit((values) => onSubmit(values, 'save'))()} disabled={isPending}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditMode ? 'Save Changes' : 'Save Draft')}</Button>

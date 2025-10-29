@@ -10,9 +10,10 @@ interface ImageUploadProps {
   onUploadComplete: (url: string) => void;
   initialImageUrl?: string;
   folder: string;
+  id?: string;
 }
 
-export default function ImageUpload({ onUploadComplete, initialImageUrl, folder }: ImageUploadProps) {
+export default function ImageUpload({ onUploadComplete, initialImageUrl, folder, id }: ImageUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialImageUrl || null);
@@ -53,7 +54,7 @@ export default function ImageUpload({ onUploadComplete, initialImageUrl, folder 
           <img src={previewUrl} alt="Preview" className="max-w-xs max-h-48 rounded-md" />
         </div>
       )}
-      <Input type="file" onChange={handleFileChange} accept="image/*" />
+      <Input type="file" onChange={handleFileChange} accept="image/*" id={id} />
       <Button onClick={handleUpload} disabled={!file || isUploading}>
         {isUploading ? 'Uploading...' : 'Upload Image'}
       </Button>
