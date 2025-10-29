@@ -14,7 +14,6 @@ export const ProjectTagSchema = z.object({
   }),
 });
 
-
 export const ProjectMemberSchema = z.object({
   userId: z.string(),
   role: z.enum(['lead', 'contributor', 'participant']),
@@ -34,37 +33,10 @@ export const ProjectBaseSchema = z.object({
 
 // --- Refinement Logic ---
 
-const tagValidationRefinement = (data: { tags: z.infer<typeof ProjectTagSchema>[] }) => {
-    return data.tags.filter(t => t.type === 'category').length <= 3;
-};
-
-
-// --- Final Schemas ---
-
-// Schema for creating a new project, used in the create form and action
-export const CreateProjectSchema = ProjectBaseSchema.refine(tagValidationRefinement, {
-    message: "A project can have a maximum of 3 category tags.",
-    path: ["tags"],
-});
-
-// Schema for editing an existing project. This is defined more explicitly
-// to avoid type inference issues with omit() and extend().
-export const EditProjectSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Project name is required.'),
-  tagline: z.string().min(1, 'Tagline is required.'),
-  description: z.string().min(1, 'Description is required.'),
-  photoUrl: z.string().url("Please enter a valid URL.").or(z.literal('')).optional(),
-  contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
-  tags: z.array(ProjectTagSchema),
-  governance: z.object({
-    contributorsShare: z.number(),
-    communityShare: z.number(),
-    sustainabilityShare: z.number(),
-  }).optional(),
-}).superRefine((data, ctx) => {
+// A single, shared refinement function to be used by both schemas.
+const sharedRefinement = (data: any, ctx: z.ZodContext) => {
   // 1. Validate category tag count
-  if (data.tags.filter(t => t.type === 'category').length > 3) {
+  if (data.tags && data.tags.filter((t: any) => t.type === 'category').length > 3) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "A project can have a maximum of 3 category tags.",
@@ -72,7 +44,7 @@ export const EditProjectSchema = z.object({
     });
   }
 
-  // 2. Validate governance total
+  // 2. Validate governance total (only if governance exists on the schema)
   if (data.governance) {
     const { contributorsShare, communityShare, sustainabilityShare } = data.governance;
     if (contributorsShare + communityShare + sustainabilityShare !== 100) {
@@ -83,7 +55,23 @@ export const EditProjectSchema = z.object({
       });
     }
   }
-});
+};
+
+
+// --- Final Schemas ---
+
+// Schema for creating a new project, using the base and refinement.
+export const CreateProjectSchema = ProjectBaseSchema.superRefine(sharedRefinement);
+
+// Schema for editing an existing project, extending the base and using the same refinement.
+export const EditProjectSchema = ProjectBaseSchema.extend({
+  id: z.string(),
+  governance: z.object({
+    contributorsShare: z.number(),
+    communityShare: z.number(),
+    sustainabilityShare: z.number(),
+  }).optional(),
+}).superRefine(sharedRefinement);
 
 
 // --- Inferred Types ---

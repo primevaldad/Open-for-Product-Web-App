@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import UserSelector from '@/components/users/user-selector';
 import TagSelector from '@/components/tags/tag-selector';
+import ImageUpload from '@/components/ui/image-upload';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
 import type { User, Tag, Project } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
@@ -64,6 +65,7 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
       name: '',
       tagline: '',
       description: '',
+      photoUrl: '',
       contributionNeeds: '',
       tags: [],
       team: [],
@@ -129,9 +131,28 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="tagline" render={({ field }) => (<FormItem><FormLabel>Tagline</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
         
-        {isEditMode && (
-            <FormField control={form.control} name="photoUrl" render={({ field }) => (<FormItem><FormLabel>Project Photo URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormDescription>A URL to an image for your project.</FormDescription><FormMessage /></FormItem>)} />
-        )}
+        <FormField
+          control={form.control}
+          name="photoUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Project Photo</FormLabel>
+              <FormControl>
+                <ImageUpload
+                  folder={`project-images/${initialData?.id || 'new-project'}`}
+                  initialImageUrl={field.value}
+                  onUploadComplete={(url) => {
+                    form.setValue('photoUrl', url, { shouldValidate: true, shouldDirty: true });
+                  }}
+                />
+              </FormControl>
+              <FormDescription>
+                Upload an image for your project. This will be shown on the project page.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
