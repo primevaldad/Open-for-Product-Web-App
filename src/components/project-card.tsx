@@ -41,7 +41,7 @@ export default function ProjectCard({
 
   const recommendedPathLinks = allProjectPathLinks.filter(link => link.projectId === project.id);
   const recommendedPaths = recommendedPathLinks
-      .map(link => allLearningPaths.find(p => p.id === link.learningPathId))
+      .map(link => allLearningPaths.find(p => p.pathId === link.learningPathId))
       .filter((p): p is LearningPath => !!p);
 
   useEffect(() => {

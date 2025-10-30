@@ -4,7 +4,7 @@
 import { suggestNextSteps } from "@/ai/flows/suggest-next-steps";
 import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { LearningPath, Project, ProjectPathLink, User } from "@/lib/types";
+import type { LearningPath, HydratedProject, ProjectPathLink, User } from "@/lib/types";
 import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 
@@ -15,7 +15,7 @@ type Suggestion = {
 
 interface SuggestStepsProps {
     currentUser: User;
-    allProjects: Project[];
+    allProjects: HydratedProject[];
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
 }
@@ -23,7 +23,7 @@ interface SuggestStepsProps {
 export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, allLearningPaths }: SuggestStepsProps) {
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
-  const [suggestedProject, setSuggestedProject] = useState<Project | null>(null);
+  const [suggestedProject, setSuggestedProject] = useState<HydratedProject | null>(null);
 
   // Memoize the project finding logic so it doesn't re-run on every render
   const bestMatchProject = useMemo(() => {

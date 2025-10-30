@@ -82,7 +82,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
             <TagSelector 
               value={selectedTags}
               onChange={setSelectedTags}
-              tags={allTags}
+              availableTags={allTags}
             />
           </div>
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6 pt-2 md:pt-8">
