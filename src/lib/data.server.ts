@@ -535,13 +535,33 @@ export async function getAllLearningPaths(): Promise<LearningPath[]> {
 
 // --- AI Data Access ---
 
+async function getFallbackSuggestedProjects(
+    currentUser: User,
+    allProjects: HydratedProject[]
+  ): Promise<HydratedProject[]> {
+    const userProjectIds = new Set(
+      allProjects.filter(p => p.team.some(member => member.userId === currentUser.id)).map(p => p.id)
+    );
+  
+    const candidateProjects = allProjects.filter(p => !userProjectIds.has(p.id));
+  
+    // Sort by most recent
+    const sortedProjects = candidateProjects.sort((a, b) => {
+        const dateA = new Date(a.createdAt as string).getTime();
+        const dateB = new Date(b.createdAt as string).getTime();
+        return dateB - dateA; 
+    });
+
+    return sortedProjects.slice(0, 3);
+  }
+
 export async function getAiSuggestedProjects(
     currentUser: User,
     allProjects: HydratedProject[]
   ): Promise<HydratedProject[] | null> {
-    if (process.env.AI_SUGGESTIONS_ENABLED !== 'true') {
-        console.log("AI suggestions are disabled via environment variable. Skipping.");
-        return null;
+    if (process.env.AI_SUGGESTIONS_ENABLED !== 'true' || !currentUser.aiFeaturesEnabled) {
+        console.log("AI suggestions are disabled. Returning fallback suggestions.");
+        return getFallbackSuggestedProjects(currentUser, allProjects);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;

@@ -22,7 +22,7 @@ import UserSelector from '@/components/users/user-selector';
 import TagSelector from '@/components/tags/tag-selector';
 import ImageUpload from '@/components/ui/image-upload';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
-import type { User, Tag, Project } from "@/lib/types";
+import type { User, Tag, Project, ProjectTag } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { saveProjectDraft, publishProject, updateProject } from "@/app/actions/projects";
 
@@ -125,6 +125,11 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
     });
   }
 
+  function handleTagsChange(newTags: ProjectTag[]) {
+    form.setValue('tags', newTags, { shouldValidate: true, shouldDirty: true });
+    form.trigger('tags');
+  }
+
   return (
     <Form {...form}>
       <form className="space-y-8">
@@ -170,7 +175,7 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
           )}
         />
 
-        <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel htmlFor="tags">Tags</FormLabel><FormControl><TagSelector id="tags" availableTags={tags} value={field.value} onChange={field.onChange} /></FormControl><FormDescription>Add tags to help people discover your project.</FormDescription><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel htmlFor="tags">Tags</FormLabel><FormControl><TagSelector id="tags" availableTags={tags} value={field.value as ProjectTag[]} onChange={handleTagsChange} /></FormControl><FormDescription>Add tags to help people discover your project.</FormDescription><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="contributionNeeds" render={({ field }) => (<FormItem><FormLabel>Contribution Needs</FormLabel><FormControl><Input placeholder="e.g., UI/UX, Backend" {...field} /></FormControl><FormDescription>What kind of help are you looking for? (comma-separated)</FormDescription><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="team" render={({ field }) => (<FormItem><FormLabel htmlFor="team">Team Members</FormLabel><FormControl><UserSelector id="team" users={users} value={field.value} onChange={field.onChange}/></FormControl><FormDescription>{isEditMode ? 'Manage the project team.' : 'You will be added as project lead.'}</FormDescription><FormMessage /></FormItem>)} />
 

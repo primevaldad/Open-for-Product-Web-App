@@ -88,8 +88,8 @@ async function getEditPageData(projectId: string) {
 
 // --- Server Component: EditProjectPage ---
 
-export default async function EditProjectPage({ params }: { params: { id: string } }) {
-  const { currentUser, project, allTags, users } = await getEditPageData(params.id);
+export default async function EditProjectPage({ params: { id } }: { params: { id: string } }) {
+  const { currentUser, project, allTags, users } = await getEditPageData(id);
 
   if (!project) {
     notFound();

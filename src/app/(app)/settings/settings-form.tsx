@@ -29,6 +29,7 @@ import { InterestSelector } from '@/components/users/interest-selector';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/lib/types';
 import type { updateUserSettings } from '@/app/actions/settings';
+import { Switch } from '@/components/ui/switch';
 
 const SettingsSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -38,6 +39,7 @@ const SettingsSchema = z.object({
   company: z.string().optional(),
   location: z.string().optional(),
   website: z.string().url('Please enter a valid URL.').optional(),
+  aiFeaturesEnabled: z.boolean().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof SettingsSchema>;
@@ -61,6 +63,7 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
       company: currentUser.company || '',
       location: currentUser.location || '',
       website: currentUser.website || '',
+      aiFeaturesEnabled: currentUser.aiFeaturesEnabled || false,
     },
   });
 
@@ -208,6 +211,38 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
                     <Input placeholder="https://example.com" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Features</CardTitle>
+            <CardDescription>
+              Manage settings for AI-powered features.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="aiFeaturesEnabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Enable AI Features</FormLabel>
+                    <FormDescription>
+                      Allow the use of AI to enhance your experience, such as project suggestions.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={true} // For now, this is disabled
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />

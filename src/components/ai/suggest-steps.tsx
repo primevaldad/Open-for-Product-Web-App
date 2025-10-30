@@ -6,7 +6,9 @@ import ProjectCard from "@/components/project-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LearningPath, HydratedProject, ProjectPathLink, User } from "@/lib/types";
 import { Loader2, Sparkles } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 type Suggestion = {
   suggestedNextSteps?: string[];
@@ -15,49 +17,32 @@ type Suggestion = {
 
 interface SuggestStepsProps {
     currentUser: User;
-    allProjects: HydratedProject[];
+    suggestedProjects: HydratedProject[] | null;
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
+    aiEnabled: boolean;
 }
 
-export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, allLearningPaths }: SuggestStepsProps) {
+export function SuggestSteps({ currentUser, suggestedProjects, allProjectPathLinks, allLearningPaths, aiEnabled }: SuggestStepsProps) {
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [suggestedProject, setSuggestedProject] = useState<HydratedProject | null>(null);
 
-  // Memoize the project finding logic so it doesn't re-run on every render
-  const bestMatchProject = useMemo(() => {
-    // Filter out projects the user has already joined
-    const availableProjects = allProjects.filter(p => !p.team.some(member => member.userId === currentUser.id));
-
-    if (availableProjects.length === 0) {
-        return null; // No projects available to suggest
-    }
-    
-    // Try to find a project that matches the user's interests
-    if (currentUser.interests && currentUser.interests.length > 0) {
-      const matchingProjects = availableProjects.filter(p => 
-        p.contributionNeeds.some(need => currentUser.interests?.includes(need))
-      );
-      if (matchingProjects.length > 0) {
-        // For now, just pick the first match. Could be improved with better ranking.
-        return matchingProjects[0];
-      }
-    }
-
-    // Fallback: If no interest match, suggest the first available project
-    return availableProjects[0];
-  }, [allProjects, currentUser]);
-
   useEffect(() => {
     async function getSuggestions() {
-      if (!bestMatchProject) {
+      if (!suggestedProjects || suggestedProjects.length === 0) {
         setSuggestedProject(null);
         setLoading(false);
         return;
       }
 
+      const bestMatchProject = suggestedProjects[0];
       setSuggestedProject(bestMatchProject);
+
+      if (!aiEnabled) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -70,9 +55,7 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
         setSuggestion(res);
       } catch (e) {
         console.error("AI suggestion failed:", e);
-        // When AI fails, gracefully fall back to a predefined suggestion
         if (e instanceof Error && e.message === 'AI_SERVICE_DISABLED') {
-            // Log the specific error for developers, but show the same fallback to the user
             console.error("AI Service is disabled. Falling back to default suggestion.");
         }
 
@@ -82,7 +65,6 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
                 matchingOpportunities: [bestMatchProject.tagline],
             });
         } else {
-            // A graceful fallback when the AI fails
             setSuggestion({
                 suggestedNextSteps: [`Check out "${bestMatchProject.name}"! It seems like a great fit for your skills and interests.`],
                 matchingOpportunities: [bestMatchProject.tagline],
@@ -93,7 +75,7 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
       }
     }
     getSuggestions();
-  }, [bestMatchProject, currentUser]);
+  }, [suggestedProjects, currentUser, aiEnabled]);
 
   const projectWithSuggestion = suggestion && suggestedProject
     ? { ...suggestedProject, tagline: suggestion.matchingOpportunities?.[0] || suggestedProject.tagline }
@@ -105,8 +87,8 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
     <Card className="bg-gradient-to-br from-primary/20 to-background">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
-          <Sparkles className="h-6 w-6 text-primary" />
-          Suggested for you
+          {aiEnabled ? <Sparkles className="h-6 w-6 text-primary" /> : null}
+          {aiEnabled ? "AI-Powered Suggestions" : "Suggested for you"}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -115,7 +97,15 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         )}
-        {!loading && projectWithSuggestion && (
+        {!loading && !aiEnabled && (
+            <div className="text-center text-muted-foreground p-4">
+                <p>AI features are currently disabled. Enable them in your settings to get personalized project recommendations.</p>
+                <Button asChild className="mt-4">
+                  <Link href="/settings">Go to Settings</Link>
+                </Button>
+            </div>
+        )}
+        {!loading && aiEnabled && projectWithSuggestion && (
             <ProjectCard
                 project={projectWithSuggestion}
                 currentUser={currentUser}
@@ -124,7 +114,7 @@ export function SuggestSteps({ currentUser, allProjects, allProjectPathLinks, al
                 suggestionText={suggestionText}
             />
         )}
-        {!loading && !projectWithSuggestion && (
+        {!loading && aiEnabled && !projectWithSuggestion && (
             <div className="text-center text-muted-foreground p-4">
                 <p>No new project suggestions right now. Explore all projects below!</p>
             </div>

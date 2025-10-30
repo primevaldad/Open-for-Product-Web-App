@@ -7,6 +7,7 @@ import {
   getAllTags,
   getAllLearningPaths,
   getAllProjectPathLinks,
+  getAiSuggestedProjects,
 } from "@/lib/data.server";
 import { toHydratedProject, deepSerialize } from "@/lib/utils";
 import HomeClientPage from "./home-client-page";
@@ -18,6 +19,8 @@ async function getHomePageData(): Promise<{
   allTags: Tag[];
   allLearningPaths: LearningPath[];
   allProjectPathLinks: ProjectPathLink[];
+  suggestedProjects: HydratedProject[] | null;
+  aiEnabled: boolean;
 }> {
   const currentUser = await getCurrentUser();
   const isGuest = currentUser?.role === 'guest';
@@ -78,12 +81,17 @@ async function getHomePageData(): Promise<{
       return toHydratedProject(p, usersMap);
     });
 
+    const suggestedProjects = currentUser ? await getAiSuggestedProjects(currentUser, allPublishedProjects) : null;
+    const aiEnabled = currentUser?.aiFeaturesEnabled ?? false;
+
   return deepSerialize({
     allPublishedProjects,
     currentUser: currentUser,
     allTags,
     allLearningPaths,
     allProjectPathLinks,
+    suggestedProjects,
+    aiEnabled,
   });
 }
 
@@ -94,6 +102,8 @@ export default async function HomePage() {
     allTags,
     allLearningPaths,
     allProjectPathLinks,
+    suggestedProjects,
+    aiEnabled,
   } = await getHomePageData();
 
   return (
@@ -103,6 +113,8 @@ export default async function HomePage() {
       allTags={allTags}
       allLearningPaths={allLearningPaths}
       allProjectPathLinks={allProjectPathLinks}
+      suggestedProjects={suggestedProjects}
+      aiEnabled={aiEnabled}
     />
   );
 }

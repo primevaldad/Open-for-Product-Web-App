@@ -23,9 +23,11 @@ interface HomeClientPageProps {
     allTags: GlobalTag[];
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
+    suggestedProjects: HydratedProject[] | null;
+    aiEnabled: boolean;
 }
 
-export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths }: HomeClientPageProps) {
+export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths, suggestedProjects, aiEnabled }: HomeClientPageProps) {
   const [showMyProjects, setShowMyProjects] = useState(false);
   const [selectedTags, setSelectedTags] = useState<ProjectTag[]>([]);
   const [matchAllTags, setMatchAllTags] = useState(false);
@@ -67,9 +69,10 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
         <div className="mb-8">
             <SuggestSteps
                 currentUser={currentUser}
-                allProjects={allPublishedProjects}
+                suggestedProjects={suggestedProjects}
                 allProjectPathLinks={allProjectPathLinks}
                 allLearningPaths={allLearningPaths}
+                aiEnabled={aiEnabled}
             />
         </div>
       )}

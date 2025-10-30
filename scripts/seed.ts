@@ -10,6 +10,7 @@ type User = {
     title: string;
     avatarUrl: string;
     onboardingCompleted: boolean;
+    aiFeaturesEnabled: boolean;
 };
 
 type TeamMember = {
@@ -127,7 +128,7 @@ async function main() {
     for (const u of newUsersData) {
         const snapshot = await usersCollection.where('name', '==', u.name).get();
         if (snapshot.empty) {
-            await usersCollection.add({ ...u, onboardingCompleted: true });
+            await usersCollection.add({ ...u, onboardingCompleted: true, aiFeaturesEnabled: false });
             newUsersAdded++;
             console.log(`Created user: ${u.name}`);
         }

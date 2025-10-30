@@ -22,6 +22,7 @@ export interface User {
     onboardingCompleted: boolean;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+    aiFeaturesEnabled?: boolean;
 }
 
 export interface Project {
@@ -32,6 +33,8 @@ export interface Project {
     description: string;
     createdAt: Timestamp | string; 
     updatedAt: Timestamp | string; 
+    startDate: Timestamp | string;
+    endDate: Timestamp | string;
     ownerId: UserId;
     team: ProjectMember[];
     status: 'draft' | 'published' | 'archived';
