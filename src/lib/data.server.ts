@@ -10,6 +10,9 @@ import { serializeTimestamp } from './utils';
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
 
+// Export adminDb to be used for transactions in server actions
+export { adminDb };
+
 // --- Helper Functions ---
 function ensureModulesHaveIds(path: LearningPath): LearningPath {
     if (path.modules && Array.isArray(path.modules)) {
