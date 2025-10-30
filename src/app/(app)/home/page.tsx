@@ -1,6 +1,6 @@
 
 import { getCurrentUser } from "@/lib/session.server";
-import { HydratedProject } from "@/lib/types";
+import { HydratedProject, HydratedProjectMember, Project, User } from "@/lib/types";
 import {
   getAllProjects,
   getAllUsers,
@@ -10,7 +10,7 @@ import {
 } from "@/lib/data.server";
 import { toHydratedProject, deepSerialize } from "@/lib/utils";
 import HomeClientPage from "./home-client-page";
-import type { LearningPath, ProjectPathLink, Tag, User } from "@/lib/types";
+import type { LearningPath, ProjectPathLink, Tag } from "@/lib/types";
 
 async function getHomePageData(): Promise<{
   allPublishedProjects: HydratedProject[];
@@ -19,11 +19,15 @@ async function getHomePageData(): Promise<{
   allLearningPaths: LearningPath[];
   allProjectPathLinks: ProjectPathLink[];
 }> {
-  // Use getCurrentUser which returns null for guests instead of throwing
-  const [user, projectsData, usersData, allTags, allLearningPaths, allProjectPathLinks] = await Promise.all([
-    getCurrentUser(),
+  const currentUser = await getCurrentUser();
+  const isGuest = currentUser?.role === 'guest';
+
+  // Conditionally fetch user data only for non-guests
+  const usersDataPromise = isGuest ? Promise.resolve([]) : getAllUsers();
+
+  const [projectsData, usersData, allTags, allLearningPaths, allProjectPathLinks] = await Promise.all([
     getAllProjects(),
-    getAllUsers(),
+    usersDataPromise,
     getAllTags(),
     getAllLearningPaths(),
     getAllProjectPathLinks(),
@@ -33,11 +37,50 @@ async function getHomePageData(): Promise<{
 
   const allPublishedProjects = projectsData
     .filter((p) => p.status === 'published')
-    .map((p) => toHydratedProject(p, usersMap));
+    .map((p: Project): HydratedProject => {
+      if (isGuest) {
+        // For guests, create a "hydrated" project with placeholder user data
+        // to satisfy type requirements and render UI correctly.
+        const guestHydratedTeam: HydratedProjectMember[] = p.team.map(member => ({
+          ...member,
+          // Create a full placeholder user object that satisfies the 'User' type.
+          user: {
+            id: member.userId,
+            name: 'Community Member',
+            email: '',
+            role: 'user',
+            onboardingCompleted: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        }));
+
+        const guestOwner: User = {
+            id: p.ownerId,
+            name: 'Project Lead',
+            email: '',
+            role: 'user',
+            onboardingCompleted: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        // Manually construct the HydratedProject for guests
+        const { ownerId, team, ...restOfProject } = p;
+
+        return {
+            ...restOfProject,
+            owner: guestOwner,
+            team: guestHydratedTeam,
+        };
+      }
+      // For authenticated users, use the normal hydration.
+      return toHydratedProject(p, usersMap);
+    });
 
   return deepSerialize({
     allPublishedProjects,
-    currentUser: user,
+    currentUser: currentUser,
     allTags,
     allLearningPaths,
     allProjectPathLinks,

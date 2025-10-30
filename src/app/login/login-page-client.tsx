@@ -41,7 +41,7 @@ export default function LoginPageClient() {
   // If the AuthProvider determines there's a user, redirect to home.
   // This handles the client-side check after the initial server check.
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && currentUser.role !== 'guest') {
       router.push('/home');
     }
   }, [currentUser, router]);

@@ -31,7 +31,10 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
   const [matchAllTags, setMatchAllTags] = useState(false);
   const [sortBy, setSortBy] = useState('latest');
 
+  const isGuest = currentUser?.role === 'guest';
+
   const filteredProjects = allPublishedProjects.filter(p => {
+    // For guests, showMyProjects is always false, so this check is effectively skipped
     const myProjectsMatch = !showMyProjects || (currentUser && p.team.some(member => member.userId === currentUser.id));
     
     if (selectedTags.length === 0) {
@@ -60,7 +63,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
 
   return (
     <>
-      {currentUser && (
+      {!isGuest && currentUser && (
         <div className="mb-8">
             <SuggestSteps
                 currentUser={currentUser}
@@ -87,7 +90,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
               <Switch id="match-all" checked={matchAllTags} onCheckedChange={setMatchAllTags} />
               <Label htmlFor="match-all">Match All Tags</Label>
             </div>
-            {currentUser && (
+            {!isGuest && currentUser && (
               <div className="flex items-center space-x-2">
                 <Checkbox id="my-projects" checked={showMyProjects} onCheckedChange={(checked) => setShowMyProjects(!!checked)} />
                 <Label htmlFor="my-projects">My Projects Only</Label>
@@ -112,7 +115,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
             <ProjectCard 
               key={project.id} 
               project={project} 
-              currentUser={currentUser}
+              currentUser={isGuest ? null : currentUser}
               allProjectPathLinks={allProjectPathLinks}
               allLearningPaths={allLearningPaths}
             />

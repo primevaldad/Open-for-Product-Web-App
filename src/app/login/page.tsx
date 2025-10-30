@@ -7,12 +7,12 @@ import { redirect } from 'next/navigation';
 export default async function LoginPage() {
   const currentUser = await getCurrentUser();
 
-  // If the user has a valid session cookie and their user data can be fetched,
-  // redirect them to the home page immediately.
-  if (currentUser) {
+  // If the user has a valid session and is NOT a guest, redirect them away.
+  // A guest user should be able to see this page to log in.
+  if (currentUser && currentUser.role !== 'guest') {
     redirect('/home');
   }
 
-  // If there is no valid session, render the client-side login form.
+  // If there is no valid session, or if the user is a guest, render the client-side login form.
   return <LoginPageClient />;
 }

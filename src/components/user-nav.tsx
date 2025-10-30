@@ -36,7 +36,8 @@ export function UserNav({ currentUser }: UserNavProps) {
     router.push('/login');
   };
 
-  if (!currentUser) {
+  // If there is no user, or if the user is a guest, show Log In/Sign Up buttons
+  if (!currentUser || currentUser.role === 'guest') {
     return (
         <div className="flex items-center gap-2">
             <Link href="/login">
