@@ -10,21 +10,11 @@ import { serializeTimestamp } from './utils';
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
 
-// Export adminDb to be used for transactions in server actions
-export { adminDb };
-
 // --- Helper Functions ---
-/**
- * Ensures that every module within a learning path has a unique moduleId.
- * If a moduleId is missing, it generates a stable one based on the path ID and module index.
- * @param path The learning path to process.
- * @returns The learning path with guaranteed moduleIds.
- */
 function ensureModulesHaveIds(path: LearningPath): LearningPath {
     if (path.modules && Array.isArray(path.modules)) {
         path.modules.forEach((module, index) => {
             if (!module.moduleId) {
-                // Generate a stable, unique ID if one doesn't exist
                 module.moduleId = `${path.pathId}-module-${index}`;
             }
         });
@@ -32,12 +22,20 @@ function ensureModulesHaveIds(path: LearningPath): LearningPath {
     return path;
 }
 
+// --- User Data Access ---
 
-// --- User Data Access -- -
 export async function getAllUsers(): Promise<User[]> {
     const usersCol = adminDb.collection('users');
     const userSnapshot = await usersCol.get();
-    return userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    return userSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+        } as User;
+    });
 }
 
 export async function findUserById(userId: string): Promise<User | undefined> {
@@ -45,9 +43,40 @@ export async function findUserById(userId: string): Promise<User | undefined> {
     const userRef = adminDb.collection('users').doc(userId);
     const userSnap = await userRef.get();
     if (userSnap.exists) {
-        return { id: userSnap.id, ...userSnap.data() } as User;
+        const data = userSnap.data();
+        return {
+            id: userSnap.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+        } as User;
     }
     return undefined;
+}
+
+export async function createGuestUser(uid: string): Promise<User> {
+    const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
+        name: 'Guest User',
+        email: `${uid}@example.com`, // Temporary unique email
+        role: 'guest',
+        onboardingCompleted: false,
+    };
+
+    const userWithTimestamp = {
+        ...newUser,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    await adminDb.collection('users').doc(uid).set(userWithTimestamp);
+
+    // Fetch the user we just created to get the serialized, server-generated timestamps
+    const createdUser = await findUserById(uid);
+    if (!createdUser) {
+        throw new Error('Failed to create or find guest user after creation.');
+    }
+
+    return createdUser;
 }
 
 export async function findUsersByIds(userIds: string[]): Promise<User[]> {
@@ -60,7 +89,15 @@ export async function findUsersByIds(userIds: string[]): Promise<User[]> {
         const chunk = userIds.slice(i, i + 10);
         const q = adminDb.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk);
         const userSnapshot = await q.get();
-        const chunkUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        const chunkUsers = userSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: serializeTimestamp(data.createdAt),
+                updatedAt: serializeTimestamp(data.updatedAt),
+            } as User;
+        });
         users.push(...chunkUsers);
     }
 
@@ -74,7 +111,13 @@ export async function findUserByEmail(email: string): Promise<User | undefined> 
     const userSnapshot = await q.get();
     if (!userSnapshot.empty) {
         const userDoc = userSnapshot.docs[0];
-        return { id: userDoc.id, ...userDoc.data() } as User;
+        const data = userDoc.data();
+        return {
+            id: userDoc.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+        } as User;
     }
     return undefined;
 }
@@ -93,11 +136,23 @@ export async function findUsersByName(query: string): Promise<User[]> {
 
     const usersMap = new Map<string, User>();
     nameSnapshot.docs.forEach(doc => {
-        const user = { id: doc.id, ...doc.data() } as User;
+        const data = doc.data();
+        const user = { 
+            id: doc.id, 
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+        } as User;
         usersMap.set(user.id, user);
     });
     emailSnapshot.docs.forEach(doc => {
-        const user = { id: doc.id, ...doc.data() } as User;
+        const data = doc.data();
+        const user = { 
+            id: doc.id, 
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+        } as User;
         usersMap.set(user.id, user);
     });
 
@@ -106,25 +161,6 @@ export async function findUsersByName(query: string): Promise<User[]> {
 
 export async function addUser(uid: string, newUser: Omit<User, 'id'>): Promise<void> {
     await adminDb.collection('users').doc(uid).set(newUser);
-}
-
-export async function createGuestUser(uid: string): Promise<User> {
-    const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
-      name: 'Guest User',
-      email: `${uid}@example.com`, // Temporary unique email
-      role: 'guest',
-    };
-  
-    const userWithTimestamp = {
-        ...newUser,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-    };
-
-    await adminDb.collection('users').doc(uid).set(userWithTimestamp);
-  
-    // We can't return the user with timestamps from the server, so we return the initial object
-    return { id: uid, ...newUser, createdAt: new Date(), updatedAt: new Date() };
 }
 
 export async function updateUser(updatedUser: User): Promise<void> {

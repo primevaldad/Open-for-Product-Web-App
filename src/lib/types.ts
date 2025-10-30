@@ -14,11 +14,14 @@ export interface User {
     id: UserId;
     name: string;
     email: string;
+    role?: string; // Can be 'guest' or undefined for regular users
     avatarUrl?: string;
     interests?: string[];
     bio?: string;
     draftProjects?: ProjectId[]; // IDs of projects the user is drafting
     onboardingCompleted: boolean;
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
 }
 
 export interface Project {

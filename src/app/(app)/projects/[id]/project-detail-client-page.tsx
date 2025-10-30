@@ -54,7 +54,6 @@ export interface ProjectDetailClientPageProps {
 }
 
 // A component to block content for logged-out users.
-// This is an overlay that should be placed in a container with `position: relative`.
 const LoginWall = ({ message, currentPath }: { message: string, currentPath: string }) => (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-lg bg-background/80 p-8 text-center">
         <LockKeyhole className="h-12 w-12 text-muted-foreground" />
@@ -83,7 +82,6 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
 
     const currentPath = usePathname();
 
-    // --- State Management ---
     const [project, setProject] = useState(initialProject);
     const [discussions, setDiscussions] = useState(initialDiscussions.map(d => ({ ...d, createdAt: toDate(d.createdAt), updatedAt: toDate(d.updatedAt) })));
     const [tasks, setTasks] = useState(initialTasks.map(t => ({...t, createdAt: toDate(t.createdAt), updatedAt: toDate(t.updatedAt)})));
@@ -91,11 +89,10 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
     const isMember = currentUser ? project.team.some(m => m.userId === currentUser.id) : false;
-
-    // --- Action Handlers ---
+    const isGuest = currentUser?.role === 'guest';
 
     const handleJoinProject = async () => {
-        if (!currentUser) return toast.error("You must be logged in to join.");
+        if (!currentUser || isGuest) return toast.error("You must create an account to join.");
         
         const result = await joinProject(project.id);
         if (result.success) {
@@ -121,7 +118,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
     };
 
     const handleAddComment = async (content: string) => {
-        if (!currentUser) {
+        if (!currentUser || isGuest) {
             toast.error("You must be logged in to comment.");
             return;
         }
@@ -150,8 +147,6 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
             setDiscussions(prev => prev.filter(d => d.id !== tempId));
         }
     };
-
-    // --- Task Handling ---
 
     const handleOpenTaskDialog = (task?: Task) => {
         setSelectedTask(task || null);
@@ -221,7 +216,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
 
                     <TabPanel>
                         <div className="py-4 relative">
-                            {currentUser ? (
+                            {currentUser && !isGuest ? (
                                 <Markdown content={project.description} />
                             ) : (
                                 <>
@@ -234,7 +229,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                         </div>
                     </TabPanel>
                     <TabPanel>
-                        {currentUser ? (
+                        {currentUser && !isGuest ? (
                             <>
                                 <div className="flex justify-end my-4">
                                     {isMember && <Button onClick={() => handleOpenTaskDialog()}>Add Task</Button>}
@@ -252,7 +247,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                         )}
                     </TabPanel>
                     <TabPanel>
-                         {currentUser ? (
+                         {currentUser && !isGuest ? (
                             <DiscussionForum 
                                 discussions={discussions} 
                                 onAddComment={handleAddComment} 
@@ -266,7 +261,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                         )}
                     </TabPanel>
                     <TabPanel>
-                         {currentUser ? (
+                         {currentUser && !isGuest ? (
                             <ProjectTeam 
                                 team={project.team} 
                                 users={users}
@@ -289,7 +284,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                                         <li key={path.id} className="bg-gray-100 p-4 rounded-lg">
                                             <h3 className="font-bold text-lg">{path.name}</h3>
                                             <p className="text-gray-600">{path.description}</p>
-                                            <a href={`/learning-paths/${path.id}`} className="text-blue-500 hover:underline mt-2 inline-block">View Path</a>
+                                            <Link href={`/learning-paths/${path.id}`} className="text-blue-500 hover:underline mt-2 inline-block">View Path</Link>
                                         </li>
                                     ))}
                                 </ul>
