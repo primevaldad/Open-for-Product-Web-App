@@ -79,10 +79,11 @@ export default function TagSelector({ id, availableTags, value, onChange }: TagS
   }, [safeAvailableTags, selectedTagsMap, inputValue]);
 
   return (
-    <div id={id}>
+    <div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            id={id} // <-- Fix: Apply id directly to the button
             variant="outline"
             role="combobox"
             aria-expanded={open}

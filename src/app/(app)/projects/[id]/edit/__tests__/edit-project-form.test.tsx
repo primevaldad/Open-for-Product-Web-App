@@ -5,6 +5,10 @@ import '@testing-library/jest-dom';
 import EditProjectForm from '../edit-project-form';
 import type { Project } from '@/lib/types';
 
+jest.mock('@/lib/firebase');
+jest.mock('@firebase/storage');
+jest.mock('@/app/actions/projects');
+
 // Mock the next/navigation module
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),

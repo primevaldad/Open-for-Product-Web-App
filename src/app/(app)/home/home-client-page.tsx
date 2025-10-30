@@ -80,6 +80,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
           <div className="flex-grow">
             <Label htmlFor="tag-selector" className="mb-2 block">Filter by Tags</Label>
             <TagSelector 
+              id="tag-selector"
               value={selectedTags}
               onChange={setSelectedTags}
               availableTags={allTags}

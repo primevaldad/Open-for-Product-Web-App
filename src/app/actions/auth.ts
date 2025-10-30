@@ -72,13 +72,13 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
         }
 
         const newUserRef = usersCollection.doc(uid);
-        const newUser: Omit<User, 'id'> = {
+        const newUser: Omit<User, 'id' | 'onboardingCompleted' | 'createdAt' | 'updatedAt'> & { onboardingCompleted: boolean } = {
             name,
             email,
             avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
             bio: 'Just joined Open for Product!',
             interests: [],
-            onboarded: false,
+            onboardingCompleted: false,
         };
         transaction.set(newUserRef, newUser);
     });
