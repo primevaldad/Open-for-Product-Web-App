@@ -25,7 +25,7 @@ export default async function AppLayout({
   }
 
   // Onboarding check for authenticated users
-  if (currentUser && !currentUser.onboarded) {
+  if (currentUser && currentUser.role !== 'guest' && !currentUser.onboardingCompleted) {
     redirect('/onboarding');
   }
 

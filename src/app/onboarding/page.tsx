@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
   }
 
   // If the currently simulated user is already onboarded, redirect them away.
-  if (currentUser?.onboarded) {
+  if (currentUser?.onboardingCompleted) {
     redirect('/home');
   }
 
