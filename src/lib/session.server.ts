@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from './firebase.server';
-import { findUserById } from './data.server';
+import { findUserById, createGuestUser } from './data.server';
 import { UserNotFoundError, NotAuthenticatedError } from './errors';
 import type { User } from './types';
 
@@ -15,8 +15,8 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 // --- PUBLIC API ---
 
 /**
- * Creates a session cookie for the given ID token and sets it in the cookies.
- * This is a server-only function.
+ * Creates a session cookie for the given ID token. If the user does not exist
+ * in the database, a new guest user is created.
  * @param idToken The Firebase ID token of the user.
  * @returns The UID of the authenticated user.
  */
@@ -25,23 +25,22 @@ export async function createSession(idToken: string): Promise<string> {
   const adminAuth = getAuth(adminApp);
   const decodedIdToken = await adminAuth.verifyIdToken(idToken);
 
-  // Security check commented out for MVP development
-  // if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
-  //   throw new RecentSignInRequiredError('Recent sign-in required! Please try logging in again.');
-  // }
+  // Check if user exists
+  let user = await findUserById(decodedIdToken.uid);
+  if (!user) {
+    console.log(`[AUTH_TRACE] User not found for UID ${decodedIdToken.uid}. Creating guest user.`);
+    user = await createGuestUser(decodedIdToken.uid);
+  }
 
   const sessionCookie = await adminAuth.createSessionCookie(idToken, {
     expiresIn: SESSION_DURATION_MS,
   });
 
-  // Conditionally set cookie attributes
-  const sameSite = IS_PROD ? 'lax' : 'none';
-
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
     httpOnly: true,
-    secure: true, // Always true, as dev environments now use HTTPS
-    sameSite,
+    secure: true, 
+    sameSite: IS_PROD ? 'lax' : 'none',
     maxAge: SESSION_DURATION_MS,
     path: '/',
   });
@@ -51,38 +50,30 @@ export async function createSession(idToken: string): Promise<string> {
 
 /**
  * Clears the session cookie and revokes the user's refresh tokens.
- * This is a server-only function.
  */
 export async function clearSession(): Promise<void> {
   console.log('[AUTH_TRACE] Clearing session...');
   const cookieStore = await cookies();
   const sessionCookieValue = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
-  // Clear the cookie from the browser
   cookieStore.set(SESSION_COOKIE_NAME, '', { maxAge: 0 });
 
   if (sessionCookieValue) {
     const adminAuth = getAuth(adminApp);
     try {
-      const decodedClaims = await adminAuth.verifySessionCookie(
-        sessionCookieValue,
-        IS_PROD // revoke check only in prod
-      );
+      const decodedClaims = await adminAuth.verifySessionCookie(sessionCookieValue, IS_PROD);
       await adminAuth.revokeRefreshTokens(decodedClaims.sub);
       console.log(`[AUTH_TRACE] Revoked tokens for UID: ${decodedClaims.sub}`);
     } catch {
-      console.log(
-        '[AUTH_TRACE] Could not revoke tokens; session cookie may have been invalid.'
-      );
+      console.log('[AUTH_TRACE] Could not revoke tokens; session cookie may have been invalid.');
     }
   }
 }
 
 /**
- * Gets the current user from the session cookie.
- * This is a server-only function.
+ * Gets the current user from the session cookie. If the user is authenticated but
+ * not in the database, a new guest user is created.
  * @returns The current user, or null if not logged in.
- * @throws {UserNotFoundError} If the user is authenticated but not in the database.
  */
 export async function getCurrentUser(): Promise<User | null> {
   console.log('[AUTH_TRACE] Attempting to get current user...');
@@ -97,27 +88,19 @@ export async function getCurrentUser(): Promise<User | null> {
   console.log('[AUTH_TRACE] Session cookie found. Verifying...');
   try {
     const adminAuth = getAuth(adminApp);
-    const decodedClaims = await adminAuth.verifySessionCookie(
-      sessionCookie.value,
-      IS_PROD // check revoked only in prod
-    );
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie.value, IS_PROD);
     console.log(`[AUTH_TRACE] Session cookie verified for UID: ${decodedClaims.uid}`);
 
-    const currentUser = await findUserById(decodedClaims.uid);
+    let currentUser = await findUserById(decodedClaims.uid);
 
     if (!currentUser) {
-      console.error(
-        `[AUTH_TRACE] Auth successful, but no user found in DB for UID: ${decodedClaims.uid}`
-      );
-      throw new UserNotFoundError(`User with UID ${decodedClaims.uid} not found.`);
+      console.warn(`[AUTH_TRACE] User authenticated but not in DB. Creating guest user for UID: ${decodedClaims.uid}`);
+      currentUser = await createGuestUser(decodedClaims.uid);
     }
 
     console.log(`[AUTH_TRACE] Successfully found user in DB: ${currentUser.name}`);
     return { ...currentUser, id: decodedClaims.uid };
   } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      throw error;
-    }
     console.error('[AUTH_TRACE] Session verification failed:', error);
     return null;
   }
@@ -125,10 +108,8 @@ export async function getCurrentUser(): Promise<User | null> {
 
 /**
  * Gets the current user or throws an error if not logged in.
- * This is a server-only function.
  * @returns The current user.
- * @throws {UserNotFoundError} If the user is authenticated but not in the database.
- * @throws {Error} If the user is not authenticated.
+ * @throws {NotAuthenticatedError} If the user is not authenticated.
  */
 export async function getAuthenticatedUser(): Promise<User> {
   const user = await getCurrentUser();

@@ -108,6 +108,25 @@ export async function addUser(uid: string, newUser: Omit<User, 'id'>): Promise<v
     await adminDb.collection('users').doc(uid).set(newUser);
 }
 
+export async function createGuestUser(uid: string): Promise<User> {
+    const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
+      name: 'Guest User',
+      email: `${uid}@example.com`, // Temporary unique email
+      role: 'guest',
+    };
+  
+    const userWithTimestamp = {
+        ...newUser,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    await adminDb.collection('users').doc(uid).set(userWithTimestamp);
+  
+    // We can't return the user with timestamps from the server, so we return the initial object
+    return { id: uid, ...newUser, createdAt: new Date(), updatedAt: new Date() };
+}
+
 export async function updateUser(updatedUser: User): Promise<void> {
     const { id, ...userData } = updatedUser;
     const userRef = adminDb.collection('users').doc(id);

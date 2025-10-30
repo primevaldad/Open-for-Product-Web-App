@@ -1,7 +1,7 @@
 
 import { notFound } from 'next/navigation';
 import { findProjectById, getDiscussionsForProject, findTasksByProjectId, getAllUsers } from '@/lib/data.server';
-import { getAuthenticatedUser } from '@/lib/session.server';
+import { getCurrentUser } from '@/lib/session.server'; // Changed to getCurrentUser
 import ProjectDetailClientPage from './project-detail-client-page';
 import {
     joinProject, 
@@ -33,12 +33,13 @@ type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<Ser
 
 
 async function getProjectPageData(projectId: string) {
+    // Use getCurrentUser which can return null, instead of getAuthenticatedUser which throws
     const [project, discussions, tasks, users, currentUser, learningPaths] = await Promise.all([
         findProjectById(projectId),
         getDiscussionsForProject(projectId),
         findTasksByProjectId(projectId),
         getAllUsers(),
-        getAuthenticatedUser(),
+        getCurrentUser(), // Changed to getCurrentUser
         getRecommendedLearningPathsForProject(projectId)
     ]);
 

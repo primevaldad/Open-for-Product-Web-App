@@ -53,16 +53,15 @@ export interface ProjectDetailClientPageProps {
     deleteTask: DeleteTaskAction;
 }
 
-// A component to block content for logged-out users
+// A component to block content for logged-out users.
+// This is an overlay that should be placed in a container with `position: relative`.
 const LoginWall = ({ message, currentPath }: { message: string, currentPath: string }) => (
-    <div className="relative">
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-lg bg-background/80 p-8 text-center">
-            <LockKeyhole className="h-12 w-12 text-muted-foreground" />
-            <p className="text-lg font-semibold text-foreground">{message}</p>
-            <Button asChild>
-                <Link href={`/login?redirect=${encodeURIComponent(currentPath)}`}>Login to View</Link>
-            </Button>
-        </div>
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-lg bg-background/80 p-8 text-center">
+        <LockKeyhole className="h-12 w-12 text-muted-foreground" />
+        <p className="text-lg font-semibold text-foreground">{message}</p>
+        <Button asChild>
+            <Link href={`/login?redirect=${encodeURIComponent(currentPath)}`}>Login to View</Link>
+        </Button>
     </div>
 );
 
@@ -225,10 +224,12 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                             {currentUser ? (
                                 <Markdown content={project.description} />
                             ) : (
-                                <div className="blur-sm select-none">
-                                    <Markdown content={project.description} />
+                                <>
+                                    <div className="blur-sm select-none">
+                                        <Markdown content={project.description} />
+                                    </div>
                                     <LoginWall message="Login to read the full project description" currentPath={currentPath} />
-                                </div>
+                                </>
                             )}
                         </div>
                     </TabPanel>

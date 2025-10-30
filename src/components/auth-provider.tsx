@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import type { User } from '@/lib/types';
-import { onAuthStateChanged, signOut as firebaseSignOut, getIdToken } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, getIdToken, signInAnonymously } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { findUserById } from '@/lib/data.client';
 
@@ -22,66 +22,61 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 interface AuthProviderProps {
-  serverUser: User | null;
+  serverUser: User | null; // Prop for initial server-rendered user
   children: ReactNode;
 }
 
-export function AuthProvider({ serverUser: initialServerUser, children }: AuthProviderProps) {
-  const [currentUser, setCurrentUser] = useState<User | null>(initialServerUser);
+export function AuthProvider({ serverUser, children }: AuthProviderProps) {
+  const [currentUser, setCurrentUser] = useState<User | null>(serverUser);
   const [loading, setLoading] = useState(true);
 
   const signOut = useCallback(async () => {
     setLoading(true);
-    // Sign out from Firebase on the client
     await firebaseSignOut(auth);
-    // Explicitly destroy the server session by calling our new endpoint
     await fetch('/api/auth/logout', { method: 'POST' });
     setCurrentUser(null);
     setLoading(false);
+    // onAuthStateChanged will handle signing in a new anonymous user
   }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // If the server-side session user exists, and it does not match the
-      // client-side Firebase user, the server is the source of truth.
-      // Sign out the mismatched client user to force alignment.
-      if (initialServerUser && firebaseUser && initialServerUser.id !== firebaseUser.uid) {
-        await firebaseSignOut(auth);
-        return;
-      }
-
-      // Case 1: Firebase has a user.
       if (firebaseUser) {
-        // If the client-side user is the same as the server user, we're in sync.
-        if (initialServerUser && firebaseUser.uid === initialServerUser.id) {
-            setCurrentUser(initialServerUser);
-        } else {
-            // Case 2: No server session, but Firebase user exists (e.g., first login).
-            // Create the server session.
-            const token = await getIdToken(firebaseUser);
-            await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken: token }),
-            });
-            // Fetch the full user profile from our DB
+        // A user is signed in (either regular or anonymous).
+        // Sync this state with the backend to create a session.
+        const token = await getIdToken(firebaseUser);
+        
+        const sessionResponse = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken: token }),
+        });
+
+        if (sessionResponse.ok) {
+            // Session created, now fetch the app-specific user profile.
             const appUser = await findUserById(firebaseUser.uid);
             setCurrentUser(appUser || null);
+        } else {
+            console.error('Failed to create session:', await sessionResponse.text());
+            setCurrentUser(null);
+            await firebaseSignOut(auth); // Sign out to prevent inconsistent state
         }
+
       } else {
-        // Case 3: No Firebase user.
-        // If there was a server user, it's a mismatch (e.g., user logged out in another tab).
-        // Clear the local state. The server session will be the single source of truth on next load.
-        if (initialServerUser) {
-          setCurrentUser(null);
+        // No user is signed in to Firebase on the client.
+        // Attempt to sign them in anonymously.
+        try {
+          await signInAnonymously(auth);
+          // The listener will re-run with the new anonymous user.
+        } catch (error) {
+          console.error('Automatic anonymous sign-in failed:', error);
         }
       }
       setLoading(false);
     });
 
-    // Cleanup the listener on component unmount
     return () => unsubscribe();
-  }, [initialServerUser]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ currentUser, loading, signOut }}>

@@ -1,5 +1,5 @@
 
-import { getAuthenticatedUser } from "@/lib/session.server";
+import { getCurrentUser } from "@/lib/session.server";
 import { HydratedProject } from "@/lib/types";
 import {
   getAllProjects,
@@ -19,8 +19,9 @@ async function getHomePageData(): Promise<{
   allLearningPaths: LearningPath[];
   allProjectPathLinks: ProjectPathLink[];
 }> {
+  // Use getCurrentUser which returns null for guests instead of throwing
   const [user, projectsData, usersData, allTags, allLearningPaths, allProjectPathLinks] = await Promise.all([
-    getAuthenticatedUser(),
+    getCurrentUser(),
     getAllProjects(),
     getAllUsers(),
     getAllTags(),
