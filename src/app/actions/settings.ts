@@ -95,7 +95,7 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   user.name = name;
   user.bio = bio;
   user.interests = interests;
-  user.onboarded = true;
+  user.onboardingCompleted = true;
 
   await updateUserInDb(user);
 
