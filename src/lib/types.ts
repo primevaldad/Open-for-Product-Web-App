@@ -38,6 +38,7 @@ export interface Project {
     tags: ProjectTag[];
     contributionNeeds: string[];
     fallbackSuggestion?: string;
+    isExpertReviewed?: boolean;
     governance?: {
         contributorsShare: number; // Percentage of ownership for contributors
         communityShare: number;    // Percentage of ownership for the community
@@ -86,6 +87,7 @@ export interface HydratedProject {
     tags: ProjectTag[];
     contributionNeeds: string[];
     fallbackSuggestion?: string;
+    isExpertReviewed?: boolean;
     governance?: {
         contributorsShare: number;
         communityShare: number;
