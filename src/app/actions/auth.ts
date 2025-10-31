@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { adminDb, logOrphanedUser } from '@/lib/data.server'; // Removed unused findUserByEmail
 import { createSession, clearSession } from '@/lib/session.server';
 import type { User } from '@/lib/types';
-import { FirebaseError } from 'firebase-admin/app'; // Import FirebaseError for specific typing
+import { FirebaseError } from 'firebase/app';
 
 const SignUpSchema = z.object({
   idToken: z.string(),
