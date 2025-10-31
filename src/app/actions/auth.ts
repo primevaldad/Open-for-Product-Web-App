@@ -75,6 +75,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
         const newUser: Omit<User, 'id' | 'onboardingCompleted' | 'createdAt' | 'updatedAt'> & { onboardingCompleted: boolean } = {
             name,
             email,
+            username: name, // Added username field
             avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
             bio: 'Just joined Open for Product!',
             interests: [],

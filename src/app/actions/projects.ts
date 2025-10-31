@@ -125,7 +125,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
     };
   });
 
-  const finalTeam: ProjectMember[] = team.filter((m) => m.userId && m.role);
+  const finalTeam: ProjectMember[] = team.filter((m): m is ProjectMember => m.userId !== undefined && m.role !== undefined);
   if (!finalTeam.some((m) => m.userId === currentUser.id)) {
     finalTeam.push({ userId: currentUser.id, role: 'lead' });
   }
@@ -141,6 +141,8 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
 
       const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> = {
         name,
+        startDate: admin.firestore.Timestamp.fromDate(new Date()),
+        endDate: admin.firestore.Timestamp.fromDate(new Date()),
         tagline,
         description,
         tags: hydratedTags.map((t) => ({ ...t, id: normalizeTag(t.id) })),
@@ -255,6 +257,9 @@ export async function updateProject(values: EditProjectFormValues) {
       const updatedData: Partial<Project> = {
         ...projectData,
         governance: finalGovernance,
+        ...(projectData.team !== undefined && {
+          team: projectData.team.filter((m): m is ProjectMember => m.userId !== undefined && m.role !== undefined),
+        }),
         contributionNeeds:
           typeof projectData.contributionNeeds === 'string'
             ? projectData.contributionNeeds.split(',').map((i) => i.trim())
@@ -262,7 +267,6 @@ export async function updateProject(values: EditProjectFormValues) {
         tags: hydratedTags.map((t) => ({ ...t, id: normalizeTag(t.id) })),
         updatedAt: new Date().toISOString(),
       };
-
       transaction.update(projectRef, updatedData);
     });
 
@@ -294,7 +298,7 @@ export async function joinProject(projectId: string): Promise<ServerActionRespon
     const newMember: ProjectMember = { userId: currentUser.id, role: 'participant' };
     project.team.push(newMember);
 
-    await updateProjectInDb(projectId, { team: project.team });
+    await updateProjectInDb({ ...project, team: project.team });
 
     revalidatePath(`/projects/${projectId}`);
     const hydratedMember: HydratedProjectMember = { ...newMember, user: currentUser };
@@ -325,14 +329,14 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
         if (!user) return { success: false, error: 'User to be added not found.' };
 
         project.team.push(newMember);
-        await updateProjectInDb(projectId, { team: project.team });
+        await updateProjectInDb({ ...project, team: project.team });
 
         await addNotificationToDb({
             userId,
             message: `You have been added to the project '${project.name}' as a ${role}.`,
             link: `/projects/${projectId}`,
             read: false,
-            createdAt: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
         });
 
         revalidatePath(`/projects/${projectId}`);
@@ -351,7 +355,10 @@ export async function addDiscussionComment(data: { projectId: string; content: s
 
     try {
         const newComment = await addDiscussionCommentToDb({ 
-            projectId, 
+            projectId,
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
             userId: currentUser.id, 
             content 
         });
@@ -365,7 +372,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
                     message: `${currentUser.name} commented on your project: ${project?.name}`,
                     link: `/projects/${projectId}?tab=discussion`,
                     read: false,
-                    createdAt: new Date().toISOString(),
+                    timestamp: new Date().toISOString(),
                 });
             }
         }
@@ -390,7 +397,11 @@ export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
         if (!isLead) return { success: false, error: 'Only project leads can add tasks.' };
         
-        const newTask = await addTaskToDb(data);
+        const newTask = await addTaskToDb({
+            ...data,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        });
         revalidatePath(`/projects/${data.projectId}`);
         return { success: true, data: newTask };
     } catch (error) {
@@ -410,7 +421,7 @@ export async function updateTask(data: Task): Promise<ServerActionResponse<Task>
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
         if (!isLead) return { success: false, error: 'Only project leads can update tasks.' };
 
-        const updatedTask = await updateTaskInDb(data.id, data);
+        const updatedTask = await updateTaskInDb(data);
         revalidatePath(`/projects/${data.projectId}`);
         return { success: true, data: updatedTask };
     } catch (error) {

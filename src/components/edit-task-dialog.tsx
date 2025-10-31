@@ -30,16 +30,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { HydratedProjectMember, ServerActionResponse, Task, TaskFormValues, TaskStatus } from '@/lib/types';
+import type { HydratedProjectMember, ServerActionResponse, ClientTask } from '@/lib/types';
+import { toDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Trash } from 'lucide-react';
 
 interface EditTaskDialogProps extends PropsWithChildren {
-  task: Task;
+  task: ClientTask;
   isTeamMember: boolean;
   projectTeam: HydratedProjectMember[];
   updateTask: (values: TaskFormValues) => Promise<ServerActionResponse>;
-  deleteTask: (values: { id: string; projectId: string; }) => Promise<ServerActionResponse>;
+  deleteTask: (values: { id: string; projectId: string }) => Promise<ServerActionResponse>;
 }
 
 // This schema MUST be kept in sync with the TaskFormValues type in lib/types.ts
@@ -48,12 +49,15 @@ const TaskSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1, "Title is required."),
   description: z.string().optional(),
-  status: z.enum(["To Do", "In Progress", "Done"]),
+  status: z.enum(["To Do", "In Progress", "Done", "Archived"]),
   assignedToId: z.string().optional(),
   estimatedHours: z.coerce.number().optional(),
+  dueDate: z.string().optional(), // Add dueDate to the schema
 });
+export type TaskFormValues = z.infer<typeof TaskSchema>;
+export type TaskStatus = TaskFormValues["status"];
 
-const taskStatuses: TaskStatus[] = ["To Do", "In Progress", "Done"];
+const taskStatuses = ["To Do", "In Progress", "Done", "Archived"] as const;
 
 export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, deleteTask, children }: EditTaskDialogProps) {
   const { toast } = useToast();
@@ -71,6 +75,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
       status: task.status,
       assignedToId: task.assignedToId ?? undefined,
       estimatedHours: task.estimatedHours ?? undefined,
+      dueDate: task.dueDate ? task.dueDate.toISOString() : undefined, // Convert Date to string
     },
   });
 
@@ -115,6 +120,7 @@ export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, de
         status: task.status,
         assignedToId: task.assignedToId ?? undefined,
         estimatedHours: task.estimatedHours ?? undefined,
+        dueDate: task.dueDate ? task.dueDate.toISOString() : undefined,
     });
   }, [task, form.reset]);
 

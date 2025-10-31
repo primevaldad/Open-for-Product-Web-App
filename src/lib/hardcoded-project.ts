@@ -24,6 +24,7 @@ export const hardcodedProject: HydratedProject = {
       user: {
         id: 'firebase-team',
         name: 'The Firebase Team',
+        username: 'The Firebase Team',
         avatarUrl: 'https://firebase.google.com/static/downloads/brand-guidelines/PNG/logo-logomark.png',
         createdAt: '2023-01-01T00:00:00.000Z' as any,
         updatedAt: '2023-01-01T00:00:00.000Z' as any,

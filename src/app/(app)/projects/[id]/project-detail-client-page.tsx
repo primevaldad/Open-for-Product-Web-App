@@ -17,6 +17,8 @@ import EditTaskDialog from '@/components/edit-task-dialog';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import ProjectGovernance from '@/components/project-governance';
+import { ClientTask, ClientDiscussion } from '@/lib/types';
+import type { TaskFormValues } from '@/components/edit-task-dialog';
 
 import type { 
     HydratedProject, 
@@ -34,8 +36,8 @@ import { toDate } from '@/lib/utils';
 type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
 type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
 type AddDiscussionCommentAction = (data: { projectId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
-type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ServerActionResponse<Task>>;
-type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
+type AddTaskAction = (data: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse<Task>>;
+type UpdateTaskAction = (data: TaskFormValues) => Promise<ServerActionResponse<Task>>;
 type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
 
 export interface ProjectDetailClientPageProps {
@@ -83,9 +85,9 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
     const currentPath = usePathname();
 
     const [project, setProject] = useState(initialProject);
-    const [discussions, setDiscussions] = useState(initialDiscussions.map(d => ({ ...d, createdAt: toDate(d.createdAt), updatedAt: toDate(d.updatedAt) })));
-    const [tasks, setTasks] = useState(initialTasks.map(t => ({...t, createdAt: toDate(t.createdAt), updatedAt: toDate(t.updatedAt)})));
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [discussions, setDiscussions] = useState<Array<ClientDiscussion & { user?: User }>>(initialDiscussions.map(d => ({ ...d, createdAt: toDate(d.createdAt), updatedAt: toDate(d.updatedAt) })));
+    const [tasks, setTasks] = useState<ClientTask[]>(initialTasks.map(t => ({...t, createdAt: toDate(t.createdAt), updatedAt: toDate(t.updatedAt), dueDate: t.dueDate ? toDate(t.dueDate) : undefined})));
+    const [selectedTask, setSelectedTask] = useState<ClientTask | null>(null);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
     const isMember = currentUser ? project.team.some(m => m.userId === currentUser.id) : false;
@@ -131,15 +133,17 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
             content,
             createdAt: new Date(),
             updatedAt: new Date(),
+            // Add the missing timestamp property
+            timestamp: new Date().toISOString(), // Using ISO string for initial optimistic update
             user: currentUser,
         };
 
         setDiscussions(prev => [optimisticComment, ...prev]);
 
         const result = await addDiscussionComment({ projectId: project.id, content });
-
+ 
         if (result.success && result.data) {
-            const finalComment = { ...result.data, user: currentUser, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt) };
+            const finalComment: ClientDiscussion & { user?: User } = { ...result.data, user: currentUser, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt) };
             setDiscussions(prev => prev.map(d => d.id === tempId ? finalComment : d));
             toast.success("Comment posted!");
         } else {
@@ -148,7 +152,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         }
     };
 
-    const handleOpenTaskDialog = (task?: Task) => {
+    const handleOpenTaskDialog = (task?: ClientTask) => {
         setSelectedTask(task || null);
         setIsTaskDialogOpen(true);
     };
@@ -158,17 +162,15 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         setIsTaskDialogOpen(false);
     };
 
-    const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> | Task) => {
+    const handleSaveTask = async (taskData: TaskFormValues) => {
         const isUpdating = 'id' in taskData;
-        const action = isUpdating ? updateTask : addTask;
-        
-        const payload = isUpdating ? taskData as Task : { ...taskData, projectId: project.id };
+        const action = isUpdating ? updateTask : addTask; // Action now accepts TaskFormValues\
 
-        // @ts-ignore
-        const result = await action(payload);
+        // Pass taskData directly, as actions are now typed to accept TaskFormValues
+        const result = await action(taskData as any); // Use as any temporarily if server action requires more
 
         if (result.success && result.data) {
-            const savedTask = { ...result.data, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt) };
+            const savedTask: ClientTask = { ...result.data, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt), dueDate: result.data.dueDate ? toDate(result.data.dueDate) : undefined };
             setTasks(prevTasks => {
                 const existingIndex = prevTasks.findIndex(t => t.id === savedTask.id);
                 if (existingIndex > -1) {
@@ -281,10 +283,10 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                             {learningPaths.length > 0 ? (
                                 <ul className="space-y-4">
                                     {learningPaths.map(path => (
-                                        <li key={path.id} className="bg-gray-100 p-4 rounded-lg">
-                                            <h3 className="font-bold text-lg">{path.name}</h3>
+                                        <li key={path.pathId} className="bg-gray-100 p-4 rounded-lg">
+                                            <h3 className="font-bold text-lg">{path.title}</h3>
                                             <p className="text-gray-600">{path.description}</p>
-                                            <Link href={`/learning-paths/${path.id}`} className="text-blue-500 hover:underline mt-2 inline-block">View Path</Link>
+                                            <Link href={`/learning-paths/${path.pathId}`} className="text-blue-500 hover:underline mt-2 inline-block">View Path</Link>
                                         </li>
                                     ))}
                                 </ul>
@@ -301,11 +303,10 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
 
             {isTaskDialogOpen && (
                 <EditTaskDialog
-                    isOpen={isTaskDialogOpen}
-                    onClose={handleCloseTaskDialog}
-                    // @ts-ignore
-                    onSave={handleSaveTask}
                     task={selectedTask}
+                    isTeamMember={isMember}
+                    updateTask={updateTask}
+                    deleteTask={deleteTask}
                     projectTeam={project.team}
                 />
             )}

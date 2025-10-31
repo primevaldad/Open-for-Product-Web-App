@@ -60,6 +60,7 @@ export async function findUserById(userId: string): Promise<User | undefined> {
 export async function createGuestUser(uid: string): Promise<User> {
     const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
         name: 'Guest User',
+        username: 'guest',
         email: `${uid}@example.com`, // Temporary unique email
         role: 'guest',
         onboardingCompleted: false,
@@ -354,9 +355,21 @@ export async function getAllTags(): Promise<Tag[]> {
 }
 
 // --- Discussion Data Access -- -
-export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>): Promise<string> {
-    const commentRef = await adminDb.collection('discussions').add(commentData);
-    return commentRef.id;
+export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>): Promise<Discussion> {
+    // Add server timestamps here before writing to Firestore
+    const newCommentData = {
+        ...commentData,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const commentRef = await adminDb.collection('discussions').add(newCommentData);
+    const commentSnap = await commentRef.get();
+    const createdComment = commentSnap.data();
+
+    // Return the full discussion object, including the generated ID and server timestamps
+    return { id: commentRef.id, ...createdComment } as Discussion;
 }
 
 export async function getDiscussionsForProjectId(projectId: string): Promise<Discussion[]> {
@@ -406,15 +419,25 @@ export async function findTaskById(taskId: string): Promise<Task | undefined> {
     return undefined;
 }
 
-export async function addTask(newTaskData: Omit<Task, 'id'>): Promise<string> {
-    const taskRef = await adminDb.collection('tasks').add(newTaskData);
-    return taskRef.id;
+export async function addTask(newTaskData: Omit<Task, 'id'>): Promise<Task> {
+    // Add server timestamps here before writing to Firestore
+    const taskWithTimestamps = {
+        ...newTaskData,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const taskRef = await adminDb.collection('tasks').add(taskWithTimestamps);
+    const taskSnap = await taskRef.get();
+    return { id: taskRef.id, ...taskSnap.data() } as Task;
 }
 
-export async function updateTask(updatedTask: Task): Promise<void> {
+export async function updateTask(updatedTask: Task): Promise<Task> {
     const { id, ...taskData } = updatedTask;
     const taskRef = adminDb.collection('tasks').doc(id);
     await taskRef.update(taskData);
+    // Return the updated task
+    return updatedTask;
 }
 
 export async function deleteTaskFromDb(taskId: string): Promise<void> {

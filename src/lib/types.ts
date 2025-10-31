@@ -13,6 +13,7 @@ export type ProjectId = string;
 export interface User {
     id: UserId;
     name: string;
+    username: string;
     email: string;
     role?: string; // Can be 'guest' or undefined for regular users
     avatarUrl?: string;
@@ -22,7 +23,12 @@ export interface User {
     onboardingCompleted: boolean;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+    isExpert?: boolean;
+    notifications?: Notification[];
     aiFeaturesEnabled?: boolean;
+    company?: string;
+    location?: string;
+    website?: string;
 }
 
 export interface Project {
@@ -111,6 +117,8 @@ export interface Discussion {
     userId: UserId;
     timestamp: Timestamp | string;
     content: string;
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
 }
 
 export interface Task {
@@ -118,7 +126,7 @@ export interface Task {
     projectId: ProjectId;
     title: string;
     description: string;
-    status: 'todo' | 'in-progress' | 'done' | 'archived';
+    status: 'To Do' | 'In Progress' | 'Done' | 'Archived';
     createdBy: UserId;
     assignedToId?: UserId;
     estimatedHours?: number;
@@ -126,6 +134,18 @@ export interface Task {
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
 }
+
+export type ClientTask = Omit<Task, 'createdAt' | 'updatedAt' | 'dueDate'> & {
+    createdAt: Date;
+    updatedAt: Date;
+    dueDate?: Date | undefined;
+};
+
+export type ClientDiscussion = Omit<Discussion, 'createdAt' | 'updatedAt'> & {
+    createdAt: Date;
+    updatedAt: Date;
+};
+
 
 export interface HydratedTask extends Omit<Task, 'assignedToId'> {
     assignee?: User;

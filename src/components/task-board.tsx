@@ -8,15 +8,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Task } from '@/lib/types';
+import type { Task, ClientTask } from '@/lib/types';
 
 interface TaskBoardProps {
-  tasks: Task[];
-  onEditTask: (task: Task) => void;
+  tasks: ClientTask[];
+  onEditTask: (task: ClientTask) => void;
   onDeleteTask: (taskId: string) => void;
 }
 
-const TaskCard = ({ task, onEditTask, onDeleteTask }: { task: Task, onEditTask: (task: Task) => void, onDeleteTask: (taskId: string) => void }) => (
+const TaskCard = ({ task, onEditTask, onDeleteTask }: { task: ClientTask, onEditTask: (task: ClientTask) => void, onDeleteTask: (taskId: string) => void }) => (
   <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4">
     <div className="flex justify-between items-center mb-2">
       <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
@@ -33,13 +33,13 @@ const TaskCard = ({ task, onEditTask, onDeleteTask }: { task: Task, onEditTask: 
       </DropdownMenu>
     </div>
     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{task.description}</p>
-    {task.assigneeId && (
-        <div className="text-xs text-gray-500 dark:text-gray-400">Assigned to: {task.assigneeId}</div>
+    {task.assignedToId && (
+        <div className="text-xs text-gray-500 dark:text-gray-400">Assigned to: {task.assignedToId}</div>
     )}
   </div>
 );
 
-const TaskColumn = ({ title, tasks, onEditTask, onDeleteTask }: { title: string, tasks: Task[], onEditTask: (task: Task) => void, onDeleteTask: (taskId: string) => void }) => (
+const TaskColumn = ({ title, tasks, onEditTask, onDeleteTask }: { title: string, tasks: ClientTask[], onEditTask: (task: ClientTask) => void, onDeleteTask: (taskId: string) => void }) => (
   <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-4 flex-1">
     <h3 className="text-lg font-semibold text-center text-gray-800 dark:text-gray-200 mb-4">{title}</h3>
     <div>
@@ -53,9 +53,9 @@ const TaskColumn = ({ title, tasks, onEditTask, onDeleteTask }: { title: string,
 export default function TaskBoard({ tasks, onEditTask, onDeleteTask }: TaskBoardProps) {
   const columns = useMemo(() => {
     return {
-      todo: tasks.filter(t => t.status === 'todo'),
-      inProgress: tasks.filter(t => t.status === 'in-progress'),
-      done: tasks.filter(t => t.status === 'done'),
+      todo: tasks.filter(t => t.status === 'To Do'),
+      inProgress: tasks.filter(t => t.status === 'In Progress'),
+      done: tasks.filter(t => t.status === 'Done'),
     };
   }, [tasks]);
 

@@ -46,7 +46,7 @@ export default async function AppLayout({
                         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 bg-background/80 px-4 shadow-sm backdrop-blur-sm md:px-6">
                         <div className="flex items-center gap-2">
                             <SidebarTrigger className="md:hidden" />
-                            <PageHeader />
+                            <PageHeader title="Dashboard" />
                         </div>
                         <UserNav currentUser={currentUser} />
                         </header>

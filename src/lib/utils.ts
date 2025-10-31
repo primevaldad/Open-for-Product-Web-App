@@ -3,6 +3,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Project, HydratedProject, User, HydratedProjectMember } from './types';
 
+import { Timestamp } from 'firebase-admin/firestore';
 export function getInitials(name: string) {
     return name
       .split(' ')
@@ -35,8 +36,14 @@ export const serializeTimestamp = (timestamp: any): string => {
 /**
  * Converts a timestamp string from a serialized object back into a Date object.
  */
-export const toDate = (timestamp: string | undefined): Date | undefined => {
-    return timestamp ? new Date(timestamp) : undefined;
+export const toDate = (timestamp: string | Timestamp | undefined | null): Date => {
+  if (timestamp instanceof Timestamp) {
+    return timestamp.toDate();
+  } else if (typeof timestamp === 'string') {
+    return new Date(timestamp);
+  } else {
+    return new Date();
+  }
 };
 
 /**
@@ -57,6 +64,7 @@ export const toHydratedProject = (project: Project, usersMap: Map<string, User>)
 
     return {
         ...project,
+        owner: usersMap.get(project.ownerId) as User, // Assuming ownerId is always in usersMap when hydrating
         team: hydratedTeam,
     };
 };
