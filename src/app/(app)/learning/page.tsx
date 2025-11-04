@@ -1,30 +1,69 @@
+'use client';
 
-import { getAllLearningPaths } from '@/lib/data.server';
+import { useEffect, useState } from 'react';
+import { getLearningPathsAction, LearningPathsActionResponse } from '@/app/actions/learning';
 import LearningPathCard from '@/components/learning-path-card';
-import { deepSerialize } from '@/lib/utils';
 import type { LearningPath } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
-async function getLearningPathsData(): Promise<{ paths: LearningPath[] }> {
-    const paths = await getAllLearningPaths();
-    // Serialize the paths to ensure they are plain objects
-    const serializedPaths = deepSerialize(paths);
-    return { paths: serializedPaths };
-}
+export default function LearningPathsPage() {
+    const [paths, setPaths] = useState<LearningPath[]>([]);
+    const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasMore, setHasMore] = useState(true);
 
-export default async function LearningPathsPage() {
-    const { paths } = await getLearningPathsData();
+    async function fetchLearningPaths(startAfter: QueryDocumentSnapshot<DocumentData> | null = null) {
+        setIsLoading(true);
+        try {
+            const response = await getLearningPathsAction(10, startAfter);
+
+            if (!response.success) {
+                console.error("Failed to fetch learning paths:", response.error);
+                setHasMore(false);
+                setIsLoading(false);
+                return;
+            }
+
+            setPaths(prevPaths => [...prevPaths, ...response.paths]);
+            setLastVisible(response.lastVisible as QueryDocumentSnapshot<DocumentData>);
+            setHasMore(response.paths.length === 10);
+
+        } catch (error) {
+            console.error("Failed to fetch learning paths:", error);
+            setHasMore(false);
+        }
+        setIsLoading(false);
+    }
+
+    useEffect(() => {
+        fetchLearningPaths();
+    }, []);
+
+    const handleLoadMore = () => {
+        if (lastVisible) {
+            fetchLearningPaths(lastVisible);
+        }
+    };
 
     return (
         <div className="container mx-auto p-4">
             <header className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-primary">Learning Paths</h1>
-              <p className="text-lg text-muted-foreground mt-2">Follow these structured paths to master new skills and technologies.</p>
+                <h1 className="text-4xl font-bold text-primary">Learning Paths</h1>
+                <p className="text-lg text-muted-foreground mt-2">Follow these structured paths to master new skills and technologies.</p>
             </header>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {paths.map(path => (
                     <LearningPathCard key={path.pathId} path={path} />
                 ))}
+                {isLoading && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full" />)}
             </div>
+            {hasMore && !isLoading && (
+                <div className="text-center mt-8">
+                    <Button onClick={handleLoadMore}>Load More</Button>
+                </div>
+            )}
         </div>
     );
 }

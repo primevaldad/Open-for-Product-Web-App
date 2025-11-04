@@ -8,15 +8,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Task, ClientTask } from '@/lib/types';
+import type { Task } from '@/lib/types';
 
 interface TaskBoardProps {
-  tasks: ClientTask[];
-  onEditTask: (task: ClientTask) => void;
+  tasks: Task[];
+  onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
 }
 
-const TaskCard = ({ task, onEditTask, onDeleteTask }: { task: ClientTask, onEditTask: (task: ClientTask) => void, onDeleteTask: (taskId: string) => void }) => (
+const TaskCard = ({ task, onEditTask, onDeleteTask }: { task: Task, onEditTask: (task: Task) => void, onDeleteTask: (taskId: string) => void }) => (
   <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4">
     <div className="flex justify-between items-center mb-2">
       <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
@@ -39,7 +39,7 @@ const TaskCard = ({ task, onEditTask, onDeleteTask }: { task: ClientTask, onEdit
   </div>
 );
 
-const TaskColumn = ({ title, tasks, onEditTask, onDeleteTask }: { title: string, tasks: ClientTask[], onEditTask: (task: ClientTask) => void, onDeleteTask: (taskId: string) => void }) => (
+const TaskColumn = ({ title, tasks, onEditTask, onDeleteTask }: { title: string, tasks: Task[], onEditTask: (task: Task) => void, onDeleteTask: (taskId: string) => void }) => (
   <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-4 flex-1">
     <h3 className="text-lg font-semibold text-center text-gray-800 dark:text-gray-200 mb-4">{title}</h3>
     <div>

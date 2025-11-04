@@ -1,42 +1,80 @@
+'use client';
 
-import type { User, LearningPath, ProjectPathLink } from "@/lib/types";
-import { getAllProjects, getAllUsers, getAllLearningPaths, getAllProjectPathLinks } from "@/lib/data.server";
-import { getAuthenticatedUser } from "@/lib/session.server";
+import { useEffect, useState } from 'react';
+import type { LearningPath, ProjectPathLink, HydratedProject, User } from "@/lib/types";
+import { getDraftsPageData } from "@/app/actions/projects";
+import { getCurrentUser } from "@/app/actions/users";
 import ProjectCard from "@/components/project-card";
-import { HydratedProject } from "@/lib/types";
-import { toHydratedProject } from "@/lib/utils";
+import { Skeleton } from '@/components/ui/skeleton';
 
-async function getDraftsPageData(currentUser: User): Promise<{
+interface PageData {
     drafts: HydratedProject[];
     allLearningPaths: LearningPath[];
     allProjectPathLinks: ProjectPathLink[];
-}> {
-    const [projectsData, usersData, allLearningPaths, allProjectPathLinks] = await Promise.all([
-        getAllProjects(),
-        getAllUsers(),
-        getAllLearningPaths(),
-        getAllProjectPathLinks(),
-    ]);
-
-    const usersMap = new Map(usersData.map((user) => [user.id, user]));
-
-    const hydratedDrafts = projectsData
-        .filter(p => 
-            p.status === 'draft' && 
-            p.team.some(member => member.userId === currentUser.id && member.role === 'lead')
-        )
-        .map(p => toHydratedProject(p, usersMap));
-
-    return { drafts: hydratedDrafts, allLearningPaths, allProjectPathLinks };
 }
 
-export default async function DraftsPage() {
-    const currentUser = await getAuthenticatedUser();
-    
-    // Should not happen as route is protected, but good practice
-    if (!currentUser) return <p>You must be logged in to view drafts.</p>;
+export default function DraftsPage() {
+    const [data, setData] = useState<PageData | null>(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const { drafts, allLearningPaths, allProjectPathLinks } = await getDraftsPageData(currentUser);
+    useEffect(() => {
+        async function fetchData() {
+            setIsLoading(true);
+            try {
+                const [draftsResponse, userResponse] = await Promise.all([
+                    getDraftsPageData(),
+                    getCurrentUser()
+                ]);
+
+                if (draftsResponse.success && userResponse.success) {
+                    setData({
+                        drafts: draftsResponse.drafts,
+                        allLearningPaths: draftsResponse.allLearningPaths,
+                        allProjectPathLinks: draftsResponse.allProjectPathLinks
+                    });
+                    setCurrentUser(userResponse.data || null);
+                } else if (!draftsResponse.success) {
+                    setError(draftsResponse.error);
+                } else if (!userResponse.success) {
+                    setError(userResponse.error);
+                }
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'An unknown error occurred');
+            }
+            setIsLoading(false);
+        }
+
+        fetchData();
+    }, []);
+
+    if (isLoading) {
+        return (
+            <div className="container mx-auto p-4">
+                <h1 className="text-2xl font-bold mb-4">My Drafts</h1>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <p className="text-red-500">Error: {error}</p>
+            </div>
+        );
+    }
+
+    if (!data || !currentUser) {
+        return null; 
+    }
+
+    const { drafts, allLearningPaths, allProjectPathLinks } = data;
 
     return (
         <div className="container mx-auto p-4">
@@ -47,6 +85,7 @@ export default async function DraftsPage() {
                         <ProjectCard 
                             key={draft.id} 
                             project={draft} 
+                            currentUser={currentUser}
                             allLearningPaths={allLearningPaths} 
                             allProjectPathLinks={allProjectPathLinks} 
                         />

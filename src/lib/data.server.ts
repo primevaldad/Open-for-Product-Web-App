@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
 import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module, HydratedProject } from './types';
-import { serializeTimestamp } from './utils';
+import { serializeTimestamp } from './utils.server';
 
 // This file contains server-side data access functions.
 // It uses the firebase-admin SDK and is designed to run in a Node.js environment.
@@ -539,12 +539,17 @@ export async function updateUserLearningProgress(progress: UserLearningProgress)
     await progressRef.set(progress, { merge: true });
 }
 
-export async function getAllLearningPaths(): Promise<LearningPath[]> {
-    const pathsCol = adminDb.collection('learningPaths');
-    const pathSnapshot = await pathsCol.get();
-    return pathSnapshot.docs.map(doc => {
+export async function getAllLearningPaths(limitNum: number = 10, startAfterDoc?: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData>): Promise<{ paths: LearningPath[], lastVisible: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData> | null }> {
+    let query = adminDb.collection('learningPaths').orderBy('createdAt', 'desc').limit(limitNum);
+    
+    if (startAfterDoc) {
+        query = query.startAfter(startAfterDoc);
+    }
+
+    const pathSnapshot = await query.get();
+    const paths = pathSnapshot.docs.map(doc => {
         let path = {
-            pathId: doc.id, 
+            pathId: doc.id,
             ...doc.data(),
             createdAt: serializeTimestamp(doc.data().createdAt),
             updatedAt: serializeTimestamp(doc.data().updatedAt),
@@ -554,7 +559,12 @@ export async function getAllLearningPaths(): Promise<LearningPath[]> {
 
         return path;
     });
+
+    const lastVisible = pathSnapshot.docs.length > 0 ? pathSnapshot.docs[pathSnapshot.docs.length - 1] : null;
+
+    return { paths, lastVisible };
 }
+
 
 // --- AI Data Access ---
 

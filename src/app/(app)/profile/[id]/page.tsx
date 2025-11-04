@@ -3,11 +3,11 @@ import { getProjectsByUserId, getAllLearningPaths, getAllProjectPathLinks, findU
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { notFound } from 'next/navigation';
 import UserProfilePageClient from './profile-client-page';
-import { deepSerialize } from '@/lib/utils';
+import { deepSerialize } from '@/lib/utils.server';
 
 // This is a server component
 async function getUserProfileData(userId: string) {
-    const [user, userProjects, allLearningPaths, allProjectPathLinks, currentUser] = await Promise.all([
+    const [user, userProjects, allLearningPathsResult, allProjectPathLinks, currentUser] = await Promise.all([
         findUserById(userId),
         getProjectsByUserId(userId),
         getAllLearningPaths(),
@@ -23,7 +23,7 @@ async function getUserProfileData(userId: string) {
         user,
         userProjects,
         isCurrentUserProfile: user.id === currentUser?.id,
-        allLearningPaths,
+        allLearningPaths: allLearningPathsResult.paths,
         allProjectPathLinks,
         currentUser,
     });

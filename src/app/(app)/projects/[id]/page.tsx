@@ -20,13 +20,13 @@ import type {
     ServerActionResponse,
     ProjectMember
 } from '@/lib/types';
-import { toHydratedProject, deepSerialize } from '@/lib/utils';
+import { toHydratedProject, deepSerialize } from '@/lib/utils.server';
 import { getRecommendedLearningPathsForProject } from '@/lib/data.server';
 
 // Action type definitions, ensuring they match the client component's expectations
 type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
 type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
-type AddDiscussionCommentAction = (data: { projectId: string; userId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
+type AddDiscussionCommentAction = (data: { projectId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
 type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ServerActionResponse<Task>>;
 type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
 type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;

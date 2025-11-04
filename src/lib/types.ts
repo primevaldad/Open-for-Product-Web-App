@@ -115,7 +115,6 @@ export interface Discussion {
     id: string;
     projectId: ProjectId;
     userId: UserId;
-    timestamp: Timestamp | string;
     content: string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
@@ -134,18 +133,6 @@ export interface Task {
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
 }
-
-export type ClientTask = Omit<Task, 'createdAt' | 'updatedAt' | 'dueDate'> & {
-    createdAt: Date;
-    updatedAt: Date;
-    dueDate?: Date | undefined;
-};
-
-export type ClientDiscussion = Omit<Discussion, 'createdAt' | 'updatedAt'> & {
-    createdAt: Date;
-    updatedAt: Date;
-};
-
 
 export interface HydratedTask extends Omit<Task, 'assignedToId'> {
     assignee?: User;
@@ -203,3 +190,17 @@ export interface ServerActionResponse<T = any> {
     error?: string;
     data?: T;
 }
+
+// --- Discriminated Union Types for Page Data Responses ---
+
+export type CreateProjectPageDataResponse = 
+    | { success: true; allTags: Tag[]; allUsers: User[] }
+    | { success: false; error: string };
+
+export type EditProjectPageDataResponse = 
+    | { success: true; project: HydratedProject; allTags: Tag[]; allUsers: User[] }
+    | { success: false; error: string };
+
+export type DraftsPageDataResponse = 
+    | { success: true; drafts: HydratedProject[]; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] }
+    | { success: false; error: string };

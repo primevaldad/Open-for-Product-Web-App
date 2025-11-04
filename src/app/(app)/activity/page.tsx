@@ -1,74 +1,94 @@
+'use client';
 
-import { getAuthenticatedUser } from "@/lib/session.server";
-import { getUserActivity, getAllProjects, getAllUsers } from "@/lib/data.server";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ActivityClientPage } from "./activity-client-page";
+import { getActivityPageData } from "@/app/actions/activity";
 import { updateTask, deleteTask } from "@/app/actions/projects";
-import type { Task, Project, User } from "@/lib/types";
-import { toHydratedActivityItem } from "./utils";
+import { Skeleton } from '@/components/ui/skeleton';
+import type { HydratedActivityItem } from "./utils";
+import type { User, Project, Task, HydratedTask } from "@/lib/types";
 
-// A specific type for tasks enriched with project and user details
-export type HydratedTask = Task & { 
-    project?: { id: string, name: string }; 
-    assignedUser?: { id: string, name: string | null, avatarUrl?: string | null };
-};
-
-async function getActivityPageData() {
-    const currentUser = await getAuthenticatedUser();
-    if (!currentUser) return { 
-        currentUser: null, 
-        activity: { projects: [], tasks: [], discussions: [], notifications: [] },
-        projects: [], 
-        users: []
-    };
-
-    const [activity, projects, users] = await Promise.all([
-        getUserActivity(currentUser.id),
-        getAllProjects(),
-        getAllUsers(),
-    ]);
-
-    return { currentUser, activity, projects, users };
+// Define the shape of the success and error responses from the server action
+interface SuccessResponse {
+    success: true;
+    currentUser: User;
+    activity: HydratedActivityItem[];
+    myTasks: HydratedActivityItem[];
+    createdTasks: HydratedActivityItem[];
+    projects: Project[];
+    users: User[];
 }
 
-export default async function ActivityPage() {
-    const { currentUser, activity, projects, users } = await getActivityPageData();
+interface ErrorResponse {
+    success: false;
+    message: string;
+}
 
-    if (!currentUser) {
-        // This could be a redirect to the login page as well
-        return <p>Please log in to see your activity.</p>;
+type PageDataResponse = SuccessResponse | ErrorResponse;
+
+export default function ActivityPage() {
+    const [data, setData] = useState<SuccessResponse | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const response = await getActivityPageData() as PageDataResponse;
+
+                if ('message' in response) {
+                    // Type guard for ErrorResponse
+                    if (response.message === 'User not authenticated.') {
+                        router.push('/login');
+                    } else {
+                        setError(response.message || 'An unexpected error occurred.');
+                    }
+                } else {
+                    // TypeScript now knows this is a SuccessResponse
+                    setData(response);
+                }
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'An unknown error occurred');
+            }
+            setIsLoading(false);
+        }
+
+        fetchData();
+    }, [router]);
+
+    if (isLoading) {
+        return (
+            <div className="container mx-auto p-4">
+                <div className="space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                </div>
+            </div>
+        );
     }
 
-    const projectsMap = new Map(projects.map(p => [p.id, p]));
-    const usersMap = new Map(users.map(u => [u.id, u]));
+    if (error) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <p className="text-red-500">Error: {error}</p>
+            </div>
+        );
+    }
 
-    const hydratedActivity = [
-        ...activity.projects.map(item => toHydratedActivityItem(item, 'project', projectsMap, usersMap)),
-        ...activity.tasks.map(item => toHydratedActivityItem(item, 'task', projectsMap, usersMap)),
-        ...activity.discussions.map(item => toHydratedActivityItem(item, 'discussion', projectsMap, usersMap)),
-        ...activity.notifications.map(item => toHydratedActivityItem(item, 'notification', projectsMap, usersMap)),
-    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-    // My Tasks: tasks assigned to the current user
-    const myTasks = activity.tasks
-        .filter(task => task.assignee === currentUser.id)
-        .map(task => toHydratedActivityItem(task, 'task', projectsMap, usersMap));
-
-    // Created by Me: tasks where the current user is the creator
-    const createdTasks = activity.tasks
-        .filter(task => task.createdBy === currentUser.id)
-        .map(task => toHydratedActivityItem(task, 'task', projectsMap, usersMap));
-
-    const userProjects = projects.filter(p => p.team.some(member => member.userId === currentUser.id));
+    if (!data) {
+        return null;
+    }
 
     return (
         <ActivityClientPage
-            currentUser={currentUser}
-            // @ts-ignore
-            activity={hydratedActivity}
-            myTasks={myTasks}
-            createdTasks={createdTasks}
-            projects={userProjects}
-            users={users}
+            currentUser={data.currentUser}
+            myTasks={data.myTasks.map(item => item.content as HydratedTask)}
+            createdTasks={data.createdTasks.map(item => item.content as HydratedTask)}
+            projects={data.projects}
+            users={data.users}
             updateTask={updateTask}
             deleteTask={deleteTask}
         />

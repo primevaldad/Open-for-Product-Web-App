@@ -1,5 +1,5 @@
 
-import type { Project, Task, Discussion, Notification, User, ServerActionResponse, HydratedTask } from '@/lib/types';
+import type { Project, Task, Discussion, Notification, User, ServerActionResponse, HydratedTask as BaseHydratedTask } from '@/lib/types';
 
 export type HydratedActivityItem = {
     id: string;
@@ -9,6 +9,8 @@ export type HydratedActivityItem = {
     project?: { id: string, name: string };
     user?: { id: string, name: string | null, avatarUrl?: string | null };
 };
+
+export type HydratedTask = BaseHydratedTask;
 
 export const toHydratedActivityItem = (
     item: Project | Task | Discussion | Notification,
@@ -67,5 +69,3 @@ export interface ActivityClientPageProps {
     updateTask: UpdateTaskAction;
     deleteTask: DeleteTaskAction;
 }
-
-export { HydratedTask };

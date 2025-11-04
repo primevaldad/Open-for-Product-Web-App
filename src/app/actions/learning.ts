@@ -3,7 +3,9 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserLearningProgress, updateUserLearningProgress } from '@/lib/data.server'; // Corrected import
+import { findUserLearningProgress, updateUserLearningProgress, getAllLearningPaths as getAllLearningPathsFromDb } from '@/lib/data.server';
+import { deepSerialize } from '@/lib/utils.server';
+import { UserLearningProgress, LearningPath } from '@/lib/types';
 
 const CompleteModuleSchema = z.object({
   userId: z.string(),
@@ -11,6 +13,20 @@ const CompleteModuleSchema = z.object({
   moduleId: z.string(),
   completed: z.boolean(),
 });
+
+export type LearningPathsActionResponse = 
+    | { success: true; paths: LearningPath[]; lastVisible: any; }
+    | { success: false; error: string; };
+
+export async function getLearningPathsAction(limit: number, startAfter: any = null): Promise<LearningPathsActionResponse> {
+    try {
+        const { paths, lastVisible } = await getAllLearningPathsFromDb(limit, startAfter);
+        return deepSerialize({ success: true, paths, lastVisible }) as LearningPathsActionResponse;
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return deepSerialize({ success: false, error: `Failed to fetch learning paths: ${errorMessage}` }) as LearningPathsActionResponse;
+    }
+}
 
 export async function completeModule(values: z.infer<typeof CompleteModuleSchema>) {
     const validatedFields = CompleteModuleSchema.safeParse(values);
@@ -24,15 +40,15 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
 
     const { userId, pathId, moduleId, completed } = validatedFields.data;
 
-    let userProgress = await findUserLearningProgress(userId, pathId); // findUserLearningProgress is async
+    let userProgress = await findUserLearningProgress(userId, pathId);
 
     if (!userProgress) {
-        // This case handles enrolling a user in a path for the first time.
         userProgress = {
             userId,
             pathId,
-            completedModules: completed ? [moduleId] : []
-        };
+            completedModules: completed ? [moduleId] : [],
+            lastAccessed: new Date().toISOString(),
+        } as UserLearningProgress;
     } else {
         const moduleIndex = userProgress.completedModules.indexOf(moduleId);
         if (completed && moduleIndex === -1) {
@@ -40,11 +56,11 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
         } else if (!completed && moduleIndex !== -1) {
             userProgress.completedModules.splice(moduleIndex, 1);
         }
+        userProgress.lastAccessed = new Date().toISOString();
     }
 
-    await updateUserLearningProgress(userProgress); // updateUserLearningProgress is async
+    await updateUserLearningProgress(userProgress);
 
-    // Revalidate all paths that display learning progress
     revalidatePath(`/learning/${pathId}/${moduleId}`);
     revalidatePath(`/learning/${pathId}`);
     revalidatePath('/activity');

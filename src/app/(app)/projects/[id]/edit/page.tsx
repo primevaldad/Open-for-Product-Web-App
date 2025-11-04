@@ -1,114 +1,88 @@
+'use client';
 
-import type { Project, Tag as GlobalTag, ProjectTag, User } from "@/lib/types";
+import type { Project, Tag, User } from "@/lib/types";
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { useParams, notFound, useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getAuthenticatedUser } from '@/lib/session.server';
-import { findProjectById, getAllTags, getAllUsers } from '@/lib/data.server';
+import { getEditProjectPageData } from '@/app/actions/projects';
 import EditProjectForm from './edit-project-form';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// --- Serialization Helpers ---
-
-const toISOString = (timestamp: unknown): string | undefined => {
-  if (!timestamp) return undefined;
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  if (
-    typeof timestamp === 'object' &&
-    timestamp !== null &&
-    'toDate' in timestamp &&
-    typeof (timestamp as { toDate: unknown }).toDate === 'function'
-  ) {
-    return ((timestamp as { toDate: () => Date }).toDate()).toISOString();
-  }
-  if (typeof timestamp === 'string') {
-    return timestamp;
-  }
-  return undefined;
-};
-
-const serializeProject = (project: Project): Project => {
-  return {
-    ...project,
-    createdAt: toISOString(project.createdAt),
-    updatedAt: toISOString(project.updatedAt),
-    startDate: toISOString(project.startDate),
-    endDate: toISOString(project.endDate),
-  } as Project;
-};
-
-const serializeGlobalTag = (tag: GlobalTag): GlobalTag => ({
-  ...tag,
-  createdAt: toISOString(tag.createdAt),
-  updatedAt: toISOString(tag.updatedAt),
-});
-
-const serializeUser = (user: User): User => ({
-    ...user,
-    createdAt: toISOString(user.createdAt),
-    updatedAt: toISOString(user.updatedAt),
-  });
-
-async function getEditPageData(projectId: string) {
-    const [currentUser, project, allTagsData, allUsersData] = await Promise.all([
-        getAuthenticatedUser(),
-        findProjectById(projectId),
-        getAllTags(),
-        getAllUsers(),
-    ]);
-
-    if (!project) return { currentUser: null, project: null, allTags: [], users: [] };
-
-    const tagsMap = new Map<string, GlobalTag>();
-    allTagsData.forEach(tag => tagsMap.set(tag.id, tag));
-
-    if (project.tags && Array.isArray(project.tags)) {
-        const hydratedTags: ProjectTag[] = project.tags
-            .map(projectTag => {
-                const fullTag = tagsMap.get(projectTag.id);
-                if (!fullTag) return null;
-                return {
-                    id: fullTag.id,
-                    display: fullTag.display,
-                    type: fullTag.type,
-                };
-            })
-            .filter((tag): tag is ProjectTag => !!tag); 
-        
-        project.tags = hydratedTags;
-    }
-
-    const serializedTags = allTagsData.map(serializeGlobalTag);
-    const serializedUsers = allUsersData.map(serializeUser);
-
-    return { currentUser, project, allTags: serializedTags, users: serializedUsers };
+interface PageData {
+  project: Project;
+  allTags: Tag[];
+  users: User[];
 }
 
-// --- Server Component: EditProjectPage ---
+export default function EditProjectPage() {
+  const [data, setData] = useState<PageData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const params = useParams();
+  const router = useRouter();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
-export default async function EditProjectPage({ params: { id } }: { params: { id: string } }) {
-  const { currentUser, project, allTags, users } = await getEditPageData(id);
+  useEffect(() => {
+    if (!id) return;
 
-  if (!project) {
-    notFound();
-  }
+    async function fetchData() {
+      setIsLoading(true);
+      try {
+        const response = await getEditProjectPageData(id);
+        if (response.success) {
+            setData({
+                project: response.project,
+                allTags: response.allTags,
+                users: response.allUsers,
+            });
+        } else {
+            setError(response.error);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      }
+      setIsLoading(false);
+    }
 
-  if (!currentUser) {
-      redirect("/login");
-  }
+    fetchData();
+  }, [id, router]);
 
-  const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
-  if (!isLead) {
+  if (isLoading) {
     return (
-        <div className="flex h-screen items-center justify-center">
-            <p>You do not have permission to edit this project.</p>
+        <div className="flex min-h-screen w-full flex-col bg-background">
+            <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-6 w-48" />
+            </header>
+            <main className="flex-1 overflow-auto p-4 md:p-6">
+                <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            </main>
         </div>
     );
   }
 
-  const serializableProject = serializeProject(project);
+  if (error) {
+    if (error === 'Project not found.') {
+        notFound();
+    }
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p className="text-red-500">Error: {error}</p>
+        </div>
+    );
+  }
+
+  if (!data) {
+    return null; // Or a more specific loading/empty state
+  }
+
+  const { project, allTags, users } = data;
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
@@ -124,7 +98,7 @@ export default async function EditProjectPage({ params: { id } }: { params: { id
       </header>
       <main className="flex-1 overflow-auto p-4 md:p-6">
         <EditProjectForm 
-            project={serializableProject} 
+            project={project} 
             allTags={allTags}
             users={users} 
         />

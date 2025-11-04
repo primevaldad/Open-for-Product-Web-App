@@ -70,7 +70,11 @@ export default function LoginPageClient() {
         if ((error as { code?: string }).code === 'auth/invalid-credential') {
             setError("Invalid email or password. Please try again.");
         } else {
-            setError((error as Error).message || "An unexpected error occurred during login.");
+            if (error instanceof Error) {
+                setError(error.message);
+            } else {
+                setError("An unexpected error occurred during login.");
+            }
         }
       }
     });

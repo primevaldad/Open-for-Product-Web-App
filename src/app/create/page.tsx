@@ -1,65 +1,77 @@
+'use client';
 
-import { getAuthenticatedUser } from "@/lib/session.server";
-import { CreateProjectForm } from "./create-project-form";
-import { getAllTags, getAllUsers } from "@/lib/data.server";
-import { redirect } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Tag, User } from "@/lib/types";
+import { getCreateProjectPageData } from "@/app/actions/projects";
+import { CreateProjectForm } from "./create-project-form";
+import { Skeleton } from '@/components/ui/skeleton';
 
-// --- Serialization Helpers ---
-const toISOString = (timestamp: unknown): string | undefined => {
-  if (!timestamp) return undefined;
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  if (
-    typeof timestamp === 'object' &&
-    timestamp !== null &&
-    'toDate' in timestamp &&
-    typeof (timestamp as { toDate: unknown }).toDate === 'function'
-  ) {
-    return ((timestamp as { toDate: () => Date }).toDate()).toISOString();
-  }
-  if (typeof timestamp === 'string') {
-    return timestamp;
-  }
-  return undefined;
-};
-
-const serializeTag = (tag: Tag): Tag => ({
-  ...tag,
-  createdAt: toISOString(tag.createdAt),
-  updatedAt: toISOString(tag.updatedAt),
-});
-
-const serializeUser = (user: User): User => ({
-    ...user,
-    createdAt: toISOString(user.createdAt),
-    updatedAt: toISOString(user.updatedAt),
-  });
-
-async function getCreatePageData() {
-    const [currentUser, allTags, allUsers] = await Promise.all([
-        getAuthenticatedUser(),
-        getAllTags(),
-        getAllUsers(),
-    ]);
-    const serializedTags = allTags.map(serializeTag);
-    const serializedUsers = allUsers.map(serializeUser);
-    return { currentUser, allTags: serializedTags, allUsers: serializedUsers };
+interface PageData {
+  allTags: Tag[];
+  allUsers: User[];
 }
 
-// The page is a Server Component responsible for fetching data and rendering the layout.
-export default async function CreateProjectPage() {
-    const { currentUser, allTags, allUsers } = await getCreatePageData();
+export default function CreateProjectPage() {
+    const [data, setData] = useState<PageData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
 
-    if (!currentUser) {
-        redirect('/login');
+    useEffect(() => {
+        async function fetchData() {
+            setIsLoading(true);
+            try {
+                const response = await getCreateProjectPageData();
+                if (response.success) {
+                    setData({
+                        allTags: response.allTags,
+                        allUsers: response.allUsers,
+                    });
+                } else {
+                    if (response.error === 'User not authenticated.') {
+                        router.push('/login');
+                    } else {
+                        setError(response.error);
+                    }
+                }
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'An unknown error occurred');
+            }
+            setIsLoading(false);
+        }
+
+        fetchData();
+    }, [router]);
+
+    if (isLoading) {
+        return (
+            <div className="p-4 md:p-6">
+                <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <p className="text-red-500">Error: {error}</p>
+            </div>
+        );
+    }
+
+    if (!data) {
+        return null;
     }
 
     return (
-        <CreateProjectForm 
-            tags={allTags} 
-            users={allUsers}
+        <CreateProjectForm
+            tags={data.allTags}
+            users={data.allUsers}
         />
     );
 }

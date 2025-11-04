@@ -1,7 +1,7 @@
 
 import { findLearningPathsByIds } from '@/lib/data.server';
 import ModuleAccordion from '@/components/module-accordion';
-import { deepSerialize } from '@/lib/utils';
+import { deepSerialize } from '@/lib/utils.server';
 import type { LearningPath } from '@/lib/types';
 
 // This is a server component

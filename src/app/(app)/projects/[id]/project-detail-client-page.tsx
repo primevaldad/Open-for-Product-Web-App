@@ -13,12 +13,10 @@ import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
 import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
-import EditTaskDialog from '@/components/edit-task-dialog';
+import { EditTaskDialog, TaskFormValues } from '@/components/edit-task-dialog';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import ProjectGovernance from '@/components/project-governance';
-import { ClientTask, ClientDiscussion } from '@/lib/types';
-import type { TaskFormValues } from '@/components/edit-task-dialog';
 
 import type { 
     HydratedProject, 
@@ -30,7 +28,6 @@ import type {
     HydratedProjectMember,
     ProjectMember
 } from '@/lib/types';
-import { toDate } from '@/lib/utils';
 
 // Action Prop Types
 type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
@@ -85,9 +82,9 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
     const currentPath = usePathname();
 
     const [project, setProject] = useState(initialProject);
-    const [discussions, setDiscussions] = useState<Array<ClientDiscussion & { user?: User }>>(initialDiscussions.map(d => ({ ...d, createdAt: toDate(d.createdAt), updatedAt: toDate(d.updatedAt) })));
-    const [tasks, setTasks] = useState<ClientTask[]>(initialTasks.map(t => ({...t, createdAt: toDate(t.createdAt), updatedAt: toDate(t.updatedAt), dueDate: t.dueDate ? toDate(t.dueDate) : undefined})));
-    const [selectedTask, setSelectedTask] = useState<ClientTask | null>(null);
+    const [discussions, setDiscussions] = useState<Array<Discussion & { user?: User }>>(initialDiscussions);
+    const [tasks, setTasks] = useState<Task[]>(initialTasks);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
     const isMember = currentUser ? project.team.some(m => m.userId === currentUser.id) : false;
@@ -126,15 +123,13 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         }
 
         const tempId = `temp-${Date.now()}`;
-        const optimisticComment = {
+        const optimisticComment: Discussion & { user?: User } = {
             id: tempId,
             projectId: project.id,
             userId: currentUser.id,
             content,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            // Add the missing timestamp property
-            timestamp: new Date().toISOString(), // Using ISO string for initial optimistic update
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
             user: currentUser,
         };
 
@@ -143,7 +138,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         const result = await addDiscussionComment({ projectId: project.id, content });
  
         if (result.success && result.data) {
-            const finalComment: ClientDiscussion & { user?: User } = { ...result.data, user: currentUser, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt) };
+            const finalComment: Discussion & { user?: User } = { ...result.data, user: currentUser };
             setDiscussions(prev => prev.map(d => d.id === tempId ? finalComment : d));
             toast.success("Comment posted!");
         } else {
@@ -152,7 +147,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         }
     };
 
-    const handleOpenTaskDialog = (task?: ClientTask) => {
+    const handleOpenTaskDialog = (task?: Task) => {
         setSelectedTask(task || null);
         setIsTaskDialogOpen(true);
     };
@@ -164,13 +159,12 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
 
     const handleSaveTask = async (taskData: TaskFormValues) => {
         const isUpdating = 'id' in taskData;
-        const action = isUpdating ? updateTask : addTask; // Action now accepts TaskFormValues\
+        const action = isUpdating ? updateTask : addTask;
 
-        // Pass taskData directly, as actions are now typed to accept TaskFormValues
-        const result = await action(taskData as any); // Use as any temporarily if server action requires more
+        const result = await action(taskData as any);
 
         if (result.success && result.data) {
-            const savedTask: ClientTask = { ...result.data, createdAt: toDate(result.data.createdAt), updatedAt: toDate(result.data.updatedAt), dueDate: result.data.dueDate ? toDate(result.data.dueDate) : undefined };
+            const savedTask = result.data;
             setTasks(prevTasks => {
                 const existingIndex = prevTasks.findIndex(t => t.id === savedTask.id);
                 if (existingIndex > -1) {
@@ -301,13 +295,12 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                 </Tabs>
             </div>
 
-            {isTaskDialogOpen && (
+            {selectedTask && isTaskDialogOpen && (
                 <EditTaskDialog
+                    isOpen={isTaskDialogOpen}
+                    onClose={handleCloseTaskDialog}
                     task={selectedTask}
-                    isTeamMember={isMember}
-                    updateTask={updateTask}
-                    deleteTask={deleteTask}
-                    projectTeam={project.team}
+                    teamMembers={project.team.map(member => member.user).filter(Boolean) as User[]}
                 />
             )}
         </div>

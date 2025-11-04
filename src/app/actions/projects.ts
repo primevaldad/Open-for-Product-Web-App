@@ -13,6 +13,12 @@ import type {
   Task,
   HydratedProjectMember,
   ProjectMember,
+  LearningPath,
+  ProjectPathLink,
+  HydratedProject,
+  CreateProjectPageDataResponse,
+  EditProjectPageDataResponse,
+  DraftsPageDataResponse
 } from '@/lib/types';
 import {
   adminDb,
@@ -25,6 +31,10 @@ import {
   updateProject as updateProjectInDb,
   updateTask as updateTaskInDb,
   getAllTags as getAllGlobalTags,
+  getAllUsers,
+  getAllProjects,
+  getAllLearningPaths,
+  getAllProjectPathLinks,
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import {
@@ -33,14 +43,14 @@ import {
   CreateProjectFormValues,
   EditProjectFormValues,
 } from '@/lib/schemas';
-import { toHydratedProject } from '@/lib/utils';
+import { toHydratedProject, deepSerialize } from '@/lib/utils.server';
 
 const MAX_TAG_LENGTH = 35;
 
 // --- Helper Functions ---
 
 const normalizeTag = (tag: string): string => {
-  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '').slice(0, MAX_TAG_LENGTH);
+  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '\'').slice(0, MAX_TAG_LENGTH);
 };
 
 async function manageTagsForProject(
@@ -302,7 +312,7 @@ export async function joinProject(projectId: string): Promise<ServerActionRespon
 
     revalidatePath(`/projects/${projectId}`);
     const hydratedMember: HydratedProjectMember = { ...newMember, user: currentUser };
-    return { success: true, data: hydratedMember };
+    return { success: true, data: deepSerialize(hydratedMember) };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return { success: false, error: message };
@@ -341,7 +351,7 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
 
         revalidatePath(`/projects/${projectId}`);
         const hydratedMember: HydratedProjectMember = { ...newMember, user };
-        return { success: true, data: hydratedMember };
+        return { success: true, data: deepSerialize(hydratedMember) };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
         return { success: false, error: message };
@@ -356,7 +366,6 @@ export async function addDiscussionComment(data: { projectId: string; content: s
     try {
         const newComment = await addDiscussionCommentToDb({ 
             projectId,
-            timestamp: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             userId: currentUser.id, 
@@ -378,7 +387,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
         }
 
         revalidatePath(`/projects/${projectId}`);
-        return { success: true, data: newComment };
+        return { success: true, data: deepSerialize(newComment) };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred';
         return { success: false, error: message };
@@ -403,7 +412,7 @@ export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
             updatedAt: new Date().toISOString(),
         });
         revalidatePath(`/projects/${data.projectId}`);
-        return { success: true, data: newTask };
+        return { success: true, data: deepSerialize(newTask) };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
         return { success: false, error: message };
@@ -423,10 +432,10 @@ export async function updateTask(data: Task): Promise<ServerActionResponse<Task>
 
         const updatedTask = await updateTaskInDb(data);
         revalidatePath(`/projects/${data.projectId}`);
-        return { success: true, data: updatedTask };
+        return deepSerialize({ success: true, data: updatedTask }) as ServerActionResponse<Task>;
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        return { success: false, error: message };
+        return deepSerialize({ success: false, error: message }) as ServerActionResponse<Task>;
     }
 }
 
@@ -448,4 +457,135 @@ export async function deleteTask(data: { id: string; projectId: string }): Promi
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
         return { success: false, error: message };
     }
+}
+
+export async function getEditProjectPageData(projectId: string): Promise<EditProjectPageDataResponse> {
+  "use server";
+  try {
+    const [currentUser, project, allTags, allUsers] = await Promise.all([
+      getAuthenticatedUser(),
+      findProjectById(projectId),
+      getAllGlobalTags(),
+      getAllUsers(),
+    ]);
+
+    if (!project) {
+      return deepSerialize({ success: false, error: "Project not found." }) as EditProjectPageDataResponse;
+    }
+    
+    if (!currentUser) {
+        return deepSerialize({ success: false, error: "User not authenticated." }) as EditProjectPageDataResponse;
+    }
+
+    const isLead = project.team.some(
+      (member) => member.userId === currentUser.id && member.role === "lead"
+    );
+
+    if (!isLead) {
+      return deepSerialize({
+        success: false,
+        error: "You do not have permission to edit this project.",
+      }) as EditProjectPageDataResponse;
+    }
+
+    const tagsMap = new Map<string, GlobalTag>();
+    allTags.forEach((tag) => tagsMap.set(tag.id, tag));
+
+    if (project.tags && Array.isArray(project.tags)) {
+      const hydratedTags: ProjectTag[] = project.tags
+        .map((projectTag) => {
+          const fullTag = tagsMap.get(projectTag.id);
+          if (!fullTag) return null;
+          return {
+            id: fullTag.id,
+            display: fullTag.display,
+            type: fullTag.type,
+          };
+        })
+        .filter((tag): tag is ProjectTag => !!tag);
+      project.tags = hydratedTags;
+    }
+
+    return deepSerialize({
+      success: true,
+      project,
+      allTags,
+      allUsers,
+    }) as EditProjectPageDataResponse;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred.";
+    return deepSerialize({
+      success: false,
+      error: `Failed to load project data: ${errorMessage}`,
+    }) as EditProjectPageDataResponse;
+  }
+}
+
+export async function getCreateProjectPageData(): Promise<CreateProjectPageDataResponse> {
+  "use server";
+  try {
+    const [currentUser, allTags, allUsers] = await Promise.all([
+      getAuthenticatedUser(),
+      getAllGlobalTags(),
+      getAllUsers(),
+    ]);
+
+    if (!currentUser) {
+      return deepSerialize({ success: false, error: "User not authenticated." }) as CreateProjectPageDataResponse;
+    }
+
+    return deepSerialize({
+      success: true,
+      allTags,
+      allUsers,
+    }) as CreateProjectPageDataResponse;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred.";
+    return deepSerialize({
+      success: false,
+      error: `Failed to load create page data: ${errorMessage}`,
+    }) as CreateProjectPageDataResponse;
+  }
+}
+
+export async function getDraftsPageData(): Promise<DraftsPageDataResponse> {
+  "use server";
+  try {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      return deepSerialize({ success: false, error: "User not authenticated." }) as DraftsPageDataResponse;
+    }
+
+    const [projectsData, usersData, allLearningPaths, allProjectPathLinks] = await Promise.all([
+      getAllProjects(),
+      getAllUsers(),
+      getAllLearningPaths(),
+      getAllProjectPathLinks(),
+    ]);
+
+    const usersMap = new Map(usersData.map((user) => [user.id, user]));
+
+    const hydratedDrafts = projectsData
+      .filter(p =>
+        p.status === 'draft' &&
+        p.team.some(member => member.userId === currentUser.id && member.role === 'lead')
+      )
+      .map(p => toHydratedProject(p, usersMap));
+
+    return deepSerialize({
+      success: true,
+      drafts: hydratedDrafts,
+      allLearningPaths,
+      allProjectPathLinks,
+    }) as DraftsPageDataResponse;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred.";
+    return deepSerialize({
+      success: false,
+      error: `Failed to load drafts data: ${errorMessage}`,
+    }) as DraftsPageDataResponse;
+  }
 }

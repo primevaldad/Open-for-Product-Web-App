@@ -3,10 +3,13 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserById, updateUser as updateUserInDb } from '@/lib/data.server';
+import { findUserById, updateUser as updateUserInDb, getAllTags } from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
 import { adminApp } from '@/lib/firebase.server';
 import { getAuth } from 'firebase-admin/auth';
 import type { FirebaseError } from 'firebase-admin/app';
+import { deepSerialize } from '@/lib/utils.server';
+import type { User, Tag } from '@/lib/types';
 
 const UserSettingsSchema = z.object({
   id: z.string(),
@@ -32,6 +35,32 @@ const OnboardingSchema = z.object({
   bio: z.string().optional(),
   interests: z.array(z.string()).min(1, { message: 'Please select at least one interest.' }),
 });
+
+export async function getSettingsPageData() {
+  'use server';
+  try {
+    const user = await getAuthenticatedUser();
+
+    if (!user) {
+      return deepSerialize({ success: false, error: 'User not authenticated.' });
+    }
+    
+    const allTags = await getAllTags();
+
+    return deepSerialize({
+      success: true,
+      user,
+      allTags,
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return deepSerialize({
+      success: false,
+      error: `Failed to load settings data: ${errorMessage}`,
+    });
+  }
+}
 
 export async function updateUserSettings(values: z.infer<typeof UserSettingsSchema>) {
   const validatedFields = UserSettingsSchema.safeParse(values);
@@ -71,10 +100,13 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
     revalidatePath('/', 'layout');
     return { success: true };
   } catch (error) {
-    if (error && typeof error === 'object' && 'message' in error) {
-      return { success: false, error: (error as Error).message };
+    let errorMessage = "An unexpected error occurred.";
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        errorMessage = (error as any).message;
     }
-    return { success: false, error: "An unexpected error occurred." };
+    return { success: false, error: errorMessage };
   }
 }
 

@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import type { ClientDiscussion, Discussion, User } from '@/lib/types';
+import type { Discussion, User } from '@/lib/types';
 import { toDate, timeAgo } from '@/lib/utils';
 
 interface DiscussionForumProps {
-  discussions: (ClientDiscussion & { user?: User })[];
+  discussions: (Discussion & { user?: User })[];
   onAddComment: (content: string) => void;
   isMember: boolean;
   currentUser: User | null;
@@ -72,7 +72,7 @@ export default function DiscussionForum({
               <div className="flex items-center space-x-2">
                 <p className="font-semibold text-gray-900 dark:text-white">{discussion.user?.name || 'Unknown User'}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {timeAgo(discussion.createdAt)}
+                  {timeAgo(toDate(discussion.createdAt))}
                 </p>
               </div>
               <p className="text-gray-700 dark:text-gray-300 mt-1">{discussion.content}</p>

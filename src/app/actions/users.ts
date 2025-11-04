@@ -1,21 +1,17 @@
-
 'use server';
 
-import { findUsersByName, findUserById } from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import { User, ServerActionResponse } from '@/lib/types';
 
-export async function searchUsers(searchTerm: string) {
-  if (!searchTerm) {
-    return [];
-  }
-  return findUsersByName(searchTerm);
-}
-
-export async function findUsersByIds(ids: string[]) {
-    if (!ids || ids.length === 0) {
-        return [];
+export async function getCurrentUser(): Promise<ServerActionResponse<User>> {
+    try {
+        const user = await getAuthenticatedUser();
+        if (!user) {
+            return { success: false, error: 'User not authenticated.' };
+        }
+        return { success: true, data: user };
+    } catch (error) {
+        console.error('[USERS_ACTION_TRACE] Error fetching current user:', error);
+        return { success: false, error: 'An unknown error occurred.' };
     }
-    const userPromises = ids.map(findUserById);
-    const users = await Promise.all(userPromises);
-    return users.filter(user => user !== undefined);
 }
-
