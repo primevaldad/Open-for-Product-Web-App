@@ -69,7 +69,25 @@ export async function getHomePageData() {
             return toHydratedProject(p, usersMap);
             });
 
-            const suggestedProjects = currentUser ? await getAiSuggestedProjects(currentUser, allPublishedProjects) : null;
+            let suggestedProjects = null;
+            if (currentUser && currentUser.aiFeaturesEnabled) {
+                const projectsForAI = allPublishedProjects.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.description,
+                    tags: p.tags,
+                    category: p.category,
+                }));
+        
+                const suggestedProjectsFromAI = await getAiSuggestedProjects(currentUser, projectsForAI);
+        
+                if (suggestedProjectsFromAI) {
+                    suggestedProjects = projectsData
+                        .filter(p => suggestedProjectsFromAI.some(sp => sp.id === p.id))
+                        .map(p => toHydratedProject(p, usersMap));
+                }
+            }
+
             const aiEnabled = currentUser?.aiFeaturesEnabled ?? false;
 
         return deepSerialize({
