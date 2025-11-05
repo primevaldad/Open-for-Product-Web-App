@@ -54,8 +54,12 @@ export const toHydratedProject = (project: Project, usersMap: Map<string, User>)
     };
 };
 
-export function deepSerialize<T>(obj: T): T {
+export function deepSerialize<T>(obj: T, visited = new WeakSet()): T {
     if (obj === null || typeof obj !== 'object') {
+        // Functions are not serializable, so we return undefined to have them stripped out.
+        if (typeof obj === 'function') {
+            return undefined as T;
+        }
         return obj;
     }
 
@@ -64,14 +68,25 @@ export function deepSerialize<T>(obj: T): T {
         return (obj as any).toDate().toISOString() as T;
     }
 
+    if (visited.has(obj)) {
+        return '[Circular]' as T;
+    }
+
+    visited.add(obj);
+
     if (Array.isArray(obj)) {
-        return obj.map(deepSerialize) as T;
+        // When mapping arrays, filter out any undefined values that result from serializing functions.
+        return obj.map(item => deepSerialize(item, visited)).filter(item => item !== undefined) as T;
     }
 
     const serializedObj: { [key: string]: unknown } = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            serializedObj[key] = deepSerialize((obj as Record<string, unknown>)[key]);
+            const value = deepSerialize((obj as Record<string, unknown>)[key], visited);
+            // Only include the key in the new object if its value is not undefined.
+            if (value !== undefined) {
+                serializedObj[key] = value;
+            }
         }
     }
     return serializedObj as T;

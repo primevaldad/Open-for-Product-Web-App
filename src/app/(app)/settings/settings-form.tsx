@@ -1,19 +1,12 @@
 
 'use client';
 
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -33,12 +26,12 @@ import { Switch } from '@/components/ui/switch';
 
 const SettingsSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  username: z.string().min(3, 'Username must be at least 3 characters'),
+  username: z.string().min(3, 'Username must be at least 3 characters').or(z.literal('')).optional(),
   bio: z.string().max(160, 'Bio must not be longer than 160 characters.').optional(),
   interests: z.array(z.string()).optional(),
   company: z.string().optional(),
   location: z.string().optional(),
-  website: z.string().url('Please enter a valid URL.').optional(),
+  website: z.string().url('Please enter a valid URL.').or(z.literal('')).optional(),
   aiFeaturesEnabled: z.boolean().optional(),
 });
 
@@ -88,172 +81,143 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-            <CardDescription>
-              This is how others will see you on the site.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Username" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    This is your public display name. It can be your real name or a pseudonym.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bio</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Tell us a little bit about yourself"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    You can @-mention other users and organizations to link to them.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="interests"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Interests</FormLabel>
-                  <FormControl>
-                     <InterestSelector
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                  </FormControl>
-                   <FormDescription>
-                    Select your interests to help us recommend relevant projects and learning paths.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Your name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Work</CardTitle>
-            <CardDescription>
-              Showcase your professional background.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="company"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Company" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Location" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="website"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Website</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input placeholder="Your username" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>AI Features</CardTitle>
-            <CardDescription>
-              Manage settings for AI-powered features.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="aiFeaturesEnabled"
-              render={({ field }) => (
+        <FormField
+          control={form.control}
+          name="bio"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Bio</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Tell us a little bit about yourself"
+                  className="resize-none"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                You can <span>@mention</span> other users and organizations.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="interests"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Interests</FormLabel>
+              <FormControl>
+                <InterestSelector
+                  value={field.value || []}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormDescription>
+                Select your interests to help us recommend relevant projects.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="company"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Company</FormLabel>
+              <FormControl>
+                <Input placeholder="Your company" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="location"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Location</FormLabel>
+              <FormControl>
+                <Input placeholder="Your location" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="website"
+          render={({ field }) => (_
+            <FormItem>
+              <FormLabel>Website</FormLabel>
+              <FormControl>
+                <Input placeholder="Your website" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+            control={form.control}
+            name="aiFeaturesEnabled"
+            render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Enable AI Features</FormLabel>
-                    <FormDescription>
-                      Allow the use of AI to enhance your experience, such as project suggestions.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={true} // For now, this is disabled
-                    />
-                  </FormControl>
+                    <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                            Enable AI Features
+                        </FormLabel>
+                        <FormDescription>
+                            Allow AI to use your profile data to provide you with better recommendations.
+                        </FormDescription>
+                    </div>
+                    <FormControl>
+                        <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
                 </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+            )}
+        />
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isPending}>
-            {isPending ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving...' : 'Update settings'}
+        </Button>
       </form>
     </Form>
   );

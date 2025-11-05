@@ -14,18 +14,20 @@ import { toHydratedProject, deepSerialize } from "@/lib/utils.server";
 
 export async function getHomePageData() {
     try {
-        const currentUser = await getCurrentUser();
-        const isGuest = currentUser?.role === 'guest';
+        const currentUserData = await getCurrentUser();
+        const isGuest = currentUserData?.role === 'guest';
 
         const usersDataPromise = isGuest ? Promise.resolve([]) : getAllUsers();
 
-        const [projectsData, usersData, allTags, allLearningPaths, allProjectPathLinks] = await Promise.all([
+        const [projectsData, usersData, allTags, learningPathsData, allProjectPathLinks] = await Promise.all([
             getAllProjects(),
             usersDataPromise,
             getAllTags(),
             getAllLearningPaths(),
             getAllProjectPathLinks(),
         ]);
+
+        const allLearningPaths = Array.isArray(learningPathsData) ? learningPathsData : Object.values(learningPathsData || {});
 
         const usersMap = new Map(usersData.map((user) => [user.id, user]));
 
@@ -69,8 +71,8 @@ export async function getHomePageData() {
             return toHydratedProject(p, usersMap);
             });
 
-            let suggestedProjects = null;
-            if (currentUser && currentUser.aiFeaturesEnabled) {
+            let suggestedProjects: HydratedProject[] | null = null;
+            if (currentUserData && currentUserData.aiFeaturesEnabled) {
                 const projectsForAI = allPublishedProjects.map(p => ({
                     id: p.id,
                     name: p.name,
@@ -79,7 +81,7 @@ export async function getHomePageData() {
                     category: p.category,
                 }));
         
-                const suggestedProjectsFromAI = await getAiSuggestedProjects(currentUser, projectsForAI);
+                const suggestedProjectsFromAI = await getAiSuggestedProjects(currentUserData, projectsForAI);
         
                 if (suggestedProjectsFromAI) {
                     suggestedProjects = projectsData
@@ -87,13 +89,35 @@ export async function getHomePageData() {
                         .map(p => toHydratedProject(p, usersMap));
                 }
             }
+            
+            // Clean circular references from hydrated projects before serializing
+            const cleanUser = (user: any) => {
+                if (!user) return;
+                delete user.projects;
+                delete user.projectMembers;
+            };
 
-            const aiEnabled = currentUser?.aiFeaturesEnabled ?? false;
+            allPublishedProjects.forEach(p => {
+                cleanUser(p.owner);
+                p.team.forEach(m => cleanUser(m.user));
+            });
+    
+            if (suggestedProjects) {
+                suggestedProjects.forEach(p => {
+                    cleanUser(p.owner);
+                    p.team.forEach(m => cleanUser(m.user));
+                });
+            }
+
+            const aiEnabled = currentUserData?.aiFeaturesEnabled ?? false;
+
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { projects, projectMembers, ...currentUser } = currentUserData || {};
 
         return deepSerialize({
             success: true,
             allPublishedProjects,
-            currentUser: currentUser,
+            currentUser,
             allTags,
             allLearningPaths,
             allProjectPathLinks,
@@ -101,11 +125,12 @@ export async function getHomePageData() {
             aiEnabled,
         });
     } catch (error) {
+        console.error('[HOME_ACTION_TRACE] Error fetching home page data:', error);
         const errorMessage =
         error instanceof Error ? error.message : "An unknown error occurred.";
-        return deepSerialize({
+        return {
             success: false,
             message: `Failed to load home page data: ${errorMessage}`,
-        });
+        };
     }
 }

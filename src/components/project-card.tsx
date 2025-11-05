@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { BookOpen, CheckCircle, Sparkles, User as UserIcon } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -40,8 +41,6 @@ export default function ProjectCard({
       .map(link => allLearningPaths.find(p => p.pathId === link.learningPathId))
       .filter((p): p is LearningPath => !!p);
 
-  // Sort team members directly from the project prop.
-  // This removes the need for a separate state and useEffect.
   const sortedTeamMembers = [...project.team].sort((a, b) => {
     const roleOrder = { lead: 0, contributor: 1, participant: 2 };
     return (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
@@ -51,8 +50,29 @@ export default function ProjectCard({
   const hiddenMembersCount = sortedTeamMembers.length - MAX_VISIBLE_MEMBERS;
 
   const renderMemberAvatar = (member: HydratedProjectMember) => {
-    if (!member.user) return null; // Should not happen with hydrated data
+    // The user object might not be fully populated in some data hydration scenarios.
+    // This guard prevents crashes if user or user.name is missing.
+    if (!member.user || !member.user.name) {
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger>
+                        <Avatar className='border-2 border-background h-8 w-8'>
+                            <AvatarFallback>
+                                <UserIcon className='h-4 w-4 text-muted-foreground' />
+                            </AvatarFallback>
+                        </Avatar>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>User data not available</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
+
     const { user, role } = member;
+    
     return (
       <TooltipProvider key={user.id}>
         <Tooltip>
@@ -82,69 +102,82 @@ export default function ProjectCard({
 
   return (
     <Card className={cn(
-        'flex flex-col transition-all hover:shadow-lg hover:-translate-y-1',
+        'flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1',
         isLead && 'border-2 border-yellow-500',
         className
     )}>
-      <CardHeader className='relative p-4'>
-        {suggestionText && (
-          <div className='mb-3 flex items-start gap-2.5 text-sm text-primary-foreground bg-primary/90 p-3 rounded-md shadow-sm'>
-            <Sparkles className='h-4 w-4 mt-0.5 shrink-0' />
-            <p className='font-medium leading-relaxed'>{suggestionText}</p>
-          </div>
+      <CardHeader className='relative p-0'>
+        {project.imageUrl && (
+            <Link href={`/projects/${project.id}`} className="block relative aspect-video w-full">
+                <Image
+                    src={project.imageUrl}
+                    alt={project.name}
+                    fill
+                    className="object-cover"
+                    data-ai-hint="project image"
+                />
+            </Link>
         )}
+        <div className="p-4">
+            {suggestionText && (
+            <div className='mb-3 flex items-start gap-2.5 text-sm text-primary-foreground bg-primary/90 p-3 rounded-md shadow-sm'>
+                <Sparkles className='h-4 w-4 mt-0.5 shrink-0' />
+                <p className='font-medium leading-relaxed'>{suggestionText}</p>
+            </div>
+            )}
 
-        <div className='flex items-start justify-between'>
-            <div className='flex-1'>
-                <div className='mb-2 flex flex-wrap items-center gap-2'>
-                    {displayTags.filter((tag: ProjectTag) => tag.type === 'category').slice(0, 3).map((tag: ProjectTag) => (
-                        <Badge
-                            key={tag.id}
-                            variant={'default'}
-                            className='text-xs font-medium'
-                        >
-                            {tag.display}
-                        </Badge>
-                    ))}
-                    {recommendedPaths.length > 0 && (
+            <div className='flex items-start justify-between'>
+                <div className='flex-1'>
+                    <div className='mb-2 flex flex-wrap items-center gap-2'>
+                        {displayTags.filter((tag: ProjectTag) => tag.type === 'category').slice(0, 3).map((tag: ProjectTag) => (
+                            <Badge
+                                key={tag.id}
+                                variant={'default'}
+                                className='text-xs font-medium'
+                            >
+                                {tag.display}
+                            </Badge>
+                        ))}
+                        {recommendedPaths.length > 0 && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Badge variant={'secondary'} className='flex items-center gap-1.5'>
+                                            <BookOpen className='h-4 w-4' />
+                                            {recommendedPaths.length}
+                                        </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p className='font-semibold mb-1'>Recommended Learning:</p>
+                                        <ul className='list-disc list-inside'>
+                                            {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
+                                        </ul>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                    <CardTitle className='text-lg font-bold'>
+                    <Link href={`/projects/${project.id}`} className='hover:text-primary transition-colors'>
+                        {project.name}
+                    </Link>
+                    </CardTitle>
+                </div>
+                <div className='ml-4 flex shrink-0 items-center gap-2'>
+                    {project.isExpertReviewed && (
                         <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <Badge variant={'secondary'} className='flex items-center gap-1.5'>
-                                        <BookOpen className='h-4 w-4' />
-                                        {recommendedPaths.length}
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className='font-semibold mb-1'>Recommended Learning:</p>
-                                    <ul className='list-disc list-inside'>
-                                        {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
-                                    </ul>
-                                </TooltipContent>
-                            </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger>
+                            <CheckCircle className='h-5 w-5 text-green-500' />
+                            </TooltipTrigger>
+                            <TooltipContent><p>Expert Reviewed</p></TooltipContent>
+                        </Tooltip>
                         </TooltipProvider>
                     )}
                 </div>
-                <CardTitle className='text-lg font-bold'>
-                <Link href={`/projects/${project.id}`} className='hover:text-primary transition-colors'>
-                    {project.name}
-                </Link>
-                </CardTitle>
             </div>
-            <div className='ml-4 flex shrink-0 items-center gap-2'>
-                {project.isExpertReviewed && (
-                    <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger>
-                        <CheckCircle className='h-5 w-5 text-green-500' />
-                        </TooltipTrigger>
-                        <TooltipContent><p>Expert Reviewed</p></TooltipContent>
-                    </Tooltip>
-                    </TooltipProvider>
-                )}
-            </div>
+            <CardDescription className='line-clamp-2 text-sm pt-2'>{project.tagline}</CardDescription>
         </div>
-        <CardDescription className='line-clamp-2 text-sm pt-2'>{project.tagline}</CardDescription>
       </CardHeader>
       <CardContent className='flex-grow p-4 pt-0'>
         <div className='mb-4'>

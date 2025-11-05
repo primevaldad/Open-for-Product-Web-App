@@ -2,13 +2,17 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export function getInitials(name: string) {
+export function getInitials(name?: string): string {
+    if (!name) {
+        return '??';
+    }
     return name
       .split(' ')
+      .filter(part => part.length > 0)
       .map(part => part[0])
       .join('')
       .toUpperCase();
-  }
+}
 
 
 export function cn(...inputs: ClassValue[]) {

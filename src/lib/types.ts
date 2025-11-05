@@ -34,7 +34,7 @@ export interface User {
 export interface Project {
     id: ProjectId;
     name: string;
-    photoUrl?: string;
+    imageUrl?: string;
     tagline: string;
     description: string;
     createdAt: Timestamp | string; 
@@ -85,7 +85,7 @@ export interface ProjectMember {
 export interface HydratedProject {
     id: ProjectId;
     name: string;
-    photoUrl?: string;
+    imageUrl?: string;
     tagline: string;
     description: string;
     createdAt: Timestamp | string;
