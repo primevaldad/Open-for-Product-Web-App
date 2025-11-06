@@ -13,7 +13,7 @@ export type ProjectId = string;
 export interface User {
     id: UserId;
     name: string;
-    username: string;
+    username?: string;
     email: string;
     role?: string; // Can be 'guest' or undefined for regular users
     avatarUrl?: string;

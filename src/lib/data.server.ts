@@ -4,7 +4,7 @@ import admin from 'firebase-admin'; // Import the top-level admin object
 import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module, HydratedProject } from './types';
+import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember } from './types';
 import { serializeTimestamp } from './utils.server';
 
 // This file contains server-side data access functions.
@@ -14,6 +14,7 @@ import { serializeTimestamp } from './utils.server';
 export { adminDb };
 
 // --- Helper Functions ---
+
 function ensureModulesHaveIds(path: LearningPath): LearningPath {
     if (path.modules && Array.isArray(path.modules)) {
         path.modules.forEach((module, index) => {
@@ -24,6 +25,75 @@ function ensureModulesHaveIds(path: LearningPath): LearningPath {
     }
     return path;
 }
+
+/**
+ * Takes a raw Project object (with only member IDs) and hydrates it fully,
+ * fetching the owner and all team members.
+ */
+async function hydrateProject(project: Project): Promise<HydratedProject> {
+    // Gracefully handle projects that are missing an ownerId
+    if (!project.ownerId) {
+        console.warn(`Project with ID ${project.id} is missing an ownerId. Skipping hydration.`);
+        // Create a shell HydratedProject to avoid crashing, but log the issue.
+        const placeholderOwner: User = {
+            id: 'unknown-owner',
+            name: 'Unknown Owner',
+            email: 'unknown-owner@example.com',
+            onboardingCompleted: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            role: 'unknown',
+            username: 'unknown',
+            avatarUrl: '',
+        };
+        return {
+            ...project,
+            owner: placeholderOwner,
+            team: [], // Team is likely empty or invalid if owner is missing
+        } as HydratedProject;
+    }
+
+    const memberIds = project.team.map(member => member.userId);
+    const allUserIds = [project.ownerId, ...memberIds];
+    
+    const users = await findUsersByIds(allUserIds);
+    const usersMap = new Map(users.map(user => [user.id, user]));
+
+    const owner = usersMap.get(project.ownerId);
+    if (!owner) {
+        throw new Error(`Owner with ID ${project.ownerId} not found for project ${project.id}`);
+    }
+
+    const hydratedTeam = project.team.map(member => {
+        const user = usersMap.get(member.userId);
+        
+        const placeholderUser: User = {
+            id: member.userId,
+            name: 'Unknown User',
+            email: `unknown-${member.userId}@example.com`,
+            onboardingCompleted: false, 
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            role: 'unknown',
+            username: 'unknown',
+            avatarUrl: '', 
+        };
+
+        return {
+            ...member,
+            user: user || placeholderUser,
+        } as HydratedProjectMember;
+    });
+
+    const hydratedProject: HydratedProject = {
+        ...project,
+        owner: owner,
+        team: hydratedTeam,
+    };
+
+    return hydratedProject;
+}
+
 
 // --- User Data Access ---
 
@@ -61,9 +131,12 @@ export async function createGuestUser(uid: string): Promise<User> {
     const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
         name: 'Guest User',
         username: 'guest',
-        email: `${uid}@example.com`, // Temporary unique email
+        email: `${uid}@example.com`, 
         role: 'guest',
         onboardingCompleted: false,
+        avatarUrl: '', 
+        website: '',   
+        bio: '',       
     };
 
     const userWithTimestamp = {
@@ -74,7 +147,6 @@ export async function createGuestUser(uid: string): Promise<User> {
 
     await adminDb.collection('users').doc(uid).set(userWithTimestamp);
 
-    // Fetch the user we just created to get the serialized, server-generated timestamps
     const createdUser = await findUserById(uid);
     if (!createdUser) {
         throw new Error('Failed to create or find guest user after creation.');
@@ -84,13 +156,20 @@ export async function createGuestUser(uid: string): Promise<User> {
 }
 
 export async function findUsersByIds(userIds: string[]): Promise<User[]> {
-    if (!userIds || userIds.length === 0) {
+    // Filter out any null, undefined, or empty string IDs before processing.
+    const validUserIds = userIds.filter(id => id);
+
+    if (validUserIds.length === 0) {
         return [];
     }
 
+    const uniqueIds = [...new Set(validUserIds)];
+
     const users: User[] = [];
-    for (let i = 0; i < userIds.length; i += 10) {
-        const chunk = userIds.slice(i, i + 10);
+    for (let i = 0; i < uniqueIds.length; i += 10) {
+        const chunk = uniqueIds.slice(i, i + 10);
+        if (chunk.length === 0) continue;
+
         const q = adminDb.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk);
         const userSnapshot = await q.get();
         const chunkUsers = userSnapshot.docs.map(doc => {
@@ -130,8 +209,8 @@ export async function findUsersByName(query: string): Promise<User[]> {
     if (!query) return [];
     const usersCol = adminDb.collection('users');
 
-    const nameQuery = usersCol.where('name', '>=', query).where('name', '<=', query + '\uf8ff');
-    const emailQuery = usersCol.where('email', '>=', query).where('email', '<=', query + '\uf8ff');
+    const nameQuery = usersCol.where('name', '>=', query).where('name', '<=', query + '');
+    const emailQuery = usersCol.where('email', '>=', query).where('email', '<=', query + '');
 
     const [nameSnapshot, emailSnapshot] = await Promise.all([
         nameQuery.get(),
@@ -187,7 +266,7 @@ export async function logOrphanedUser(orphanedUserData: User): Promise<void> {
     });
 }
 
-// --- Notification Data Access -- -
+// --- Notification Data Access ---
 export async function addNotification(notificationData: Omit<Notification, 'id'>): Promise<string> {
     const notificationRef = await adminDb.collection('notifications').add(notificationData);
     return notificationRef.id;
@@ -201,8 +280,8 @@ export async function getNotificationsByUserId(userId: string): Promise<Notifica
 }
 
 
-// --- Project Data Access -- -
-export async function getAllProjects(): Promise<Project[]> {
+// --- Project Data Access ---
+export async function getAllProjects(): Promise<HydratedProject[]> {
     const projectsCol = adminDb.collection('projects');
     const tagsCol = adminDb.collection('tags');
 
@@ -224,7 +303,6 @@ export async function getAllProjects(): Promise<Project[]> {
         if (project.tags && Array.isArray(project.tags)) {
             const hydratedTags: ProjectTag[] = project.tags
                 .map(projectTag => {
-                    // If the project tag is just a string, convert it to a ProjectTag object
                     if (typeof projectTag === 'string') {
                         const fullTag = tagsMap.get(projectTag);
                         if (!fullTag) return null;
@@ -234,47 +312,58 @@ export async function getAllProjects(): Promise<Project[]> {
                             type: fullTag.type,
                         };
                     }
-                    // If the project tag is already an object, use it directly
                     return projectTag;
                 })
                 .filter((tag): tag is ProjectTag => !!tag);
             
             project.tags = hydratedTags;
         } else {
-            // Ensure project.tags is always an array
             project.tags = [];
         }
 
         return project;
     });
 
-    return projectsWithTags;
+    const fullyHydratedProjects = await Promise.all(
+        projectsWithTags.map(project => hydrateProject(project))
+    );
+
+    return fullyHydratedProjects;
 }
 
-export async function getProjectsByUserId(userId: string): Promise<Project[]> {
+export async function getProjectsByUserId(userId: string): Promise<HydratedProject[]> {
     if (!userId) return [];
     const projectsCol = adminDb.collection('projects');
     const q = projectsCol.where('memberIds', 'array-contains', userId);
     const projectSnapshot = await q.get();
-    return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+    
+    const projects = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+
+    const hydratedProjects = await Promise.all(projects.map(p => hydrateProject(p)));
+    
+    return hydratedProjects;
 }
 
-export async function getProjectsByOwnerId(ownerId: string): Promise<Project[]> {
+export async function getProjectsByOwnerId(ownerId: string): Promise<HydratedProject[]> {
     if (!ownerId) return [];
     const projectsCol = adminDb.collection('projects');
     const q = projectsCol.where('ownerId', '==', ownerId);
     const projectSnapshot = await q.get();
-    return projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+
+    const projects = projectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+
+    const hydratedProjects = await Promise.all(projects.map(p => hydrateProject(p)));
+    
+    return hydratedProjects;
 }
 
-export async function findProjectById(projectId: string): Promise<Project | undefined> {
+export async function findProjectById(projectId: string): Promise<HydratedProject | undefined> {
     const projectRef = adminDb.collection('projects').doc(projectId);
     const projectSnap = await projectRef.get();
 
     if (projectSnap.exists) {
         const project = { id: projectSnap.id, ...projectSnap.data() } as Project;
 
-        // Hydrate the tags to ensure they conform to the ProjectTag type
         if (project.tags && Array.isArray(project.tags)) {
             const tagsCol = adminDb.collection('tags');
             const tagsSnapshot = await tagsCol.get();
@@ -288,10 +377,8 @@ export async function findProjectById(projectId: string): Promise<Project | unde
                 .map(projectTag => {
                     const tagId = typeof projectTag === 'string' ? projectTag : (projectTag as ProjectTag).id;
                     if (!tagId) return null;
-
                     const fullTag = tagsMap.get(tagId);
                     if (!fullTag) return null;
-
                     return {
                         id: fullTag.id,
                         display: fullTag.display,
@@ -299,13 +386,14 @@ export async function findProjectById(projectId: string): Promise<Project | unde
                     };
                 })
                 .filter((tag): tag is ProjectTag => !!tag);
-
             project.tags = hydratedTags;
         } else {
             project.tags = [];
         }
+        
+        const hydratedProject = await hydrateProject(project);
 
-        return project;
+        return hydratedProject;
     }
 
     return undefined;
@@ -325,10 +413,14 @@ export async function updateProject(updatedProject: Project): Promise<void> {
 
 export async function addTeamMember(projectId: string, userId: string): Promise<void> {
     const project = await findProjectById(projectId);
-    const user = await findUserById(userId);
+    let user = await findUserById(userId);
 
-    if (!project || !user) {
-        throw new Error("Project or user not found");
+    if (!project) {
+        throw new Error("Project not found");
+    }
+
+    if (!user) {
+        user = await createGuestUser(userId);
     }
 
     const requiredBadgesSnapshot = await adminDb.collection('projectBadgeLinks').where('projectId', '==', projectId).where('isRequirement', '==', true).get();
@@ -341,22 +433,31 @@ export async function addTeamMember(projectId: string, userId: string): Promise<
 
     const role = hasAllRequiredBadges ? 'contributor' : 'participant';
 
-    const updatedTeam = [...(project.team || []), { userId, role }];
+    const projectRef = adminDb.collection('projects').doc(projectId);
+    const rawProjectSnap = await projectRef.get();
+    const rawProjectData = rawProjectSnap.data();
 
-    await adminDb.collection('projects').doc(projectId).update({ team: updatedTeam });
+    const isAlreadyMember = rawProjectData?.team.some((member: ProjectMember) => member.userId === userId);
+    if (isAlreadyMember) {
+        console.log(`User ${userId} is already a member of project ${projectId}.`);
+        return;
+    }
+
+    const updatedRawTeam = [...(rawProjectData?.team || []), { userId, role }];
+
+    await projectRef.update({ team: updatedRawTeam });
 }
 
 
-// --- Tag Data Access -- -
+// --- Tag Data Access ---
 export async function getAllTags(): Promise<Tag[]> {
     const tagsCol = adminDb.collection('tags').orderBy('usageCount', 'desc');
     const tagsSnapshot = await tagsCol.get();
     return tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
 }
 
-// --- Discussion Data Access -- -
+// --- Discussion Data Access ---
 export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>): Promise<Discussion> {
-    // Add server timestamps here before writing to Firestore
     const newCommentData = {
         ...commentData,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
@@ -368,8 +469,17 @@ export async function addDiscussionComment(commentData: Omit<Discussion, 'id'>):
     const commentSnap = await commentRef.get();
     const createdComment = commentSnap.data();
 
-    // Return the full discussion object, including the generated ID and server timestamps
-    return { id: commentRef.id, ...createdComment } as Discussion;
+    if (!createdComment) {
+        throw new Error("Failed to create comment.");
+    }
+
+    return { 
+        id: commentRef.id, 
+        ...createdComment,
+        createdAt: serializeTimestamp(createdComment.createdAt),
+        updatedAt: serializeTimestamp(createdComment.updatedAt),
+        timestamp: serializeTimestamp(createdComment.timestamp),
+    } as Discussion;
 }
 
 export async function getDiscussionsForProjectId(projectId: string): Promise<Discussion[]> {
@@ -389,7 +499,7 @@ export async function getDiscussionsByUserId(userId: string): Promise<Discussion
 export const getDiscussionsForProject = getDiscussionsForProjectId;
 
 
-// --- Task Data Access -- -
+// --- Task Data Access ---
 export async function getAllTasks(): Promise<Task[]> {
     const tasksCol = adminDb.collection('tasks');
     const taskSnapshot = await tasksCol.get();
@@ -420,7 +530,6 @@ export async function findTaskById(taskId: string): Promise<Task | undefined> {
 }
 
 export async function addTask(newTaskData: Omit<Task, 'id'>): Promise<Task> {
-    // Add server timestamps here before writing to Firestore
     const taskWithTimestamps = {
         ...newTaskData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -429,15 +538,40 @@ export async function addTask(newTaskData: Omit<Task, 'id'>): Promise<Task> {
 
     const taskRef = await adminDb.collection('tasks').add(taskWithTimestamps);
     const taskSnap = await taskRef.get();
-    return { id: taskRef.id, ...taskSnap.data() } as Task;
+    const createdTask = taskSnap.data();
+
+    if (!createdTask) {
+        throw new Error("Failed to create task.");
+    }
+    
+    return { 
+        id: taskRef.id, 
+        ...createdTask,
+        createdAt: serializeTimestamp(createdTask.createdAt),
+        updatedAt: serializeTimestamp(createdTask.updatedAt),
+     } as Task;
 }
 
 export async function updateTask(updatedTask: Task): Promise<Task> {
     const { id, ...taskData } = updatedTask;
     const taskRef = adminDb.collection('tasks').doc(id);
-    await taskRef.update(taskData);
-    // Return the updated task
-    return updatedTask;
+    
+    const updateData = {
+        ...taskData,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await taskRef.update(updateData);
+
+    const updatedSnap = await taskRef.get();
+    const updatedData = updatedSnap.data();
+
+    return {
+        id: updatedSnap.id,
+        ...updatedData,
+        createdAt: serializeTimestamp(updatedData.createdAt),
+        updatedAt: serializeTimestamp(updatedData.updatedAt),
+    } as Task;
 }
 
 export async function deleteTaskFromDb(taskId: string): Promise<void> {
@@ -461,7 +595,7 @@ export async function getUserActivity(userId: string) {
     };
 }
 
-// --- Learning Progress & Path Data Access -- -
+// --- Learning Progress & Path Data Access ---
 
 export async function findLearningPathsByIds(ids: string[]): Promise<LearningPath[]> {
     if (!ids || ids.length === 0) {
@@ -475,7 +609,7 @@ export async function findLearningPathsByIds(ids: string[]): Promise<LearningPat
         .map(doc => {
             if (!doc.exists) return null;
             let path = {
-                pathId: doc.id, // Use the document's ID as the pathId
+                pathId: doc.id, 
                 ...doc.data(),
             } as LearningPath;
             
@@ -578,7 +712,6 @@ async function getFallbackSuggestedProjects(
   
     const candidateProjects = allProjects.filter(p => !userProjectIds.has(p.id));
   
-    // Sort by most recent
     const sortedProjects = candidateProjects.sort((a, b) => {
         const dateA = new Date(a.createdAt as string).getTime();
         const dateB = new Date(b.createdAt as string).getTime();
