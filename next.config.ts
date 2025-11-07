@@ -1,4 +1,3 @@
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -12,6 +11,8 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    loader: 'custom',
+    loaderFile: './loader.js',
     remotePatterns: [
       {
         protocol: 'https',
