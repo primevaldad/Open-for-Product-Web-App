@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle, Sparkles, User as UserIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ export default function ProjectCard({
     allLearningPaths, 
     suggestionText 
 }: ProjectCardProps) {
+  const router = useRouter();
   const isLead = currentUser ? project.team.some(member => member.userId === currentUser.id && member.role === 'lead') : false;
   const displayTags = project.tags || [];
   const recommendedPathLinks = allProjectPathLinks.filter(link => link.projectId === project.id);
@@ -44,9 +46,14 @@ export default function ProjectCard({
   const visibleMembers = sortedTeamMembers.slice(0, MAX_VISIBLE_MEMBERS);
   const hiddenMembersCount = sortedTeamMembers.length - MAX_VISIBLE_MEMBERS;
 
-  const handleAvatarClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
+  const stopPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  const handleProfileNavigation = (e: React.MouseEvent | React.KeyboardEvent, user: User) => {
+    stopPropagation(e as React.MouseEvent);
+    router.push(`/profile/${user.username || user.id}`);
   };
   
   const renderMemberAvatar = (member: HydratedProjectMember) => {
@@ -74,13 +81,21 @@ export default function ProjectCard({
     return (
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Link href={`/profile/${user.username || user.id}`} onClick={handleAvatarClick}>
+          <TooltipTrigger 
+            asChild
+            onClick={(e) => handleProfileNavigation(e, user)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleProfileNavigation(e, user);
+              }
+            }}
+          >
+            <span role="button" tabIndex={0} aria-label={`View profile of ${user.name}`} className="cursor-pointer">
               <Avatar className={cn('border-2 h-8 w-8', role === 'lead' ? 'border-yellow-500' : 'border-background')}>
                 {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
                 <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
               </Avatar>
-            </Link>
+            </span>
           </TooltipTrigger>
           <TooltipContent>
             <p>{user.name} - <span className="capitalize">{role}</span></p>
@@ -123,7 +138,7 @@ export default function ProjectCard({
                            {recommendedPaths.length > 0 && (
                               <TooltipProvider>
                                   <Tooltip>
-                                      <TooltipTrigger onClick={handleAvatarClick}>
+                                      <TooltipTrigger onClick={stopPropagation}>
                                           <Badge variant={'secondary'} className='flex items-center gap-1.5'>
                                               <BookOpen className='h-3 w-3' />
                                               {recommendedPaths.length}
@@ -150,7 +165,7 @@ export default function ProjectCard({
                       <div className="absolute top-2 right-2">
                           <TooltipProvider>
                               <Tooltip>
-                                  <TooltipTrigger onClick={handleAvatarClick}>
+                                  <TooltipTrigger onClick={stopPropagation}>
                                       <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
                                   </TooltipTrigger>
                                   <TooltipContent><p>Expert Reviewed</p></TooltipContent>
@@ -189,7 +204,7 @@ export default function ProjectCard({
                                 +{hiddenMembersCount}
                             </div>
                             </TooltipTrigger>
-                            <TooltipContent>
+                            <TooltipContent onClick={stopPropagation}>
                             <p>
                                 {sortedTeamMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
                             </p>
