@@ -43,8 +43,18 @@ export default function ProjectCard({
     return (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
   });
 
-  const visibleMembers = sortedTeamMembers.slice(0, MAX_VISIBLE_MEMBERS);
-  const hiddenMembersCount = sortedTeamMembers.length - MAX_VISIBLE_MEMBERS;
+  // De-duplicate members to prevent key errors from inconsistent data
+  const uniqueMemberIds = new Set();
+  const uniqueMembers = sortedTeamMembers.filter(member => {
+    if (!member.userId || uniqueMemberIds.has(member.userId)) {
+      return false;
+    }
+    uniqueMemberIds.add(member.userId);
+    return true;
+  });
+
+  const visibleMembers = uniqueMembers.slice(0, MAX_VISIBLE_MEMBERS);
+  const hiddenMembersCount = uniqueMembers.length - MAX_VISIBLE_MEMBERS;
 
   const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -206,7 +216,7 @@ export default function ProjectCard({
                             </TooltipTrigger>
                             <TooltipContent onClick={stopPropagation}>
                             <p>
-                                {sortedTeamMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
+                                {uniqueMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
                             </p>
                             </TooltipContent>
                         </Tooltip>
