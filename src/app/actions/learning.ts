@@ -1,11 +1,10 @@
-
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserLearningProgress, updateUserLearningProgress, getAllLearningPaths as getAllLearningPathsFromDb } from '@/lib/data.server';
+import { updateUserLearningProgress, getAllLearningPaths as getAllLearningPathsFromDb } from '@/lib/data.server';
 import { deepSerialize } from '@/lib/utils.server';
-import { UserLearningProgress, LearningPath } from '@/lib/types';
+import { LearningPath } from '@/lib/types';
 
 const CompleteModuleSchema = z.object({
   userId: z.string(),
@@ -38,33 +37,21 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
         };
     }
 
-    const { userId, pathId, moduleId, completed } = validatedFields.data;
+    try {
+        await updateUserLearningProgress(validatedFields.data);
 
-    let userProgress = await findUserLearningProgress(userId, pathId);
+        // Revalidate relevant paths
+        revalidatePath(`/learning/${validatedFields.data.pathId}/${validatedFields.data.moduleId}`);
+        revalidatePath(`/learning/${validatedFields.data.pathId}`);
+        revalidatePath('/activity');
+        revalidatePath('/learning');
 
-    if (!userProgress) {
-        userProgress = {
-            userId,
-            pathId,
-            completedModules: completed ? [moduleId] : [],
-            lastAccessed: new Date().toISOString(),
-        } as UserLearningProgress;
-    } else {
-        const moduleIndex = userProgress.completedModules.indexOf(moduleId);
-        if (completed && moduleIndex === -1) {
-            userProgress.completedModules.push(moduleId);
-        } else if (!completed && moduleIndex !== -1) {
-            userProgress.completedModules.splice(moduleIndex, 1);
-        }
-        userProgress.lastAccessed = new Date().toISOString();
+        return { success: true };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return {
+            success: false,
+            error: `Failed to update module progress: ${errorMessage}`,
+        };
     }
-
-    await updateUserLearningProgress(userProgress);
-
-    revalidatePath(`/learning/${pathId}/${moduleId}`);
-    revalidatePath(`/learning/${pathId}`);
-    revalidatePath('/activity');
-    revalidatePath('/learning');
-
-    return { success: true };
 }

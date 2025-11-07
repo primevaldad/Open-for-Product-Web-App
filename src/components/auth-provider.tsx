@@ -59,7 +59,6 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
         } else {
             console.error('Failed to create session:', await sessionResponse.text());
             setCurrentUser(null);
-            await firebaseSignOut(auth); // Sign out to prevent inconsistent state
         }
 
       } else {
