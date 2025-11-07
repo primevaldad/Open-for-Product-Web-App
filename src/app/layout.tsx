@@ -8,7 +8,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 
 export const metadata: Metadata = {
   title: 'Open for Product',
-  description: 'A collaborative platform for projects and professionals whose lives don’t fit into traditional work structures.',
+  description: 'A collaborative platform for projects and professionals whose lives do not fit into traditional work structures.',
 };
 
 export default function RootLayout({
