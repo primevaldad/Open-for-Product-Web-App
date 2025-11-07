@@ -22,6 +22,17 @@ interface ProjectCardProps {
 
 const MAX_VISIBLE_MEMBERS = 4;
 
+const placeholderImages = [
+    '/images/ofp-project-placeholder1.png',
+    '/images/ofp-project-placeholder2.png',
+    '/images/ofp-project-placeholder3.png',
+];
+
+const getDeterministicPlaceholder = (projectId: string) => {
+    const hash = projectId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return placeholderImages[hash % placeholderImages.length];
+};
+
 export default function ProjectCard({ 
     project, 
     currentUser,
@@ -37,6 +48,8 @@ export default function ProjectCard({
   const recommendedPaths = recommendedPathLinks
       .map(link => allLearningPaths.find(p => p.pathId === link.learningPathId))
       .filter((p): p is LearningPath => !!p);
+
+  const fallbackImage = getDeterministicPlaceholder(project.id);
 
   const sortedTeamMembers = [...project.team].sort((a, b) => {
     const roleOrder = { lead: 0, contributor: 1, participant: 2 };
@@ -124,15 +137,15 @@ export default function ProjectCard({
           <Link href={`/projects/${project.id}`} className='contents'>
               <CardHeader className='relative p-0 h-48'>
                   <Image
-                      src={project.imageUrl || '/images/project-placeholder.jpg'}
+                      src={project.photoUrl || fallbackImage}
                       alt={project.name}
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                       data-ai-hint="project image"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-transform duration-300 group-hover:scale-105" />
                   
-                  <div className="relative flex flex-col justify-end h-full p-4 text-white">
+                  <div className="relative flex flex-col justify-end h-full p-4 text-slate-100">
                       {suggestionText && (
                       <div className='mb-3 flex items-start gap-2.5 text-sm bg-primary/90 text-primary-foreground p-3 rounded-md shadow-sm'>
                           <Sparkles className='h-4 w-4 mt-0.5 shrink-0' />
@@ -164,12 +177,14 @@ export default function ProjectCard({
                               </TooltipProvider>
                           )}
                       </div>
-                      <CardTitle className='text-lg font-bold leading-tight group-hover:text-primary transition-colors'>
-                          {project.name}
-                      </CardTitle>
-                      <CardDescription className='line-clamp-2 text-sm text-gray-300 pt-1'>
-                          {project.tagline}
-                      </CardDescription>
+                      <div className="bg-black/40 p-3 rounded-lg backdrop-blur-sm border border-white/10">
+                        <CardTitle className='text-lg font-bold leading-tight transition-colors'>
+                            {project.name}
+                        </CardTitle>
+                        <CardDescription className='line-clamp-2 text-sm text-slate-300 pt-1'>
+                            {project.tagline}
+                        </CardDescription>
+                      </div>
                   </div>
                   {project.isExpertReviewed && (
                       <div className="absolute top-2 right-2">
