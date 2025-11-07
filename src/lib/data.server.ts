@@ -129,6 +129,19 @@ export async function findUsersByIds(userIds: string[]): Promise<User[]> {
     return users;
 }
 
+export async function updateUser(userId: string, userData: Partial<User>): Promise<void> {
+    const userRef = adminDb.collection('users').doc(userId);
+    const dataToUpdate = {
+        ...userData,
+        updatedAt: FieldValue.serverTimestamp(),
+    };
+    // Make sure we don't try to update immutable fields
+    delete (dataToUpdate as any).id;
+    delete (dataToUpdate as any).createdAt;
+
+    await userRef.update(dataToUpdate);
+}
+
 // --- Project Data Access ---
 
 export async function getAllProjects(): Promise<HydratedProject[]> {
