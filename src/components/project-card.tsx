@@ -44,6 +44,11 @@ export default function ProjectCard({
   const visibleMembers = sortedTeamMembers.slice(0, MAX_VISIBLE_MEMBERS);
   const hiddenMembersCount = sortedTeamMembers.length - MAX_VISIBLE_MEMBERS;
 
+  const handleAvatarClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+  };
+  
   const renderMemberAvatar = (member: HydratedProjectMember) => {
     const { user, role } = member;
 
@@ -70,7 +75,7 @@ export default function ProjectCard({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href={`/profile/${user.username || user.id}`}>
+            <Link href={`/profile/${user.username || user.id}`} onClick={handleAvatarClick}>
               <Avatar className={cn('border-2 h-8 w-8', role === 'lead' ? 'border-yellow-500' : 'border-background')}>
                 {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
                 <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
@@ -86,123 +91,115 @@ export default function ProjectCard({
   };
 
   return (
-    <Card className={cn(
-        'flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1',
-        isLead && 'border-2 border-yellow-500',
-        className
-    )}>
-      <CardHeader className='relative p-0'>
-        {project.imageUrl && (
-            <Link href={`/projects/${project.id}`} className="block relative aspect-video w-full">
-                <Image
-                    src={project.imageUrl}
-                    alt={project.name}
-                    fill
-                    className="object-cover"
-                    data-ai-hint="project image"
-                />
-            </Link>
-        )}
-        <div className="p-4">
-            {suggestionText && (
-            <div className='mb-3 flex items-start gap-2.5 text-sm text-primary-foreground bg-primary/90 p-3 rounded-md shadow-sm'>
-                <Sparkles className='h-4 w-4 mt-0.5 shrink-0' />
-                <p className='font-medium leading-relaxed'>{suggestionText}</p>
-            </div>
-            )}
-            <div className='flex items-start justify-between'>
-                <div className='flex-1'>
-                    <div className='mb-2 flex flex-wrap items-center gap-2'>
-                        {displayTags.filter((tag: ProjectTag) => tag.type === 'category').slice(0, 3).map((tag: ProjectTag) => (
-                            <Badge
-                                key={tag.id}
-                                variant={'default'}
-                                className='text-xs font-medium'
-                            >
-                                {tag.display}
-                            </Badge>
-                        ))}
-                        {recommendedPaths.length > 0 && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        <Badge variant={'secondary'} className='flex items-center gap-1.5'>
-                                            <BookOpen className='h-4 w-4' />
-                                            {recommendedPaths.length}
-                                        </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p className='font-semibold mb-1'>Recommended Learning:</p>
-                                        <ul className='list-disc list-inside'>
-                                            {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
-                                        </ul>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                    </div>
-                    <CardTitle className='text-lg font-bold'>
-                    <Link href={`/projects/${project.id}`} className='hover:text-primary transition-colors'>
-                        {project.name}
-                    </Link>
-                    </CardTitle>
+      <Card className={cn(
+          'group relative flex flex-col overflow-hidden transition-all hover:shadow-lg',
+          isLead && 'border-2 border-yellow-500',
+          className
+      )}>
+          <Link href={`/projects/${project.id}`} className='contents'>
+              <CardHeader className='relative p-0 h-48'>
+                  <Image
+                      src={project.imageUrl || '/images/project-placeholder.jpg'}
+                      alt={project.name}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      data-ai-hint="project image"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+                  
+                  <div className="relative flex flex-col justify-end h-full p-4 text-white">
+                      {suggestionText && (
+                      <div className='mb-3 flex items-start gap-2.5 text-sm bg-primary/90 text-primary-foreground p-3 rounded-md shadow-sm'>
+                          <Sparkles className='h-4 w-4 mt-0.5 shrink-0' />
+                          <p className='font-medium leading-relaxed'>{suggestionText}</p>
+                      </div>
+                      )}
+                      <div className='flex items-center gap-2 mb-2'>
+                          {displayTags.filter((tag: ProjectTag) => tag.type === 'category').slice(0, 2).map((tag: ProjectTag) => (
+                              <Badge key={tag.id} variant={'secondary'} className='text-xs font-medium'>
+                                  {tag.display}
+                              </Badge>
+                          ))}
+                           {recommendedPaths.length > 0 && (
+                              <TooltipProvider>
+                                  <Tooltip>
+                                      <TooltipTrigger onClick={handleAvatarClick}>
+                                          <Badge variant={'secondary'} className='flex items-center gap-1.5'>
+                                              <BookOpen className='h-3 w-3' />
+                                              {recommendedPaths.length}
+                                          </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                          <p className='font-semibold mb-1'>Recommended Learning:</p>
+                                          <ul className='list-disc list-inside'>
+                                              {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
+                                          </ul>
+                                      </TooltipContent>
+                                  </Tooltip>
+                              </TooltipProvider>
+                          )}
+                      </div>
+                      <CardTitle className='text-lg font-bold leading-tight group-hover:text-primary transition-colors'>
+                          {project.name}
+                      </CardTitle>
+                      <CardDescription className='line-clamp-2 text-sm text-gray-300 pt-1'>
+                          {project.tagline}
+                      </CardDescription>
+                  </div>
+                  {project.isExpertReviewed && (
+                      <div className="absolute top-2 right-2">
+                          <TooltipProvider>
+                              <Tooltip>
+                                  <TooltipTrigger onClick={handleAvatarClick}>
+                                      <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Expert Reviewed</p></TooltipContent>
+                              </Tooltip>
+                          </TooltipProvider>
+                      </div>
+                  )}
+              </CardHeader>
+              <CardContent className='flex-grow p-4'>
+                <div className='mb-4'>
+                  <div className='mb-1 flex justify-between text-xs text-muted-foreground'>
+                    <span>Progress</span>
+                    <span>{project.progress}%</span>
+                  </div>
+                  <Progress value={project.progress} className='h-2' />
                 </div>
-                <div className='ml-4 flex shrink-0 items-center gap-2'>
-                    {project.isExpertReviewed && (
+                <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                    <Sparkles className='h-4 w-4 text-amber-500' />
+                    <span>AI Forecast: High Potential</span>
+                </div>
+              </CardContent>
+              <CardFooter className='flex items-center justify-between bg-muted/50 p-4 mt-auto'>
+                <div className='flex flex-grow items-center'>
+                    <div className='flex items-end -space-x-2'>
+                        {visibleMembers.map((member) => (
+                            <div key={member.userId}>
+                                {renderMemberAvatar(member)}
+                            </div>
+                        ))}
+                    </div>
+                    {hiddenMembersCount > 0 && (
                         <TooltipProvider>
                         <Tooltip>
-                            <TooltipTrigger>
-                            <CheckCircle className='h-5 w-5 text-green-500' />
+                            <TooltipTrigger asChild>
+                            <div className='ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground'>
+                                +{hiddenMembersCount}
+                            </div>
                             </TooltipTrigger>
-                            <TooltipContent><p>Expert Reviewed</p></TooltipContent>
+                            <TooltipContent>
+                            <p>
+                                {sortedTeamMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
+                            </p>
+                            </TooltipContent>
                         </Tooltip>
                         </TooltipProvider>
                     )}
                 </div>
-            </div>
-            <CardDescription className='line-clamp-2 text-sm pt-2'>{project.tagline}</CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className='flex-grow p-4 pt-0'>
-        <div className='mb-4'>
-          <div className='mb-1 flex justify-between text-xs text-muted-foreground'>
-            <span>Progress</span>
-            <span>{project.progress}%</span>
-          </div>
-          <Progress value={project.progress} className='h-2' />
-        </div>
-        <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
-            <Sparkles className='h-4 w-4 text-amber-500' />
-            <span>AI Forecast: High Potential</span>
-        </div>
-      </CardContent>
-      <CardFooter className='flex items-center justify-between bg-muted/50 p-4 mt-auto'>
-        <div className='flex flex-grow items-center'>
-            <div className='flex items-end -space-x-2'>
-                {visibleMembers.map((member) => (
-                    <div key={member.userId}>
-                        {renderMemberAvatar(member)}
-                    </div>
-                ))}
-            </div>
-            {hiddenMembersCount > 0 && (
-                <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                    <div className='ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground'>
-                        +{hiddenMembersCount}
-                    </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                    <p>
-                        {sortedTeamMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
-                    </p>
-                    </TooltipContent>
-                </Tooltip>
-                </TooltipProvider>
-            )}
-        </div>
-      </CardFooter>
-    </Card>
+              </CardFooter>
+          </Link>
+      </Card>
   );
 }
