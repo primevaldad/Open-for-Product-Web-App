@@ -22,14 +22,14 @@ import type {
 } from '@/lib/types';
 import {
   adminDb,
-  addDiscussionComment as addDiscussionCommentToDb,
-  addNotification as addNotificationToDb,
-  addTask as addTaskToDb,
+  addDiscussionCommentToDb,
+  addNotificationToDb,
+  addTaskToDb,
   deleteTaskFromDb,
   findProjectById,
   findUserById,
-  updateProject as updateProjectInDb,
-  updateTask as updateTaskInDb,
+  updateProjectInDb,
+  updateTaskInDb,
   getAllTags as getAllGlobalTags,
   getAllUsers,
   getAllProjects,
@@ -306,9 +306,9 @@ export async function joinProject(projectId: string): Promise<ServerActionRespon
     if (isAlreadyMember) return { success: false, error: 'User is already a member of this project.' };
 
     const newMember: ProjectMember = { userId: currentUser.id, role: 'participant' };
-    project.team.push(newMember);
-
-    await updateProjectInDb({ ...project, team: project.team });
+    
+    const updatedTeam = [...project.team, newMember];
+    await updateProjectInDb(projectId, { team: updatedTeam });
 
     revalidatePath(`/projects/${projectId}`);
     const hydratedMember: HydratedProjectMember = { ...newMember, user: currentUser };
@@ -338,8 +338,8 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
         const user = await findUserById(userId);
         if (!user) return { success: false, error: 'User to be added not found.' };
 
-        project.team.push(newMember);
-        await updateProjectInDb({ ...project, team: project.team });
+        const updatedTeam = [...project.team, newMember];
+        await updateProjectInDb(projectId, { team: updatedTeam });
 
         await addNotificationToDb({
             userId,
@@ -364,12 +364,11 @@ export async function addDiscussionComment(data: { projectId: string; content: s
     if (!currentUser) return { success: false, error: 'Authentication required' };
 
     try {
-        const newComment = await addDiscussionCommentToDb({ 
-            projectId,
+        const newCommentId = await addDiscussionCommentToDb(projectId, { 
+            userId: currentUser.id, 
+            content,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            userId: currentUser.id, 
-            content 
         });
 
         const project = await findProjectById(projectId);
@@ -385,6 +384,15 @@ export async function addDiscussionComment(data: { projectId: string; content: s
                 });
             }
         }
+        
+        const newComment: Discussion = {
+            id: newCommentId,
+            projectId,
+            userId: currentUser.id,
+            content,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
 
         revalidatePath(`/projects/${projectId}`);
         return { success: true, data: deepSerialize(newComment) };
@@ -395,7 +403,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
 }
 
 
-export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<ServerActionResponse<Task>> {
+export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'> & { projectId: string }): Promise<ServerActionResponse<Task>> {
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required.' };
 
@@ -406,11 +414,21 @@ export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
         if (!isLead) return { success: false, error: 'Only project leads can add tasks.' };
         
-        const newTask = await addTaskToDb({
+        const taskId = await addTaskToDb(data.projectId, {
             ...data,
+            createdBy: currentUser.id,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         });
+
+        const newTask: Task = {
+            id: taskId,
+            ...data,
+            createdBy: currentUser.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
         revalidatePath(`/projects/${data.projectId}`);
         return { success: true, data: deepSerialize(newTask) };
     } catch (error) {
@@ -430,12 +448,16 @@ export async function updateTask(data: Task): Promise<ServerActionResponse<Task>
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
         if (!isLead) return { success: false, error: 'Only project leads can update tasks.' };
 
-        const updatedTask = await updateTaskInDb(data);
+        const { id: taskId, projectId, ...taskData } = data;
+        await updateTaskInDb(projectId, taskId, {
+            ...taskData,
+            updatedAt: new Date().toISOString(),
+        });
         revalidatePath(`/projects/${data.projectId}`);
-        return deepSerialize({ success: true, data: updatedTask }) as ServerActionResponse<Task>;
+        return { success: true, data: deepSerialize(data) };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        return deepSerialize({ success: false, error: message }) as ServerActionResponse<Task>;
+        return { success: false, error: message };
     }
 }
 
@@ -450,7 +472,7 @@ export async function deleteTask(data: { id: string; projectId: string }): Promi
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
         if (!isLead) return { success: false, error: 'Only project leads can delete tasks.' };
 
-        await deleteTaskFromDb(data.id);
+        await deleteTaskFromDb(data.projectId, data.id);
         revalidatePath(`/projects/${data.projectId}`);
         return { success: true, data: {} };
     } catch (error) {
