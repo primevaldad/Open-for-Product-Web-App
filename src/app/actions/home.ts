@@ -1,136 +1,61 @@
 'use server';
 
-import { getCurrentUser } from "@/lib/session.server";
-import type { HydratedProject, HydratedProjectMember, Project, User, LearningPath, ProjectPathLink, Tag } from "@/lib/types";
-import {
-  getAllProjects,
-  getAllUsers,
-  getAllTags,
-  getAllLearningPaths,
-  getAllProjectPathLinks,
-  getAiSuggestedProjects,
-} from "@/lib/data.server";
-import { toHydratedProject, deepSerialize } from "@/lib/utils.server";
+import { getCurrentUser } from '@/lib/session.server';
+import { 
+    getAllProjects, 
+    getAllTags, 
+    getAllLearningPaths, 
+    getAllProjectPathLinks, 
+    getAiSuggestedProjects 
+} from '@/lib/data.server';
+import type { HydratedProject, User } from '@/lib/types';
+
+// The user object can contain non-serializable data (like functions) when coming from the DB.
+// This helper removes them to avoid errors when passing data from Server Components to Client Components.
+function cleanUser(user: User): User {
+    const { id, name, email, role, username, avatarUrl, bio, website, onboardingCompleted, aiFeaturesEnabled, createdAt, updatedAt } = user;
+    return { id, name, email, role, username, avatarUrl, bio, website, onboardingCompleted, aiFeaturesEnabled, createdAt, updatedAt };
+}
 
 export async function getHomePageData() {
     try {
-        const currentUserData = await getCurrentUser();
-        const isGuest = currentUserData?.role === 'guest';
-
-        const usersDataPromise = isGuest ? Promise.resolve([]) : getAllUsers();
-
-        const [projectsData, usersData, allTags, learningPathsData, allProjectPathLinks] = await Promise.all([
+        // 1. Get the current user and fetch all necessary data in parallel
+        const [currentUser, projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
+            getCurrentUser(),
             getAllProjects(),
-            usersDataPromise,
             getAllTags(),
             getAllLearningPaths(),
             getAllProjectPathLinks(),
         ]);
 
-        const allLearningPaths = Array.isArray(learningPathsData) ? learningPathsData : Object.values(learningPathsData || {});
+        // 2. The `getAllProjects` function already returns fully hydrated projects.
+        // The previous manual hydration was redundant and caused the crash. We can use the data directly.
+        const allPublishedProjects: HydratedProject[] = projectsData;
 
-        const usersMap = new Map(usersData.map((user) => [user.id, user]));
-
-        const allPublishedProjects = projectsData
-            .filter((p) => p.status === 'published')
-            .map((p: Project): HydratedProject => {
-            if (isGuest) {
-                const guestHydratedTeam: HydratedProjectMember[] = p.team.map(member => ({
-                ...member,
-                user: {
-                    id: member.userId,
-                    name: 'Community Member',
-                    email: '',
-                    username: '',
-                    role: 'user',
-                    onboardingCompleted: true,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                }
-                }));
-
-                const guestOwner: User = {
-                    id: p.ownerId,
-                    name: 'Project Lead',
-                    email: '',
-                    username: '',
-                    role: 'user',
-                    onboardingCompleted: true,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-
-                const { ownerId, team, ...restOfProject } = p;
-
-                return {
-                    ...restOfProject,
-                    owner: guestOwner,
-                    team: guestHydratedTeam,
-                };
-            }
-            return toHydratedProject(p, usersMap);
-            });
-
-            let suggestedProjects: HydratedProject[] | null = null;
-            if (currentUserData && currentUserData.aiFeaturesEnabled) {
-                const projectsForAI = allPublishedProjects.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    description: p.description,
-                    tags: p.tags,
-                    category: p.category,
-                }));
+        // 3. Get AI-suggested projects if the user is logged in
+        const suggestedProjects = currentUser
+            ? await getAiSuggestedProjects(currentUser, allPublishedProjects)
+            : null;
         
-                const suggestedProjectsFromAI = await getAiSuggestedProjects(currentUserData, projectsForAI);
-        
-                if (suggestedProjectsFromAI) {
-                    suggestedProjects = projectsData
-                        .filter(p => suggestedProjectsFromAI.some(sp => sp.id === p.id))
-                        .map(p => toHydratedProject(p, usersMap));
-                }
-            }
-            
-            // Clean circular references from hydrated projects before serializing
-            const cleanUser = (user: any) => {
-                if (!user) return;
-                delete user.projects;
-                delete user.projectMembers;
-            };
+        const aiEnabled = process.env.AI_SUGGESTIONS_ENABLED === 'true' && currentUser?.aiFeaturesEnabled === true;
 
-            allPublishedProjects.forEach(p => {
-                cleanUser(p.owner);
-                p.team.forEach(m => cleanUser(m.user));
-            });
-    
-            if (suggestedProjects) {
-                suggestedProjects.forEach(p => {
-                    cleanUser(p.owner);
-                    p.team.forEach(m => cleanUser(m.user));
-                });
-            }
-
-            const aiEnabled = currentUserData?.aiFeaturesEnabled ?? false;
-
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { projects, projectMembers, ...currentUser } = currentUserData || {};
-
-        return deepSerialize({
+        // 4. Return the data in the success shape the client now expects
+        return {
             success: true,
-            allPublishedProjects,
-            currentUser,
-            allTags,
-            allLearningPaths,
-            allProjectPathLinks,
-            suggestedProjects,
-            aiEnabled,
-        });
+            allPublishedProjects: allPublishedProjects,
+            currentUser: currentUser ? cleanUser(currentUser) : null,
+            allTags: tagsData,
+            allLearningPaths: learningPathsResult.paths,
+            allProjectPathLinks: projectPathLinksData,
+            suggestedProjects: suggestedProjects,
+            aiEnabled: aiEnabled,
+        };
     } catch (error) {
-        console.error('[HOME_ACTION_TRACE] Error fetching home page data:', error);
-        const errorMessage =
-        error instanceof Error ? error.message : "An unknown error occurred.";
+        console.error('Error fetching home page data:', error);
+        // 5. Return the error shape the client now expects
         return {
             success: false,
-            message: `Failed to load home page data: ${errorMessage}`,
+            message: error instanceof Error ? error.message : 'An unknown error occurred while fetching home page data.',
         };
     }
 }

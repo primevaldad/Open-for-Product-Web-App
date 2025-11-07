@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -41,7 +40,7 @@ export interface Project {
     updatedAt: Timestamp | string; 
     startDate: Timestamp | string;
     endDate: Timestamp | string;
-    ownerId: UserId;
+    ownerId?: UserId; // NOW OPTIONAL
     team: ProjectMember[];
     status: 'draft' | 'published' | 'archived';
     tags: ProjectTag[];
@@ -62,7 +61,6 @@ export interface ProjectTag {
     display: string;
     type: 'category' | 'relational' | 'custom'; 
 }
-
 
 // This represents a globally available tag that can be added to projects.
 export interface Tag {
@@ -90,7 +88,9 @@ export interface HydratedProject {
     description: string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
-    owner: User;
+    startDate: Timestamp | string;
+    endDate: Timestamp | string;
+    owner?: User; // NOW OPTIONAL
     team: HydratedProjectMember[];
     status: 'draft' | 'published' | 'archived';
     tags: ProjectTag[];
@@ -182,7 +182,6 @@ export interface UserLearningProgress {
     lastAccessed: Timestamp | string;
 }
 
-
 // --- Server Action Responses ---
 
 export interface ServerActionResponse<T = any> {
@@ -204,3 +203,12 @@ export type EditProjectPageDataResponse =
 export type DraftsPageDataResponse = 
     | { success: true; drafts: HydratedProject[]; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] }
     | { success: false; error: string };
+
+// --- Server Action Prop Types ---
+
+export type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
+export type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
+export type AddDiscussionCommentAction = (data: { projectId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
+export type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => Promise<ServerActionResponse<Task>>;
+export type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
+export type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;

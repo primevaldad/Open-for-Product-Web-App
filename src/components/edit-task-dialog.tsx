@@ -31,6 +31,7 @@ export type TaskFormValues = z.infer<typeof formSchema>;
 interface EditTaskDialogProps {
     isOpen: boolean;
     onClose: () => void;
+    onSave: (values: TaskFormValues) => void;
     task: HydratedTask;
     teamMembers: User[];
 }
@@ -44,6 +45,7 @@ export function EditTaskDialog({ isOpen, onClose, task, teamMembers }: EditTaskD
             description: task.description,
             status: task.status,
             assigneeId: task.assignee?.id,
+            estimatedHours: task.estimatedHours,
             dueDate: task.dueDate ? new Date(task.dueDate as string) : undefined,
         },
     });

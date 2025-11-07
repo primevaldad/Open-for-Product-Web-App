@@ -6,18 +6,7 @@ import { getHomePageData } from '@/app/actions/home';
 import type { HydratedProject, User, LearningPath, ProjectPathLink, Tag } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Define the error response shape locally for the type guard
-interface ErrorResponse {
-  success: false;
-  message: string;
-}
-
-// User-defined type guard for error response
-function isErrorResponse(response: any): response is ErrorResponse {
-    return response && response.success === false && typeof response.message === 'string';
-}
-
-// Define the shape of the success response data
+// Define the shape of the data we want to store in our component's state
 interface PageData {
     allPublishedProjects: HydratedProject[];
     currentUser: User | null;
@@ -28,6 +17,13 @@ interface PageData {
     aiEnabled: boolean;
 }
 
+// The response from the server action can be a success or error object.
+// We define a discriminated union to model this behavior for robust type checking.
+type HomePageDataResponse = 
+    | ({ success: true } & PageData)
+    | { success: false; message: string };
+
+
 export default function HomePage() {
     const [data, setData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -36,13 +32,16 @@ export default function HomePage() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const response = await getHomePageData();
+                const response: HomePageDataResponse = await getHomePageData();
 
-                if (isErrorResponse(response)) {
-                    setError(response.message);
+                if (response.success) {
+                    // On success, the server action returns the PageData along with the `success: true` flag.
+                    // The component state only needs the PageData, so we use destructuring to separate it.
+                    const { success, ...pageData } = response;
+                    setData(pageData);
                 } else {
-                    // Type is correctly inferred here
-                    setData(response);
+                    // On failure, we set the error message.
+                    setError(response.message);
                 }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An unknown error occurred');

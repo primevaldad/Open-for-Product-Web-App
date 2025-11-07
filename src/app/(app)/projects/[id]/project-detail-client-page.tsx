@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -24,18 +23,15 @@ import type {
     Task, 
     User, 
     LearningPath, 
-    ServerActionResponse, 
     HydratedProjectMember,
+    JoinProjectAction,
+    AddTeamMemberAction,
+    AddDiscussionCommentAction,
+    AddTaskAction,
+    UpdateTaskAction,
+    DeleteTaskAction,
     ProjectMember
 } from '@/lib/types';
-
-// Action Prop Types
-type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
-type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
-type AddDiscussionCommentAction = (data: { projectId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
-type AddTaskAction = (data: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse<Task>>;
-type UpdateTaskAction = (data: TaskFormValues) => Promise<ServerActionResponse<Task>>;
-type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
 
 export interface ProjectDetailClientPageProps {
     project: HydratedProject;
@@ -158,11 +154,31 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
     };
 
     const handleSaveTask = async (taskData: TaskFormValues) => {
-        const isUpdating = 'id' in taskData;
-        const action = isUpdating ? updateTask : addTask;
-
-        const result = await action(taskData as any);
-
+        if (!currentUser) return toast.error("You must be logged in to save a task.");
+    
+        let result;
+        if (selectedTask && taskData.id) { // Updating existing task
+            const fullTask: Task = {
+                ...selectedTask,
+                ...taskData,
+                dueDate: taskData.dueDate ? taskData.dueDate.toISOString() : selectedTask.dueDate,
+            };
+            result = await updateTask(fullTask);
+        } else { // Creating new task
+            const { title, description, status, assigneeId, estimatedHours, dueDate } = taskData;
+            if (!title) return toast.error("Task title is required.");
+    
+            result = await addTask({
+                projectId: project.id,
+                title,
+                description: description || '',
+                status: status || 'To Do',
+                ...(assigneeId && { assigneeId }),
+                ...(estimatedHours && { estimatedHours }),
+                ...(dueDate && { dueDate: dueDate.toISOString() }),
+            });
+        }
+    
         if (result.success && result.data) {
             const savedTask = result.data;
             setTasks(prevTasks => {
@@ -175,10 +191,10 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                     return [savedTask, ...prevTasks];
                 }
             });
-            toast.success(`Task ${isUpdating ? 'updated' : 'created'} successfully!`);
+            toast.success(`Task ${selectedTask ? 'updated' : 'created'} successfully!`);
             handleCloseTaskDialog();
         } else {
-            toast.error(`Failed to ${isUpdating ? 'update' : 'create'} task: ${result.error}`);
+            toast.error(`Failed to ${selectedTask ? 'update' : 'create'} task: ${result.error}`);
         }
     };
 
@@ -192,8 +208,7 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
         } else {
             toast.error(`Failed to delete task: ${result.error}`);
         }
-    };
-    
+    };    
 
     return (
         <div>
@@ -265,11 +280,11 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                                 addTeamMember={handleAddTeamMember}
                                 isLead={project.team.some(m => m.userId === currentUser?.id && m.role === 'lead')}
                             />
-                        ) : (
-                            <div className="py-4 relative h-60">
-                                <LoginWall message="Login to see the project team" currentPath={currentPath} />
-                            </div>
-                        )}
+                            ) : 
+                            ( <div className="py-4 relative h-60">
+                                    <LoginWall message="Login to see the project team" currentPath={currentPath} />
+                                </div>
+                            )}
                     </TabPanel>
                     <TabPanel>
                         <div className="p-4">
@@ -295,10 +310,11 @@ export default function ProjectDetailClientPage(props: ProjectDetailClientPagePr
                 </Tabs>
             </div>
 
-            {selectedTask && isTaskDialogOpen && (
-                <EditTaskDialog
+            {isTaskDialogOpen && (
+                 <EditTaskDialog
                     isOpen={isTaskDialogOpen}
                     onClose={handleCloseTaskDialog}
+                    onSave={handleSaveTask}
                     task={selectedTask}
                     teamMembers={project.team.map(member => member.user).filter(Boolean) as User[]}
                 />

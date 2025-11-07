@@ -365,6 +365,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
 
     try {
         const newCommentId = await addDiscussionCommentToDb(projectId, { 
+            projectId,
             userId: currentUser.id, 
             content,
             createdAt: new Date().toISOString(),
@@ -599,7 +600,7 @@ export async function getDraftsPageData(): Promise<DraftsPageDataResponse> {
     return deepSerialize({
       success: true,
       drafts: hydratedDrafts,
-      allLearningPaths,
+      allLearningPaths: allLearningPaths.paths,
       allProjectPathLinks,
     }) as DraftsPageDataResponse;
   } catch (error) {

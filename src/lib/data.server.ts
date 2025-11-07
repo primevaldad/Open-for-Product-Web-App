@@ -204,6 +204,20 @@ export async function updateProjectInDb(projectId: string, project: Partial<Proj
 
 // --- Task Data Access ---
 
+export async function findTasksByProjectId(projectId: string): Promise<Task[]> {
+    const taskSnapshot = await adminDb.collection('projects').doc(projectId).collection('tasks').get();
+    return taskSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+            dueDate: data.dueDate ? serializeTimestamp(data.dueDate) : undefined,
+        } as Task;
+    });
+}
+
 export async function addTaskToDb(projectId: string, task: Omit<Task, 'id'>): Promise<string> {
     const taskRef = await adminDb.collection('projects').doc(projectId).collection('tasks').add(task);
     return taskRef.id;
@@ -218,6 +232,19 @@ export async function deleteTaskFromDb(projectId: string, taskId: string): Promi
 }
 
 // --- Discussion Data Access ---
+
+export async function getDiscussionsForProject(projectId: string): Promise<Discussion[]> {
+    const discussionSnapshot = await adminDb.collection('projects').doc(projectId).collection('discussions').orderBy('createdAt', 'desc').get();
+    return discussionSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+        } as Discussion;
+    });
+}
 
 export async function addDiscussionCommentToDb(projectId: string, comment: Omit<Discussion, 'id'>): Promise<string> {
     const commentRef = await adminDb.collection('projects').doc(projectId).collection('discussions').add(comment);
@@ -246,6 +273,14 @@ export async function getAllTags(): Promise<Tag[]> {
 }
 
 // --- Learning Path Data Access ---
+
+export async function getRecommendedLearningPathsForProject(project: HydratedProject): Promise<LearningPath[]> {
+    if (!project.tags || project.tags.length === 0) {
+        return [];
+    }
+    // This is a placeholder. A real implementation would involve more complex logic, possibly using AI.
+    return [];
+}
 
 export async function getAllLearningPaths(limitNum: number = 10, startAfterDoc?: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData>): Promise<{ paths: LearningPath[], lastVisible: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData> | null }> {
     let query = adminDb.collection('learningPaths').orderBy('createdAt', 'desc').limit(limitNum);

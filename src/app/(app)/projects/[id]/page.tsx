@@ -1,7 +1,12 @@
-
 import { notFound } from 'next/navigation';
-import { findProjectById, getDiscussionsForProject, findTasksByProjectId, getAllUsers } from '@/lib/data.server';
-import { getCurrentUser } from '@/lib/session.server'; // Changed to getCurrentUser
+import { 
+    findProjectById, 
+    getDiscussionsForProject, 
+    findTasksByProjectId, 
+    getAllUsers, 
+    getRecommendedLearningPathsForProject 
+} from '@/lib/data.server';
+import { getCurrentUser } from '@/lib/session.server';
 import ProjectDetailClientPage from './project-detail-client-page';
 import {
     joinProject, 
@@ -12,53 +17,53 @@ import {
     deleteTask
 } from '@/app/actions/projects';
 import type { 
-    HydratedProject, 
     User, 
-    HydratedProjectMember,
     Discussion,
+    HydratedProject,
     Task,
-    ServerActionResponse,
-    ProjectMember
+    LearningPath,
+    JoinProjectAction,
+    AddTeamMemberAction,
+    AddDiscussionCommentAction,
+    AddTaskAction,
+    UpdateTaskAction,
+    DeleteTaskAction
 } from '@/lib/types';
-import { toHydratedProject, deepSerialize } from '@/lib/utils.server';
-import { getRecommendedLearningPathsForProject } from '@/lib/data.server';
+import { deepSerialize } from '@/lib/utils.server';
 
-// Action type definitions, ensuring they match the client component's expectations
-type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
-type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
-type AddDiscussionCommentAction = (data: { projectId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
-type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ServerActionResponse<Task>>;
-type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
-type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
+interface ProjectPageData {
+    project: HydratedProject | null;
+    discussions: (Discussion & { user?: User })[];
+    tasks: Task[];
+    users: User[];
+    currentUser: User | null;
+    learningPaths: LearningPath[];
+}
 
-
-async function getProjectPageData(projectId: string) {
-    // Use getCurrentUser which can return null, instead of getAuthenticatedUser which throws
-    const [project, discussions, tasks, users, currentUser, learningPaths] = await Promise.all([
+async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
+    const [project, discussions, tasks, users, currentUser] = await Promise.all([
         findProjectById(projectId),
         getDiscussionsForProject(projectId),
         findTasksByProjectId(projectId),
         getAllUsers(),
-        getCurrentUser(), // Changed to getCurrentUser
-        getRecommendedLearningPathsForProject(projectId)
+        getCurrentUser(),
     ]);
 
     if (!project) {
-        return { project: null };
+        return { project: null, discussions: [], tasks: [], users: [], currentUser: null, learningPaths: [] };
     }
 
+    const learningPaths = await getRecommendedLearningPathsForProject(project);
     const usersMap = new Map(users.map((user) => [user.id, user]));
-    const hydratedProject = toHydratedProject(project, usersMap);
 
-    // Hydrate discussions with user info
     const hydratedDiscussions = discussions.map(discussion => {
         const user = usersMap.get(discussion.userId);
-        return { ...discussion, user };
-    });
+        return { ...discussion, user: user || null };
+    }).filter(d => d.user); // Ensure user is not null
 
     return {
-        project: hydratedProject,
-        discussions: hydratedDiscussions,
+        project,
+        discussions: hydratedDiscussions as (Discussion & { user: User })[],
         tasks,
         users,
         currentUser,
@@ -90,13 +95,12 @@ export default async function ProjectPage({ params }: { params: { id: string } }
             users={deepSerialize(users)}
             currentUser={deepSerialize(currentUser)}
             learningPaths={deepSerialize(learningPaths)}
-            // Pass the server actions directly to the client component
-            joinProject={joinProject as JoinProjectAction}
-            addTeamMember={addTeamMember as AddTeamMemberAction}
-            addDiscussionComment={addDiscussionComment as AddDiscussionCommentAction}
-            addTask={addTask as AddTaskAction}
-            updateTask={updateTask as UpdateTaskAction}
-            deleteTask={deleteTask as DeleteTaskAction}
+            joinProject={joinProject}
+            addTeamMember={addTeamMember}
+            addDiscussionComment={addDiscussionComment}
+            addTask={addTask}
+            updateTask={updateTask}
+            deleteTask={deleteTask}
         />
     );
 }
