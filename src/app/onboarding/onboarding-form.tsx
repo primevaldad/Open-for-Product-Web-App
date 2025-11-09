@@ -43,6 +43,7 @@ import { interests } from '@/lib/static-data';
 
 
 const onboardingSchema = z.object({
+  id: z.string().min(1, { message: 'User ID is required.' }),
   name: z.string().min(1, { message: 'Name is required.' }),
   bio: z.string().optional(),
   interests: z.array(z.string()).min(1, { message: 'Please select at least one interest.' }),
@@ -52,7 +53,7 @@ type OnboardingFormValues = z.infer<typeof onboardingSchema>;
 
 interface OnboardingFormProps {
     newUser: User;
-    updateOnboardingInfo: (values: OnboardingFormValues & { id: string }) => Promise<{ success: boolean; error?: string }>;
+    updateOnboardingInfo: (values: OnboardingFormValues) => Promise<{ success: boolean; error?: string }>;
 }
 
 export default function OnboardingForm({ newUser, updateOnboardingInfo }: OnboardingFormProps) {
@@ -63,6 +64,7 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
+      id: newUser.id,
       name: newUser.name || '',
       bio: newUser.bio || '',
       interests: [],
@@ -71,7 +73,7 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
 
   function onSubmit(data: OnboardingFormValues) {
     startTransition(async () => {
-        const result = await updateOnboardingInfo({ ...data, id: newUser!.id });
+        const result = await updateOnboardingInfo(data);
 
         if (result.success) {
             toast({

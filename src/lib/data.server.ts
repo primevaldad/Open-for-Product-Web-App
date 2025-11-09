@@ -1,9 +1,10 @@
+
 import 'server-only';
 import admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
-import type { Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember } from './types';
+import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember } from './types';
 import { serializeTimestamp } from './utils.server';
 
 // This file contains server-side data access functions.
@@ -107,6 +108,9 @@ export async function findUsersByIds(userIds: string[]): Promise<User[]> {
 }
 
 export async function updateUser(userId: string, userData: Partial<User>): Promise<void> {
+    if (!userId || typeof userId !== 'string') {
+        throw new Error('A valid, non-empty user ID must be provided to update a user.');
+    }
     const userRef = adminDb.collection('users').doc(userId);
     const dataToUpdate = { ...userData, updatedAt: FieldValue.serverTimestamp() };
     delete (dataToUpdate as any).id;
@@ -166,6 +170,33 @@ export async function findProjectById(projectId: string): Promise<HydratedProjec
 
 export async function updateProjectInDb(projectId: string, project: Partial<Project>): Promise<void> {
     await adminDb.collection('projects').doc(projectId).update(project);
+}
+
+// --- Activity Functions ---
+
+export async function getUserActivity(userId: string): Promise<Activity[]> {
+    // TODO: This currently fetches all activity. In the future, this should be optimized
+    // to fetch only activity relevant to the given userId (e.g., activity they created,
+    // or activity on projects they are a member of).
+    console.log(`Fetching all activity (userId parameter '${userId}' is currently ignored)`);
+
+    const activitySnapshot = await adminDb.collection('activity').orderBy('timestamp', 'desc').limit(50).get();
+
+    if (activitySnapshot.empty) {
+        return [];
+    }
+
+    // Deserialize each document
+    const activities = activitySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            ...data,
+            id: doc.id,
+            timestamp: serializeTimestamp(data.timestamp),
+        } as Activity;
+    });
+
+    return activities;
 }
 
 // --- Task Data Access ---
@@ -290,4 +321,18 @@ export async function getAiSuggestedProjects(currentUser: User, allProjects: Hyd
         return dateB - dateA; 
     });
     return sortedProjects.slice(0, 3);
+}
+
+// This function is new and needs to be implemented
+export async function logOrphanedUser(user: User): Promise<void> {
+    try {
+        const orphanedUsersRef = adminDb.collection('orphanedUsers').doc(user.id);
+        await orphanedUsersRef.set({
+            ...user,
+            orphanedAt: FieldValue.serverTimestamp(),
+        });
+        console.log(`[AUTH_ACTION_TRACE] Logged orphaned user: ${user.email} (ID: ${user.id})`);
+    } catch (error) {
+        console.error(`[AUTH_ACTION_TRACE] Failed to log orphaned user: ${user.id}`, error);
+    }
 }

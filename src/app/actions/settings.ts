@@ -12,25 +12,19 @@ import { deepSerialize } from '@/lib/utils.server';
 import type { User, Tag } from '@/lib/types';
 
 const UserSettingsSchema = z.object({
-  id: z.string(),
   name: z.string().min(1, { message: "Name is required." }),
-  bio: z.string().optional(),
-  avatarDataUrl: z.string().optional().nullable(),
-  email: z.string().email({ message: "Please enter a valid email."}),
-  password: z.string().min(6, { message: "Password must be at least 6 characters."}).optional().or(z.literal('')),
-  passwordConfirmation: z.string().optional(),
-}).refine(data => {
-    if (data.password && data.password !== data.passwordConfirmation) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Passwords do not match",
-    path: ["passwordConfirmation"],
+  username: z.string().min(3, 'Username must be at least 3 characters').or(z.literal('')).optional(),
+  bio: z.string().max(160, 'Bio must not be longer than 160 characters.').optional(),
+  interests: z.array(z.string()).optional(),
+  company: z.string().optional(),
+  location: z.string().optional(),
+  website: z.string().url('Please enter a valid URL.').or(z.literal('')).optional(),
+  aiFeaturesEnabled: z.boolean().optional(),
 });
 
+
 const OnboardingSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1, { message: 'User ID is required.' }),
   name: z.string().min(1, { message: 'Name is required.' }),
   bio: z.string().optional(),
   interests: z.array(z.string()).min(1, { message: 'Please select at least one interest.' }),
@@ -42,7 +36,7 @@ export async function getSettingsPageData() {
     const user = await getAuthenticatedUser();
 
     if (!user) {
-      return deepSerialize({ success: false, error: 'User not authenticated.' });
+      return deepSerialize({ success: false, message: 'User not authenticated.' });
     }
     
     const allTags = await getAllTags();
@@ -63,51 +57,34 @@ export async function getSettingsPageData() {
 }
 
 export async function updateUserSettings(values: z.infer<typeof UserSettingsSchema>) {
-  const validatedFields = UserSettingsSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    const zodError = validatedFields.error;
-    const confirmationError = zodError.errors.find(e => e.path.includes('passwordConfirmation'));
-
-    return {
-      success: false,
-      error: confirmationError ? confirmationError.message : "Invalid data provided.",
-    };
-  }
-
-  const { id, name, bio, avatarDataUrl, email, password } = validatedFields.data;
-
-  try {
-    const user = await findUserById(id);
-    if (!user) {
-        return { success: false, error: "User not found." };
+    const validatedFields = UserSettingsSchema.safeParse(values);
+    
+    if (!validatedFields.success) {
+        return {
+            success: false,
+            error: "Invalid data provided.",
+        };
     }
 
-    user.name = name;
-    user.bio = bio;
-    user.email = email;
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) {
+            return { success: false, error: "User not found." };
+        }
+        
+        await updateUserInDb(currentUser.id, validatedFields.data);
 
-    if (avatarDataUrl) {
-      user.avatarUrl = avatarDataUrl;
+        revalidatePath('/', 'layout');
+        return { success: true };
+    } catch (error) {
+        let errorMessage = "An unexpected error occurred.";
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+            errorMessage = (error as any).message;
+        }
+        return { success: false, error: errorMessage };
     }
-
-    await updateUserInDb(user);
-
-    if (password) {
-        await getAuth(adminApp).updateUser(id, { password });
-    }
-
-    revalidatePath('/', 'layout');
-    return { success: true };
-  } catch (error) {
-    let errorMessage = "An unexpected error occurred.";
-    if (error instanceof Error) {
-        errorMessage = error.message;
-    } else if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
-        errorMessage = (error as any).message;
-    }
-    return { success: false, error: errorMessage };
-  }
 }
 
 export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSchema>) {
@@ -124,12 +101,13 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
     return { success: false, error: "User not found." };
   }
 
-  user.name = name;
-  user.bio = bio;
-  user.interests = interests;
-  user.onboardingCompleted = true;
-
-  await updateUserInDb(user);
+  // Use the updateUser function which centralizes update logic
+  await updateUserInDb(id, {
+    name,
+    bio,
+    interests,
+    onboardingCompleted: true,
+  });
 
   revalidatePath('/', 'layout');
 

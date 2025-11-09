@@ -212,3 +212,42 @@ export type AddDiscussionCommentAction = (data: { projectId: string; content: st
 export type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => Promise<ServerActionResponse<Task>>;
 export type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
 export type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
+
+// --- Activity and Notification Types ---
+
+export enum ActivityType {
+    ProjectCreated = 'project-created',
+    ProjectStatusUpdated = 'project-status-updated',
+    ProjectMemberAdded = 'project-member-added',
+    ProjectMemberRoleUpdated = 'project-member-role-updated',
+    TaskCreated = 'task-created',
+    TaskStatusUpdated = 'task-status-updated',
+    TaskAssigned = 'task-assigned',
+    DiscussionPosted = 'discussion-posted',
+}
+
+export interface Activity {
+    id: string;
+    type: ActivityType;
+    actorId: UserId;
+    timestamp: Timestamp | string;
+    projectId?: ProjectId;
+    context: {
+        // Common context
+        projectName?: string;
+
+        // Context for project-related activities
+        projectStatus?: Project['status'];
+        newMemberId?: UserId;
+        newMemberRole?: ProjectMember['role'];
+
+        // Context for task-related activities
+        taskId?: string;
+        taskTitle?: string;
+        taskStatus?: Task['status'];
+        assigneeId?: UserId;
+
+        // Context for discussion-related activities
+        discussionId?: string;
+    };
+}
