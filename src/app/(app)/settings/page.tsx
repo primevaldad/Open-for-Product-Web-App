@@ -102,6 +102,7 @@ export default function SettingsPage() {
             <Separator />
             <SettingsForm 
                 currentUser={data.user} 
+                allTags={data.allTags} 
                 updateUserSettings={updateUserSettings} 
             />
         </div>

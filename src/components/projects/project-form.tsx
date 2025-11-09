@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import UserSelector from '@/components/users/user-selector';
-import TagSelector from '@/components/tags/tag-selector';
+import AdvancedTagSelector from '@/components/tags/advanced-tag-selector'; // Updated import
 import ImageUpload from '@/components/ui/image-upload';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
 import type { User, Tag, Project, ProjectTag } from "@/lib/types";
@@ -175,7 +175,29 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
           )}
         />
 
-        <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel htmlFor="tags">Tags</FormLabel><FormControl><TagSelector id="tags" availableTags={tags} value={field.value as ProjectTag[]} onChange={handleTagsChange} /></FormControl><FormDescription>Add tags to help people discover your project.</FormDescription><FormMessage /></FormItem>)} />
+        <FormField 
+          control={form.control}
+          name="tags" 
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor="tags">Tags</FormLabel>
+              <FormControl>
+                <AdvancedTagSelector 
+                  id="tags" 
+                  availableTags={tags} 
+                  value={field.value as ProjectTag[]} 
+                  onChange={handleTagsChange} 
+                  isProject // Enable project-specific features
+                />
+              </FormControl>
+              <FormDescription>
+                Add tags to help people discover your project. You can create new tags, customize their display names, and mark up to three as primary categories.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )} 
+        />
+        
         <FormField control={form.control} name="contributionNeeds" render={({ field }) => (<FormItem><FormLabel>Contribution Needs</FormLabel><FormControl><Input placeholder="e.g., UI/UX, Backend" {...field} /></FormControl><FormDescription>What kind of help are you looking for? (comma-separated)</FormDescription><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="team" render={({ field }) => (<FormItem><FormLabel htmlFor="team">Team Members</FormLabel><FormControl><UserSelector id="team" users={users} value={field.value} onChange={field.onChange}/></FormControl><FormDescription>{isEditMode ? 'Manage the project team.' : 'You will be added as project lead.'}</FormDescription><FormMessage /></FormItem>)} />
 

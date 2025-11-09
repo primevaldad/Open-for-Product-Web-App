@@ -168,6 +168,20 @@ export async function findProjectById(projectId: string): Promise<HydratedProjec
     return undefined;
 }
 
+export async function getProjectsByUserId(userId: string): Promise<HydratedProject[]> {
+    const allProjects = await getAllProjects();
+    const userProjects = allProjects.filter(project => {
+        if (project.owner?.id === userId) {
+            return true;
+        }
+        if (project.team.some(member => member.userId === userId)) {
+            return true;
+        }
+        return false;
+    });
+    return userProjects;
+}
+
 export async function updateProjectInDb(projectId: string, project: Partial<Project>): Promise<void> {
     await adminDb.collection('projects').doc(projectId).update(project);
 }
@@ -175,28 +189,49 @@ export async function updateProjectInDb(projectId: string, project: Partial<Proj
 // --- Activity Functions ---
 
 export async function getUserActivity(userId: string): Promise<Activity[]> {
-    // TODO: This currently fetches all activity. In the future, this should be optimized
-    // to fetch only activity relevant to the given userId (e.g., activity they created,
-    // or activity on projects they are a member of).
-    console.log(`Fetching all activity (userId parameter '${userId}' is currently ignored)`);
+    const userProjects = await getProjectsByUserId(userId);
+    const projectIds = userProjects.map(p => p.id);
 
-    const activitySnapshot = await adminDb.collection('activity').orderBy('timestamp', 'desc').limit(50).get();
+    const actorActivityQuery = adminDb.collection('activity')
+        .where('actorId', '==', userId)
+        .orderBy('timestamp', 'desc')
+        .limit(50);
 
-    if (activitySnapshot.empty) {
-        return [];
-    }
+    const projectActivityQuery = projectIds.length > 0
+        ? adminDb.collection('activity')
+            .where('projectId', 'in', projectIds)
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+        : null;
 
-    // Deserialize each document
-    const activities = activitySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            ...data,
-            id: doc.id,
-            timestamp: serializeTimestamp(data.timestamp),
-        } as Activity;
-    });
+    const [actorActivitySnapshot, projectActivitySnapshot] = await Promise.all([
+        actorActivityQuery.get(),
+        projectActivityQuery ? projectActivityQuery.get() : Promise.resolve(null)
+    ]);
 
-    return activities;
+    const activitiesMap = new Map<string, Activity>();
+
+    const processSnapshot = (snapshot: admin.firestore.QuerySnapshot | null) => {
+        if (!snapshot) return;
+        snapshot.docs.forEach(doc => {
+            if (!activitiesMap.has(doc.id)) {
+                const data = doc.data();
+                activitiesMap.set(doc.id, {
+                    ...data,
+                    id: doc.id,
+                    timestamp: serializeTimestamp(data.timestamp),
+                } as Activity);
+            }
+        });
+    };
+
+    processSnapshot(actorActivitySnapshot);
+    processSnapshot(projectActivitySnapshot);
+
+    const mergedActivities = Array.from(activitiesMap.values());
+    mergedActivities.sort((a, b) => new Date(b.timestamp as string).getTime() - new Date(a.timestamp as string).getTime());
+
+    return mergedActivities.slice(0, 50);
 }
 
 // --- Task Data Access ---

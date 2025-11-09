@@ -18,9 +18,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { InterestSelector } from '@/components/users/interest-selector';
+import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 import { useToast } from '@/hooks/use-toast';
-import type { User } from '@/lib/types';
+import type { User, Tag, ProjectTag } from '@/lib/types';
 import type { updateUserSettings } from '@/app/actions/settings';
 import { Switch } from '@/components/ui/switch';
 
@@ -28,7 +28,12 @@ const SettingsSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   username: z.string().min(3, 'Username must be at least 3 characters').or(z.literal('')).optional(),
   bio: z.string().max(160, 'Bio must not be longer than 160 characters.').optional(),
-  interests: z.array(z.string()).optional(),
+  tags: z.array(z.object({
+    id: z.string(),
+    display: z.string(),
+    type: z.string(),
+    isCategory: z.boolean().optional(),
+  })).optional(),
   company: z.string().optional(),
   location: z.string().optional(),
   website: z.string().url('Please enter a valid URL.').or(z.literal('')).optional(),
@@ -39,10 +44,11 @@ type SettingsFormValues = z.infer<typeof SettingsSchema>;
 
 interface SettingsFormProps {
   currentUser: User;
+  allTags: Tag[];
   updateUserSettings: typeof updateUserSettings;
 }
 
-export default function SettingsForm({ currentUser, updateUserSettings }: SettingsFormProps) {
+export default function SettingsForm({ currentUser, allTags, updateUserSettings }: SettingsFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -52,7 +58,7 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
       name: currentUser.name,
       username: currentUser.username || '',
       bio: currentUser.bio || '',
-      interests: currentUser.interests || [],
+      tags: currentUser.interests?.map(interest => ({ id: interest, display: interest, type: 'interest' })) || [],
       company: currentUser.company || '',
       location: currentUser.location || '',
       website: currentUser.website || '',
@@ -62,7 +68,12 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
 
   const onSubmit = (data: SettingsFormValues) => {
     startTransition(async () => {
-      const result = await updateUserSettings(data);
+        // a bit of a hack to get the data in the right shape
+        const userData = {
+            ...data,
+            interests: data.tags?.map(t => t.id) || [],
+        };
+      const result = await updateUserSettings(userData);
       if (!result.success) {
         toast({
           variant: 'destructive',
@@ -77,6 +88,11 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
       }
     });
   };
+
+  function handleTagsChange(newTags: ProjectTag[]) {
+    form.setValue('tags', newTags, { shouldValidate: true, shouldDirty: true });
+    form.trigger('tags');
+  }
 
   return (
     <Form {...form}>
@@ -131,23 +147,25 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
         />
         
         <FormField
-          control={form.control}
-          name="interests"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Interests</FormLabel>
-              <FormControl>
-                <InterestSelector
-                  value={field.value || []}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormDescription>
-                Select your interests to help us recommend relevant projects.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
+            control={form.control}
+            name="tags"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel htmlFor="tags">Tags</FormLabel>
+                <FormControl>
+                    <AdvancedTagSelector
+                    id="tags"
+                    availableTags={allTags}
+                    value={field.value as ProjectTag[]}
+                    onChange={handleTagsChange}
+                    />
+                </FormControl>
+                <FormDescription>
+                    Select your tags to help us recommend relevant projects. You can also create new tags.
+                </FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
         />
 
         <FormField

@@ -1,28 +1,32 @@
 
+// Last updated: 2024-04-05T12:00:00Z
 import OnboardingForm from "./onboarding-form";
-// import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateOnboardingInfo } from "../actions/settings";
-import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
+import { getAuthenticatedUser } from "@/lib/session.server";
 import { redirect } from "next/navigation";
-import type { User } from '@/lib/types';
+import { getAllTags } from "@/lib/data.server";
+ import type { User } from '@/lib/types';
 
-
-// This is now a Server Component that fetches data and passes it down.
 export default async function OnboardingPage() {
-  const currentUser = await getAuthenticatedUser() as User; // Corrected function call
+  const currentUser = await getAuthenticatedUser() as User;
 
   if (!currentUser) {
     redirect('/login');
   }
 
-  // If the currently simulated user is already onboarded, redirect them away.
   if (currentUser?.onboardingCompleted) {
     redirect('/home');
   }
 
+  const allTags = await getAllTags();
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <OnboardingForm newUser={currentUser} updateOnboardingInfo={updateOnboardingInfo} />
+        <OnboardingForm 
+          newUser={currentUser} 
+          allTags={allTags}
+          updateOnboardingInfo={updateOnboardingInfo} 
+        />
     </div>
   );
 }

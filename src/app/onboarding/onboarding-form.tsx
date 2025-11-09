@@ -3,21 +3,10 @@
 
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, ChevronsUpDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import {
   Form,
   FormControl,
@@ -28,35 +17,34 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { User } from '@/lib/types';
-import { interests } from '@/lib/static-data';
-// import type { updateOnboardingInfo } from '../actions/settings';
-
+import type { User, Tag, ProjectTag } from '@/lib/types';
+import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 
 const onboardingSchema = z.object({
   id: z.string().min(1, { message: 'User ID is required.' }),
   name: z.string().min(1, { message: 'Name is required.' }),
   bio: z.string().optional(),
-  interests: z.array(z.string()).min(1, { message: 'Please select at least one interest.' }),
+  tags: z.array(z.object({
+    id: z.string(),
+    display: z.string(),
+    type: z.string(),
+    isCategory: z.boolean().optional(),
+  })).min(1, { message: 'Please select at least one tag.' }),
 });
 
 type OnboardingFormValues = z.infer<typeof onboardingSchema>;
 
 interface OnboardingFormProps {
     newUser: User;
-    updateOnboardingInfo: (values: OnboardingFormValues) => Promise<{ success: boolean; error?: string }>;
+    allTags: Tag[];
+    updateOnboardingInfo: (values: any) => Promise<{ success: boolean; error?: string }>;
 }
 
-export default function OnboardingForm({ newUser, updateOnboardingInfo }: OnboardingFormProps) {
+export default function OnboardingForm({ newUser, allTags, updateOnboardingInfo }: OnboardingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = React.useTransition();
@@ -67,13 +55,16 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
       id: newUser.id,
       name: newUser.name || '',
       bio: newUser.bio || '',
-      interests: [],
+      tags: [],
     },
   });
 
   function onSubmit(data: OnboardingFormValues) {
     startTransition(async () => {
-        const result = await updateOnboardingInfo(data);
+        const result = await updateOnboardingInfo({
+          ...data,
+          interests: data.tags.map(t => t.id),
+        });
 
         if (result.success) {
             toast({
@@ -89,6 +80,11 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
             });
         }
     });
+  }
+
+  function handleTagsChange(newTags: ProjectTag[]) {
+    form.setValue('tags', newTags, { shouldValidate: true, shouldDirty: true });
+    form.trigger('tags');
   }
 
   return (
@@ -138,74 +134,18 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
               />
                <FormField
                 control={form.control}
-                name="interests"
+                name="tags"
                 render={({ field }) => (
                     <FormItem className="flex flex-col">
-                        <FormLabel>Interests</FormLabel>
-                        <Popover>
-                        <PopoverTrigger asChild>
-                            <FormControl>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                'w-full justify-between',
-                                !field.value?.length && 'text-muted-foreground'
-                                )}
-                            >
-                                <div className="flex gap-1 flex-wrap">
-                                {field.value?.length > 0 ? (
-                                    field.value.map((interest) => (
-                                    <Badge
-                                        variant="secondary"
-                                        key={interest}
-                                        className="mr-1"
-                                    >
-                                        {interests.find(i => i.name === interest)?.name || interest}
-                                    </Badge>
-                                    ))
-                                ) : (
-                                    "Select your interests"
-                                )}
-                                </div>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Search interests..." />
-                                <CommandEmpty>No interest found.</CommandEmpty>
-                                <CommandList>
-                                <CommandGroup>
-                                    {interests.map((interest) => (
-                                    <CommandItem
-                                        value={interest.name}
-                                        key={interest.id}
-                                        onSelect={() => {
-                                            const currentInterests = field.value || [];
-                                            const updatedInterests = currentInterests.includes(interest.name)
-                                            ? currentInterests.filter(i => i !== interest.name)
-                                            : [...currentInterests, interest.name];
-                                            form.setValue('interests', updatedInterests);
-                                        }}
-                                    >
-                                        <Check
-                                        className={cn(
-                                            'mr-2 h-4 w-4',
-                                            field.value?.includes(interest.name)
-                                            ? 'opacity-100'
-                                            : 'opacity-0'
-                                        )}
-                                        />
-                                        {interest.name}
-                                    </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                        </Popover>
+                        <FormLabel>Tags</FormLabel>
+                        <FormControl>
+                          <AdvancedTagSelector 
+                            id="tags" 
+                            availableTags={allTags} 
+                            value={field.value as ProjectTag[]} 
+                            onChange={handleTagsChange}
+                          />
+                        </FormControl>
                         <FormDescription>
                         What topics are you passionate about?
                         </FormDescription>
