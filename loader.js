@@ -1,12 +1,22 @@
 'use client';
 
 export default function myImageLoader({ src, width, quality }) {
-  // In development, or for internal static assets, return the original src.
-  if (process.env.NODE_ENV === 'development' || src.startsWith('/')) {
+  // For internal static assets, return the original src.
+  if (src.startsWith('/')) {
     return src;
   }
 
-  // For external images in production, use the App Hosting image optimizer.
+  // For Firebase Storage images, return the original URL. Don't use the optimizer.
+  if (src.startsWith('https://firebasestorage.googleapis.com')) {
+    return src;
+  }
+
+  // In development, return the original src for all other cases.
+  if (process.env.NODE_ENV === 'development') {
+    return src;
+  }
+
+  // For any other external images in production, use the App Hosting image optimizer.
   const operations = [
     {
       operation: 'input',

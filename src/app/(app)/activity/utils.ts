@@ -1,71 +1,49 @@
 
-import type { Project, Task, Discussion, Notification, User, ServerActionResponse, HydratedTask as BaseHydratedTask } from '@/lib/types';
+import type { Activity, User, Project, ActivityType } from '@/lib/types';
 
+/**
+ * A HydratedActivityItem is a processed version of a raw Activity object,
+ * ready for rendering in the UI. It replaces IDs with full objects.
+ */
 export type HydratedActivityItem = {
-    id: string;
-    type: 'project' | 'task' | 'discussion' | 'notification';
-    timestamp: Date;
-    content: Project | Task | Discussion | Notification;
-    project?: { id: string, name: string };
-    user?: { id: string, name: string | null, avatarUrl?: string | null };
+  id: string;
+  actor: User;          // The full user object for the person who performed the action.
+  type: ActivityType;   // The specific type of activity that occurred.
+  timestamp: Date;      // The date object for when the activity happened.
+  project?: Project;      // The full project object, if the activity is related to one.
+  context: Activity['context']; // The original context from the activity log.
 };
 
-export type HydratedTask = BaseHydratedTask;
-
+/**
+ * Transforms a raw Activity object into a HydratedActivityItem.
+ *
+ * @param item - The raw Activity object from Firestore.
+ * @param usersMap - A Map of all users, keyed by userId.
+ * @param projectsMap - A Map of all projects, keyed by projectId.
+ * @returns A hydrated activity item ready for the UI.
+ */
 export const toHydratedActivityItem = (
-    item: Project | Task | Discussion | Notification,
-    type: 'project' | 'task' | 'discussion' | 'notification',
-    projects: Map<string, Project>,
-    users: Map<string, User>
-): HydratedActivityItem => {
-    let timestamp: Date;
-    let projectId: string | undefined;
-    let userId: string | undefined;
+    item: Activity,
+    usersMap: Map<string, User>,
+    projectsMap: Map<string, Project>
+): HydratedActivityItem | null => {
 
-    if (type === 'project') {
-        const project = item as Project;
-        timestamp = new Date(project.createdAt as string);
-        projectId = project.id;
-        userId = project.ownerId;
-    } else if (type === 'task') {
-        const task = item as Task;
-        timestamp = new Date(task.createdAt as string);
-        projectId = task.projectId;
-        userId = task.createdBy;
-    } else if (type === 'discussion') {
-        const discussion = item as Discussion;
-        timestamp = new Date(discussion.timestamp as string);
-        projectId = discussion.projectId;
-        userId = discussion.userId;
-    } else {
-        const notification = item as Notification;
-        timestamp = new Date(notification.timestamp as string);
-        userId = notification.userId;
+    const actor = usersMap.get(item.actorId);
+
+    // If the actor can't be found, we can't render the item.
+    if (!actor) {
+        console.warn(`Could not find actor with ID: ${item.actorId} for activity ${item.id}`);
+        return null;
     }
 
-    const project = projectId ? projects.get(projectId) : undefined;
-    const user = userId ? users.get(userId) : undefined;
+    const project = item.projectId ? projectsMap.get(item.projectId) : undefined;
 
     return {
         id: item.id,
-        type,
-        timestamp,
-        content: item,
-        project: project ? { id: project.id, name: project.name } : undefined,
-        user: user ? { id: user.id, name: user.name, avatarUrl: user.avatarUrl } : undefined,
+        actor,
+        type: item.type,
+        timestamp: new Date(item.timestamp as string),
+        project,
+        context: item.context,
     };
 };
-
-// Define Action Prop Types
-type UpdateTaskAction = (values: Task) => Promise<ServerActionResponse<Task>>;
-type DeleteTaskAction = (values: { id: string, projectId: string }) => Promise<ServerActionResponse<{}>>;
-
-export interface ActivityClientPageProps {
-    currentUser: User;
-    myTasks: HydratedTask[];
-    createdTasks: HydratedTask[];
-    projects: Project[];
-    users: User[];
-    updateTask: UpdateTaskAction;
-    deleteTask: DeleteTaskAction;
-}

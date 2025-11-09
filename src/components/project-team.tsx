@@ -18,6 +18,11 @@ interface ProjectTeamProps {
 export default function ProjectTeam({ team, users, currentUser, addTeamMember, isLead }: ProjectTeamProps) {
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
 
+  // Deduplicate team members based on userId to prevent React key errors
+  const uniqueTeamMembers = team.filter((member, index, self) =>
+    index === self.findIndex((m) => m.userId === member.userId)
+  );
+
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
       <div className="flex justify-between items-center mb-4">
@@ -28,14 +33,14 @@ export default function ProjectTeam({ team, users, currentUser, addTeamMember, i
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {team.map(member => (
+        {uniqueTeamMembers.map(member => (
           <div key={member.userId} className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <Avatar>
-              <AvatarImage src={member.user?.avatarUrl} alt={member.user?.name} />
-              <AvatarFallback>{member.user?.name.charAt(0)}</AvatarFallback>
+              <AvatarImage src={member.user?.avatarUrl} alt={member.user?.name || 'User avatar'} />
+              <AvatarFallback>{member.user?.name ? member.user.name.charAt(0) : '?'}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold text-gray-900 dark:text-white">{member.user?.name}</p>
+              <p className="font-semibold text-gray-900 dark:text-white">{member.user?.name || 'Unknown User'}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{member.role}</p>
             </div>
           </div>

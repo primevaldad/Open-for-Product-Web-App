@@ -18,7 +18,8 @@ import type {
   HydratedProject,
   CreateProjectPageDataResponse,
   EditProjectPageDataResponse,
-  DraftsPageDataResponse
+  DraftsPageDataResponse,
+  ActivityType
 } from '@/lib/types';
 import {
   adminDb,
@@ -44,6 +45,7 @@ import {
   EditProjectFormValues,
 } from '@/lib/schemas';
 import { toHydratedProject, deepSerialize } from '@/lib/utils.server';
+import { logActivity } from './logging';
 
 const MAX_TAG_LENGTH = 35;
 
@@ -169,6 +171,13 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
     });
 
     if (!newProjectId) throw new Error('Failed to create project.');
+
+    await logActivity({
+        type: 'project-created' as ActivityType,
+        actorId: currentUser.id,
+        projectId: newProjectId,
+        context: { projectName: name }
+    });
 
     revalidatePath('/', 'layout');
     if (status === 'draft') revalidatePath('/drafts');

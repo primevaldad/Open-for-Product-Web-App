@@ -181,7 +181,7 @@ export default function SettingsForm({ currentUser, updateUserSettings }: Settin
         <FormField
           control={form.control}
           name="website"
-          render={({ field }) => (_
+          render={({ field }) => (
             <FormItem>
               <FormLabel>Website</FormLabel>
               <FormControl>
