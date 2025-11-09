@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -127,7 +128,7 @@ export interface Task {
     description: string;
     status: 'To Do' | 'In Progress' | 'Done' | 'Archived';
     createdBy: UserId;
-    assignedToId?: UserId;
+    assignedToId?: string; // Can be a single user ID
     estimatedHours?: number;
     dueDate?: Timestamp | string;
     createdAt: Timestamp | string;
@@ -225,6 +226,15 @@ export enum ActivityType {
     TaskAssigned = 'task-assigned',
     DiscussionPosted = 'discussion-posted',
 }
+
+// This defines the structure of the object returned by getUserActivity
+export interface UserActivityPayload {
+    projects: Project[];
+    tasks: Task[];
+    discussions: Discussion[];
+    notifications: Notification[];
+}
+
 
 export interface Activity {
     id: string;

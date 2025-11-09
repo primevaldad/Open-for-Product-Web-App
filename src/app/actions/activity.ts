@@ -1,3 +1,4 @@
+
 'use server';
 
 import { getAuthenticatedUser } from "@/lib/session.server";
@@ -24,18 +25,19 @@ export async function getActivityPageData() {
         const projectsMap = new Map(projects.map(p => [p.id, p]));
         const usersMap = new Map(users.map(u => [u.id, u]));
 
+        // Add defensive || [] to prevent crash if activity properties are undefined
         const hydratedActivity = [
-            ...activity.projects.map(item => toHydratedActivityItem(item, 'project', projectsMap, usersMap)),
-            ...activity.tasks.map(item => toHydratedActivityItem(item, 'task', projectsMap, usersMap)),
-            ...activity.discussions.map(item => toHydratedActivityItem(item, 'discussion', projectsMap, usersMap)),
-            ...activity.notifications.map(item => toHydratedActivityItem(item, 'notification', projectsMap, usersMap)),
+            ...(activity.projects || []).map(item => toHydratedActivityItem(item, 'project', projectsMap, usersMap)),
+            ...(activity.tasks || []).map(item => toHydratedActivityItem(item, 'task', projectsMap, usersMap)),
+            ...(activity.discussions || []).map(item => toHydratedActivityItem(item, 'discussion', projectsMap, usersMap)),
+            ...(activity.notifications || []).map(item => toHydratedActivityItem(item, 'notification', projectsMap, usersMap)),
         ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-        const myTasks = activity.tasks
-            .filter(task => task.assignedToId.includes(currentUser.id) || task.createdBy === currentUser.id)
+        const myTasks = (activity.tasks || [])
+            .filter(task => (task.assignedToId && task.assignedToId.includes(currentUser.id)) || task.createdBy === currentUser.id)
             .map(task => toHydratedActivityItem(task, 'task', projectsMap, usersMap));
 
-        const createdTasks = activity.tasks
+        const createdTasks = (activity.tasks || [])
             .filter(task => task.createdBy === currentUser.id)
             .map(task => toHydratedActivityItem(task, 'task', projectsMap, usersMap));
 

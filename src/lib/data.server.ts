@@ -174,29 +174,28 @@ export async function updateProjectInDb(projectId: string, project: Partial<Proj
 
 // --- Activity Functions ---
 
-export async function getUserActivity(userId: string): Promise<Activity[]> {
-    // TODO: This currently fetches all activity. In the future, this should be optimized
-    // to fetch only activity relevant to the given userId (e.g., activity they created,
-    // or activity on projects they are a member of).
-    console.log(`Fetching all activity (userId parameter '${userId}' is currently ignored)`);
-
-    const activitySnapshot = await adminDb.collection('activity').orderBy('timestamp', 'desc').limit(50).get();
-
-    if (activitySnapshot.empty) {
-        return [];
-    }
-
-    // Deserialize each document
-    const activities = activitySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            ...data,
-            id: doc.id,
-            timestamp: serializeTimestamp(data.timestamp),
-        } as Activity;
-    });
-
-    return activities;
+export async function getUserActivity(userId: string): Promise<{
+    projects: Project[];
+    tasks: Task[];
+    discussions: Discussion[];
+    notifications: Notification[];
+}> {
+    // This is still a simplified implementation. A real-world app would have
+    // more complex queries to fetch activity relevant to the user.
+    // For now, we return empty arrays to prevent crashes.
+    console.log(`Fetching activity for user: ${userId}`);
+    
+    // In a real implementation, you would query collections based on userId.
+    // For example:
+    // const taskQuery = await adminDb.collectionGroup('tasks').where('assignedToId', '==', userId).get();
+    // const discussionQuery = await adminDb.collectionGroup('discussions').where('userId', '==', userId).get();
+    
+    return {
+        projects: [],
+        tasks: [],
+        discussions: [],
+        notifications: []
+    };
 }
 
 // --- Task Data Access ---
