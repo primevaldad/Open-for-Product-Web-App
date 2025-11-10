@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { HydratedProject, HydratedProjectMember, User, ProjectTag, ProjectPathLink, LearningPath } from '@/lib/types';
-import { cn, getInitials } from '@/lib/utils';
+import { cn, getInitials, getDeterministicPlaceholder } from '@/lib/utils';
 
 interface ProjectCardProps {
   project: HydratedProject;
@@ -21,17 +21,6 @@ interface ProjectCardProps {
 }
 
 const MAX_VISIBLE_MEMBERS = 4;
-
-const placeholderImages = [
-    '/images/ofp-project-placeholder1.png',
-    '/images/ofp-project-placeholder2.png',
-    '/images/ofp-project-placeholder3.png',
-];
-
-const getDeterministicPlaceholder = (projectId: string) => {
-    const hash = projectId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return placeholderImages[hash % placeholderImages.length];
-};
 
 export default function ProjectCard({ 
     project, 

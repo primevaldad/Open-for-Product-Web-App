@@ -6,6 +6,7 @@ import { FilePenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { HydratedProject, User } from '@/lib/types';
+import { getDeterministicPlaceholder } from '@/lib/utils';
 
 interface ProjectHeaderProps {
   project: HydratedProject;
@@ -16,13 +17,14 @@ interface ProjectHeaderProps {
 export default function ProjectHeader({ project, currentUser, onJoin }: ProjectHeaderProps) {
   const isMember = currentUser ? project.team.some(member => member.user.id === currentUser.id) : false;
   const isLead = currentUser ? project.team.some(member => member.user.id === currentUser.id && member.role === 'lead') : false;
+  const fallbackImage = getDeterministicPlaceholder(project.id);
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
       {/* Project Image */}
       <div className="w-full h-64 relative mb-4 rounded-lg overflow-hidden">
         <Image 
-          src={project.photoUrl || '/images/project-placeholder.jpg'}
+          src={project.imageUrl || fallbackImage}
           alt={`${project.name} photo`}
           layout="fill"
           objectFit="cover"

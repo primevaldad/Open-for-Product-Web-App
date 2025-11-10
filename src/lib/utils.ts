@@ -49,3 +49,14 @@ export function timeAgo(date: Date | undefined): string {
     if (interval > 1) return Math.floor(interval) + " minutes ago";
     return Math.floor(seconds) + " seconds ago";
   }
+
+const placeholderImages = [
+    '/images/ofp-project-placeholder1.png',
+    '/images/ofp-project-placeholder2.png',
+    '/images/ofp-project-placeholder3.png',
+];
+
+export const getDeterministicPlaceholder = (id: string) => {
+    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return placeholderImages[hash % placeholderImages.length];
+};
