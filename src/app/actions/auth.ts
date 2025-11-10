@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
-import { adminDb, logOrphanedUser } from '@/lib/data.server'; // Removed unused findUserByEmail
+import { adminDb, logOrphanedUser } from '@/lib/data.server';
 import { createSessionCookie, clearSessionCookie } from '@/lib/session.server';
 import type { User } from '@/lib/types';
 import { FirebaseError } from 'firebase/app';
@@ -72,13 +72,13 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
         }
 
         const newUserRef = usersCollection.doc(uid);
-        const newUser: Omit<User, 'id' | 'onboardingCompleted' | 'createdAt' | 'updatedAt'> & { onboardingCompleted: boolean } = {
+        const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
             name,
             email,
-            username: name, // Added username field
+            role: '', // <-- FIX: Set role to an empty string as requested
+            username: name,
             avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
             bio: 'Just joined Open for Product!',
-            interests: [],
             onboardingCompleted: false,
         };
         transaction.set(newUserRef, newUser);

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { getAuthenticatedUser } from '@/lib/session.server';
@@ -9,6 +10,7 @@ import {
     getAiSuggestedProjects 
 } from '@/lib/data.server';
 import type { HydratedProject, User } from '@/lib/types';
+import { NotAuthenticatedError } from '@/lib/errors';
 
 // The user object can contain non-serializable data (like functions) when coming from the DB.
 // This helper removes them to avoid errors when passing data from Server Components to Client Components.
@@ -19,27 +21,33 @@ function cleanUser(user: User): User {
 
 export async function getHomePageData() {
     try {
-        // 1. Get the current user and fetch all necessary data in parallel
-        const [currentUser, projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
-            getAuthenticatedUser(),
+        let currentUser: User | null = null;
+        try {
+            currentUser = await getAuthenticatedUser();
+        } catch (error) {
+            if (!(error instanceof NotAuthenticatedError)) {
+                throw error;
+            }
+            // User is not logged in, proceed with currentUser as null
+        }
+
+        // Fetch all necessary data in parallel
+        const [projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
             getAllProjects(),
             getAllTags(),
             getAllLearningPaths(),
             getAllProjectPathLinks(),
         ]);
 
-        // 2. The `getAllProjects` function already returns fully hydrated projects.
-        // The previous manual hydration was redundant and caused the crash. We can use the data directly.
         const allPublishedProjects: HydratedProject[] = projectsData;
 
-        // 3. Get AI-suggested projects if the user is logged in
+        // Get AI-suggested projects if the user is logged in
         const suggestedProjects = currentUser
             ? await getAiSuggestedProjects(currentUser, allPublishedProjects)
             : null;
         
         const aiEnabled = process.env.AI_SUGGESTIONS_ENABLED === 'true' && currentUser?.aiFeaturesEnabled === true;
 
-        // 4. Return the data in the success shape the client now expects
         return {
             success: true,
             allPublishedProjects: allPublishedProjects,
@@ -52,7 +60,6 @@ export async function getHomePageData() {
         };
     } catch (error) {
         console.error('Error fetching home page data:', error);
-        // 5. Return the error shape the client now expects
         return {
             success: false,
             message: error instanceof Error ? error.message : 'An unknown error occurred while fetching home page data.',
