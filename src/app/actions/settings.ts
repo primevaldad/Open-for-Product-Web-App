@@ -1,13 +1,10 @@
-
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { findUserById, updateUser as updateUserInDb, getAllTags } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
-import { adminApp } from '@/lib/firebase.server';
-import { getAuth } from 'firebase-admin/auth';
-import type { FirebaseError } from 'firebase-admin/app';
+import { adminAuth } from '@/lib/firebase.server';
 import { deepSerialize } from '@/lib/utils.server';
 import type { User, Tag } from '@/lib/types';
 
@@ -72,7 +69,15 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
             return { success: false, error: "User not found." };
         }
         
+        // Update Firestore DB
         await updateUserInDb(currentUser.id, validatedFields.data);
+
+        // Also update Firebase Auth if name has changed
+        if (validatedFields.data.name) {
+            await adminAuth.updateUser(currentUser.id, {
+                displayName: validatedFields.data.name
+            });
+        }
 
         revalidatePath('/', 'layout');
         return { success: true };
