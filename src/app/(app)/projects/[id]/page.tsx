@@ -6,7 +6,7 @@ import {
     getAllUsers, 
     getRecommendedLearningPathsForProject 
 } from '@/lib/data.server';
-import { getCurrentUser } from '@/lib/session.server';
+import { getAuthenticatedUser } from '@/app/actions/users';
 import ProjectDetailClientPage from './project-detail-client-page';
 import {
     joinProject, 
@@ -41,12 +41,12 @@ interface ProjectPageData {
 }
 
 async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
-    const [project, discussions, tasks, users, currentUser] = await Promise.all([
+    const [project, discussions, tasks, users, {data: currentUser}] = await Promise.all([
         findProjectById(projectId),
         getDiscussionsForProject(projectId),
         findTasksByProjectId(projectId),
         getAllUsers(),
-        getCurrentUser(),
+        getAuthenticatedUser(),
     ]);
 
     if (!project) {
@@ -66,7 +66,7 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
         discussions: hydratedDiscussions as (Discussion & { user: User })[],
         tasks,
         users,
-        currentUser,
+        currentUser: currentUser ?? null,
         learningPaths,
     };
 }

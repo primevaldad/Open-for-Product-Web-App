@@ -1,6 +1,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { createSession, clearSession } from '@/lib/session.server';
+import { createSessionCookie, clearSessionCookie } from '@/lib/session.server';
 import { RecentSignInRequiredError } from '@/lib/errors';
 
 /**
@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
     }
 
-    // createSession handles token verification, cookie creation, and setting it.
-    await createSession(idToken);
+    // createSessionCookie handles token verification, cookie creation, and setting it.
+    await createSessionCookie(idToken);
 
     return NextResponse.json({ status: 'success' }, { status: 200 });
   } catch (error: unknown) {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const errorMessage =
-      error.message || 'An unknown error occurred during session creation.';
+      error instanceof Error ? error.message : 'An unknown error occurred during session creation.';
     return NextResponse.json(
       { error: `Internal Server Error: ${errorMessage}` },
       { status: 500 }
@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE() {
   try {
-    // clearSession handles cookie removal and token revocation.
-    await clearSession();
+    // clearSessionCookie handles cookie removal.
+    await clearSessionCookie();
     return NextResponse.json({ status: 'success' }, { status: 200 });
   } catch (error: unknown) {
     console.error('Error in session DELETE route:', error);

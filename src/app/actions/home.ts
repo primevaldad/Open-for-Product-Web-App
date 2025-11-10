@@ -1,6 +1,6 @@
 'use server';
 
-import { getCurrentUser } from '@/lib/session.server';
+import { getAuthenticatedUser } from '@/app/actions/users';
 import { 
     getAllProjects, 
     getAllTags, 
@@ -20,8 +20,8 @@ function cleanUser(user: User): User {
 export async function getHomePageData() {
     try {
         // 1. Get the current user and fetch all necessary data in parallel
-        const [currentUser, projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
-            getCurrentUser(),
+        const [{data: currentUser}, projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
+            getAuthenticatedUser(),
             getAllProjects(),
             getAllTags(),
             getAllLearningPaths(),

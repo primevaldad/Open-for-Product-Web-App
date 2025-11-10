@@ -1,11 +1,11 @@
 'use server';
 
-import { getAuthenticatedUser } from '@/lib/session.server';
+import { getAuthenticatedUser as getAuthenticatedUserFromSession } from '@/lib/session.server';
 import { User, ServerActionResponse } from '@/lib/types';
 
-export async function getCurrentUser(): Promise<ServerActionResponse<User>> {
+export async function getAuthenticatedUser(): Promise<ServerActionResponse<User>> {
     try {
-        const user = await getAuthenticatedUser();
+        const user = await getAuthenticatedUserFromSession();
         if (!user) {
             return { success: false, error: 'User not authenticated.' };
         }

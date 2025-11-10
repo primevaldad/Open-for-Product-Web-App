@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { LearningPath, ProjectPathLink, HydratedProject, User } from "@/lib/types";
 import { getDraftsPageData } from "@/app/actions/projects";
-import { getCurrentUser } from "@/app/actions/users";
+import { getAuthenticatedUser } from "@/app/actions/users";
 import ProjectCard from "@/components/project-card";
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -25,7 +25,7 @@ export default function DraftsPage() {
             try {
                 const [draftsResponse, userResponse] = await Promise.all([
                     getDraftsPageData(),
-                    getCurrentUser()
+                    getAuthenticatedUser()
                 ]);
 
                 if (draftsResponse.success && userResponse.success) {

@@ -29,7 +29,7 @@ export async function createSessionCookie(idToken: string): Promise<string> {
     } catch (error) {
       if (error instanceof UserNotFoundError) {
         console.log(`First login for user ${uid}, creating guest user.`);
-        await createGuestUser(uid, decodedToken.email, decodedToken.name);
+        await createGuestUser({uid, email: decodedToken.email, displayName: decodedToken.name});
       } else {
         throw error; // Re-throw other errors
       }
@@ -39,7 +39,7 @@ export async function createSessionCookie(idToken: string): Promise<string> {
       expiresIn: SESSION_DURATION_MS,
     });
 
-    cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
+    await cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
       maxAge: SESSION_DURATION_MS,
       httpOnly: true,
       secure: IS_PROD,
@@ -58,7 +58,7 @@ export async function createSessionCookie(idToken: string): Promise<string> {
  * Clears the session cookie, effectively logging the user out.
  */
 export async function clearSessionCookie(): Promise<void> {
-  cookies().set(SESSION_COOKIE_NAME, '', {
+  await cookies().set(SESSION_COOKIE_NAME, '', {
     maxAge: 0,
     httpOnly: true,
     secure: IS_PROD,
@@ -72,7 +72,7 @@ export async function clearSessionCookie(): Promise<void> {
  * @throws {NotAuthenticatedError} If the session is invalid or the user is not found.
  */
 export async function getAuthenticatedUser(): Promise<User> {
-  const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
+  const sessionCookie = (await cookies().get(SESSION_COOKIE_NAME))?.value;
 
   if (!sessionCookie) {
     throw new NotAuthenticatedError();
