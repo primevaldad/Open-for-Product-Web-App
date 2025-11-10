@@ -189,50 +189,19 @@ export async function updateProjectInDb(projectId: string, project: Partial<Proj
 // --- Activity Functions ---
 
 export async function getUserActivity(userId: string): Promise<Activity[]> {
-    const userProjects = await getProjectsByUserId(userId);
-    const projectIds = userProjects.map(p => p.id);
+    const feedRef = adminDb.collection('users').doc(userId).collection('feed');
+    const activitySnapshot = await feedRef.orderBy('timestamp', 'desc').limit(50).get();
 
-    const actorActivityQuery = adminDb.collection('activity')
-        .where('actorId', '==', userId)
-        .orderBy('timestamp', 'desc')
-        .limit(50);
-
-    const projectActivityQuery = projectIds.length > 0
-        ? adminDb.collection('activity')
-            .where('projectId', 'in', projectIds)
-            .orderBy('timestamp', 'desc')
-            .limit(50)
-        : null;
-
-    const [actorActivitySnapshot, projectActivitySnapshot] = await Promise.all([
-        actorActivityQuery.get(),
-        projectActivityQuery ? projectActivityQuery.get() : Promise.resolve(null)
-    ]);
-
-    const activitiesMap = new Map<string, Activity>();
-
-    const processSnapshot = (snapshot: admin.firestore.QuerySnapshot | null) => {
-        if (!snapshot) return;
-        snapshot.docs.forEach(doc => {
-            if (!activitiesMap.has(doc.id)) {
-                const data = doc.data();
-                activitiesMap.set(doc.id, {
-                    ...data,
-                    id: doc.id,
-                    timestamp: serializeTimestamp(data.timestamp),
-                } as Activity);
-            }
-        });
-    };
-
-    processSnapshot(actorActivitySnapshot);
-    processSnapshot(projectActivitySnapshot);
-
-    const mergedActivities = Array.from(activitiesMap.values());
-    mergedActivities.sort((a, b) => new Date(b.timestamp as string).getTime() - new Date(a.timestamp as string).getTime());
-
-    return mergedActivities.slice(0, 50);
+    return activitySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            ...data,
+            id: doc.id,
+            timestamp: serializeTimestamp(data.timestamp),
+        } as Activity;
+    });
 }
+
 
 // --- Task Data Access ---
 
