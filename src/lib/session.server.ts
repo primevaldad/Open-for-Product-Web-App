@@ -57,7 +57,7 @@ export async function createSessionCookie(idToken: string): Promise<string> {
 /**
  * Clears the session cookie, effectively logging the user out.
  */
-export function clearSessionCookie(): void {
+export async function clearSessionCookie(): Promise<void> {
   cookies().set(SESSION_COOKIE_NAME, '', {
     maxAge: 0,
     httpOnly: true,
@@ -84,7 +84,7 @@ export async function getAuthenticatedUser(): Promise<User> {
     return user;
   } catch (error) {
     // Clear the invalid cookie
-    clearSessionCookie();
+    await clearSessionCookie();
 
     if (error instanceof UserNotFoundError) {
       console.warn('User from session not found in DB', (error as Error).message);
