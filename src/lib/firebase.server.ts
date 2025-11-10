@@ -1,45 +1,33 @@
-import { initializeApp, getApps, getApp, cert } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import * as admin from 'firebase-admin';
+import { getApps } from 'firebase-admin/app';
 
-let adminApp;
-
-try {
-  if (!getApps().length) {
-    if (process.env.NODE_ENV === 'production') {
-      // Use default credentials provided by the App Hosting environment
-      adminApp = initializeApp();
-      console.log("--- Firebase Admin SDK Initialized (Production) ---");
-    } else {
-      // For local development, use the service account key from env variables
-      const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-      if (serviceAccountKey) {
-        const parsedServiceAccount = JSON.parse(serviceAccountKey);
-
-        // The private_key needs to have newlines un-escaped
-        if (parsedServiceAccount.private_key) {
-          parsedServiceAccount.private_key = parsedServiceAccount.private_key.replace(/\\n/g, '\n');
-        }
-
-        adminApp = initializeApp({
-          credential: cert(parsedServiceAccount),
-          projectId: parsedServiceAccount.project_id,
-        });
-        console.log("--- Firebase Admin SDK Initialized (Development) ---");
-      } else {
-        console.warn("[firebase.server] Skipping Firebase Admin initialization for development — FIREBASE_SERVICE_ACCOUNT_KEY is not set.");
-      }
-    }
-  } else {
-    adminApp = getApp();
+function getServiceAccount() {
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) {
+    console.warn('FIREBASE_SERVICE_ACCOUNT_KEY not found. Relying on default credentials. This is expected in a GCP environment.');
+    return undefined;
   }
-} catch (error) {
-  console.error("[firebase.server] Error initializing Firebase Admin:", error);
-  adminApp = undefined; // Ensure app is undefined on error
+  try {
+    // Ensure the private key is formatted correctly
+    const parsedKey = JSON.parse(serviceAccountKey);
+    parsedKey.private_key = parsedKey.private_key.replace(/\\n/g, '\n');
+    return parsedKey;
+  } catch (e) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Make sure it is a valid JSON string.', e);
+    return undefined;
+  }
 }
 
-// Safely export the initialized services
-export const adminDb = adminApp ? getFirestore(adminApp) : undefined;
-export const adminAuth = adminApp ? getAuth(adminApp) : undefined;
+const serviceAccount = getServiceAccount();
 
-export { adminApp };
+if (!getApps().length) {
+  admin.initializeApp({
+    credential: serviceAccount ? admin.credential.cert(serviceAccount) : undefined,
+    databaseURL: `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'open-for-product'}.firebaseio.com`,
+  });
+}
+
+const adminDb = admin.firestore();
+const adminAuth = admin.auth();
+
+export { adminDb, adminAuth };
