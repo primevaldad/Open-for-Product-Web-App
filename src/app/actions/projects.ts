@@ -153,7 +153,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
 
       const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> = {
         name,
-        imageUrl: imageUrl || '',
+        photoUrl: photoUrl || '',
         startDate: admin.firestore.Timestamp.fromDate(new Date()),
         endDate: admin.firestore.Timestamp.fromDate(new Date()),
         tagline,

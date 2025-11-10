@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
 import { adminDb, logOrphanedUser } from '@/lib/data.server'; // Removed unused findUserByEmail
-import { createSession, clearSession } from '@/lib/session.server';
+import { createSessionCookie, clearSessionCookie } from '@/lib/session.server';
 import type { User } from '@/lib/types';
 import { FirebaseError } from 'firebase/app';
 
@@ -31,7 +31,7 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
   const { idToken } = validatedFields.data;
 
   try {
-    await createSession(idToken);
+    await createSessionCookie(idToken);
     revalidatePath('/home');
     return { success: true };
   } catch (error) { // Type error as FirebaseError or generic Error
@@ -54,7 +54,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
   const { idToken, name, email } = validatedFields.data;
 
   try {
-    const uid = await createSession(idToken);
+    const uid = await createSessionCookie(idToken);
 
     await adminDb.runTransaction(async (transaction) => {
         const usersCollection = adminDb.collection('users');
@@ -89,7 +89,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
 
   } catch (error) { // Type error as FirebaseError or generic Error
     console.error('[AUTH_ACTION_TRACE] Signup Server Action Error:', error);
-    await clearSession();
+    await clearSessionCookie();
     if (error instanceof FirebaseError || error instanceof Error) {
         return { success: false, error: error.message };
     }
@@ -102,7 +102,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
 
 export async function logout() {
     try {
-        await clearSession();
+        await clearSessionCookie();
         revalidatePath('/', 'layout');
     } catch (error) {
         console.error("[AUTH_ACTION_TRACE] Logout Server Action Error:", error);

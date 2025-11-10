@@ -1,15 +1,15 @@
 
 import LoginPageClient from './login-page-client';
-import { getAuthenticatedUser } from '@/app/actions/users';
+import { getAuthenticatedUser } from '@/lib/session.server';
 import { redirect } from 'next/navigation';
 
 // This is a Server Component that handles initial session check
 export default async function LoginPage() {
-  const { data: currentUser, success } = await getAuthenticatedUser();
+  const currentUser = await getAuthenticatedUser();
 
   // If the user has a valid session and is NOT a guest, redirect them away.
   // A guest user should be able to see this page to log in.
-  if (success && currentUser && currentUser.role !== 'guest') {
+  if (currentUser && currentUser.role !== 'guest') {
     redirect('/home');
   }
 

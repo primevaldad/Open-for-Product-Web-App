@@ -277,6 +277,25 @@ export async function getAllLearningPaths(limitNum: number = 10, startAfterDoc?:
     return { paths, lastVisible };
 }
 
+export async function findLearningPathsByIds(pathIds: string[]): Promise<LearningPath[]> {
+    const validPathIds = pathIds.filter(id => id);
+    if (validPathIds.length === 0) return [];
+    const uniqueIds = [...new Set(validPathIds)];
+    const paths: LearningPath[] = [];
+    for (let i = 0; i < uniqueIds.length; i += 10) {
+        const chunk = uniqueIds.slice(i, i + 10);
+        if (chunk.length === 0) continue;
+        const q = adminDb.collection('learningPaths').where(admin.firestore.FieldPath.documentId(), 'in', chunk);
+        const pathSnapshot = await q.get();
+        pathSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            let path = { pathId: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as LearningPath;
+            paths.push(ensureModulesHaveIds(path));
+        });
+    }
+    return paths;
+}
+
 export async function getAllProjectPathLinks(): Promise<ProjectPathLink[]> {
     const linksSnapshot = await adminDb.collection('projectPathLinks').get();
     return linksSnapshot.docs.map(doc => {

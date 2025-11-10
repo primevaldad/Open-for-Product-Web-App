@@ -24,7 +24,7 @@ export default function ProjectHeader({ project, currentUser, onJoin }: ProjectH
       {/* Project Image */}
       <div className="w-full h-64 relative mb-4 rounded-lg overflow-hidden">
         <Image 
-          src={project.imageUrl || fallbackImage}
+          src={project.photoUrl || fallbackImage}
           alt={`${project.name} photo`}
           layout="fill"
           objectFit="cover"
