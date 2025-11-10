@@ -113,7 +113,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
     return { success: false, error: validatedFields.error.issues[0]?.message || 'Invalid data.' };
   }
 
-  const { name, tagline, description, contributionNeeds, tags, team } = validatedFields.data;
+  const { name, tagline, description, photoUrl, contributionNeeds, tags, team } = validatedFields.data;
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
@@ -153,6 +153,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
 
       const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> = {
         name,
+        imageUrl: imageUrl || '',
         startDate: admin.firestore.Timestamp.fromDate(new Date()),
         endDate: admin.firestore.Timestamp.fromDate(new Date()),
         tagline,
