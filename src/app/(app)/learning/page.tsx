@@ -26,7 +26,12 @@ export default function LearningPathsPage() {
                 return;
             }
 
-            setPaths(prevPaths => [...prevPaths, ...response.paths]);
+            setPaths(prevPaths => {
+                const allPaths = [...prevPaths, ...response.paths];
+                const uniquePathsMap = new Map();
+                allPaths.forEach(path => uniquePathsMap.set(path.pathId, path));
+                return Array.from(uniquePathsMap.values());
+            });
             setLastVisible(response.lastVisible as QueryDocumentSnapshot<DocumentData>);
             setHasMore(response.paths.length === 10);
 

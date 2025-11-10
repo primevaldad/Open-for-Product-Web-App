@@ -25,7 +25,8 @@ export async function getActivityPageData() {
         const usersMap = new Map(users.map(u => [u.id, u]));
 
         const hydratedActivity = activity
-            .map(item => toHydratedActivityItem(item, item.type, projectsMap, usersMap))
+            .map(item => toHydratedActivityItem(item, usersMap, projectsMap))
+            .filter(Boolean) // Remove nulls from items where actor wasn't found
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         const userProjects = projects.filter(p => p.team.some(member => member.userId === currentUser.id));
