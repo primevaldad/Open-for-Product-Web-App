@@ -1,324 +1,292 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { toast } from 'sonner';
+import { useState, useEffect, useMemo } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
-import { LockKeyhole } from 'lucide-react';
+import { toast } from 'react-toastify';
 
+import type { User, HydratedProject, Task, Discussion, LearningPath } from '@/lib/types';
+import { ProjectProvider } from '@/context/ProjectContext';
 import ProjectHeader from '@/components/project-header';
+import ProjectAbout from '@/components/project-about';
 import TaskBoard from '@/components/task-board';
 import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
-import { EditTaskDialog, TaskFormValues } from '@/components/edit-task-dialog';
+import LoginWall from '@/components/login-wall';
+import TaskDialog from '@/components/task-dialog';
 import { Button } from '@/components/ui/button';
-import Markdown from '@/components/ui/markdown';
-import ProjectGovernance from '@/components/project-governance';
 
-import type { 
-    HydratedProject, 
-    Discussion, 
-    Task, 
-    User, 
-    LearningPath, 
-    HydratedProjectMember,
-    JoinProjectAction,
-    AddTeamMemberAction,
-    AddDiscussionCommentAction,
-    AddTaskAction,
-    UpdateTaskAction,
-    DeleteTaskAction,
-    ProjectMember
-} from '@/lib/types';
+import { joinProject as joinProjectAction } from '@/app/actions/projects';
+import { applyForRole as applyForRoleAction, approveRoleApplication as approveRoleApplicationAction, denyRoleApplication as denyRoleApplicationAction } from '@/app/actions/roles';
+import { updateTask as updateTaskAction, deleteTask as deleteTaskAction } from '@/app/actions/tasks';
+import { addDiscussion as addDiscussionAction } from '@/app/actions/discussions';
 
-export interface ProjectDetailClientPageProps {
+interface ProjectDetailClientPageProps {
     project: HydratedProject;
-    discussions: (Discussion & { user?: User })[];
     tasks: Task[];
+    discussions: Discussion[];
+    learningPaths: LearningPath[];
     users: User[];
     currentUser: User | null;
-    learningPaths: LearningPath[];
-    joinProject: JoinProjectAction;
-    addTeamMember: AddTeamMemberAction;
-    addDiscussionComment: AddDiscussionCommentAction;
-    addTask: AddTaskAction;
-    updateTask: UpdateTaskAction;
-    deleteTask: DeleteTaskAction;
 }
 
-// A component to block content for logged-out users.
-const LoginWall = ({ message, currentPath }: { message: string, currentPath: string }) => (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-lg bg-background/80 p-8 text-center">
-        <LockKeyhole className="h-12 w-12 text-muted-foreground" />
-        <p className="text-lg font-semibold text-foreground">{message}</p>
-        <Button asChild>
-            <Link href={`/login?redirect=${encodeURIComponent(currentPath)}`}>Login to View</Link>
-        </Button>
-    </div>
-);
+export default function ProjectDetailClientPage({
+    project: initialProject,
+    tasks: initialTasks,
+    discussions: initialDiscussions,
+    learningPaths: initialLearningPaths,
+    users: allUsers,
+    currentUser,
+}: ProjectDetailClientPageProps) {
+    const [project, setProject] = useState(initialProject);
+    const [tasks, setTasks] = useState(initialTasks);
+    const [discussions, setDiscussions] = useState(initialDiscussions);
+    const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
+    const [users, setUsers] = useState(allUsers);
+    const [tabIndex, setTabIndex] = useState(0);
+    const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-export default function ProjectDetailClientPage(props: ProjectDetailClientPageProps) {
-    const {
-        project: initialProject,
-        discussions: initialDiscussions,
-        tasks: initialTasks,
-        users,
-        currentUser,
-        learningPaths,
-        joinProject,
-        addTeamMember,
-        addDiscussionComment,
-        addTask,
-        updateTask,
-        deleteTask,
-    } = props;
-
+    const router = useRouter();
     const currentPath = usePathname();
 
-    const [project, setProject] = useState(initialProject);
-    const [discussions, setDiscussions] = useState<Array<Discussion & { user?: User }>>(initialDiscussions);
-    const [tasks, setTasks] = useState<Task[]>(initialTasks);
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+    useEffect(() => {
+        setProject(initialProject);
+        setTasks(initialTasks);
+        setDiscussions(initialDiscussions);
+        setLearningPaths(initialLearningPaths);
+        setUsers(allUsers);
+    }, [initialProject, initialTasks, initialDiscussions, initialLearningPaths, allUsers]);
 
-    const isMember = currentUser ? project.team.some(m => m.userId === currentUser.id) : false;
-    const isGuest = currentUser?.role === 'guest';
+    const isMember = useMemo(() => 
+        currentUser && project.team.some(member => member.userId === currentUser.id),
+        [currentUser, project.team]
+    );
 
-    const handleJoinProject = async () => {
-        if (!currentUser || isGuest) return toast.error("You must create an account to join.");
-        
-        const result = await joinProject(project.id);
-        if (result.success) {
-            toast.success("Welcome to the project!");
-            if (result.data) {
-                setProject(prev => ({ ...prev, team: [...prev.team, result.data!] }));
-            }
-        } else {
-            toast.error(`Failed to join: ${result.error}`);
-        }
-    };
+    const isLead = useMemo(() => 
+        currentUser && project.team.some(member => member.userId === currentUser.id && member.role === 'lead'),
+        [currentUser, project.team]
+    );
 
-    const handleAddTeamMember = async (userId: string, role: ProjectMember['role']) => {
-        const result = await addTeamMember({ projectId: project.id, userId, role });
-        if (result.success) {
-            toast.success("Team member added!");
-            if (result.data) {
-                setProject(prev => ({ ...prev, team: [...prev.team, result.data!] }));
-            }
-        } else {
-            toast.error(`Error adding member: ${result.error}`);
-        }
-    };
+    const isGuest = !currentUser || currentUser.role === 'guest';
 
-    const handleAddComment = async (content: string) => {
-        if (!currentUser || isGuest) {
-            toast.error("You must be logged in to comment.");
-            return;
-        }
-
-        const tempId = `temp-${Date.now()}`;
-        const optimisticComment: Discussion & { user?: User } = {
-            id: tempId,
-            projectId: project.id,
-            userId: currentUser.id,
-            content,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            user: currentUser,
-        };
-
-        setDiscussions(prev => [optimisticComment, ...prev]);
-
-        const result = await addDiscussionComment({ projectId: project.id, content });
- 
-        if (result.success && result.data) {
-            const finalComment: Discussion & { user?: User } = { ...result.data, user: currentUser };
-            setDiscussions(prev => prev.map(d => d.id === tempId ? finalComment : d));
-            toast.success("Comment posted!");
-        } else {
-            toast.error(`Error posting comment: ${result.error}`);
-            setDiscussions(prev => prev.filter(d => d.id !== tempId));
-        }
-    };
-
-    const handleOpenTaskDialog = (task?: Task) => {
-        setSelectedTask(task || null);
+    const handleOpenTaskDialog = (task: Task | null = null) => {
+        setEditingTask(task);
         setIsTaskDialogOpen(true);
     };
 
     const handleCloseTaskDialog = () => {
-        setSelectedTask(null);
         setIsTaskDialogOpen(false);
+        setEditingTask(null);
     };
 
-    const handleSaveTask = async (taskData: TaskFormValues) => {
-        if (!currentUser) return toast.error("You must be logged in to save a task.");
-    
-        let result;
-        if (selectedTask && taskData.id) { // Updating existing task
-            const fullTask: Task = {
-                ...selectedTask,
-                ...taskData,
-                dueDate: taskData.dueDate ? taskData.dueDate.toISOString() : selectedTask.dueDate,
-            };
-            result = await updateTask(fullTask);
-        } else { // Creating new task
-            const { title, description, status, assigneeId, estimatedHours, dueDate } = taskData;
-            if (!title) return toast.error("Task title is required.");
-    
-            result = await addTask({
-                projectId: project.id,
-                title,
-                description: description || '',
-                status: status || 'To Do',
-                ...(assigneeId && { assigneeId }),
-                ...(estimatedHours && { estimatedHours }),
-                ...(dueDate && { dueDate: dueDate.toISOString() }),
-            });
+    const handleJoinProject = async () => {
+        if (!currentUser) {
+            toast.error('You must be logged in to join a project.');
+            return;
         }
-    
-        if (result.success && result.data) {
-            const savedTask = result.data;
-            setTasks(prevTasks => {
-                const existingIndex = prevTasks.findIndex(t => t.id === savedTask.id);
-                if (existingIndex > -1) {
-                    const newTasks = [...prevTasks];
-                    newTasks[existingIndex] = savedTask;
-                    return newTasks;
-                } else {
-                    return [savedTask, ...prevTasks];
-                }
-            });
-            toast.success(`Task ${selectedTask ? 'updated' : 'created'} successfully!`);
-            handleCloseTaskDialog();
+        const result = await joinProjectAction({ projectId: project.id, userId: currentUser.id });
+        if (result.success) {
+            toast.success('Successfully joined the project!');
+            router.refresh();
         } else {
-            toast.error(`Failed to ${selectedTask ? 'update' : 'create'} task: ${result.error}`);
+            toast.error(result.error || 'Failed to join the project.');
+        }
+    };
+
+    const handleApplyForRole = async (userId: string, role: 'lead' | 'contributor' | 'participant') => {
+        const result = await applyForRoleAction({ projectId: project.id, userId, role });
+        if (result.success) {
+            toast.success(result.message);
+            router.refresh();
+        } else {
+            toast.error(result.error);
+        }
+    };
+
+    const handleApproveRoleApplication = async (userId: string, role: 'lead' | 'contributor' | 'participant') => {
+        const result = await approveRoleApplicationAction({ projectId: project.id, userId, role });
+        if (result.success) {
+            toast.success(result.message);
+            router.refresh();
+        } else {
+            toast.error(result.error);
+        }
+    };
+
+    const handleDenyRoleApplication = async (userId: string) => {
+        const result = await denyRoleApplicationAction({ projectId: project.id, userId });
+        if (result.success) {
+            toast.success(result.message);
+            router.refresh();
+        } else {
+            toast.error(result.error);
+        }
+    };
+
+    const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+        try {
+            const result = await updateTaskAction({
+                projectId: project.id,
+                task: editingTask ? { ...editingTask, ...taskData } : taskData,
+            });
+
+            if (result.success && result.task) {
+                if (editingTask) {
+                    setTasks(tasks.map(t => t.id === result.task!.id ? result.task! : t));
+                    toast.success('Task updated successfully!');
+                } else {
+                    setTasks([...tasks, result.task]);
+                    toast.success('Task added successfully!');
+                }
+                handleCloseTaskDialog();
+                router.refresh();
+            } else {
+                toast.error(result.error || 'Failed to save task.');
+            }
+        } catch (error) {
+            toast.error('An unexpected error occurred.');
         }
     };
 
     const handleDeleteTask = async (taskId: string) => {
-        if (!window.confirm("Are you sure you want to delete this task?")) return;
+        if (!window.confirm('Are you sure you want to delete this task?')) return;
 
-        const result = await deleteTask({ id: taskId, projectId: project.id });
-        if (result.success) {
-            setTasks(prev => prev.filter(t => t.id !== taskId));
-            toast.success("Task deleted.");
-        } else {
-            toast.error(`Failed to delete task: ${result.error}`);
+        try {
+            const result = await deleteTaskAction({ projectId: project.id, taskId });
+
+            if (result.success) {
+                setTasks(tasks.filter(t => t.id !== taskId));
+                toast.success('Task deleted successfully!');
+                router.refresh();
+            } else {
+                toast.error(result.error || 'Failed to delete task.');
+            }
+        } catch (error) {
+            toast.error('An unexpected error occurred.');
         }
-    };    
+    };
+
+    const handleAddDiscussion = async (newDiscussion: Omit<Discussion, 'id' | 'createdAt' | 'updatedAt'>) => {
+        try {
+            const result = await addDiscussionAction({ projectId: project.id, discussion: newDiscussion });
+            if (result.success && result.discussion) {
+                setDiscussions([result.discussion, ...discussions]);
+                toast.success('Discussion started successfully!');
+                router.refresh();
+            } else {
+                toast.error(result.error || 'Failed to start discussion.');
+            }
+        } catch (error) {
+            toast.error('An unexpected error occurred.');
+        }
+    };
 
     return (
-        <div>
-            <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} />
-            
-            <div className="mt-8">
-                <Tabs>
-                    <TabList>
-                        <Tab>About</Tab>
-                        <Tab>Tasks</Tab>
-                        <Tab>Discussion</Tab>
-                        <Tab>Team</Tab>
-                        <Tab>Learning Paths</Tab>
-                        <Tab>Governance</Tab>
-                    </TabList>
+        <ProjectProvider project={project} currentUser={currentUser}>
+            <div className="container mx-auto px-4 py-8">
+                <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} />
+                
+                <div className="mt-8">
+                    <Tabs selectedIndex={tabIndex} onSelect={index => setTabIndex(index)}>
+                        <TabList>
+                            <Tab>About</Tab>
+                            <Tab>Tasks</Tab>
+                            <Tab>Discussion</Tab>
+                            <Tab>Team</Tab>
+                            <Tab>Learning Paths</Tab>
+                            <Tab>Governance</Tab>
+                        </TabList>
 
-                    <TabPanel>
-                        <div className="py-4 relative">
+                        <TabPanel>
+                            <ProjectAbout project={project} />
+                        </TabPanel>
+                        <TabPanel>
                             {currentUser && !isGuest ? (
-                                <Markdown content={project.description} />
-                            ) : (
                                 <>
-                                    <div className="blur-sm select-none">
-                                        <Markdown content={project.description} />
+                                    <div className="flex justify-end mb-4">
+                                        {isMember && <Button onClick={() => handleOpenTaskDialog()}>Add Task</Button>}
                                     </div>
-                                    <LoginWall message="Login to read the full project description" currentPath={currentPath} />
+                                    <TaskBoard 
+                                        tasks={tasks} 
+                                        onEditTask={handleOpenTaskDialog}
+                                        onDeleteTask={handleDeleteTask}
+                                    />
                                 </>
-                            )}
-                        </div>
-                    </TabPanel>
-                    <TabPanel>
-                        {currentUser && !isGuest ? (
-                            <>
-                                <div className="flex justify-end my-4">
-                                    {isMember && <Button onClick={() => handleOpenTaskDialog()}>Add Task</Button>}
-                                </div>
-                                <TaskBoard 
-                                    tasks={tasks} 
-                                    onEditTask={handleOpenTaskDialog}
-                                    onDeleteTask={handleDeleteTask}
-                                />
-                            </>
-                        ) : (
-                            <div className="py-4 relative h-60">
-                                <LoginWall message="Login to view project tasks" currentPath={currentPath} />
-                            </div>
-                        )}
-                    </TabPanel>
-                    <TabPanel>
-                         {currentUser && !isGuest ? (
-                            <DiscussionForum 
-                                discussions={discussions} 
-                                onAddComment={handleAddComment} 
-                                isMember={isMember}
-                                currentUser={currentUser}
-                            />
-                        ) : (
-                            <div className="py-4 relative h-60">
-                                <LoginWall message="Login to join the discussion" currentPath={currentPath} />
-                            </div>
-                        )}
-                    </TabPanel>
-                    <TabPanel>
-                         {currentUser && !isGuest ? (
-                            <ProjectTeam 
-                                team={project.team} 
-                                users={users}
-                                currentUser={currentUser}
-                                addTeamMember={handleAddTeamMember}
-                                isLead={project.team.some(m => m.userId === currentUser?.id && m.role === 'lead')}
-                            />
-                            ) : 
-                            ( <div className="py-4 relative h-60">
-                                    <LoginWall message="Login to see the project team" currentPath={currentPath} />
-                                </div>
-                            )}
-                    </TabPanel>
-                    <TabPanel>
-                        <div className="p-4">
-                            <h2 className="text-xl font-bold mb-4">Recommended Learning Paths</h2>
-                            {learningPaths.length > 0 ? (
-                                <ul className="space-y-4">
-                                    {learningPaths.map(path => (
-                                        <li key={path.pathId} className="bg-gray-100 p-4 rounded-lg">
-                                            <h3 className="font-bold text-lg">{path.title}</h3>
-                                            <p className="text-gray-600">{path.description}</p>
-                                            <Link href={`/learning-paths/${path.pathId}`} className="text-blue-500 hover:underline mt-2 inline-block">View Path</Link>
-                                        </li>
-                                    ))}
-                                </ul>
                             ) : (
-                                <p>No recommended learning paths for this project yet.</p>
+                                <div className="py-4 relative h-60">
+                                    <LoginWall message="Login to view project tasks" currentPath={currentPath} />
+                                </div>
                             )}
-                        </div>
-                    </TabPanel>
-                    <TabPanel>
-                        <ProjectGovernance governance={project.governance} />
-                    </TabPanel>
-                </Tabs>
-            </div>
+                        </TabPanel>
+                        <TabPanel>
+                             {currentUser && !isGuest ? (
+                                <DiscussionForum 
+                                    discussions={discussions}
+                                    onAddDiscussion={handleAddDiscussion}
+                                    currentUser={currentUser}
+                                />
+                             ) : (
+                                <div className="py-4 relative h-60">
+                                    <LoginWall message="Login to join the discussion" currentPath={currentPath} />
+                                </div>
+                            )}
+                        </TabPanel>
+                        <TabPanel>
+                            {currentUser ? (
+                                <ProjectTeam 
+                                    team={project.team}
+                                    users={users}
+                                    currentUser={currentUser}
+                                    addTeamMember={() => {}} // This is a placeholder, as member addition is now through roles
+                                    isLead={isLead}
+                                    applyForRole={handleApplyForRole}
+                                    approveRoleApplication={handleApproveRoleApplication}
+                                    denyRoleApplication={handleDenyRoleApplication}
+                                />
+                                ) : (
+                                    <div className="py-4 relative h-60">
+                                        <LoginWall message="Login to see the project team" currentPath={currentPath} />
+                                    </div>
+                                )}
+                        </TabPanel>
+                        <TabPanel>
+                            <div className="p-4">
+                                <h2 className="text-xl font-bold mb-4">Recommended Learning Paths</h2>
+                                {learningPaths.length > 0 ? (
+                                    <ul className="space-y-4">
+                                        {learningPaths.map(path => (
+                                            <li key={path.pathId} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow">
+                                                <h3 className="font-bold text-lg">{path.title}</h3>
+                                                <p className="text-gray-600 dark:text-gray-400">{path.description}</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p>No recommended learning paths for this project yet.</p>
+                                )}
+                            </div>
+                        </TabPanel>
+                        <TabPanel>
+                            <div className="p-4">
+                                <h2 className="text-xl font-bold">Governance</h2>
+                                <p>Details about project governance and decision-making.</p>
+                            </div>
+                        </TabPanel>
+                    </Tabs>
+                </div>
 
-            {isTaskDialogOpen && (
-                 <EditTaskDialog
-                    isOpen={isTaskDialogOpen}
-                    onClose={handleCloseTaskDialog}
-                    onSave={handleSaveTask}
-                    task={selectedTask}
-                    teamMembers={project.team.map(member => member.user).filter(Boolean) as User[]}
-                />
-            )}
-        </div>
+                {isTaskDialogOpen && (
+                    <TaskDialog 
+                        isOpen={isTaskDialogOpen} 
+                        onClose={handleCloseTaskDialog} 
+                        onSave={handleSaveTask} 
+                        task={editingTask}
+                        users={users}
+                    />
+                )}
+            </div>
+        </ProjectProvider>
     );
 }

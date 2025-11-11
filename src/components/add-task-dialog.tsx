@@ -18,31 +18,31 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import type { ServerActionResponse, TaskFormValues, TaskStatus } from '@/lib/types';
+import type { ServerActionResponse } from '@/lib/types';
+import { TaskSchema, type TaskStatus } from '@/lib/schemas';
 import { useToast } from '@/hooks/use-toast';
+
+// Create a new schema that extends the base TaskSchema with the projectId
+const AddTaskDialogSchema = TaskSchema.extend({
+  projectId: z.string(),
+});
+
+// Infer the type from the new schema
+type AddTaskDialogFormValues = z.infer<typeof AddTaskDialogSchema>;
 
 interface AddTaskDialogProps extends PropsWithChildren {
   projectId: string;
   status: TaskStatus;
-  addTask: (values: Omit<TaskFormValues, 'id'>) => Promise<ServerActionResponse>;
+  addTask: (values: AddTaskDialogFormValues) => Promise<ServerActionResponse>;
 }
-
-const CreateTaskSchema = z.object({
-  projectId: z.string(),
-  title: z.string().min(1, "Title is required."),
-  description: z.string().optional(),
-  status: z.enum(['To Do', 'In Progress', 'Done']),
-});
-
-type CreateTaskFormValues = z.infer<typeof CreateTaskSchema>;
 
 export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
-  const form = useForm<CreateTaskFormValues>({
-    resolver: zodResolver(CreateTaskSchema),
+  const form = useForm<AddTaskDialogFormValues>({
+    resolver: zodResolver(AddTaskDialogSchema),
     defaultValues: {
       projectId: projectId,
       title: '',
@@ -51,7 +51,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
     },
   });
 
-  const onSubmit = (values: CreateTaskFormValues) => {
+  const onSubmit = (values: AddTaskDialogFormValues) => {
     startTransition(async () => {
       const result = await addTask(values);
       if (!result.success) {

@@ -186,6 +186,59 @@ export async function updateProjectInDb(projectId: string, project: Partial<Proj
     await adminDb.collection('projects').doc(projectId).update(project);
 }
 
+export async function updateProjectMemberRole({ projectId, userId, role, pendingRole }: { projectId: string; userId: string; role?: ProjectMember['role']; pendingRole?: ProjectMember['role'] | null }): Promise<void> {
+    const projectRef = adminDb.collection('projects').doc(projectId);
+    await adminDb.runTransaction(async (transaction) => {
+        const projectSnap = await transaction.get(projectRef);
+        if (!projectSnap.exists) {
+            throw new Error(`Project with id ${projectId} not found`);
+        }
+
+        const project = projectSnap.data() as Project;
+        const team = project.team || [];
+        const memberIndex = team.findIndex(member => member.userId === userId);
+
+        if (memberIndex !== -1) {
+            // Update existing member
+            const updatedMember = { ...team[memberIndex] };
+            let needsUpdate = false;
+
+            if (role !== undefined) {
+                updatedMember.role = role;
+                needsUpdate = true;
+            }
+
+            if (pendingRole !== undefined) {
+                if (pendingRole === null) {
+                    delete (updatedMember as any).pendingRole;
+                } else {
+                    updatedMember.pendingRole = pendingRole;
+                }
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+                const newTeam = [...team];
+                newTeam[memberIndex] = updatedMember;
+                transaction.update(projectRef, { team: newTeam, updatedAt: FieldValue.serverTimestamp() });
+            }
+        } else if (role !== undefined || pendingRole !== undefined) {
+            // Add new member if they don't exist, which happens during an application
+            const newMember: ProjectMember = {
+                userId,
+                role: role || 'participant', // Default to participant if no role is specified
+                createdAt: new Date().toISOString(),
+            };
+            if (pendingRole) {
+                newMember.pendingRole = pendingRole;
+            }
+            const newTeam = [...team, newMember];
+            transaction.update(projectRef, { team: newTeam, updatedAt: FieldValue.serverTimestamp() });
+        }
+    });
+}
+
+
 // --- Activity Functions ---
 
 export async function getUserActivity(userId: string): Promise<Activity[]> {
@@ -243,7 +296,7 @@ export async function addDiscussionCommentToDb(projectId: string, comment: Omit<
 
 // --- Notification Data Access ---
 
-export async function addNotificationToDb(notification: Omit<Notification, 'id'>): Promise<void> {
+export async function addNotification(notification: Omit<Notification, 'id'>): Promise<void> {
     await adminDb.collection('notifications').add(notification);
 }
 

@@ -15,9 +15,14 @@ export const ProjectTagSchema = z.object({
 });
 
 export const ProjectMemberSchema = z.object({
-  userId: z.string(),
-  role: z.enum(['lead', 'contributor', 'participant']),
+	userId: z.string(),
+	projectId: z.string(),
+	role: z.enum(['lead', 'contributor', 'participant']),
+	pendingRole: z.enum(['lead', 'contributor', 'participant']).optional(),
+	createdAt: z.date().optional(),
+	updatedAt: z.date().optional()
 });
+
 
 // Base properties common to both create and edit forms
 export const ProjectBaseSchema = z.object({
@@ -30,11 +35,24 @@ export const ProjectBaseSchema = z.object({
   team: z.array(ProjectMemberSchema),
 });
 
+// --- Task Schema ---
+export const TaskStatusSchema = z.enum(['To Do', 'In Progress', 'Done', 'Archived']);
+
+export const TaskSchema = z.object({
+    id: z.string().optional(),
+    title: z.string().min(1, 'Title is required.'),
+    description: z.string().optional(),
+    status: TaskStatusSchema,
+    assigneeId: z.string().optional(),
+    estimatedHours: z.number().optional(),
+    dueDate: z.date().optional(),
+});
+
 
 // --- Refinement Logic ---
 
 // A single, shared refinement function to be used by both schemas.
-const sharedRefinement = (data: any, ctx: z.ZodContext) => {
+const sharedRefinement = (data: any, ctx: z.RefinementCtx) => {
   // 1. Validate category tag count
   if (data.tags && data.tags.filter((t: any) => t.type === 'category').length > 3) {
     ctx.addIssue({
@@ -78,3 +96,5 @@ export const EditProjectSchema = ProjectBaseSchema.extend({
 
 export type CreateProjectFormValues = z.infer<typeof CreateProjectSchema>;
 export type EditProjectFormValues = z.infer<typeof EditProjectSchema>;
+export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+export type TaskFormValues = z.infer<typeof TaskSchema>;

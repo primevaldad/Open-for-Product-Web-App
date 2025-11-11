@@ -25,6 +25,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { NotificationBell } from "@/components/notification-bell";
 
 interface AppSidebarProps {
     user: User;
@@ -63,6 +64,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
                             </Link>
                         </SidebarMenuItem>
                     ))}
+                    <SidebarMenuItem>
+                        <NotificationBell />
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <Link href={`/profile/${user.id}`} onClick={() => setOpenMobile(false)}>
                             <SidebarMenuButton isActive={pathname.startsWith('/profile')}>

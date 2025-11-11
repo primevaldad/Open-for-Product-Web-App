@@ -24,7 +24,7 @@ import type {
 import {
   adminDb,
   addDiscussionCommentToDb,
-  addNotificationToDb,
+  addNotification,
   addTaskToDb,
   deleteTaskFromDb,
   findProjectById,
@@ -351,7 +351,7 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
         const updatedTeam = [...project.team, newMember];
         await updateProjectInDb(projectId, { team: updatedTeam });
 
-        await addNotificationToDb({
+        await addNotification({
             userId,
             message: `You have been added to the project '${project.name}' as a ${role}.`,
             link: `/projects/${projectId}`,
@@ -386,7 +386,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
         const projectLeads = project?.team.filter(m => m.role === 'lead') || [];
         for (const lead of projectLeads) {
             if (lead.userId !== currentUser.id) {
-                await addNotificationToDb({
+                await addNotification({
                     userId: lead.userId,
                     message: `${currentUser.name} commented on your project: ${project?.name}`,
                     link: `/projects/${projectId}?tab=discussion`,
