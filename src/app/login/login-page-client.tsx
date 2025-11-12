@@ -59,12 +59,26 @@ export default function LoginPageClient() {
     
     startTransition(async () => {
       try {
-        // We only need to sign in with Firebase on the client.
-        // The onAuthStateChanged listener in AuthProvider will handle the rest
-        // (creating the server session, updating context, etc.)
-        await signInWithEmailAndPassword(auth, values.email, values.password);
-        
-        // The router.push will be handled by the useEffect above.
+        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+        const idToken = await userCredential.user.getIdToken();
+
+        // Create the session cookie
+        const response = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ idToken }),
+        });
+
+        if (response.ok) {
+            // On successful session creation, redirect to the home page.
+            // The AuthProvider will pick up the new session and update the context.
+            router.push('/home');
+        } else {
+            const errorData = await response.json();
+            setError(errorData.error || 'Failed to create session.');
+        }
         
       } catch (error: unknown) {
         if ((error as { code?: string }).code === 'auth/invalid-credential') {
