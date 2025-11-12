@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,7 +28,6 @@ export default function ProjectTeam({
     approveRoleApplication,
     denyRoleApplication
 }: ProjectTeamProps) {
-    const [selectedRole, setSelectedRole] = useState<'lead' | 'contributor' | 'participant'>('participant');
     const [loading, setLoading] = useState<Record<string, boolean>>({});
 
     const { pendingMembers, approvedMembers } = useMemo(() => {
@@ -42,10 +40,26 @@ export default function ProjectTeam({
     const isCurrentUserMember = userMap.has(currentUser.id);
     const currentUserMember = userMap.get(currentUser.id);
 
+    const availableRoles: Array<'participant' | 'contributor' | 'lead'> = ['participant', 'contributor', 'lead'];
+    
+    const selectableRoles = useMemo(() => {
+        if (!currentUserMember) {
+            return availableRoles;
+        }
+        return availableRoles.filter(role => role !== currentUserMember.role);
+    }, [currentUserMember]);
+
+    const [selectedRole, setSelectedRole] = useState<'lead' | 'contributor' | 'participant'>(selectableRoles[0] || 'participant');
+    
+    useEffect(() => {
+        if (selectableRoles.length > 0 && !selectableRoles.includes(selectedRole)) {
+            setSelectedRole(selectableRoles[0]);
+        }
+    }, [selectableRoles, selectedRole]);
+
     const handleApply = async () => {
         setLoading({ [currentUser.id]: true });
         await applyForRole(currentUser.id, selectedRole);
-        // The page will refresh, so no need to setLoading(false)
     };
 
     const handleApprove = async (userId: string, role: 'lead' | 'contributor' | 'participant') => {
@@ -60,25 +74,27 @@ export default function ProjectTeam({
 
     return (
         <div className="space-y-6">
-            {!isCurrentUserMember && (
+            {!currentUserMember?.pendingRole && selectableRoles.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Join the Project</CardTitle>
+                        <CardTitle>{isCurrentUserMember ? 'Apply for a New Role' : 'Join the Project'}</CardTitle>
                     </CardHeader>
                     <CardContent className="flex items-center space-x-4">
-                        <Select onValueChange={(value: 'lead' | 'contributor' | 'participant') => setSelectedRole(value)} defaultValue="participant">
+                        <Select onValueChange={(value: 'lead' | 'contributor' | 'participant') => setSelectedRole(value)} value={selectedRole}>
                             <SelectTrigger className="w-[200px]">
                                 <SelectValue placeholder="Select a role" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="participant">Participant</SelectItem>
-                                <SelectItem value="contributor">Contributor</SelectItem>
-                                {isLead && <SelectItem value="lead">Lead</SelectItem>}
+                                {selectableRoles.map(role => (
+                                    <SelectItem key={role} value={role} className="capitalize">
+                                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
-                        <Button onClick={handleApply} disabled={loading[currentUser.id]}>
+                        <Button onClick={handleApply} disabled={loading[currentUser.id] || !selectedRole}>
                             {loading[currentUser.id] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Apply for Role
+                            Apply
                         </Button>
                     </CardContent>
                 </Card>

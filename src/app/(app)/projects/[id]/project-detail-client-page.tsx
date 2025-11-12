@@ -1,23 +1,33 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath } from '@/lib/types';
+import type { User, HydratedProject, Task, Discussion, LearningPath, ServerActionResponse } from '@/lib/types';
+import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
 import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
 import { Button } from '@/components/ui/button';
 
-import { joinProject as joinProjectAction, addDiscussionComment as addDiscussionAction } from '@/app/actions/projects';
-import { applyForRole as applyForRoleAction, approveRoleApplication as approveRoleApplicationAction, denyRoleApplication as denyRoleApplicationAction } from '@/app/actions/roles';
-import { updateTaskInDb as updateTaskAction, deleteTaskFromDb as deleteTaskAction } from '@/lib/data.server';
-import { EditTaskDialog } from "/home/user/studio/src/components/edit-task-dialog"
-import { AddTaskDialog } from "/home/user/studio/src/components/add-task-dialog"
+import {
+    joinProject as joinProjectAction,
+    addDiscussionComment as addDiscussionCommentAction,
+    addTask as addTaskAction,
+    updateTask as updateTaskAction,
+    deleteTask as deleteTaskAction,
+} from '@/app/actions/projects';
+import { 
+    applyForRole as applyForRoleAction, 
+    approveRoleApplication as approveRoleApplicationAction, 
+    denyRoleApplication as denyRoleApplicationAction 
+} from '@/app/actions/roles';
+import { AddTaskDialog } from '@/components/add-task-dialog';
+import { EditTaskDialog } from '@/components/edit-task-dialog';
 
 interface ProjectDetailClientPageProps {
     project: HydratedProject;
@@ -42,12 +52,11 @@ export default function ProjectDetailClientPage({
     const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
     const [users, setUsers] = useState(allUsers);
     const [tabIndex, setTabIndex] = useState(0);
-    const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+
     const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
 
     const router = useRouter();
-    const currentPath = usePathname();
     const { toast } = useToast();
 
     useEffect(() => {
@@ -70,12 +79,19 @@ export default function ProjectDetailClientPage({
 
     const isGuest = !currentUser || currentUser.role === 'guest';
 
-    const handleOpenAddTaskDialog = () => {
-        setIsAddTaskDialogOpen(true);
-    };
-
-    const handleCloseAddTaskDialog = () => {
-        setIsAddTaskDialogOpen(false);
+    const handleServerResponse = (
+        result: { success: boolean, [key: string]: any }, 
+        successMessage: string, 
+        failureMessage: string
+    ) => {
+        if (result.success) {
+            const description = result.message || successMessage;
+            toast({ title: 'Success', description });
+            router.refresh();
+        } else {
+            const description = result.error || failureMessage;
+            toast({ title: 'Error', description, variant: 'destructive' });
+        }
     };
 
     const handleOpenEditTaskDialog = (task: Task) => {
@@ -93,101 +109,72 @@ export default function ProjectDetailClientPage({
             toast({ title: 'Error', description: 'You must be logged in to join a project.', variant: 'destructive' });
             return;
         }
-        const result = await joinProjectAction({ projectId: project.id, userId: currentUser.id });
-        if (result.success) {
-            toast({ title: 'Success', description: 'Successfully joined the project!' });
-            router.refresh();
-        } else {
-            toast({ title: 'Error', description: result.error || 'Failed to join the project.', variant: 'destructive' });
-        }
+        const result = await joinProjectAction(project.id);
+        handleServerResponse(result, 'Successfully joined the project!', 'Failed to join the project.');
     };
 
     const handleApplyForRole = async (userId: string, role: 'lead' | 'contributor' | 'participant') => {
         const result = await applyForRoleAction({ projectId: project.id, userId, role });
-        if (result.success) {
-            toast({ title: 'Success', description: result.message });
-            router.refresh();
-        } else {
-            toast({ title: 'Error', description: result.error, variant: 'destructive' });
-        }
+        handleServerResponse(result, 'Application submitted!', 'Failed to apply for role.');
     };
 
     const handleApproveRoleApplication = async (userId: string, role: 'lead' | 'contributor' | 'participant') => {
         const result = await approveRoleApplicationAction({ projectId: project.id, userId, role });
-        if (result.success) {
-            toast({ title: 'Success', description: result.message });
-            router.refresh();
-        } else {
-            toast({ title: 'Error', description: result.error, variant: 'destructive' });
-        }
+        handleServerResponse(result, 'Application approved!', 'Failed to approve application.');
     };
 
     const handleDenyRoleApplication = async (userId: string) => {
         const result = await denyRoleApplicationAction({ projectId: project.id, userId });
-        if (result.success) {
-            toast({ title: 'Success', description: result.message });
-            router.refresh();
-        } else {
-            toast({ title: 'Error', description: result.error, variant: 'destructive' });
-        }
+        handleServerResponse(result, 'Application denied.', 'Failed to deny application.');
     };
 
-    const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-        try {
-            const result = await updateTaskAction({
-                projectId: project.id,
-                task: editingTask ? { ...editingTask, ...taskData } : taskData,
-            });
+    const handleAddTask = async (values: TaskFormValues) => {
+        const taskDataForAction: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'> = {
+            projectId: project.id,
+            title: values.title!,
+            description: values.description!,
+            status: values.status!,
+            assignedToId: values.assigneeId,
+            estimatedHours: values.estimatedHours,
+            dueDate: values.dueDate?.toISOString(),
+        };
+        const result = await addTaskAction(taskDataForAction);
+        handleServerResponse(result, 'Task added successfully!', 'Failed to add task.');
+        if (result.success && result.data) {
+            setTasks(prevTasks => [...prevTasks, result.data]);
+        }
+        return result;
+    };
 
-            if (result.success && result.task) {
-                if (editingTask) {
-                    setTasks(tasks.map(t => t.id === result.task!.id ? result.task! : t));
-                    toast({ title: 'Success', description: 'Task updated successfully!' });
-                    handleCloseEditTaskDialog();
-                } else {
-                    setTasks([...tasks, result.task]);
-                    toast({ title: 'Success', description: 'Task added successfully!' });
-                    handleCloseAddTaskDialog();
-                }
-                router.refresh();
-            } else {
-                toast({ title: 'Error', description: result.error || 'Failed to save task.', variant: 'destructive' });
-            }
-        } catch (error) {
-            toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+    const handleUpdateTask = async (values: TaskFormValues) => {
+        if (!editingTask) return;
+        const updatedTaskData: Task = {
+            ...editingTask,
+            ...values,
+            dueDate: values.dueDate ? values.dueDate.toISOString() : editingTask.dueDate,
+        };
+        const result = await updateTaskAction(updatedTaskData);
+        handleServerResponse(result, 'Task updated successfully!', 'Failed to update task.');
+        if (result.success && result.data) {
+            setTasks(tasks.map(t => t.id === result.data.id ? result.data : t));
+            handleCloseEditTaskDialog();
         }
     };
 
     const handleDeleteTask = async (taskId: string) => {
         if (!window.confirm('Are you sure you want to delete this task?')) return;
-
-        try {
-            const result = await deleteTaskAction({ projectId: project.id, taskId });
-
-            if (result.success) {
-                setTasks(tasks.filter(t => t.id !== taskId));
-                toast({ title: 'Success', description: 'Task deleted successfully!' });
-                router.refresh();
-            } else {
-                toast({ title: 'Error', description: result.error || 'Failed to delete task.', variant: 'destructive' });
-            }
-        } catch (error) {
-            toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+        const result = await deleteTaskAction({ id: taskId, projectId: project.id });
+        handleServerResponse(result, 'Task deleted successfully!', 'Failed to delete task.');
+        if (result.success) {
+            setTasks(tasks.filter(t => t.id !== taskId));
         }
     };
 
-    const handleAddDiscussion = async (newDiscussion: Omit<Discussion, 'id' | 'createdAt' | 'updatedAt'>) => {
-        try {
-            const result = await addDiscussionAction({ projectId: project.id, discussion: newDiscussion });
-            if (result.success && result.discussion) {
-                setDiscussions([result.discussion, ...discussions]);
-                toast({ title: 'Success', description: 'Discussion started successfully!' });
-                router.refresh();
-            } else {
-                toast({ title: 'Error', description: result.error || 'Failed to start discussion.', variant: 'destructive' });
-            }
-        } catch (error) {
-            toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+    const handleAddComment = async (content: string) => {
+        const result = await addDiscussionCommentAction({ projectId: project.id, content });
+        handleServerResponse(result, 'Comment added successfully!', 'Failed to add comment.');
+        if (result.success && result.data) {
+            setDiscussions([result.data, ...discussions]);
         }
     };
 
@@ -206,39 +193,30 @@ export default function ProjectDetailClientPage({
                         <Tab>Governance</Tab>
                     </TabList>
 
+                    <TabPanel><p>{project.description}</p></TabPanel>
                     <TabPanel>
-                        <p>{project.description}</p>
-                    </TabPanel>
-                    <TabPanel>
-                        {currentUser && !isGuest ? (
+                        {!isGuest ? (
                             <>
                                 <div className="flex justify-end mb-4">
-                                    {isMember && <Button onClick={handleOpenAddTaskDialog}>Add Task</Button>}
+                                    {isMember && (
+                                        <AddTaskDialog projectId={project.id} status="To Do" addTask={handleAddTask}>
+                                            <Button>Add Task</Button>
+                                        </AddTaskDialog>
+                                    )}
                                 </div>
-                                <TaskBoard 
-                                    tasks={tasks} 
-                                    onEditTask={handleOpenEditTaskDialog}
-                                    onDeleteTask={handleDeleteTask}
-                                />
+                                <TaskBoard tasks={tasks} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} />
                             </>
-                        ) : (
-                            <div className="py-4 relative h-60">
-                                <p>Login to view project tasks</p>
-                            </div>
-                        )}
+                        ) : <p className="py-4">Login to view project tasks</p>}
                     </TabPanel>
                     <TabPanel>
-                         {currentUser && !isGuest ? (
+                         {!isGuest ? (
                             <DiscussionForum 
                                 discussions={discussions}
-                                onAddComment={handleAddDiscussion}
+                                onAddComment={handleAddComment}
+                                isMember={isMember || false}
                                 currentUser={currentUser}
                             />
-                         ) : (
-                            <div className="py-4 relative h-60">
-                                <p>Login to join the discussion</p>
-                            </div>
-                        )}
+                         ) : <p className="py-4">Login to join the discussion</p>}
                     </TabPanel>
                     <TabPanel>
                         {currentUser ? (
@@ -246,17 +224,13 @@ export default function ProjectDetailClientPage({
                                 team={project.team}
                                 users={users}
                                 currentUser={currentUser}
-                                addTeamMember={() => {}} // This is a placeholder, as member addition is now through roles
-                                isLead={isLead}
+                                addTeamMember={() => {}} // Placeholder
+                                isLead={isLead || false}
                                 applyForRole={handleApplyForRole}
                                 approveRoleApplication={handleApproveRoleApplication}
                                 denyRoleApplication={handleDenyRoleApplication}
                             />
-                            ) : (
-                                <div className="py-4 relative h-60">
-                                    <p>Login to see the project team</p>
-                                </div>
-                            )}
+                            ) : <p className="py-4">Login to see the project team</p>}
                     </TabPanel>
                     <TabPanel>
                         <div className="p-4">
@@ -270,9 +244,7 @@ export default function ProjectDetailClientPage({
                                         </li>
                                     ))}
                                 </ul>
-                            ) : (
-                                <p>No recommended learning paths for this project yet.</p>
-                            )}
+                            ) : <p>No recommended learning paths for this project yet.</p>}
                         </div>
                     </TabPanel>
                     <TabPanel>
@@ -284,20 +256,13 @@ export default function ProjectDetailClientPage({
                 </Tabs>
             </div>
 
-            <AddTaskDialog 
-                isOpen={isAddTaskDialogOpen} 
-                onClose={handleCloseAddTaskDialog} 
-                onSave={handleSaveTask} 
-                users={users}
-            />
-
             {editingTask && (
                 <EditTaskDialog 
                     isOpen={isEditTaskDialogOpen} 
                     onClose={handleCloseEditTaskDialog} 
-                    onSave={handleSaveTask} 
-                    task={editingTask}
-                    users={users}
+                    onSave={handleUpdateTask} 
+                    task={editingTask} 
+                    teamMembers={users} 
                 />
             )}
         </div>
