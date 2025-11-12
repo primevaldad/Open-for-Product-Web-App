@@ -14,6 +14,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// Helper function to correctly handle Firestore Timestamps
+function toDate(timestamp: number): Date {
+    return new Date(timestamp);
+  }
+
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -51,9 +56,9 @@ export function NotificationBell() {
         ) : (
           notifications.map(notification => (
             <DropdownMenuItem key={notification.id} asChild>
-              <Link href={notification.link} className={`block p-2 ${!notification.read ? 'font-bold' : ''}`}>
+              <Link href={notification.link ?? '#'} className={`block p-2 ${!notification.read ? 'font-bold' : ''}`}>
                 <p className="text-sm">{notification.message}</p>
-                <p className="text-xs text-muted-foreground">{new Date(notification.timestamp).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">{toDate(notification.timestamp).toLocaleString()}</p>
               </Link>
             </DropdownMenuItem>
           ))

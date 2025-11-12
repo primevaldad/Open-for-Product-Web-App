@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import { 
     findProjectById, 
@@ -8,26 +9,12 @@ import {
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/app/actions/users';
 import ProjectDetailClientPage from './project-detail-client-page';
-import {
-    joinProject, 
-    addTeamMember, 
-    addDiscussionComment,
-    addTask,
-    updateTask,
-    deleteTask
-} from '@/app/actions/projects';
 import type { 
     User, 
     Discussion,
     HydratedProject,
     Task,
-    LearningPath,
-    JoinProjectAction,
-    AddTeamMemberAction,
-    AddDiscussionCommentAction,
-    AddTaskAction,
-    UpdateTaskAction,
-    DeleteTaskAction
+    LearningPath
 } from '@/lib/types';
 import { deepSerialize } from '@/lib/utils.server';
 
@@ -95,12 +82,6 @@ export default async function ProjectPage({ params }: { params: { id: string } }
             users={deepSerialize(users)}
             currentUser={deepSerialize(currentUser)}
             learningPaths={deepSerialize(learningPaths)}
-            joinProject={joinProject}
-            addTeamMember={addTeamMember}
-            addDiscussionComment={addDiscussionComment}
-            addTask={addTask}
-            updateTask={updateTask}
-            deleteTask={deleteTask}
         />
     );
 }

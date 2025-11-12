@@ -9,7 +9,7 @@ import {
     getAllProjectPathLinks, 
     getAiSuggestedProjects 
 } from '@/lib/data.server';
-import type { HydratedProject, User } from '@/lib/types';
+import type { HydratedProject, User, HomePageDataResponse } from '@/lib/types';
 import { NotAuthenticatedError } from '@/lib/errors';
 
 // The user object can contain non-serializable data (like functions) when coming from the DB.
@@ -19,7 +19,7 @@ function cleanUser(user: User): User {
     return { id, name, email, role, username, avatarUrl, bio, website, onboardingCompleted, aiFeaturesEnabled, createdAt, updatedAt };
 }
 
-export async function getHomePageData() {
+export async function getHomePageData(): Promise<HomePageDataResponse> {
     try {
         let currentUser: User | null = null;
         try {

@@ -37,8 +37,8 @@ export interface Project {
     photoUrl?: string;
     tagline: string;
     description: string;
-    createdAt: Timestamp | string; 
-    updatedAt: Timestamp | string; 
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
     startDate: Timestamp | string;
     endDate: Timestamp | string;
     ownerId?: UserId; // NOW OPTIONAL
@@ -60,7 +60,7 @@ export interface Project {
 export interface ProjectTag {
     id: string;
     display: string;
-    type: 'category' | 'relational' | 'custom'; 
+    type: 'category' | 'relational' | 'custom';
 }
 
 // This represents a globally available tag that can be added to projects.
@@ -68,10 +68,10 @@ export interface Tag {
     id: string;
     normalized: string;
     display: string;
-    type: 'category' | 'relational' | 'custom'; 
+    type: 'category' | 'relational' | 'custom';
     usageCount: number;
-    createdAt: Timestamp | string; 
-    updatedAt: Timestamp | string; 
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
     createdBy: UserId;
 }
 
@@ -170,13 +170,13 @@ export interface LearningPath {
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
 }
-  
+
 export interface Module {
     moduleId: string;
     title: string;
     contentType: 'video' | 'article' | 'quiz' | 'code-challenge';
-    contentUrl: string; 
-    duration: number; 
+    contentUrl: string;
+    duration: number;
 }
 
 // Represents the progress of a user on a specific learning path.
@@ -197,15 +197,29 @@ export interface ServerActionResponse<T = any> {
 
 // --- Discriminated Union Types for Page Data Responses ---
 
-export type CreateProjectPageDataResponse = 
+export interface HomePageData {
+    allPublishedProjects: HydratedProject[];
+    currentUser: User | null;
+    allTags: Tag[];
+    allLearningPaths: LearningPath[];
+    allProjectPathLinks: ProjectPathLink[];
+    suggestedProjects: HydratedProject[] | null;
+    aiEnabled: boolean;
+}
+
+export type HomePageDataResponse =
+    | ({ success: true } & HomePageData)
+    | { success: false; message: string };
+
+export type CreateProjectPageDataResponse =
     | { success: true; allTags: Tag[]; allUsers: User[] }
     | { success: false; error: string };
 
-export type EditProjectPageDataResponse = 
+export type EditProjectPageDataResponse =
     | { success: true; project: HydratedProject; allTags: Tag[]; allUsers: User[] }
     | { success: false; error: string };
 
-export type DraftsPageDataResponse = 
+export type DraftsPageDataResponse =
     | { success: true; drafts: HydratedProject[]; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] }
     | { success: false; error: string };
 

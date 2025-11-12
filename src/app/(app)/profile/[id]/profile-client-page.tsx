@@ -10,19 +10,19 @@ import ProjectCard from '@/components/project-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { User, Project, LearningPath, ProjectPathLink } from '@/lib/types';
+import type { User, HydratedProject, LearningPath, ProjectPathLink } from '@/lib/types';
 
 const badges = [
-  { name: 'First Contribution', icon: Award, isEarned: (projects: Project[]) => projects.length > 0 },
-  { name: 'Community Helper', icon: Award, isEarned: (projects: Project[]) => projects.length > 2 }, // Example criteria
-  { name: 'Project Starter', icon: Award, isEarned: (projects: Project[], userId: string) => projects.some(p => p.ownerId === userId) },
+  { name: 'First Contribution', icon: Award, isEarned: (projects: HydratedProject[]) => projects.length > 0 },
+  { name: 'Community Helper', icon: Award, isEarned: (projects: HydratedProject[]) => projects.length > 2 }, // Example criteria
+  { name: 'Project Starter', icon: Award, isEarned: (projects: HydratedProject[], userId: string) => projects.some(p => p.owner?.id === userId) },
   { name: 'Bug Squasher', icon: Award, isEarned: () => false }, // Placeholder
   { name: 'Creative Spark', icon: Award, isEarned: () => false }, // Placeholder
 ];
 
 interface UserProfileClientPageProps {
   user: User;
-  userProjects: Project[];
+  userProjects: HydratedProject[];
   isCurrentUserProfile: boolean;
   allLearningPaths: LearningPath[];
   allProjectPathLinks: ProjectPathLink[];

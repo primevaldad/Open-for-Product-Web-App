@@ -3,29 +3,11 @@
 import { useEffect, useState } from 'react';
 import HomeClientPage from "./home-client-page";
 import { getHomePageData } from '@/app/actions/home';
-import type { HydratedProject, User, LearningPath, ProjectPathLink, Tag } from "@/lib/types";
+import type { HomePageData, HomePageDataResponse } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Define the shape of the data we want to store in our component's state
-interface PageData {
-    allPublishedProjects: HydratedProject[];
-    currentUser: User | null;
-    allTags: Tag[];
-    allLearningPaths: LearningPath[];
-    allProjectPathLinks: ProjectPathLink[];
-    suggestedProjects: HydratedProject[] | null;
-    aiEnabled: boolean;
-}
-
-// The response from the server action can be a success or error object.
-// We define a discriminated union to model this behavior for robust type checking.
-type HomePageDataResponse = 
-    | ({ success: true } & PageData)
-    | { success: false; message: string };
-
-
 export default function HomePage() {
-    const [data, setData] = useState<PageData | null>(null);
+    const [data, setData] = useState<HomePageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
