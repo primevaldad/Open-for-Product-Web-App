@@ -11,8 +11,8 @@ import ProjectCard from '@/components/project-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { User, HydratedProject, LearningPath, ProjectPathLink } from '@/lib/types';
-import { getSteemUser, type SteemAccount } from '@/lib/steem';
+import type { User, HydratedProject, LearningPath, ProjectPathLink, SteemAccount } from '@/lib/types';
+import { getSteemUserAction } from '@/app/actions/steem';
 
 const badges = [
   { name: 'First Contribution', icon: Award, isEarned: (projects: HydratedProject[]) => projects.length > 0 },
@@ -39,17 +39,52 @@ export default function UserProfilePageClient({
   allProjectPathLinks,
   currentUser 
 }: UserProfileClientPageProps) {
+  const [isLoadingSteem, setIsLoadingSteem] = useState(true);
   const [steemUser, setSteemUser] = useState<SteemAccount | null>(null);
+  const [steemError, setSteemError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user.steemUsername) {
-      getSteemUser(user.steemUsername).then(setSteemUser);
+      setIsLoadingSteem(true);
+      getSteemUserAction(user.steemUsername)
+        .then(response => {
+          if (response.error) {
+            setSteemError(response.error);
+            setSteemUser(null);
+          } else {
+            setSteemUser(response.account);
+            setSteemError(null);
+          }
+        })
+        .catch(error => {
+          console.error('Unexpected error calling getSteemUserAction:', error);
+          setSteemError('An unexpected client-side error occurred.');
+          setSteemUser(null);
+        })
+        .finally(() => {
+          setIsLoadingSteem(false);
+        });
+    } else {
+      setIsLoadingSteem(false);
     }
   }, [user.steemUsername]);
+
+  const steemProfile = (() => {
+    if (!steemUser?.json_metadata) {
+      return null;
+    }
+    try {
+      return JSON.parse(steemUser.json_metadata).profile;
+    } catch (e) {
+      console.error('Failed to parse Steem json_metadata:', e);
+      return null; // Return null if parsing fails, preventing a crash
+    }
+  })();
 
   return (
     <div className='flex h-full min-h-screen w-full bg-background'>
       <main className='flex-1 overflow-auto'>
+        {/* ... (rest of the component is unchanged) ... */}
         <div className='relative h-48 w-full bg-primary/10'>
           <div className='absolute -bottom-16 left-6'>
             <Avatar className='h-32 w-32 rounded-full border-4 border-background'>
@@ -157,7 +192,19 @@ export default function UserProfilePageClient({
             </TabsContent>
             {user.steemUsername && (
               <TabsContent value='steem' className='mt-6'>
-                {steemUser ? (
+                {isLoadingSteem ? (
+                  <p>Steem profile is loading...</p>
+                ) : steemError ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-destructive">Error Loading Profile</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p>Could not load the Steem profile for @{user.steemUsername}.</p>
+                      <p className="text-muted-foreground mt-2">Reason: {steemError}</p>
+                    </CardContent>
+                  </Card>
+                ) : steemUser ? (
                   <Card>
                     <CardHeader>
                       <CardTitle>Steem Profile</CardTitle>
@@ -182,7 +229,7 @@ export default function UserProfilePageClient({
                       </div>
                       <div>
                         <h3 className="font-semibold">About</h3>
-                        <p>{JSON.parse(steemUser.json_metadata).profile?.about}</p>
+                        <p>{steemProfile?.about || 'No bio provided on Steem.'}</p>
                       </div>
                       <div className="grid grid-cols-3 gap-4 text-center">
                         <div>
@@ -201,7 +248,7 @@ export default function UserProfilePageClient({
                     </CardContent>
                   </Card>
                 ) : (
-                  <p>Loading Steem profile...</p>
+                  <p>No Steem profile found for this user.</p>
                 )}
               </TabsContent>
             )}

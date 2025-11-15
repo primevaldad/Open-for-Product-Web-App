@@ -282,3 +282,12 @@ export interface Activity {
         discussionId?: string;
     };
 }
+
+export interface SteemAccount {
+    name: string;
+    post_count: number;
+    json_metadata: string;
+    reputation: string;
+    voting_power: number;
+    balance: string;
+}
