@@ -37,6 +37,7 @@ const SettingsSchema = z.object({
   company: z.string().optional(),
   location: z.string().optional(),
   website: z.string().url('Please enter a valid URL.').or(z.literal('')).optional(),
+  steemUsername: z.string().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
 });
 
@@ -62,6 +63,7 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
       company: currentUser.company || '',
       location: currentUser.location || '',
       website: currentUser.website || '',
+      steemUsername: currentUser.steemUsername || '',
       aiFeaturesEnabled: currentUser.aiFeaturesEnabled || false,
     },
   });
@@ -210,6 +212,20 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
           )}
         />
         
+        <FormField
+          control={form.control}
+          name="steemUsername"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Steem Username</FormLabel>
+              <FormControl>
+                <Input placeholder="Your Steem username" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
             control={form.control}
             name="aiFeaturesEnabled"

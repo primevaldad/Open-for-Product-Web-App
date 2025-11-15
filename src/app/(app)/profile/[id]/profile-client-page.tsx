@@ -86,6 +86,9 @@ export default function UserProfilePageClient({
             <TabsList>
               <TabsTrigger value='portfolio'>Contribution Portfolio</TabsTrigger>
               <TabsTrigger value='badges'>Badges & Certificates</TabsTrigger>
+              {user.steemUsername && (
+                <TabsTrigger value='steem'>Steem</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value='portfolio' className='mt-6'>
               {userProjects.length > 0 ? (
@@ -143,6 +146,28 @@ export default function UserProfilePageClient({
                 })}
               </div>
             </TabsContent>
+            {user.steemUsername && (
+              <TabsContent value='steem' className='mt-6'>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Steem Profile</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                      View this user's Steem profile:
+                      <a
+                        href={`https://steemit.com/@${user.steemUsername}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline ml-2"
+                      >
+                        @{user.steemUsername}
+                      </a>
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </main>

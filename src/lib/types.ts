@@ -29,6 +29,7 @@ export interface User {
     company?: string;
     location?: string;
     website?: string;
+    steemUsername?: string;
 }
 
 export interface Project {

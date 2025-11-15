@@ -51,6 +51,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
+    "dsteem": "^0.11.3",
     "easymde": "^2.20.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^10.14.1",

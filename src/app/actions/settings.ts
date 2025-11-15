@@ -16,6 +16,7 @@ const UserSettingsSchema = z.object({
   company: z.string().optional(),
   location: z.string().optional(),
   website: z.string().url('Please enter a valid URL.').or(z.literal('')).optional(),
+  steemUsername: z.string().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
 });
 
