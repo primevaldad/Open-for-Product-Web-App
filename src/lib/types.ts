@@ -79,8 +79,8 @@ export interface ProjectMember {
     userId: UserId;
     role: 'lead' | 'contributor' | 'participant';
     pendingRole?: 'lead' | 'contributor' | 'participant';
-    createdAt: Timestamp;
-    updatedAt: Timestamp;
+    createdAt?: Timestamp | string;
+    updatedAt?: Timestamp | string;
 }
 
 // This is a more explicit definition of a hydrated project to avoid type inference issues.
@@ -114,6 +114,8 @@ export interface HydratedProjectMember {
     userId: UserId;
     role: 'lead' | 'contributor' | 'participant';
     pendingRole?: 'lead' | 'contributor' | 'participant';
+    createdAt?: Timestamp | string;
+    updatedAt?: Timestamp | string;
 }
 
 export interface Discussion {

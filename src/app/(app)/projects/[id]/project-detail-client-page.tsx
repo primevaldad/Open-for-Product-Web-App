@@ -193,7 +193,13 @@ export default function ProjectDetailClientPage({
                         <Tab>Governance</Tab>
                     </TabList>
 
-                    <TabPanel><p>{project.description}</p></TabPanel>
+                    <TabPanel>
+                        {!isGuest ? (
+                            <p>{project.description}</p>
+                        ) : (
+                            <p className="py-4">Please log in to view the project description.</p>
+                        )}
+                    </TabPanel>
                     <TabPanel>
                         {!isGuest ? (
                             <>
