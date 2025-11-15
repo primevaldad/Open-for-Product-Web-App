@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Award, Lock, Pencil, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { User, HydratedProject, LearningPath, ProjectPathLink } from '@/lib/types';
+import { getSteemUser, type SteemAccount } from '@/lib/steem';
 
 const badges = [
   { name: 'First Contribution', icon: Award, isEarned: (projects: HydratedProject[]) => projects.length > 0 },
@@ -37,6 +39,13 @@ export default function UserProfilePageClient({
   allProjectPathLinks,
   currentUser 
 }: UserProfileClientPageProps) {
+  const [steemUser, setSteemUser] = useState<SteemAccount | null>(null);
+
+  useEffect(() => {
+    if (user.steemUsername) {
+      getSteemUser(user.steemUsername).then(setSteemUser);
+    }
+  }, [user.steemUsername]);
 
   return (
     <div className='flex h-full min-h-screen w-full bg-background'>
@@ -148,24 +157,52 @@ export default function UserProfilePageClient({
             </TabsContent>
             {user.steemUsername && (
               <TabsContent value='steem' className='mt-6'>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Steem Profile</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>
-                      View this user's Steem profile:
-                      <a
-                        href={`https://steemit.com/@${user.steemUsername}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline ml-2"
-                      >
-                        @{user.steemUsername}
-                      </a>
-                    </p>
-                  </CardContent>
-                </Card>
+                {steemUser ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Steem Profile</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarImage src={`https://steemitimages.com/u/${steemUser.name}/avatar`} />
+                          <AvatarFallback>{steemUser.name[0].toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <a
+                            href={`https://steemit.com/@${steemUser.name}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xl font-bold text-primary hover:underline"
+                          >
+                            @{steemUser.name}
+                          </a>
+                          <p className="text-muted-foreground">{steemUser.post_count} posts</p>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">About</h3>
+                        <p>{JSON.parse(steemUser.json_metadata).profile?.about}</p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <p className="font-bold text-lg">{steemUser.reputation}</p>
+                          <p className="text-muted-foreground">Reputation</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-lg">{steemUser.voting_power}</p>
+                          <p className="text-muted-foreground">Voting Power</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-lg">{steemUser.balance}</p>
+                          <p className="text-muted-foreground">Steem</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <p>Loading Steem profile...</p>
+                )}
               </TabsContent>
             )}
           </Tabs>
