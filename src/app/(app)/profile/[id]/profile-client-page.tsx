@@ -46,6 +46,26 @@ export default function UserProfilePageClient({
   const [steemPosts, setSteemPosts] = useState<SteemPost[] | null>(null);
   const [postsError, setPostsError] = useState<string | null>(null);
 
+  // --- Formatting Helpers ---
+
+  const formatReputation = (rep: string | number) => {
+    const repNum = Number(rep);
+    if (isNaN(repNum) || repNum === 0) return ' (25)';
+    const score = Math.floor(Math.log10(Math.abs(repNum)) - 9) * 9 + 25;
+    return `(${score})`;
+  };
+
+  const formatVotingPower = (power: number) => {
+    return `${(power / 100).toFixed(2)}%`;
+  };
+
+  const truncateBody = (body: string, length = 280) => {
+    if (body.length <= length) return body.replace(/\n/g, ' ');
+    const truncated = body.substring(0, length).replace(/\n/g, ' ');
+    const lastSpace = truncated.lastIndexOf(' ');
+    return `${truncated.substring(0, lastSpace)}...`;
+  };
+
   useEffect(() => {
     if (user.steemUsername) {
       setIsLoadingSteem(true);
@@ -252,6 +272,9 @@ export default function UserProfilePageClient({
                                 className="text-xl font-bold text-primary hover:underline"
                               >
                                 @{steemUser.name}
+                                <span className="text-lg font-normal text-muted-foreground ml-2">
+                                  {formatReputation(steemUser.reputation)}
+                                </span>
                               </a>
                               <p className="text-muted-foreground">{steemUser.post_count} posts</p>
                             </div>
@@ -260,13 +283,9 @@ export default function UserProfilePageClient({
                             <h3 className="font-semibold">About</h3>
                             <p>{steemProfile?.about || 'No bio provided on Steem.'}</p>
                           </div>
-                          <div className="grid grid-cols-3 gap-4 text-center">
+                          <div className="grid grid-cols-2 gap-4 text-center">
                             <div>
-                              <p className="font-bold text-lg">{steemUser.reputation}</p>
-                              <p className="text-muted-foreground">Reputation</p>
-                            </div>
-                            <div>
-                              <p className="font-bold text-lg">{steemUser.voting_power}</p>
+                              <p className="font-bold text-lg">{formatVotingPower(steemUser.voting_power)}</p>
                               <p className="text-muted-foreground">Voting Power</p>
                             </div>
                             <div>
@@ -309,7 +328,7 @@ export default function UserProfilePageClient({
                             </CardHeader>
                             <CardContent>
                               <p className="text-muted-foreground line-clamp-3">
-                                {post.body.substring(0, 280).replace(/\n/g, ' ')}...
+                                {truncateBody(post.body)}
                               </p>
                             </CardContent>
                           </Card>
