@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { User, HydratedProject, LearningPath, ProjectPathLink, SteemAccount, SteemPost } from '@/lib/types';
-import { getSteemUserAction, getSteemUserPostsAction } from '@/app/actions/steem';
+import { getSteemUserAction, syncSteemPostsAction } from '@/app/actions/steem';
 
 const badges = [
   { name: 'First Contribution', icon: Award, isEarned: (projects: HydratedProject[]) => projects.length > 0 },
@@ -59,15 +59,9 @@ export default function UserProfilePageClient({
     return `${(power / 100).toFixed(2)}%`;
   };
 
-  const truncateBody = (body: string, length = 280) => {
-    if (body.length <= length) return body.replace(/\n/g, ' ');
-    const truncated = body.substring(0, length).replace(/\n/g, ' ');
-    const lastSpace = truncated.lastIndexOf(' ');
-    return `${truncated.substring(0, lastSpace)}...`;
-  };
-
   useEffect(() => {
     if (user.steemUsername) {
+      // Fetch Steem Profile
       setIsLoadingSteem(true);
       getSteemUserAction(user.steemUsername)
         .then(response => {
@@ -88,21 +82,25 @@ export default function UserProfilePageClient({
           setIsLoadingSteem(false);
         });
 
+      // Sync and fetch Steem Posts
       setIsLoadingPosts(true);
-      getSteemUserPostsAction(user.steemUsername)
+      syncSteemPostsAction(user.steemUsername)
         .then(response => {
           if (response.error) {
+            // Even with an error (e.g., API down), we might get cached posts.
+            // The error message will inform the user.
             setPostsError(response.error);
-            setSteemPosts(null);
-          } else {
-            setSteemPosts(response.posts);
+          }
+           else {
             setPostsError(null);
           }
+          // Always set posts, as we might have cached data even if there's an error.
+          setSteemPosts(response.posts);
         })
         .catch(error => {
-          console.error('Unexpected error calling getSteemUserPostsAction:', error);
+          console.error('Unexpected error calling syncSteemPostsAction:', error);
           setPostsError('An unexpected client-side error occurred.');
-          setSteemPosts(null);
+          setSteemPosts(null); // In case of a critical client-side failure
         })
         .finally(() => {
           setIsLoadingPosts(false);
@@ -305,10 +303,10 @@ export default function UserProfilePageClient({
                     ) : postsError ? (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-destructive">Error Loading Posts</CardTitle>
+                          <CardTitle className="text-destructive">Sync Warning</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p>Could not load the Steem posts for @{user.steemUsername}.</p>
+                          <p>Could not sync the latest Steem posts. The displayed posts are from the last successful sync.</p>
                           <p className="text-muted-foreground mt-2">Reason: {postsError}</p>
                         </CardContent>
                       </Card>
@@ -328,7 +326,7 @@ export default function UserProfilePageClient({
                             </CardHeader>
                             <CardContent>
                               <p className="text-muted-foreground line-clamp-3">
-                                {truncateBody(post.body)}
+                                {post.body}
                               </p>
                             </CardContent>
                           </Card>
