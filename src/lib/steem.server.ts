@@ -1,8 +1,17 @@
 'use server';
 
-import type { SteemAccount } from '@/lib/types';
+import type { SteemAccount, SteemPost } from '@/lib/types';
 
 const STEEM_API_URL = 'https://api.steemit.com';
+
+/**
+ * NOTE: We are intentionally using a direct `fetch` call instead of a library
+ * like `dsteem`. Early attempts showed that `dsteem` has compatibility issues
+ * with the Next.js server action environment, causing requests to hang indefinitely.
+ * This direct approach is more robust and includes a manual timeout.
+ * If more complex Steem functionality is needed, `dhive` should be evaluated.
+ */
+
 
 // This interface represents the raw account object from the Steem API.
 interface RawSteemAccount {
@@ -30,8 +39,6 @@ function toSteemAccount(account: RawSteemAccount): SteemAccount {
 
 /**
  * Fetches a Steem account using a direct fetch call to the JSON-RPC API.
- * This approach is library-free and includes a timeout to prevent hangs.
- * @returns An object containing the account data or an error message.
  */
 export async function getSteemAccount(username: string): Promise<{ account: SteemAccount | null; error: string | null; }> {
     if (!username) {
@@ -47,11 +54,11 @@ export async function getSteemAccount(username: string): Promise<{ account: Stee
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 jsonrpc: '2.0',
-                method: 'condenser_api.get_accounts', // Using condenser_api for simplicity
+                method: 'condenser_api.get_accounts',
                 params: [[username]],
                 id: 1,
             }),
-            signal: controller.signal, // Abort signal for timeout
+            signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
@@ -81,5 +88,65 @@ export async function getSteemAccount(username: string): Promise<{ account: Stee
         }
         console.error(`Critical error in getSteemAccount for ${username}:`, error);
         return { account: null, error: error.message || 'An unknown server error occurred.' };
+    }
+}
+
+/**
+ * Fetches the latest blog posts for a Steem user.
+ * @param username The Steem username.
+ * @param limit The number of posts to fetch.
+ * @returns An object containing an array of posts or an error message.
+ */
+export async function getSteemUserPosts(username: string, limit: number = 10): Promise<{ posts: SteemPost[] | null; error: string | null; }> {
+    if (!username) {
+        return { posts: null, error: 'No username provided.' };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
+
+    try {
+        const response = await fetch(STEEM_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'condenser_api.get_discussions_by_blog',
+                params: [{
+                    tag: username,
+                    limit: limit,
+                }],
+                id: 1,
+            }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`Steem API returned an HTTP error: ${response.status}`);
+        }
+
+        const json = await response.json();
+
+        if (json.error) {
+            throw new Error(json.error.message || 'Steem API returned an unspecified error for posts');
+        }
+
+        const posts: SteemPost[] = json.result;
+
+        if (posts) {
+            return { posts, error: null };
+        }
+        
+        return { posts: [], error: null }; // Return empty array if no posts found
+
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            return { posts: null, error: 'Request to Steem API for posts timed out after 10 seconds.' };
+        }
+        console.error(`Critical error in getSteemUserPosts for ${username}:`, error);
+        return { posts: null, error: error.message || 'An unknown server error occurred while fetching posts.' };
     }
 }

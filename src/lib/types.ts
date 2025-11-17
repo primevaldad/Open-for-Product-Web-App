@@ -291,3 +291,22 @@ export interface SteemAccount {
     voting_power: number;
     balance: string;
 }
+
+export interface SteemPost {
+    post_id: number;
+    author: string;
+    permlink: string;
+    category: string;
+    title: string;
+    body: string;
+    json_metadata: string;
+    created: string;
+    last_update: string;
+    active_votes: any[];
+    net_votes: number;
+    children: number;
+    url: string;
+    total_payout_value: string;
+    curator_payout_value: string;
+    pending_payout_value: string;
+}

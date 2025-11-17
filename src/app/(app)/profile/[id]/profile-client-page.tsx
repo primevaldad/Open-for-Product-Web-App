@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -11,8 +10,8 @@ import ProjectCard from '@/components/project-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { User, HydratedProject, LearningPath, ProjectPathLink, SteemAccount } from '@/lib/types';
-import { getSteemUserAction } from '@/app/actions/steem';
+import type { User, HydratedProject, LearningPath, ProjectPathLink, SteemAccount, SteemPost } from '@/lib/types';
+import { getSteemUserAction, getSteemUserPostsAction } from '@/app/actions/steem';
 
 const badges = [
   { name: 'First Contribution', icon: Award, isEarned: (projects: HydratedProject[]) => projects.length > 0 },
@@ -43,6 +42,10 @@ export default function UserProfilePageClient({
   const [steemUser, setSteemUser] = useState<SteemAccount | null>(null);
   const [steemError, setSteemError] = useState<string | null>(null);
 
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [steemPosts, setSteemPosts] = useState<SteemPost[] | null>(null);
+  const [postsError, setPostsError] = useState<string | null>(null);
+
   useEffect(() => {
     if (user.steemUsername) {
       setIsLoadingSteem(true);
@@ -64,8 +67,29 @@ export default function UserProfilePageClient({
         .finally(() => {
           setIsLoadingSteem(false);
         });
+
+      setIsLoadingPosts(true);
+      getSteemUserPostsAction(user.steemUsername)
+        .then(response => {
+          if (response.error) {
+            setPostsError(response.error);
+            setSteemPosts(null);
+          } else {
+            setSteemPosts(response.posts);
+            setPostsError(null);
+          }
+        })
+        .catch(error => {
+          console.error('Unexpected error calling getSteemUserPostsAction:', error);
+          setPostsError('An unexpected client-side error occurred.');
+          setSteemPosts(null);
+        })
+        .finally(() => {
+          setIsLoadingPosts(false);
+        });
     } else {
       setIsLoadingSteem(false);
+      setIsLoadingPosts(false);
     }
   }, [user.steemUsername]);
 
@@ -77,14 +101,13 @@ export default function UserProfilePageClient({
       return JSON.parse(steemUser.json_metadata).profile;
     } catch (e) {
       console.error('Failed to parse Steem json_metadata:', e);
-      return null; // Return null if parsing fails, preventing a crash
+      return null;
     }
   })();
 
   return (
     <div className='flex h-full min-h-screen w-full bg-background'>
       <main className='flex-1 overflow-auto'>
-        {/* ... (rest of the component is unchanged) ... */}
         <div className='relative h-48 w-full bg-primary/10'>
           <div className='absolute -bottom-16 left-6'>
             <Avatar className='h-32 w-32 rounded-full border-4 border-background'>
@@ -192,64 +215,111 @@ export default function UserProfilePageClient({
             </TabsContent>
             {user.steemUsername && (
               <TabsContent value='steem' className='mt-6'>
-                {isLoadingSteem ? (
-                  <p>Steem profile is loading...</p>
-                ) : steemError ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-destructive">Error Loading Profile</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p>Could not load the Steem profile for @{user.steemUsername}.</p>
-                      <p className="text-muted-foreground mt-2">Reason: {steemError}</p>
-                    </CardContent>
-                  </Card>
-                ) : steemUser ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Steem Profile</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarImage src={`https://steemitimages.com/u/${steemUser.name}/avatar`} />
-                          <AvatarFallback>{steemUser.name[0].toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <a
-                            href={`https://steemit.com/@${steemUser.name}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xl font-bold text-primary hover:underline"
-                          >
-                            @{steemUser.name}
-                          </a>
-                          <p className="text-muted-foreground">{steemUser.post_count} posts</p>
-                        </div>
+                <Tabs defaultValue="profile" className="w-full">
+                  <TabsList>
+                    <TabsTrigger value="profile">Profile</TabsTrigger>
+                    <TabsTrigger value="blog">Blog</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="profile" className="mt-6">
+                    {isLoadingSteem ? (
+                      <p>Steem profile is loading...</p>
+                    ) : steemError ? (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-destructive">Error Loading Profile</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p>Could not load the Steem profile for @{user.steemUsername}.</p>
+                          <p className="text-muted-foreground mt-2">Reason: {steemError}</p>
+                        </CardContent>
+                      </Card>
+                    ) : steemUser ? (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Steem Profile</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center space-x-4">
+                            <Avatar>
+                              <AvatarImage src={`https://steemitimages.com/u/${steemUser.name}/avatar`} />
+                              <AvatarFallback>{steemUser.name[0].toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <a
+                                href={`https://steemit.com/@${steemUser.name}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xl font-bold text-primary hover:underline"
+                              >
+                                @{steemUser.name}
+                              </a>
+                              <p className="text-muted-foreground">{steemUser.post_count} posts</p>
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">About</h3>
+                            <p>{steemProfile?.about || 'No bio provided on Steem.'}</p>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <p className="font-bold text-lg">{steemUser.reputation}</p>
+                              <p className="text-muted-foreground">Reputation</p>
+                            </div>
+                            <div>
+                              <p className="font-bold text-lg">{steemUser.voting_power}</p>
+                              <p className="text-muted-foreground">Voting Power</p>
+                            </div>
+                            <div>
+                              <p className="font-bold text-lg">{steemUser.balance}</p>
+                              <p className="text-muted-foreground">Steem</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <p>No Steem profile found for this user.</p>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="blog" className="mt-6">
+                    {isLoadingPosts ? (
+                      <p>Steem posts are loading...</p>
+                    ) : postsError ? (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-destructive">Error Loading Posts</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p>Could not load the Steem posts for @{user.steemUsername}.</p>
+                          <p className="text-muted-foreground mt-2">Reason: {postsError}</p>
+                        </CardContent>
+                      </Card>
+                    ) : steemPosts && steemPosts.length > 0 ? (
+                      <div className="space-y-6">
+                        {steemPosts.map(post => (
+                          <Card key={post.post_id}>
+                            <CardHeader>
+                              <CardTitle className="text-lg">
+                                <a href={`https://steemit.com${post.url}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                  {post.title}
+                                </a>
+                              </CardTitle>
+                              <CardDescription>
+                                Published on {new Date(post.created).toLocaleDateString()}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-muted-foreground line-clamp-3">
+                                {post.body.substring(0, 280).replace(/\n/g, ' ')}...
+                              </p>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
-                      <div>
-                        <h3 className="font-semibold">About</h3>
-                        <p>{steemProfile?.about || 'No bio provided on Steem.'}</p>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <p className="font-bold text-lg">{steemUser.reputation}</p>
-                          <p className="text-muted-foreground">Reputation</p>
-                        </div>
-                        <div>
-                          <p className="font-bold text-lg">{steemUser.voting_power}</p>
-                          <p className="text-muted-foreground">Voting Power</p>
-                        </div>
-                        <div>
-                          <p className="font-bold text-lg">{steemUser.balance}</p>
-                          <p className="text-muted-foreground">Steem</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <p>No Steem profile found for this user.</p>
-                )}
+                    ) : (
+                      <p>No posts found for this user on Steem.</p>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
             )}
           </Tabs>
