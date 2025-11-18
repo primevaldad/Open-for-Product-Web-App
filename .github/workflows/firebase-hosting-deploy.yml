@@ -61,4 +61,4 @@ jobs:
         run: 
           firebase deploy --only hosting
         env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
