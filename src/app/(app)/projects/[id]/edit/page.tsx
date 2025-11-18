@@ -1,6 +1,7 @@
+
 'use client';
 
-import type { Project, Tag, User } from "@/lib/types";
+import type { Project, Tag, User, EditProjectPageDataResponse } from "@/lib/types";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, notFound, useRouter } from 'next/navigation';

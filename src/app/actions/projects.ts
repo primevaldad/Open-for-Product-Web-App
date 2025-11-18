@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -19,7 +20,6 @@ import type {
   CreateProjectPageDataResponse,
   EditProjectPageDataResponse,
   DraftsPageDataResponse,
-  ActivityType
 } from '@/lib/types';
 import {
   adminDb,
@@ -174,7 +174,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
     if (!newProjectId) throw new Error('Failed to create project.');
 
     await logActivity({
-        type: 'project-created' as ActivityType,
+        type: 'project-created',
         actorId: currentUser.id,
         projectId: newProjectId,
         context: { projectName: name }
