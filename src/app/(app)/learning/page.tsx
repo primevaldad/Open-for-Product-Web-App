@@ -20,7 +20,7 @@ export default function LearningPathsPage() {
             const response = await getLearningPathsAction(10, startAfter);
 
             if (!response.success) {
-                console.error("Failed to fetch learning paths:", response.error);
+                console.error("Failed to fetch learning paths:", (response as { success: false; error: string }).error);
                 setHasMore(false);
                 setIsLoading(false);
                 return;

@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Project, Tag, User, EditProjectPageDataResponse } from "@/lib/types";
@@ -39,7 +38,7 @@ export default function EditProjectPage() {
                 users: response.allUsers,
             });
         } else {
-            setError(response.error);
+            setError((response as { success: false; error: string }).error);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');

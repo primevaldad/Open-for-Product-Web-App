@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -12,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { projectCategories, iconMap } from '@/lib/static-data';
 import { cn } from '@/lib/utils';
-import type { LearningPath, ProjectCategory, UserLearningProgress, Project, ProjectPathLink } from '@/lib/types';
+import type { LearningPath, UserLearningProgress, Project, ProjectPathLink } from '@/lib/types';
 
 interface LearningClientPageProps {
     learningPaths: LearningPath[];
@@ -22,10 +21,10 @@ interface LearningClientPageProps {
 }
 
 export default function LearningClientPage({ learningPaths, userProgress, projects, allProjectPathLinks }: LearningClientPageProps) {
-    const [selectedCategories, setSelectedCategories] = useState<ProjectCategory[]>([]);
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]); // Changed to string[] as ProjectCategory type was removed from import
     const [showMyPaths, setShowMyPaths] = useState(false);
 
-    const toggleCategory = (category: ProjectCategory) => {
+    const toggleCategory = (category: string) => { // Changed type to string
         setSelectedCategories(prev =>
             prev.includes(category)
                 ? prev.filter(c => c !== category)
@@ -36,7 +35,7 @@ export default function LearningClientPage({ learningPaths, userProgress, projec
     const startedPathIds = userProgress.map(p => p.pathId);
 
     const filteredPaths = learningPaths.filter(path => {
-        const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(path.category);
+        const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(path.category as string); // Added type assertion
         const myPathsMatch = !showMyPaths || startedPathIds.includes(path.pathId);
         return categoryMatch && myPathsMatch;
     });

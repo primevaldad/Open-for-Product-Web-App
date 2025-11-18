@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -172,6 +171,9 @@ export interface LearningPath {
     modules: Module[];
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+    category?: string;
+    isLocked?: boolean;
+    duration?: number;
 }
 
 export interface Module {
