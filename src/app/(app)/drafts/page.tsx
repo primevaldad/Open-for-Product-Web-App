@@ -36,9 +36,9 @@ export default function DraftsPage() {
                     });
                     setCurrentUser(userResponse.data || null);
                 } else if (!draftsResponse.success) {
-                    setError(draftsResponse.error);
+                    setError((draftsResponse as { success: false; error: string }).error);
                 } else if (!userResponse.success) {
-                    setError(userResponse.error);
+                    setError((userResponse as { success: false; error: string }).error);
                 }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An unknown error occurred');

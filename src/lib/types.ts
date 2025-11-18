@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -172,6 +171,9 @@ export interface LearningPath {
     modules: Module[];
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+    category?: string;
+    isLocked?: boolean;
+    duration?: number;
 }
 
 export interface Module {
@@ -286,7 +288,7 @@ export interface Activity {
 export interface SteemAccount {
     name: string;
     post_count: number;
-    json_metadata: string;
+    posting_json_metadata: string;
     reputation: string;
     voting_power: number;
     balance: string;
@@ -299,7 +301,7 @@ export interface SteemPost {
     category: string;
     title: string;
     body: string;
-    json_metadata: string;
+    posting_json_metadata: string;
     created: string;
     last_update: string;
     active_votes: any[];

@@ -23,7 +23,7 @@ export default function HomePage() {
                     setData(pageData);
                 } else {
                     // On failure, we set the error message.
-                    setError(response.message);
+                    setError((response as { success: false; message: string }).message);
                 }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An unknown error occurred');

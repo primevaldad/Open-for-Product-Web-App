@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Award, Lock, Pencil, Rocket } from 'lucide-react';
+import { Award, Lock, Pencil, Rocket, Link2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -87,20 +87,17 @@ export default function UserProfilePageClient({
       syncSteemPostsAction(user.steemUsername)
         .then(response => {
           if (response.error) {
-            // Even with an error (e.g., API down), we might get cached posts.
-            // The error message will inform the user.
             setPostsError(response.error);
           }
            else {
             setPostsError(null);
           }
-          // Always set posts, as we might have cached data even if there's an error.
           setSteemPosts(response.posts);
         })
         .catch(error => {
           console.error('Unexpected error calling syncSteemPostsAction:', error);
           setPostsError('An unexpected client-side error occurred.');
-          setSteemPosts(null); // In case of a critical client-side failure
+          setSteemPosts(null);
         })
         .finally(() => {
           setIsLoadingPosts(false);
@@ -112,13 +109,13 @@ export default function UserProfilePageClient({
   }, [user.steemUsername]);
 
   const steemProfile = (() => {
-    if (!steemUser?.json_metadata) {
+    if (!steemUser?.posting_json_metadata) {
       return null;
     }
     try {
-      return JSON.parse(steemUser.json_metadata).profile;
+      return JSON.parse(steemUser.posting_json_metadata).profile;
     } catch (e) {
-      console.error('Failed to parse Steem json_metadata:', e);
+      console.error('Failed to parse Steem posting_json_metadata:', e);
       return null;
     }
   })();
@@ -281,6 +278,15 @@ export default function UserProfilePageClient({
                             <h3 className="font-semibold">About</h3>
                             <p>{steemProfile?.about || 'No bio provided on Steem.'}</p>
                           </div>
+                          {steemProfile?.website && (
+                            <div>
+                              <h3 className="font-semibold">Website</h3>
+                              <a href={steemProfile.website} target="_blank" rel="noopener noreferrer" className="flex items-center text-primary hover:underline">
+                                <Link2 className="mr-2 h-4 w-4" />
+                                {steemProfile.website}
+                              </a>
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-4 text-center">
                             <div>
                               <p className="font-bold text-lg">{formatVotingPower(steemUser.voting_power)}</p>
