@@ -67,7 +67,7 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-        - name: Diagnose Firebase service account key
+      - name: Diagnose Firebase service account key
   shell: bash
   env:
     FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
