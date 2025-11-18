@@ -17,7 +17,7 @@ const STEEM_API_URL = 'https://api.steemit.com';
 interface RawSteemAccount {
     name: string;
     post_count: number;
-    json_metadata: string;
+    posting_json_metadata: string;
     reputation: string | number; // Reputation can be a string or number
     voting_power: number;
     balance: string;
@@ -30,7 +30,7 @@ function toSteemAccount(account: RawSteemAccount): SteemAccount {
     return {
         name: account.name,
         post_count: account.post_count,
-        json_metadata: account.json_metadata,
+        posting_json_metadata: account.posting_json_metadata,
         reputation: String(account.reputation), // Ensure reputation is a string
         voting_power: account.voting_power,
         balance: account.balance,
