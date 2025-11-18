@@ -67,6 +67,62 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+        - name: Diagnose Firebase service account key
+  shell: bash
+  env:
+    FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+  run: |
+    set -euo pipefail
+
+    echo "=== CHECK LENGTH ==="
+    echo "Secret chars: ${#FIREBASE_SERVICE_ACCOUNT_KEY}"
+
+    echo "=== TRY PARSE RAW JSON ==="
+    python3 -c "import os, json; s=os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']; 
+parsed=True
+try:
+    json.loads(s)
+except Exception:
+    parsed=False
+print('RAW_JSON_OK' if parsed else 'RAW_JSON_FAIL')"
+
+    echo "=== TRY PARSE WITH ESCAPED NEWLINES ==="
+    python3 -c "import os, json; s=os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'];
+s2 = s.encode('utf-8').decode('unicode_escape')
+parsed=True
+try:
+    json.loads(s2)
+except Exception:
+    parsed=False
+print('ESCAPED_OK' if parsed else 'ESCAPED_FAIL')"
+
+    echo "=== WRITE FIXED FILE IF PARSE SUCCEEDS ==="
+    if python3 - <<'EOF'
+import os, json, sys
+s=os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']
+try:
+    obj=json.loads(s)
+    open('firebase-sa.json','w').write(s)
+    print('WROTE_RAW')
+    sys.exit(0)
+except: pass
+try:
+    s2=s.encode('utf-8').decode('unicode_escape')
+    obj=json.loads(s2)
+    open('firebase-sa.json','w').write(s2)
+    print('WROTE_ESCAPED')
+    sys.exit(0)
+except: pass
+print('WRITE_FAIL')
+sys.exit(1)
+EOF
+    then
+      echo "File written: $(wc -c < firebase-sa.json) bytes"
+    else
+      echo "File write failed; check RAW_JSON_FAIL and ESCAPED_FAIL above."
+    fi
+ 
+
       - name: Deploy to Firebase Hosting
         env:
           # Point firebase-tools to the JSON file we just wrote
