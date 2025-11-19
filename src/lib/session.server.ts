@@ -1,3 +1,4 @@
+
 'use server';
 import { cookies } from 'next/headers';
 import { adminAuth } from './firebase.server';
@@ -24,15 +25,10 @@ export async function createSessionCookie(idToken: string): Promise<string> {
     const uid = decodedToken.uid;
 
     // Ensure user exists in our database
-    try {
-      await findUserById(uid);
-    } catch (error) {
-      if (error instanceof UserNotFoundError) {
-        console.log(`First login for user ${uid}, creating guest user.`);
+    const user = await findUserById(uid);
+    if (!user) {
+        console.log(`First login for user ${uid}, creating user profile.`);
         await createGuestUser(uid);
-      } else {
-        throw error; // Re-throw other errors
-      }
     }
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
@@ -81,6 +77,9 @@ export async function getAuthenticatedUser(): Promise<User> {
   try {
     const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
     const user = await findUserById(decodedToken.uid);
+    if (!user) {
+        throw new UserNotFoundError(`User with ID ${decodedToken.uid} not found in database.`);
+    }
     return user;
   } catch (error) {
     // We no longer try to clear the cookie here, as it's not a valid context.
@@ -94,3 +93,4 @@ export async function getAuthenticatedUser(): Promise<User> {
     throw new NotAuthenticatedError();
   }
 }
+
