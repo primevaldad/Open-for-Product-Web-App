@@ -65,32 +65,26 @@ export async function clearSessionCookie(): Promise<void> {
 /**
  * Retrieves the currently authenticated user from the session cookie.
  * @returns The authenticated user object, or null if no valid session exists.
- * @throws {NotAuthenticatedError} If the session is invalid or the user is not found.
  */
-export async function getAuthenticatedUser(): Promise<User> {
+export async function getAuthenticatedUser(): Promise<User | null> {
   const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
 
   if (!sessionCookie) {
-    throw new NotAuthenticatedError();
+    return null;
   }
 
   try {
     const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
     const user = await findUserById(decodedToken.uid);
     if (!user) {
-        throw new UserNotFoundError(`User with ID ${decodedToken.uid} not found in database.`);
+        console.warn(`User with ID ${decodedToken.uid} not found in database.`);
+        return null;
     }
     return user;
   } catch (error) {
-    // We no longer try to clear the cookie here, as it's not a valid context.
-    // The client-side AuthProvider will handle session invalidation.
-    if (error instanceof UserNotFoundError) {
-      console.warn('User from session not found in DB', (error as Error).message);
-      throw new NotAuthenticatedError('User not found');
-    }
-
     console.error('Error verifying session cookie:', error);
-    throw new NotAuthenticatedError();
+    // verification failed, so the session is invalid.
+    return null;
   }
 }
 

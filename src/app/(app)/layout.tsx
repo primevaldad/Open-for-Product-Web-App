@@ -16,13 +16,7 @@ export default async function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let currentUser;
-  try {
-    currentUser = await getAuthenticatedUser();
-  } catch (error) {
-    // If user is not authenticated, we can treat them as a guest.
-    currentUser = null;
-  }
+  const currentUser = await getAuthenticatedUser();
 
   // Onboarding check for authenticated users
   if (currentUser && currentUser.role !== 'guest' && !currentUser.onboardingCompleted) {

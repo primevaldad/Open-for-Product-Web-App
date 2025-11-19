@@ -22,15 +22,7 @@ function cleanUser(user: User): User {
 
 export async function getHomePageData(): Promise<HomePageDataResponse> {
     try {
-        let currentUser: User | null = null;
-        try {
-            currentUser = await getAuthenticatedUser();
-        } catch (error) {
-            if (!(error instanceof NotAuthenticatedError)) {
-                throw error;
-            }
-            // User is not logged in, proceed with currentUser as null
-        }
+        const currentUser = await getAuthenticatedUser();
 
         // Fetch all necessary data in parallel
         const [projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
