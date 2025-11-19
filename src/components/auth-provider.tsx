@@ -34,13 +34,14 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
     setLoading(true);
     try {
         await firebaseSignOut(auth);
-        // Use fetch to call the API route handler, which is the correct place to modify cookies.
-        await fetch('/api/auth/session', { method: 'DELETE' });
-    } finally {
-        // The onAuthStateChanged listener below will handle setting the user to null
-        // after the Firebase auth state changes.
-        // We ensure loading is false in the listener.
-    }
+        await fetch('/api/auth/logout', { method: 'POST' });
+        setCurrentUser(null);
+        setLoading(false);
+        // onAuthStateChanged will handle signing in a new anonymous user
+    } catch (error) {
+        console.error('Sign-out failed:', error);
+        setLoading(false);
+        }
   }, []);
 
   useEffect(() => {
