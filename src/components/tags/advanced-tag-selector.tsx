@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -67,18 +66,17 @@ export default function AdvancedTagSelector({
     [safeValue]
   );
 
-    const handleSelect = (tagId: string, display: string) => {
+  const handleSelect = (tagId: string, display: string) => {
     const normalizedId = normalizeTag(tagId);
     if (selectedTagsMap.has(normalizedId)) return;
 
-    const existingGlobalTag = globalTagsMap.get(normalizedId);
     const newProjectTag: ProjectTag = {
       id: normalizedId,
       display: display,
-      type: existingGlobalTag?.type || 'custom',
+      isCategory: false, // Always initialize as non-category
     };
     onChange([...safeValue, newProjectTag]);
-    };
+  };
 
   const handleRemove = (tagId: string) => {
     const normalizedId = normalizeTag(tagId);
@@ -95,13 +93,13 @@ export default function AdvancedTagSelector({
   const handleEdit = (tag: ProjectTag) => {
     setEditingTag(tag);
     setCustomDisplayName(tag.display);
-    setIsCategory(tag.type === 'category');
+    setIsCategory(tag.isCategory); // Correctly use the boolean property
   };
 
   const handleSaveEdit = () => {
     if (!editingTag) return;
 
-    const categoryCount = safeValue.filter(t => t.type === 'category' && t.id !== editingTag.id).length;
+    const categoryCount = safeValue.filter(t => t.isCategory && t.id !== editingTag.id).length;
     if (isProject && isCategory && categoryCount >= 3) {
       // Here you might want to show a toast notification
       console.warn("A project can have a maximum of 3 category tags.");
@@ -126,7 +124,7 @@ export default function AdvancedTagSelector({
     );
   }, [safeAvailableTags, selectedTagsMap, inputValue]);
 
-  const categoryTagsCount = safeValue.filter(t => t.type === 'category').length;
+  const categoryTagsCount = safeValue.filter(t => t.isCategory).length;
 
   return (
     <div>
@@ -146,7 +144,7 @@ export default function AdvancedTagSelector({
               {safeValue.map((tag) => (
                 <Badge
                   key={tag.id}
-                  variant={tag.type === 'category' ? 'default' : 'secondary'}
+                  variant={tag.isCategory ? 'default' : 'secondary'} // Correctly use the boolean property
                   className="flex items-center gap-1.5"
                 >
                   {tag.display}

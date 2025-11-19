@@ -54,6 +54,7 @@ export default function TagSelector({ id, availableTags, value, onChange }: TagS
       id: normalizedId,
       display: display,
       type: existingGlobalTag?.type || 'custom',
+      isCategory: false
     };
     onChange([...safeValue, newProjectTag]);
   };

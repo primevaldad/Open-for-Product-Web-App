@@ -3,8 +3,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,10 +20,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import UserSelector from '@/components/users/user-selector';
-import AdvancedTagSelector from '@/components/tags/advanced-tag-selector'; // Updated import
+import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 import ImageUpload from '@/components/ui/image-upload';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
-import type { User, Tag, Project, ProjectTag } from "@/lib/types";
+import type { User, Tag, Project, ProjectTag, ProjectMember } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { saveProjectDraft, publishProject, updateProject } from "@/app/actions/projects";
 
@@ -34,6 +35,14 @@ interface ProjectFormProps {
 
 type ProjectFormValues = CreateProjectFormValues | EditProjectFormValues;
 
+// Helper to convert Firestore Timestamp or string to Date
+const toDate = (value: Timestamp | string | undefined): Date | undefined => {
+    if (!value) return undefined;
+    if (value instanceof Timestamp) return value.toDate();
+    if (typeof value === 'string') return new Date(value);
+    return undefined;
+};
+
 export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -43,34 +52,45 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
 
   const isEditMode = !!initialData;
 
-  const uniqueTeam = initialData?.team
-    ? Array.from(new Map(initialData.team.map(item => [item.userId, item])).values())
-    : [];
-
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(isEditMode ? EditProjectSchema : CreateProjectSchema),
-    defaultValues: initialData ? {
-      id: initialData.id,
-      name: initialData.name || '',
-      tagline: initialData.tagline || '',
-      description: initialData.description || '',
-      photoUrl: initialData.photoUrl || '',
-      contributionNeeds: Array.isArray(initialData.contributionNeeds)
-        ? initialData.contributionNeeds.join(', ')
-        : '',
-      tags: initialData.tags ?? [],
-      team: uniqueTeam,
-      ...(initialData.governance && { governance: initialData.governance }),
-    } : {
-      name: '',
-      tagline: '',
-      description: '',
-      photoUrl: '',
-      contributionNeeds: '',
-      tags: [],
-      team: [],
+    defaultValues: {
+        name: '',
+        tagline: '',
+        description: '',
+        photoUrl: '',
+        contributionNeeds: '',
+        tags: [],
+        team: [],
     },
   });
+
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      
+      const mappedTeam = (initialData.team || []).map(member => ({
+          ...member,
+          createdAt: toDate(member.createdAt),
+          updatedAt: toDate(member.updatedAt),
+      }));
+
+      const uniqueTeam = Array.from(new Map(mappedTeam.map(item => [item.userId, item])).values());
+
+      form.reset({
+        id: initialData.id,
+        name: initialData.name || '',
+        tagline: initialData.tagline || '',
+        description: initialData.description || '',
+        photoUrl: initialData.photoUrl || '',
+        contributionNeeds: Array.isArray(initialData.contributionNeeds)
+          ? initialData.contributionNeeds.join(', ')
+          : '',
+        tags: initialData.tags ? initialData.tags.map(tag => ({ ...tag })) : [],
+        team: uniqueTeam,
+        governance: initialData.governance ? { ...initialData.governance } : undefined,
+      });
+    }
+  }, [initialData, isEditMode, form]);
 
   async function onSubmit(values: ProjectFormValues, action: 'save' | 'publish') {
     if (action === 'save') setIsSaving(true); else setIsPublishing(true);

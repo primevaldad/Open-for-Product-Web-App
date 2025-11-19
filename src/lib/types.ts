@@ -60,7 +60,8 @@ export interface Project {
 export interface ProjectTag {
     id: string;
     display: string;
-    type: 'category' | 'relational' | 'custom';
+    isCategory: boolean;
+    [key: string]: any;
 }
 
 // This represents a globally available tag that can be added to projects.

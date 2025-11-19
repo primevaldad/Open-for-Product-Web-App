@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -52,7 +51,7 @@ const MAX_TAG_LENGTH = 35;
 // --- Helper Functions ---
 
 const normalizeTag = (tag: string): string => {
-  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '\'').slice(0, MAX_TAG_LENGTH);
+  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').slice(0, MAX_TAG_LENGTH);
 };
 
 async function manageTagsForProject(
@@ -87,7 +86,7 @@ async function manageTagsForProject(
         id,
         normalized: id,
         display: pTag.display,
-        type: pTag.type,
+        type: 'custom', // New global tags are always 'custom' by default.
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: currentUser.id,
@@ -107,7 +106,7 @@ async function manageTagsForProject(
 }
 
 // --- Project Submission and Update Actions ---
-export async function handleProjectSubmission(values: CreateProjectFormValues, status: 'draft' | 'published') {
+async function handleProjectSubmission(values: CreateProjectFormValues, status: 'draft' | 'published') {
   const validatedFields = CreateProjectSchema.safeParse(values);
   if (!validatedFields.success) {
     return { success: false, error: validatedFields.error.issues[0]?.message || 'Invalid data.' };
@@ -117,25 +116,11 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
-  const allGlobalTags = await getAllGlobalTags();
-  const globalTagsMap = new Map(allGlobalTags.map((t) => [t.id, t]));
-
-  const hydratedTags: ProjectTag[] = tags.map(tag => {
-    const normalizedId = normalizeTag(tag.id);
-    const globalTag = globalTagsMap.get(normalizedId);
-    if (globalTag) {
-        return {
-            id: globalTag.id,
-            display: globalTag.display,
-            type: ['category', 'relational', 'custom'].includes(globalTag.type) ? globalTag.type : 'custom',
-        };
-    }
-    return {
-        id: normalizedId,
-        display: tag.display,
-        type: ['category', 'relational', 'custom'].includes(tag.type) ? tag.type : 'custom',
-    };
-  });
+  // Tags from the form are now considered the source of truth for isCategory status.
+  const projectTags: ProjectTag[] = tags.map(tag => ({
+    ...tag,
+    id: normalizeTag(tag.id),
+  }));
 
   const finalTeam: ProjectMember[] = team.filter((m): m is ProjectMember => m.userId !== undefined && m.role !== undefined);
   if (!finalTeam.some((m) => m.userId === currentUser.id)) {
@@ -149,7 +134,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
       const newProjectRef = adminDb.collection('projects').doc();
       newProjectId = newProjectRef.id;
 
-      await manageTagsForProject(transaction, hydratedTags, [], currentUser);
+      await manageTagsForProject(transaction, projectTags, [], currentUser);
 
       const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> = {
         name,
@@ -158,7 +143,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
         endDate: admin.firestore.Timestamp.fromDate(new Date()),
         tagline,
         description,
-        tags: hydratedTags.map((t) => ({ ...t, id: normalizeTag(t.id) })),
+        tags: projectTags,
         contributionNeeds: contributionNeeds.split(',').map((i) => i.trim()),
         progress: 0,
         team: finalTeam,
@@ -237,25 +222,10 @@ export async function updateProject(values: EditProjectFormValues) {
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
   try {
-    const allGlobalTags = await getAllGlobalTags();
-    const globalTagsMap = new Map(allGlobalTags.map((t) => [t.id, t]));
-
-    const hydratedTags: ProjectTag[] = tags.map(tag => {
-        const normalizedId = normalizeTag(tag.id);
-        const globalTag = globalTagsMap.get(normalizedId);
-        if (globalTag) {
-            return {
-                id: globalTag.id,
-                display: globalTag.display,
-                type: ['category', 'relational', 'custom'].includes(globalTag.type) ? globalTag.type : 'custom',
-            };
-        }
-        return {
-            id: normalizedId,
-            display: tag.display,
-            type: ['category', 'relational', 'custom'].includes(tag.type) ? tag.type : 'custom',
-        };
-    });
+    const projectTags: ProjectTag[] = tags.map(tag => ({
+        ...tag,
+        id: normalizeTag(tag.id),
+    }));
 
     await adminDb.runTransaction(async (transaction) => {
       const projectRef = adminDb.collection('projects').doc(id);
@@ -266,7 +236,7 @@ export async function updateProject(values: EditProjectFormValues) {
       const isLead = project.team.some((m) => m.role === 'lead' && m.userId === currentUser.id);
       if (!isLead) throw new Error('Only a project lead can edit.');
 
-      await manageTagsForProject(transaction, hydratedTags, project.tags || [], currentUser);
+      await manageTagsForProject(transaction, projectTags, project.tags || [], currentUser);
 
       const finalGovernance: Project['governance'] = {
         contributorsShare: governance?.contributorsShare ?? 75,
@@ -284,7 +254,7 @@ export async function updateProject(values: EditProjectFormValues) {
           typeof projectData.contributionNeeds === 'string'
             ? projectData.contributionNeeds.split(',').map((i) => i.trim())
             : project.contributionNeeds,
-        tags: hydratedTags.map((t) => ({ ...t, id: normalizeTag(t.id) })),
+        tags: projectTags,
         updatedAt: new Date().toISOString(),
       };
       transaction.update(projectRef, updatedData);
@@ -527,12 +497,11 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
     if (project.tags && Array.isArray(project.tags)) {
       const hydratedTags: ProjectTag[] = project.tags
         .map((projectTag) => {
-          const fullTag = tagsMap.get(projectTag.id);
-          if (!fullTag) return null;
+          const globalTag = tagsMap.get(projectTag.id);
           return {
-            id: fullTag.id,
-            display: fullTag.display,
-            type: fullTag.type,
+            id: projectTag.id,
+            display: globalTag?.display || projectTag.display, // Use global display name if available
+            isCategory: projectTag.isCategory || false, // Preserve the project-specific isCategory flag
           };
         })
         .filter((tag): tag is ProjectTag => !!tag);

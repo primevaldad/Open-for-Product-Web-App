@@ -33,10 +33,10 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
   const signOut = useCallback(async () => {
     setLoading(true);
     await firebaseSignOut(auth);
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setCurrentUser(null);
-    setLoading(false);
-    // onAuthStateChanged will handle signing in a new anonymous user
+    // Use fetch to call the API route handler, which is the correct place to modify cookies.
+    await fetch('/api/auth/session', { method: 'DELETE' });
+    // The onAuthStateChanged listener below will handle setting the user to null
+    // after the Firebase auth state changes.
   }, []);
 
   useEffect(() => {
@@ -57,8 +57,9 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
             const appUser = await findUserById(firebaseUser.uid);
             setCurrentUser(appUser || null);
         } else {
-            console.error('Failed to create session:', await sessionResponse.text());
-            setCurrentUser(null);
+            console.error('Failed to create session, signing out:', await sessionResponse.text());
+            // If the session creation fails (e.g., token is invalid), sign out fully.
+            await signOut();
         }
 
       } else {
@@ -69,13 +70,14 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
           // The listener will re-run with the new anonymous user.
         } catch (error) {
           console.error('Automatic anonymous sign-in failed:', error);
+          setCurrentUser(null);
         }
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [signOut]);
 
   return (
     <AuthContext.Provider value={{ currentUser, loading, signOut }}>

@@ -9,8 +9,9 @@ import {
     getAllProjectPathLinks, 
     getAiSuggestedProjects 
 } from '@/lib/data.server';
-import type { HydratedProject, User, HomePageDataResponse } from '@/lib/types';
+import type { HydratedProject, User, HomePageDataResponse, Tag, ProjectTag } from '@/lib/types';
 import { NotAuthenticatedError } from '@/lib/errors';
+import { toHydratedProject } from '@/lib/utils.server';
 
 // The user object can contain non-serializable data (like functions) when coming from the DB.
 // This helper removes them to avoid errors when passing data from Server Components to Client Components.
@@ -39,7 +40,23 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
             getAllProjectPathLinks(),
         ]);
 
-        const allPublishedProjects: HydratedProject[] = projectsData;
+        const tagsMap = new Map<string, Tag>();
+        tagsData.forEach((tag) => tagsMap.set(tag.id, tag));
+
+        const allPublishedProjects: HydratedProject[] = projectsData.map(project => {
+            if (project.tags && Array.isArray(project.tags)) {
+                const hydratedTags: ProjectTag[] = project.tags.map(projectTag => {
+                    const globalTag = tagsMap.get(projectTag.id);
+                    return {
+                        id: projectTag.id,
+                        display: globalTag?.display || projectTag.display,
+                        isCategory: projectTag.isCategory || false,
+                    };
+                });
+                project.tags = hydratedTags;
+            }
+            return project as HydratedProject;
+        });
 
         // Get AI-suggested projects if the user is logged in
         const suggestedProjects = currentUser
