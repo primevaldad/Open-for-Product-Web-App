@@ -38,7 +38,7 @@ export async function createSessionCookie(idToken: string): Promise<string> {
     cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
       maxAge: SESSION_DURATION_MS,
       httpOnly: true,
-      secure: true,
+      secure: IS_PROD,
       path: '/',
       sameSite: process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax',
     });
@@ -82,7 +82,12 @@ export async function getAuthenticatedUser(): Promise<User | null> {
     }
     return user;
   } catch (error) {
-    console.error('Error verifying session cookie:', error);
+    console.error('Error verifying session cookie. Raw error:', error);
+    try {
+        console.error('Error verifying session cookie. JSON serialized:', JSON.stringify(error));
+    } catch (e) {
+        console.error('Could not serialize error to JSON.');
+    }
     // verification failed, so the session is invalid.
     return null;
   }
