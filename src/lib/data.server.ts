@@ -133,11 +133,11 @@ export async function getAllProjects(): Promise<HydratedProject[]> {
         const project = { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt), startDate: serializeTimestamp(data.startDate), endDate: serializeTimestamp(data.endDate) } as Project;
         if (project.tags && Array.isArray(project.tags)) {
             project.tags = project.tags.map(projectTag => {
-                const tagId = typeof projectTag === 'string' ? projectTag : (projectTag as ProjectTag).id;
+                const tagId = (projectTag as ProjectTag).id;
                 if (!tagId) return null;
                 const fullTag = tagsMap.get(tagId);
-                if (!fullTag) return null;
-                return { id: fullTag.id, display: fullTag.display, type: fullTag.type };
+                if (!fullTag) return { ...projectTag, isCategory: projectTag.isCategory || false };
+                return { id: fullTag.id, display: fullTag.display, isCategory: fullTag.isCategory };
             }).filter((tag): tag is ProjectTag => !!tag);
         } else {
             project.tags = [];
@@ -157,11 +157,11 @@ export async function findProjectById(projectId: string): Promise<HydratedProjec
             const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
             const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
             project.tags = project.tags.map(projectTag => {
-                const tagId = typeof projectTag === 'string' ? projectTag : (projectTag as ProjectTag).id;
+                const tagId = (projectTag as ProjectTag).id;
                 if (!tagId) return null;
                 const fullTag = tagsMap.get(tagId);
-                if (!fullTag) return null;
-                return { id: fullTag.id, display: fullTag.display, type: fullTag.type };
+                if (!fullTag) return { ...projectTag, isCategory: projectTag.isCategory || false };
+                return { id: fullTag.id, display: fullTag.display, isCategory: fullTag.isCategory };
             }).filter((tag): tag is ProjectTag => !!tag);
         }
         return hydrateProject(project);

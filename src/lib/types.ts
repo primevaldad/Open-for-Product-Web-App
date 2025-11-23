@@ -61,7 +61,6 @@ export interface ProjectTag {
     id: string;
     display: string;
     isCategory: boolean;
-    [key: string]: any;
 }
 
 // This represents a globally available tag that can be added to projects.
@@ -69,7 +68,7 @@ export interface Tag {
     id: string;
     normalized: string;
     display: string;
-    type: 'category' | 'relational' | 'custom';
+    isCategory: boolean;
     usageCount: number;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
@@ -309,7 +308,7 @@ export interface SteemPost {
     category: string;
     title: string;
     body: string;
-    posting_json_metadata: string;
+    json_metadata: string;
     created: string;
     last_update: string;
     active_votes: any[];

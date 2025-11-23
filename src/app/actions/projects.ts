@@ -19,6 +19,7 @@ import type {
   CreateProjectPageDataResponse,
   EditProjectPageDataResponse,
   DraftsPageDataResponse,
+  ActivityType,
 } from '@/lib/types';
 import {
   adminDb,
@@ -86,7 +87,7 @@ async function manageTagsForProject(
         id,
         normalized: id,
         display: pTag.display,
-        type: 'custom', // New global tags are always 'custom' by default.
+        isCategory: false, // New global tags are always custom, not categories.
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: currentUser.id,
@@ -116,13 +117,13 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
-  // Tags from the form are now considered the source of truth for isCategory status.
   const projectTags: ProjectTag[] = tags.map(tag => ({
     ...tag,
     id: normalizeTag(tag.id),
+    display: tag.display || tag.id, // Ensure display is always present
   }));
 
-  const finalTeam: ProjectMember[] = team.filter((m): m is ProjectMember => m.userId !== undefined && m.role !== undefined);
+  const finalTeam = team.filter(m => m.userId !== undefined && m.role !== undefined) as ProjectMember[];
   if (!finalTeam.some((m) => m.userId === currentUser.id)) {
     finalTeam.push({ userId: currentUser.id, role: 'lead' });
   }
@@ -159,7 +160,7 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
     if (!newProjectId) throw new Error('Failed to create project.');
 
     await logActivity({
-        type: 'project-created',
+        type: ActivityType.ProjectCreated,
         actorId: currentUser.id,
         projectId: newProjectId,
         context: { projectName: name }
@@ -225,6 +226,7 @@ export async function updateProject(values: EditProjectFormValues) {
     const projectTags: ProjectTag[] = tags.map(tag => ({
         ...tag,
         id: normalizeTag(tag.id),
+        display: tag.display || tag.id, // Ensure display is always present
     }));
 
     await adminDb.runTransaction(async (transaction) => {
@@ -248,7 +250,7 @@ export async function updateProject(values: EditProjectFormValues) {
         ...projectData,
         governance: finalGovernance,
         ...(projectData.team !== undefined && {
-          team: projectData.team.filter((m): m is ProjectMember => m.userId !== undefined && m.role !== undefined),
+          team: projectData.team.filter(m => m.userId !== undefined && m.role !== undefined) as ProjectMember[],
         }),
         contributionNeeds:
           typeof projectData.contributionNeeds === 'string'
@@ -491,16 +493,17 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
       }) as EditProjectPageDataResponse;
     }
 
-    const tagsMap = new Map<string, GlobalTag>();
-    allTags.forEach((tag) => tagsMap.set(tag.id, tag));
+    // No longer needed due to `isCategory` standardization
+    // const tagsMap = new Map<string, GlobalTag>();
+    // allTags.forEach((tag) => tagsMap.set(tag.id, tag));
 
     if (project.tags && Array.isArray(project.tags)) {
       const hydratedTags: ProjectTag[] = project.tags
         .map((projectTag) => {
-          const globalTag = tagsMap.get(projectTag.id);
+          // const globalTag = tagsMap.get(projectTag.id);
           return {
             id: projectTag.id,
-            display: globalTag?.display || projectTag.display, // Use global display name if available
+            display: projectTag.display, // globalTag?.display || projectTag.display, // Use global display name if available
             isCategory: projectTag.isCategory || false, // Preserve the project-specific isCategory flag
           };
         })
