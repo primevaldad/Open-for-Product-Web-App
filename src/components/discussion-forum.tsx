@@ -55,7 +55,7 @@ function Comment({ discussion, onAddComment, isMember, currentUser, users, depth
           </p>
         </div>
         <div className="mt-1 prose dark:prose-invert max-w-none">
-          <Markdown content={discussion.content} users={users} />
+          <Markdown content={discussion.content} />
         </div>
         {isMember && depth < MAX_NESTING_DEPTH && (
           <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setShowReply(!showReply)}>

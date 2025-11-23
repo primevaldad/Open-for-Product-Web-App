@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
+import { toDate } from '@/lib/utils';
 
 import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
@@ -90,11 +91,11 @@ export default function ProjectDetailClientPage({
             
             for (const discussion of discussionMap.values()) {
                 if (discussion.replies.length > 1) {
-                    discussion.replies.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                    discussion.replies.sort((a, b) => toDate(a.createdAt).getTime() - toDate(b.createdAt).getTime());
                 }
             }
 
-            nested.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            nested.sort((a, b) => toDate(a.createdAt).getTime() - toDate(b.createdAt).getTime());
 
             return nested;
         };

@@ -124,8 +124,14 @@ export interface Discussion {
     projectId: ProjectId;
     userId: UserId;
     content: string;
+    parentId?: string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+}
+
+export interface HydratedDiscussion extends Discussion {
+    user: User;
+    replies: HydratedDiscussion[];
 }
 
 export interface Task {
@@ -234,7 +240,7 @@ export type DraftsPageDataResponse =
 
 export type JoinProjectAction = (projectId: string) => Promise<ServerActionResponse<HydratedProjectMember>>;
 export type AddTeamMemberAction = (data: { projectId: string; userId: string; role: ProjectMember['role'] }) => Promise<ServerActionResponse<HydratedProjectMember>>;
-export type AddDiscussionCommentAction = (data: { projectId: string; content: string }) => Promise<ServerActionResponse<Discussion>>;
+export type AddDiscussionCommentAction = (data: { projectId: string; content: string, parentId?: string }) => Promise<ServerActionResponse<Discussion>>;
 export type AddTaskAction = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => Promise<ServerActionResponse<Task>>;
 export type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task>>;
 export type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
