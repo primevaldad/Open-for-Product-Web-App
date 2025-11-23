@@ -339,19 +339,22 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
     }
 }
 
-export async function addDiscussionComment(data: { projectId: string; content: string }): Promise<ServerActionResponse<Discussion>> {
-    const { projectId, content } = data;
+export async function addDiscussionComment(data: { projectId: string; content: string; parentId?: string; }): Promise<ServerActionResponse<Discussion>> {
+    const { projectId, content, parentId } = data;
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required' };
 
     try {
-        const newCommentId = await addDiscussionCommentToDb(projectId, { 
+        const newCommentData: Omit<Discussion, 'id'> = {
             projectId,
             userId: currentUser.id, 
             content,
+            parentId: parentId || null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-        });
+        };
+        
+        const newCommentId = await addDiscussionCommentToDb(projectId, newCommentData);
 
         const project = await findProjectById(projectId);
         const projectLeads = project?.team.filter(m => m.role === 'lead') || [];
@@ -369,11 +372,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
         
         const newComment: Discussion = {
             id: newCommentId,
-            projectId,
-            userId: currentUser.id,
-            content,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            ...newCommentData,
         };
 
         revalidatePath(`/projects/${projectId}`);

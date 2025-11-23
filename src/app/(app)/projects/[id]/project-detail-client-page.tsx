@@ -225,6 +225,7 @@ export default function ProjectDetailClientPage({
                                 onAddComment={handleAddComment}
                                 isMember={isMember || false}
                                 currentUser={currentUser}
+                                users={users}
                             />
                          ) : <p className="py-4">Login to join the discussion</p>}
                     </TabPanel>
