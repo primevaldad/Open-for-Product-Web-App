@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { MarkdownEditor } from '@/components/markdown-editor';
 import UserSelector from '@/components/users/user-selector';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 import ImageUpload from '@/components/ui/image-upload';
@@ -187,9 +187,15 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea placeholder="Describe your project in detail..." {...field} rows={8} />
+                <MarkdownEditor
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Describe your project in detail..."
+                />
               </FormControl>
-              <FormDescription>A detailed description of your project.</FormDescription>
+              <FormDescription>
+                A detailed description of your project. Supports Markdown for formatting.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

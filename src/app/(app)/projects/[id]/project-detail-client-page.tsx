@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo, useTransition } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath, ServerActionResponse } from '@/lib/types';
+import type { User, HydratedProject, Task, Discussion, LearningPath } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
 import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
 import { Button } from '@/components/ui/button';
+import Markdown from '@/components/ui/markdown';
 
 import {
     joinProject as joinProjectAction,
@@ -195,11 +196,13 @@ export default function ProjectDetailClientPage({
                     </TabList>
 
                     <TabPanel>
-                        {!isGuest ? (
-                            <p>{project.description}</p>
-                        ) : (
-                            <p className="py-4">Please log in to view the project description.</p>
-                        )}
+                        <div className="prose dark:prose-invert max-w-none p-4">
+                            {!isGuest ? (
+                                <Markdown content={project.description} />
+                            ) : (
+                                <p>Please log in to view the project description.</p>
+                            )}
+                        </div>
                     </TabPanel>
                     <TabPanel>
                         {!isGuest ? (

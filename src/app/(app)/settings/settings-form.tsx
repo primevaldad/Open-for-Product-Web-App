@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { MarkdownEditor } from '@/components/markdown-editor';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 import { useToast } from '@/hooks/use-toast';
 import type { User, Tag, ProjectTag } from '@/lib/types';
@@ -27,7 +27,7 @@ import { Switch } from '@/components/ui/switch';
 const SettingsSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   username: z.string().min(3, 'Username must be at least 3 characters').or(z.literal('')).optional(),
-  bio: z.string().max(160, 'Bio must not be longer than 160 characters.').optional(),
+  bio: z.string().optional(),
   tags: z.array(z.object({
     id: z.string(),
     display: z.string(),
@@ -134,14 +134,14 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
             <FormItem>
               <FormLabel>Bio</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Tell us a little bit about yourself"
-                  className="resize-none"
-                  {...field}
+                <MarkdownEditor 
+                  value={field.value || ''} 
+                  onChange={field.onChange} 
+                  placeholder="Tell us a little bit about yourself" 
                 />
               </FormControl>
               <FormDescription>
-                You can <span>@mention</span> other users and organizations.
+                You can use Markdown for formatting. You can also <span>@mention</span> other users and projects.
               </FormDescription>
               <FormMessage />
             </FormItem>

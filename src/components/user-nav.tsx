@@ -30,7 +30,7 @@ interface UserNavProps {
 
 export function UserNav({ currentUser }: UserNavProps) {
   const router = useRouter();
-  const { user: clientUser, loading, signOut } = useAuth(); 
+  const { currentUser: clientUser, loading, signOut } = useAuth(); 
 
   const handleLogout = async () => {
     await signOut();

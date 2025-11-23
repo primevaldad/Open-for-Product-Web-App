@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { User, HydratedProject, LearningPath, ProjectPathLink, SteemAccount, SteemPost } from '@/lib/types';
 import { getSteemUserAction, syncSteemPostsAction } from '@/app/actions/steem';
+import Markdown from '@/components/ui/markdown';
 
 const badges = [
   { name: 'First Contribution', icon: Award, isEarned: (projects: HydratedProject[]) => projects.length > 0 },
@@ -143,7 +144,9 @@ export default function UserProfilePageClient({
         <div className='p-6 pt-20 flex justify-between items-start'>
           <div>
             <h1 className='text-3xl font-bold'>{user.name}</h1>
-            <p className='text-muted-foreground max-w-xl'>{user.bio}</p>
+            <div className="prose dark:prose-invert max-w-none">
+                <Markdown content={user.bio || ''} />
+            </div>
             <div className='mt-4 flex flex-wrap gap-2'>
               {user.interests?.map(interest => (
                 <Badge key={interest} variant='secondary'>
@@ -331,9 +334,9 @@ export default function UserProfilePageClient({
                               </CardDescription>
                             </CardHeader>
                             <CardContent>
-                              <p className="text-muted-foreground line-clamp-3">
-                                {post.body}
-                              </p>
+                               <div className="text-muted-foreground line-clamp-3">
+                                <Markdown content={post.body} />
+                              </div>
                             </CardContent>
                           </Card>
                         ))}

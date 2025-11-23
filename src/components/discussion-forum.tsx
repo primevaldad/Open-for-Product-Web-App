@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import type { Discussion, User } from '@/lib/types';
 import { toDate, timeAgo } from '@/lib/utils';
+import { MarkdownEditor } from '@/components/markdown-editor';
+import Markdown from '@/components/ui/markdown';
 
 interface DiscussionForumProps {
   discussions: (Discussion & { user?: User })[];
@@ -39,16 +40,15 @@ export default function DiscussionForum({
           <div className="flex items-start space-x-4">
             <Avatar>
               <AvatarImage src={currentUser?.avatarUrl} alt={currentUser?.name} />
-              <AvatarFallback>{currentUser?.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{currentUser?.name?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-grow">
-              <Textarea
-                placeholder="Share your thoughts..."
+              <MarkdownEditor
                 value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                className="mb-2"
+                onChange={setNewComment}
+                placeholder="Share your thoughts..."
               />
-              <Button onClick={handlePostComment} disabled={!newComment.trim()}>
+              <Button onClick={handlePostComment} disabled={!newComment.trim()} className="mt-2">
                 Post Comment
               </Button>
             </div>
@@ -66,7 +66,7 @@ export default function DiscussionForum({
           <div key={discussion.id} className="flex items-start space-x-4">
             <Avatar>
               <AvatarImage src={discussion.user?.avatarUrl} alt={discussion.user?.name} />
-              <AvatarFallback>{discussion.user?.name.charAt(0) || 'U'}</AvatarFallback>
+              <AvatarFallback>{discussion.user?.name?.charAt(0) || 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-grow">
               <div className="flex items-center space-x-2">
@@ -75,7 +75,9 @@ export default function DiscussionForum({
                   {timeAgo(toDate(discussion.createdAt))}
                 </p>
               </div>
-              <p className="text-gray-700 dark:text-gray-300 mt-1">{discussion.content}</p>
+              <div className="mt-1">
+                <Markdown content={discussion.content} />
+              </div>
             </div>
           </div>
         ))}

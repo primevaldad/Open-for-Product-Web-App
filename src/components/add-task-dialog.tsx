@@ -16,11 +16,11 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox
+import { Checkbox } from '@/components/ui/checkbox';
 import type { ServerActionResponse } from '@/lib/types';
 import { TaskSchema, type TaskStatus } from '@/lib/schemas';
 import { useToast } from '@/hooks/use-toast';
+import { MarkdownEditor } from '@/components/markdown-editor';
 
 const AddTaskDialogSchema = TaskSchema.extend({
   projectId: z.string(),
@@ -46,7 +46,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
       title: '',
       description: '',
       status: status,
-      isMilestone: false, // Default to false
+      isMilestone: false,
     },
   });
 
@@ -68,7 +68,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
       <DialogTrigger asChild onClick={() => setIsOpen(true)}>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add New Task</DialogTitle>
           <DialogDescription>
@@ -97,7 +97,11 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Add more details about the task..." />
+                    <MarkdownEditor
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder="Add more details about the task..."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

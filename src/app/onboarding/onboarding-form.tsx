@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { MarkdownEditor } from '@/components/markdown-editor';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,15 +118,14 @@ export default function OnboardingForm({ newUser, allTags, updateOnboardingInfo 
                   <FormItem>
                     <FormLabel>Your Bio</FormLabel>
                     <FormControl>
-                      <Textarea
+                      <MarkdownEditor
+                        value={field.value || ''}
+                        onChange={field.onChange}
                         placeholder="Tell us a little about yourself, your skills, and what you're passionate about."
-                        className="resize-none"
-                        rows={4}
-                        {...field}
                       />
                     </FormControl>
                      <FormDescription>
-                      This will be displayed on your public profile.
+                      This will be displayed on your public profile. You can use Markdown for formatting.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
