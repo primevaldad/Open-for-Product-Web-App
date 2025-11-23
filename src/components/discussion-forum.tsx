@@ -10,6 +10,8 @@ import Markdown from '@/components/ui/markdown';
 
 export type HydratedDiscussion = Discussion & { user?: User; replies: HydratedDiscussion[] };
 
+const MAX_NESTING_DEPTH = 3;
+
 interface DiscussionForumProps {
   discussions: HydratedDiscussion[];
   onAddComment: (content: string, parentId?: string) => void;
@@ -24,9 +26,10 @@ interface CommentProps {
   isMember: boolean;
   currentUser: User | null;
   users: User[];
+  depth: number;
 }
 
-function Comment({ discussion, onAddComment, isMember, currentUser, users }: CommentProps) {
+function Comment({ discussion, onAddComment, isMember, currentUser, users, depth }: CommentProps) {
   const [showReply, setShowReply] = useState(false);
   const [replyContent, setReplyContent] = useState('');
 
@@ -54,7 +57,7 @@ function Comment({ discussion, onAddComment, isMember, currentUser, users }: Com
         <div className="mt-1 prose dark:prose-invert max-w-none">
           <Markdown content={discussion.content} users={users} />
         </div>
-        {isMember && (
+        {isMember && depth < MAX_NESTING_DEPTH && (
           <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setShowReply(!showReply)}>
             Reply
           </Button>
@@ -95,6 +98,7 @@ function Comment({ discussion, onAddComment, isMember, currentUser, users }: Com
                 isMember={isMember} 
                 currentUser={currentUser} 
                 users={users}
+                depth={depth + 1}
               />
             ))}
           </div>
@@ -159,6 +163,7 @@ export default function DiscussionForum({
             isMember={isMember} 
             currentUser={currentUser} 
             users={users}
+            depth={0}
           />
         ))}
       </div>
