@@ -11,6 +11,14 @@ export default {
   ],
   theme: {
     extend: {
+      typography: ({ theme }) => ({
+        DEFAULT: {
+          css: {
+            pre: false,
+            code: false,
+          },
+        },
+      }),
       fontFamily: {
         body: ['Inter', 'sans-serif'],
         headline: ['Inter', 'sans-serif'],

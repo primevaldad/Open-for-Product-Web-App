@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from 'rehype-highlight';
 import ReactTextareaAutocomplete, { Item } from "@webscopeio/react-textarea-autocomplete";
 import "@webscopeio/react-textarea-autocomplete/style.css";
+import 'highlight.js/styles/github-dark.css';
 import { User } from '@/lib/types';
 import { UserMentionItem } from './user-mention-item';
 
@@ -141,9 +143,10 @@ export function MarkdownEditor({ value, onChange, placeholder, className, users 
         />
       </TabsContent>
       <TabsContent value="preview">
-        <div className="prose dark:prose-invert rounded-md border border-input p-4 min-h-[220px]">
+        <div className="rounded-md border border-input p-4 min-h-[220px]">
            <ReactMarkdown 
             remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
             components={{
               a: ({node, ...props}) => {
                 if (props.href && (props.href.startsWith('http') || props.href.startsWith('https'))) {
