@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -38,6 +39,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
             assigneeId: task?.assignedToId || undefined,
             estimatedHours: task?.estimatedHours || undefined,
             dueDate: task?.dueDate ? new Date(task.dueDate as string) : undefined,
+            isMilestone: task?.isMilestone || false,
         },
     });
 
@@ -52,6 +54,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
                     assigneeId: task.assignedToId,
                     estimatedHours: task.estimatedHours,
                     dueDate: task.dueDate ? new Date(task.dueDate as string) : undefined,
+                    isMilestone: task.isMilestone,
                   }
                 : {
                     title: '',
@@ -60,6 +63,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
                     assigneeId: undefined,
                     estimatedHours: undefined,
                     dueDate: undefined,
+                    isMilestone: false,
                   }
         );
     }, [task, form]);
@@ -83,6 +87,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
                         <FormField control={form.control} name="assigneeId" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{teamMembers.map((member) => ( <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem> ))}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="estimatedHours" render={({ field }) => ( <FormItem><FormLabel>Estimated Hours</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")} >{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="isMilestone" render={({ field }) => ( <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Mark as milestone</FormLabel></div></FormItem> )} />
                         <Button type="submit">{isEditing ? 'Save Changes' : 'Create Task'}</Button>
                     </form>
                 </Form>

@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import type {
@@ -263,6 +263,7 @@ export async function updateProject(values: EditProjectFormValues) {
     revalidatePath('/', 'layout');
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
+    revalidateTag('active-projects');
 
     return { success: true, data: {} };
   } catch (error) {

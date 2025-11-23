@@ -140,6 +140,7 @@ export interface Task {
     dueDate?: Timestamp | string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+    isMilestone?: boolean;
 }
 
 export interface HydratedTask extends Omit<Task, 'assignedToId'> {

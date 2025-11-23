@@ -137,6 +137,7 @@ export default function ProjectDetailClientPage({
             assignedToId: values.assigneeId,
             estimatedHours: values.estimatedHours,
             dueDate: values.dueDate?.toISOString(),
+            isMilestone: values.isMilestone,
         };
         const result = await addTaskAction(taskDataForAction);
         handleServerResponse(result, 'Task added successfully!', 'Failed to add task.');
@@ -210,7 +211,7 @@ export default function ProjectDetailClientPage({
                                         </AddTaskDialog>
                                     )}
                                 </div>
-                                <TaskBoard tasks={tasks} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} />
+                                <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} />
                             </>
                         ) : <p className="py-4">Login to view project tasks</p>}
                     </TabPanel>

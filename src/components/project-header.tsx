@@ -56,7 +56,7 @@ export default function ProjectHeader({ project, currentUser, onJoin }: ProjectH
       
       <div className="flex flex-wrap gap-2">
         {project.tags?.map(tag => (
-          <Badge key={tag.id} variant="secondary">{tag.display}</Badge>
+          <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'}>{tag.display}</Badge>
         ))}
       </div>
     </div>

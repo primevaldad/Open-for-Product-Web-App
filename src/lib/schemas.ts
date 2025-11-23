@@ -43,6 +43,7 @@ export const TaskSchema = z.object({
     assigneeId: z.string().optional(),
     estimatedHours: z.number().optional(),
     dueDate: z.date().optional(),
+    isMilestone: z.boolean().optional(),
 });
 
 

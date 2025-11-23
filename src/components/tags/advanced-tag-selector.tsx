@@ -70,10 +70,11 @@ export default function AdvancedTagSelector({
     const normalizedId = normalizeTag(tagId);
     if (selectedTagsMap.has(normalizedId)) return;
 
+    const originalTag = globalTagsMap.get(normalizedId);
     const newProjectTag: ProjectTag = {
       id: normalizedId,
       display: display,
-      isCategory: false, // Always initialize as non-category
+      isCategory: originalTag ? originalTag.isCategory : false, 
     };
     onChange([...safeValue, newProjectTag]);
   };
@@ -93,7 +94,7 @@ export default function AdvancedTagSelector({
   const handleEdit = (tag: ProjectTag) => {
     setEditingTag(tag);
     setCustomDisplayName(tag.display);
-    setIsCategory(tag.isCategory); // Correctly use the boolean property
+    setIsCategory(tag.isCategory);
   };
 
   const handleSaveEdit = () => {
@@ -144,7 +145,7 @@ export default function AdvancedTagSelector({
               {safeValue.map((tag) => (
                 <Badge
                   key={tag.id}
-                  variant={tag.isCategory ? 'default' : 'secondary'} // Correctly use the boolean property
+                  variant={tag.isCategory ? 'secondary' : 'outline'}
                   className="flex items-center gap-1.5"
                 >
                   {tag.display}
