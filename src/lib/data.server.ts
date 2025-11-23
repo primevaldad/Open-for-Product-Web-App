@@ -61,10 +61,11 @@ async function hydrateProject(project: Project): Promise<HydratedProject> {
 
 export async function getAllUsers(): Promise<User[]> {
     const userSnapshot = await adminDb.collection('users').get();
-    return userSnapshot.docs.map(doc => {
+    const users = userSnapshot.docs.map(doc => {
         const data = doc.data();
         return { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
     });
+    return users.filter(user => user.name !== 'Guest User');
 }
 
 export async function findUserById(userId: string): Promise<User | undefined> {
