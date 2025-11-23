@@ -20,6 +20,9 @@ const IS_PROD = process.env.NODE_ENV === 'production';
  * @returns The UID of the authenticated user.
  */
 export async function createSessionCookie(idToken: string): Promise<string> {
+  // HACK: Force a dynamic evaluation of this function to avoid Next.js
+  // static optimization issues with the `cookies()` API.
+  await Promise.resolve();
   try {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
@@ -54,6 +57,9 @@ export async function createSessionCookie(idToken: string): Promise<string> {
  * Clears the session cookie, effectively logging the user out.
  */
 export async function clearSessionCookie(): Promise<void> {
+  // HACK: Force a dynamic evaluation of this function to avoid Next.js
+  // static optimization issues with the `cookies()` API.
+  await Promise.resolve();
   cookies().set(SESSION_COOKIE_NAME, '', {
     maxAge: 0,
     httpOnly: true,
@@ -67,29 +73,32 @@ export async function clearSessionCookie(): Promise<void> {
  * @returns The authenticated user object, or null if no valid session exists.
  */
 export async function getAuthenticatedUser(): Promise<User | null> {
-  const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
+    // HACK: Force a dynamic evaluation of this function to avoid Next.js
+    // static optimization issues with the `cookies()` API.
+    await Promise.resolve();
 
-  if (!sessionCookie) {
-    return null;
-  }
+    const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
 
-  try {
-    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const user = await findUserById(decodedToken.uid);
-    if (!user) {
-        console.warn(`User with ID ${decodedToken.uid} not found in database.`);
+    if (!sessionCookie) {
         return null;
     }
-    return user;
-  } catch (error) {
-    console.error('Error verifying session cookie. Raw error:', error);
-    try {
-        console.error('Error verifying session cookie. JSON serialized:', JSON.stringify(error));
-    } catch (e) {
-        console.error('Could not serialize error to JSON.');
-    }
-    // verification failed, so the session is invalid.
-    return null;
-  }
-}
 
+    try {
+        const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+        const user = await findUserById(decodedToken.uid);
+        if (!user) {
+            console.warn(`User with ID ${decodedToken.uid} not found in database.`);
+            return null;
+        }
+        return user;
+    } catch (error) {
+        console.error('Error verifying session cookie. Raw error:', error);
+        try {
+            console.error('Error verifying session cookie. JSON serialized:', JSON.stringify(error));
+        } catch (e) {
+            console.error('Could not serialize error to JSON.');
+        }
+        // verification failed, so the session is invalid.
+        return null;
+    }
+}
