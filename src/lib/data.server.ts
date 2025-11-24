@@ -1,5 +1,6 @@
 
-import 'server-only';
+'server-only';
+
 import admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';

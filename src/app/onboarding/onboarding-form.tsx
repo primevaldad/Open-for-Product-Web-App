@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { updateUser } from '@/app/actions/user';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, ProjectTag } from '@/lib/types';
+import { User, ProjectTag, Tag } from '@/lib/types';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 
 const OnboardingSchema = z.object({
@@ -39,13 +39,12 @@ type OnboardingFormValues = z.infer<typeof OnboardingSchema>;
 
 interface OnboardingFormProps {
   user: User;
-  allTags: ProjectTag[];
+  allTags: Tag[];
 }
 
 export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   const router = useRouter();
   
-  // Transform the string array of interests into ProjectTag objects
   const userInterestTags: ProjectTag[] = (user.interests || []).map(interest => ({
     id: interest,
     display: interest,
@@ -65,7 +64,7 @@ export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   async function onSubmit(values: OnboardingFormValues) {
     const dataToUpdate = {
       ...values,
-      interests: values.interests.map(tag => tag.id), // Transform back to string array
+      interests: values.interests.map(tag => tag.id),
       onboardingCompleted: true,
     };
 
@@ -136,10 +135,9 @@ export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
             <FormItem>
               <FormLabel>Tags</FormLabel>
               <AdvancedTagSelector
-                allTags={allTags}
-                selectedTags={field.value}
+                availableTags={allTags}
+                value={field.value as ProjectTag[]}
                 onChange={field.onChange}
-                isCategorySelection={false}
               />
               <FormDescription>
                 Select tags that represent your interests. This will help us recommend relevant projects to you.
