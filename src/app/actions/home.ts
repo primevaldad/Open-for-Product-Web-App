@@ -26,7 +26,7 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
 
         // Fetch all necessary data in parallel
         const [projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
-            getAllProjects(),
+            getAllProjects(currentUser),
             getAllTags(),
             getAllLearningPaths(),
             getAllProjectPathLinks(),

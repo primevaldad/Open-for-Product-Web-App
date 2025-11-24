@@ -44,6 +44,7 @@ export interface Project {
     ownerId?: UserId; // NOW OPTIONAL
     team: ProjectMember[];
     status: 'draft' | 'published' | 'archived';
+    project_type?: 'public' | 'private' | 'personal';
     tags: ProjectTag[];
     contributionNeeds: string[];
     fallbackSuggestion?: string;
@@ -97,6 +98,7 @@ export interface HydratedProject {
     owner?: User; // NOW OPTIONAL
     team: HydratedProjectMember[];
     status: 'draft' | 'published' | 'archived';
+    project_type?: 'public' | 'private' | 'personal';
     tags: ProjectTag[];
     contributionNeeds: string[];
     fallbackSuggestion?: string;

@@ -28,12 +28,12 @@ interface ProjectPageData {
 }
 
 async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
-    const [project, discussions, tasks, users, currentUser] = await Promise.all([
-        findProjectById(projectId),
+    const currentUser = await getAuthenticatedUser();
+    const [project, discussions, tasks, users] = await Promise.all([
+        findProjectById(projectId, currentUser),
         getDiscussionsForProject(projectId),
         findTasksByProjectId(projectId),
         getAllUsers(),
-        getAuthenticatedUser(),
     ]);
 
     if (!project) {

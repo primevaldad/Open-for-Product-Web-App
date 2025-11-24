@@ -26,6 +26,7 @@ export const ProjectBaseSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
   tagline: z.string().min(1, 'Tagline is required.'),
   description: z.string().min(1, 'Description is required.'),
+  project_type: z.enum(['public', 'private', 'personal']).default('public'),
   photoUrl: z.string().url("Please enter a valid URL.").or(z.literal('')).optional(),
   contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
   tags: z.array(ProjectTagSchema),

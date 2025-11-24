@@ -122,7 +122,7 @@ export async function updateUser(userId: string, userData: Partial<User>): Promi
 
 // --- Project Data Access ---
 
-export async function getAllProjects(): Promise<HydratedProject[]> {
+async function _fetchAllProjectsUnfiltered(): Promise<HydratedProject[]> {
     const [projectSnapshot, tagsSnapshot] = await Promise.all([
         adminDb.collection('projects').get(),
         adminDb.collection('tags').get()
@@ -148,30 +148,92 @@ export async function getAllProjects(): Promise<HydratedProject[]> {
     return Promise.all(projectsWithTags.map(hydrateProject));
 }
 
-export async function findProjectById(projectId: string): Promise<HydratedProject | undefined> {
-    const projectSnap = await adminDb.collection('projects').doc(projectId).get();
-    if (projectSnap.exists) {
-        const data = projectSnap.data();
-        const project = { id: projectSnap.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt), startDate: serializeTimestamp(data.startDate), endDate: serializeTimestamp(data.endDate) } as Project;
-        if (project.tags && Array.isArray(project.tags)) {
-            const tagsSnapshot = await adminDb.collection('tags').get();
-            const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
-            const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
-            project.tags = project.tags.map(projectTag => {
-                const tagId = (projectTag as ProjectTag).id;
-                if (!tagId) return null;
-                const fullTag = tagsMap.get(tagId);
-                if (!fullTag) return { ...projectTag, isCategory: projectTag.isCategory || false };
-                return { id: fullTag.id, display: fullTag.display, isCategory: fullTag.isCategory };
-            }).filter((tag): tag is ProjectTag => !!tag);
-        }
-        return hydrateProject(project);
+export async function getAllProjects(currentUser: User | null): Promise<HydratedProject[]> {
+    const allProjects = await _fetchAllProjectsUnfiltered();
+    if (!currentUser) {
+        return allProjects.filter(p => p.project_type === 'public' || !p.project_type);
     }
+
+    return allProjects.filter(project => {
+        const projectType = project.project_type || 'public'; // Default to public
+
+        switch (projectType) {
+            case 'public':
+                return true;
+            case 'private':
+                // Visible if user is a member of the team
+                return project.team.some(member => member.userId === currentUser.id);
+            case 'personal':
+                // Visible only to the owner
+                return project.owner?.id === currentUser.id;
+            default:
+                return true; // Default to visible for safety if type is unknown
+        }
+    });
+}
+
+export async function findProjectById(projectId: string, currentUser: User | null): Promise<HydratedProject | undefined> {
+    const projectSnap = await adminDb.collection('projects').doc(projectId).get();
+    if (!projectSnap.exists) {
+        return undefined;
+    }
+
+    const data = projectSnap.data() as Project;
+    const projectData: Project = {
+        id: projectSnap.id,
+        ...data,
+        createdAt: serializeTimestamp(data.createdAt),
+        updatedAt: serializeTimestamp(data.updatedAt),
+        startDate: serializeTimestamp(data.startDate),
+        endDate: serializeTimestamp(data.endDate)
+    };
+
+    if (projectData.tags && Array.isArray(projectData.tags)) {
+        const tagsSnapshot = await adminDb.collection('tags').get();
+        const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
+        const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
+        projectData.tags = projectData.tags.map(projectTag => {
+            const tagId = (projectTag as ProjectTag).id;
+            if (!tagId) return null;
+            const fullTag = tagsMap.get(tagId);
+            if (!fullTag) return { ...projectTag, isCategory: projectTag.isCategory || false };
+            return { id: fullTag.id, display: fullTag.display, isCategory: fullTag.isCategory };
+        }).filter((tag): tag is ProjectTag => !!tag);
+    }
+
+    const project = await hydrateProject(projectData);
+
+    // Enforce visibility rules
+    const projectType = project.project_type || 'public';
+
+    if (projectType === 'public') {
+        return project;
+    }
+
+    if (!currentUser) {
+        // Unauthenticated users can only see public projects
+        return undefined;
+    }
+
+    if (projectType === 'private') {
+        const isMember = project.team.some(member => member.userId === currentUser.id);
+        if (isMember) {
+            return project;
+        }
+    }
+
+    if (projectType === 'personal') {
+        if (project.owner?.id === currentUser.id) {
+            return project;
+        }
+    }
+
+    // If none of the conditions are met, the user is not authorized
     return undefined;
 }
 
 export async function getProjectsByUserId(userId: string): Promise<HydratedProject[]> {
-    const allProjects = await getAllProjects();
+    const allProjects = await _fetchAllProjectsUnfiltered();
     const userProjects = allProjects.filter(project => {
         if (project.owner?.id === userId) {
             return true;

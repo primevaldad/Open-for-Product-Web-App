@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MarkdownEditor } from '@/components/markdown-editor';
 import UserSelector from '@/components/users/user-selector';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
@@ -58,6 +59,7 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
         name: '',
         tagline: '',
         description: '',
+        project_type: 'public',
         photoUrl: '',
         contributionNeeds: '',
         tags: [],
@@ -81,6 +83,7 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
         name: initialData.name || '',
         tagline: initialData.tagline || '',
         description: initialData.description || '',
+        project_type: initialData.project_type || 'public',
         photoUrl: initialData.photoUrl || '',
         contributionNeeds: Array.isArray(initialData.contributionNeeds)
           ? initialData.contributionNeeds.join(', ')
@@ -155,6 +158,51 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
       <form className="space-y-8">
         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="tagline" render={({ field }) => (<FormItem><FormLabel>Tagline</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField
+          control={form.control}
+          name="project_type"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Project Type</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-1"
+                >
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="public" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Public
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="private" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Private
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="personal" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Personal
+                    </FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormDescription>
+                Choose the visibility of your project.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <FormField
           control={form.control}
