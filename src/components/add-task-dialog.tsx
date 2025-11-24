@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, type PropsWithChildren } from 'react';
@@ -17,17 +16,16 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { ServerActionResponse } from '@/lib/types';
 import { TaskSchema, type TaskStatus } from '@/lib/schemas';
 import { useToast } from '@/hooks/use-toast';
+import { MarkdownEditor } from '@/components/markdown-editor';
 
-// Create a new schema that extends the base TaskSchema with the projectId
 const AddTaskDialogSchema = TaskSchema.extend({
   projectId: z.string(),
 });
 
-// Infer the type from the new schema
 type AddTaskDialogFormValues = z.infer<typeof AddTaskDialogSchema>;
 
 interface AddTaskDialogProps extends PropsWithChildren {
@@ -48,6 +46,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
       title: '',
       description: '',
       status: status,
+      isMilestone: false,
     },
   });
 
@@ -69,7 +68,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
       <DialogTrigger asChild onClick={() => setIsOpen(true)}>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add New Task</DialogTitle>
           <DialogDescription>
@@ -98,9 +97,27 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Add more details about the task..." />
+                    <MarkdownEditor
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder="Add more details about the task..."
+                    />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="isMilestone"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Mark as milestone</FormLabel>
+                  </div>
                 </FormItem>
               )}
             />

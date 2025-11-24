@@ -10,7 +10,19 @@ interface MarkdownProps {
 export default function Markdown({ content }: MarkdownProps) {
   return (
     <div className="prose dark:prose-invert max-w-none">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+                a: ({node, ...props}) => {
+                    if (props.href && (props.href.startsWith('http') || props.href.startsWith('https'))) {
+                        return <a {...props} target="_blank" rel="noopener noreferrer" />
+                    }
+                    return <a {...props} />
+                }
+            }}
+        >
+            {content}
+        </ReactMarkdown>
     </div>
   );
 }

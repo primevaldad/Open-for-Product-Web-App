@@ -3,8 +3,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,12 +18,13 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { MarkdownEditor } from '@/components/markdown-editor';
 import UserSelector from '@/components/users/user-selector';
-import AdvancedTagSelector from '@/components/tags/advanced-tag-selector'; // Updated import
+import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 import ImageUpload from '@/components/ui/image-upload';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
-import type { User, Tag, Project, ProjectTag } from "@/lib/types";
+import type { User, Tag, Project, ProjectTag, ProjectMember } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { saveProjectDraft, publishProject, updateProject } from "@/app/actions/projects";
 
@@ -34,6 +36,14 @@ interface ProjectFormProps {
 
 type ProjectFormValues = CreateProjectFormValues | EditProjectFormValues;
 
+// Helper to convert Firestore Timestamp or string to Date
+const toDate = (value: Timestamp | string | undefined): Date | undefined => {
+    if (!value) return undefined;
+    if (value instanceof Timestamp) return value.toDate();
+    if (typeof value === 'string') return new Date(value);
+    return undefined;
+};
+
 export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -43,34 +53,47 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
 
   const isEditMode = !!initialData;
 
-  const uniqueTeam = initialData?.team
-    ? Array.from(new Map(initialData.team.map(item => [item.userId, item])).values())
-    : [];
-
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(isEditMode ? EditProjectSchema : CreateProjectSchema),
-    defaultValues: initialData ? {
-      id: initialData.id,
-      name: initialData.name || '',
-      tagline: initialData.tagline || '',
-      description: initialData.description || '',
-      photoUrl: initialData.photoUrl || '',
-      contributionNeeds: Array.isArray(initialData.contributionNeeds)
-        ? initialData.contributionNeeds.join(', ')
-        : '',
-      tags: initialData.tags ?? [],
-      team: uniqueTeam,
-      ...(initialData.governance && { governance: initialData.governance }),
-    } : {
-      name: '',
-      tagline: '',
-      description: '',
-      photoUrl: '',
-      contributionNeeds: '',
-      tags: [],
-      team: [],
+    defaultValues: {
+        name: '',
+        tagline: '',
+        description: '',
+        project_type: 'public',
+        photoUrl: '',
+        contributionNeeds: '',
+        tags: [],
+        team: [],
     },
   });
+
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      
+      const mappedTeam = (initialData.team || []).map(member => ({
+          ...member,
+          createdAt: toDate(member.createdAt),
+          updatedAt: toDate(member.updatedAt),
+      }));
+
+      const uniqueTeam = Array.from(new Map(mappedTeam.map(item => [item.userId, item])).values());
+
+      form.reset({
+        id: initialData.id,
+        name: initialData.name || '',
+        tagline: initialData.tagline || '',
+        description: initialData.description || '',
+        project_type: initialData.project_type || 'public',
+        photoUrl: initialData.photoUrl || '',
+        contributionNeeds: Array.isArray(initialData.contributionNeeds)
+          ? initialData.contributionNeeds.join(', ')
+          : '',
+        tags: initialData.tags ? initialData.tags.map(tag => ({ ...tag })) : [],
+        team: uniqueTeam,
+        governance: initialData.governance ? { ...initialData.governance } : undefined,
+      });
+    }
+  }, [initialData, isEditMode, form]);
 
   async function onSubmit(values: ProjectFormValues, action: 'save' | 'publish') {
     if (action === 'save') setIsSaving(true); else setIsPublishing(true);
@@ -135,6 +158,51 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
       <form className="space-y-8">
         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="tagline" render={({ field }) => (<FormItem><FormLabel>Tagline</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField
+          control={form.control}
+          name="project_type"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Project Type</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-1"
+                >
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="public" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Public
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="private" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Private
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="personal" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Personal
+                    </FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormDescription>
+                Choose the visibility of your project.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <FormField
           control={form.control}
@@ -167,9 +235,15 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea placeholder="Describe your project in detail..." {...field} rows={8} />
+                <MarkdownEditor
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Describe your project in detail..."
+                />
               </FormControl>
-              <FormDescription>A detailed description of your project.</FormDescription>
+              <FormDescription>
+                A detailed description of your project. Supports Markdown for formatting.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

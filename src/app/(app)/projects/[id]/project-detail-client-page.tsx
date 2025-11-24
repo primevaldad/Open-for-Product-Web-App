@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect, useMemo, useTransition } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
+import { toDate } from '@/lib/utils';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath, ServerActionResponse } from '@/lib/types';
+import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
 import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
 import { Button } from '@/components/ui/button';
+import Markdown from '@/components/ui/markdown';
 
 import {
     joinProject as joinProjectAction,
@@ -67,6 +69,40 @@ export default function ProjectDetailClientPage({
         setUsers(allUsers);
     }, [initialProject, initialTasks, initialDiscussions, initialLearningPaths, allUsers]);
 
+    const hydratedDiscussions: HydratedDiscussion[] = useMemo(() => {
+        const usersMap = new Map(users.map(u => [u.id, u]));
+
+        const nest = (list: Discussion[]): HydratedDiscussion[] => {
+            const discussionMap = new Map(list.map(d => [d.id, { ...d, user: usersMap.get(d.userId), replies: [] as HydratedDiscussion[] }]));
+            const nested: HydratedDiscussion[] = [];
+
+            for (const discussion of discussionMap.values()) {
+                if (discussion.parentId) {
+                    const parent = discussionMap.get(discussion.parentId);
+                    if (parent) {
+                        parent.replies.push(discussion);
+                    } else {
+                        nested.push(discussion);
+                    }
+                } else {
+                    nested.push(discussion);
+                }
+            }
+            
+            for (const discussion of discussionMap.values()) {
+                if (discussion.replies.length > 1) {
+                    discussion.replies.sort((a, b) => toDate(a.createdAt).getTime() - toDate(b.createdAt).getTime());
+                }
+            }
+
+            nested.sort((a, b) => toDate(a.createdAt).getTime() - toDate(b.createdAt).getTime());
+
+            return nested;
+        };
+
+        return nest(discussions);
+    }, [discussions, users]);
+
     const isMember = useMemo(() => 
         currentUser && project.team.some(member => member.userId === currentUser.id),
         [currentUser, project.team]
@@ -87,7 +123,7 @@ export default function ProjectDetailClientPage({
         if (result.success) {
             const description = result.message || successMessage;
             toast({ title: 'Success', description });
-            router.refresh();
+            router.refresh(); // Refresh to ensure server-side data is up-to-date
         } else {
             const description = result.error || failureMessage;
             toast({ title: 'Error', description, variant: 'destructive' });
@@ -137,11 +173,14 @@ export default function ProjectDetailClientPage({
             assignedToId: values.assigneeId,
             estimatedHours: values.estimatedHours,
             dueDate: values.dueDate?.toISOString(),
+            isMilestone: values.isMilestone,
         };
         const result = await addTaskAction(taskDataForAction);
-        handleServerResponse(result, 'Task added successfully!', 'Failed to add task.');
         if (result.success && result.data) {
             setTasks(prevTasks => [...prevTasks, result.data]);
+            handleServerResponse(result, 'Task added successfully!', 'Failed to add task.');
+        } else {
+            handleServerResponse(result, '', 'Failed to add task.');
         }
         return result;
     };
@@ -154,27 +193,34 @@ export default function ProjectDetailClientPage({
             dueDate: values.dueDate ? values.dueDate.toISOString() : editingTask.dueDate,
         };
         const result = await updateTaskAction(updatedTaskData);
-        handleServerResponse(result, 'Task updated successfully!', 'Failed to update task.');
         if (result.success && result.data) {
             setTasks(tasks.map(t => t.id === result.data.id ? result.data : t));
             handleCloseEditTaskDialog();
+            handleServerResponse(result, 'Task updated successfully!', 'Failed to update task.');
+        } else {
+            handleServerResponse(result, '', 'Failed to update task.');
         }
     };
 
     const handleDeleteTask = async (taskId: string) => {
         if (!window.confirm('Are you sure you want to delete this task?')) return;
         const result = await deleteTaskAction({ id: taskId, projectId: project.id });
-        handleServerResponse(result, 'Task deleted successfully!', 'Failed to delete task.');
         if (result.success) {
             setTasks(tasks.filter(t => t.id !== taskId));
+            handleServerResponse(result, 'Task deleted successfully!', 'Failed to delete task.');
+        } else {
+             handleServerResponse(result, '', 'Failed to delete task.');
         }
     };
 
-    const handleAddComment = async (content: string) => {
-        const result = await addDiscussionCommentAction({ projectId: project.id, content });
-        handleServerResponse(result, 'Comment added successfully!', 'Failed to add comment.');
+    const handleAddComment = async (content: string, parentId?: string) => {
+        const result = await addDiscussionCommentAction({ projectId: project.id, content, parentId });
+
         if (result.success && result.data) {
-            setDiscussions([result.data, ...discussions]);
+            setDiscussions(currentDiscussions => [...currentDiscussions, result.data]);
+            handleServerResponse(result, 'Comment added successfully!', 'Failed to add comment.');
+        } else {
+            handleServerResponse(result, '', 'Failed to add comment.');
         }
     };
 
@@ -194,11 +240,13 @@ export default function ProjectDetailClientPage({
                     </TabList>
 
                     <TabPanel>
-                        {!isGuest ? (
-                            <p>{project.description}</p>
-                        ) : (
-                            <p className="py-4">Please log in to view the project description.</p>
-                        )}
+                        <div className="prose dark:prose-invert max-w-none p-4">
+                            {!isGuest ? (
+                                <Markdown content={project.description} />
+                            ) : (
+                                <p>Please log in to view the project description.</p>
+                            )}
+                        </div>
                     </TabPanel>
                     <TabPanel>
                         {!isGuest ? (
@@ -210,17 +258,18 @@ export default function ProjectDetailClientPage({
                                         </AddTaskDialog>
                                     )}
                                 </div>
-                                <TaskBoard tasks={tasks} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} />
+                                <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} />
                             </>
                         ) : <p className="py-4">Login to view project tasks</p>}
                     </TabPanel>
                     <TabPanel>
                          {!isGuest ? (
                             <DiscussionForum 
-                                discussions={discussions}
+                                discussions={hydratedDiscussions}
                                 onAddComment={handleAddComment}
                                 isMember={isMember || false}
                                 currentUser={currentUser}
+                                users={users}
                             />
                          ) : <p className="py-4">Login to join the discussion</p>}
                     </TabPanel>

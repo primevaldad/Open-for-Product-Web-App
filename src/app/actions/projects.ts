@@ -1,7 +1,6 @@
-
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
 import type {
@@ -20,6 +19,7 @@ import type {
   CreateProjectPageDataResponse,
   EditProjectPageDataResponse,
   DraftsPageDataResponse,
+  ActivityType,
 } from '@/lib/types';
 import {
   adminDb,
@@ -52,7 +52,7 @@ const MAX_TAG_LENGTH = 35;
 // --- Helper Functions ---
 
 const normalizeTag = (tag: string): string => {
-  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '\'').slice(0, MAX_TAG_LENGTH);
+  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').slice(0, MAX_TAG_LENGTH);
 };
 
 async function manageTagsForProject(
@@ -87,7 +87,7 @@ async function manageTagsForProject(
         id,
         normalized: id,
         display: pTag.display,
-        type: pTag.type,
+        isCategory: false, // New global tags are always custom, not categories.
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: currentUser.id,
@@ -107,7 +107,7 @@ async function manageTagsForProject(
 }
 
 // --- Project Submission and Update Actions ---
-export async function handleProjectSubmission(values: CreateProjectFormValues, status: 'draft' | 'published') {
+async function handleProjectSubmission(values: CreateProjectFormValues, status: 'draft' | 'published') {
   const validatedFields = CreateProjectSchema.safeParse(values);
   if (!validatedFields.success) {
     return { success: false, error: validatedFields.error.issues[0]?.message || 'Invalid data.' };
@@ -117,27 +117,13 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
-  const allGlobalTags = await getAllGlobalTags();
-  const globalTagsMap = new Map(allGlobalTags.map((t) => [t.id, t]));
+  const projectTags: ProjectTag[] = tags.map(tag => ({
+    ...tag,
+    id: normalizeTag(tag.id),
+    display: tag.display || tag.id, // Ensure display is always present
+  }));
 
-  const hydratedTags: ProjectTag[] = tags.map(tag => {
-    const normalizedId = normalizeTag(tag.id);
-    const globalTag = globalTagsMap.get(normalizedId);
-    if (globalTag) {
-        return {
-            id: globalTag.id,
-            display: globalTag.display,
-            type: ['category', 'relational', 'custom'].includes(globalTag.type) ? globalTag.type : 'custom',
-        };
-    }
-    return {
-        id: normalizedId,
-        display: tag.display,
-        type: ['category', 'relational', 'custom'].includes(tag.type) ? tag.type : 'custom',
-    };
-  });
-
-  const finalTeam: ProjectMember[] = team.filter((m): m is ProjectMember => m.userId !== undefined && m.role !== undefined);
+  const finalTeam = team.filter(m => m.userId !== undefined && m.role !== undefined) as ProjectMember[];
   if (!finalTeam.some((m) => m.userId === currentUser.id)) {
     finalTeam.push({ userId: currentUser.id, role: 'lead' });
   }
@@ -149,7 +135,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
       const newProjectRef = adminDb.collection('projects').doc();
       newProjectId = newProjectRef.id;
 
-      await manageTagsForProject(transaction, hydratedTags, [], currentUser);
+      await manageTagsForProject(transaction, projectTags, [], currentUser);
 
       const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> = {
         name,
@@ -158,7 +144,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
         endDate: admin.firestore.Timestamp.fromDate(new Date()),
         tagline,
         description,
-        tags: hydratedTags.map((t) => ({ ...t, id: normalizeTag(t.id) })),
+        tags: projectTags,
         contributionNeeds: contributionNeeds.split(',').map((i) => i.trim()),
         progress: 0,
         team: finalTeam,
@@ -174,7 +160,7 @@ export async function handleProjectSubmission(values: CreateProjectFormValues, s
     if (!newProjectId) throw new Error('Failed to create project.');
 
     await logActivity({
-        type: 'project-created',
+        type: ActivityType.ProjectCreated,
         actorId: currentUser.id,
         projectId: newProjectId,
         context: { projectName: name }
@@ -237,25 +223,11 @@ export async function updateProject(values: EditProjectFormValues) {
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
   try {
-    const allGlobalTags = await getAllGlobalTags();
-    const globalTagsMap = new Map(allGlobalTags.map((t) => [t.id, t]));
-
-    const hydratedTags: ProjectTag[] = tags.map(tag => {
-        const normalizedId = normalizeTag(tag.id);
-        const globalTag = globalTagsMap.get(normalizedId);
-        if (globalTag) {
-            return {
-                id: globalTag.id,
-                display: globalTag.display,
-                type: ['category', 'relational', 'custom'].includes(globalTag.type) ? globalTag.type : 'custom',
-            };
-        }
-        return {
-            id: normalizedId,
-            display: tag.display,
-            type: ['category', 'relational', 'custom'].includes(tag.type) ? tag.type : 'custom',
-        };
-    });
+    const projectTags: ProjectTag[] = tags.map(tag => ({
+        ...tag,
+        id: normalizeTag(tag.id),
+        display: tag.display || tag.id, // Ensure display is always present
+    }));
 
     await adminDb.runTransaction(async (transaction) => {
       const projectRef = adminDb.collection('projects').doc(id);
@@ -266,7 +238,7 @@ export async function updateProject(values: EditProjectFormValues) {
       const isLead = project.team.some((m) => m.role === 'lead' && m.userId === currentUser.id);
       if (!isLead) throw new Error('Only a project lead can edit.');
 
-      await manageTagsForProject(transaction, hydratedTags, project.tags || [], currentUser);
+      await manageTagsForProject(transaction, projectTags, project.tags || [], currentUser);
 
       const finalGovernance: Project['governance'] = {
         contributorsShare: governance?.contributorsShare ?? 75,
@@ -278,13 +250,13 @@ export async function updateProject(values: EditProjectFormValues) {
         ...projectData,
         governance: finalGovernance,
         ...(projectData.team !== undefined && {
-          team: projectData.team.filter((m): m is ProjectMember => m.userId !== undefined && m.role !== undefined),
+          team: projectData.team.filter(m => m.userId !== undefined && m.role !== undefined) as ProjectMember[],
         }),
         contributionNeeds:
           typeof projectData.contributionNeeds === 'string'
             ? projectData.contributionNeeds.split(',').map((i) => i.trim())
             : project.contributionNeeds,
-        tags: hydratedTags.map((t) => ({ ...t, id: normalizeTag(t.id) })),
+        tags: projectTags,
         updatedAt: new Date().toISOString(),
       };
       transaction.update(projectRef, updatedData);
@@ -293,6 +265,7 @@ export async function updateProject(values: EditProjectFormValues) {
     revalidatePath('/', 'layout');
     revalidatePath(`/projects/${id}`);
     revalidatePath(`/projects/${id}/edit`);
+    revalidateTag('active-projects');
 
     return { success: true, data: {} };
   } catch (error) {
@@ -368,19 +341,22 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
     }
 }
 
-export async function addDiscussionComment(data: { projectId: string; content: string }): Promise<ServerActionResponse<Discussion>> {
-    const { projectId, content } = data;
+export async function addDiscussionComment(data: { projectId: string; content: string; parentId?: string; }): Promise<ServerActionResponse<Discussion>> {
+    const { projectId, content, parentId } = data;
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required' };
 
     try {
-        const newCommentId = await addDiscussionCommentToDb(projectId, { 
+        const newCommentData: Omit<Discussion, 'id'> = {
             projectId,
             userId: currentUser.id, 
             content,
+            parentId: parentId || null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-        });
+        };
+        
+        const newCommentId = await addDiscussionCommentToDb(projectId, newCommentData);
 
         const project = await findProjectById(projectId);
         const projectLeads = project?.team.filter(m => m.role === 'lead') || [];
@@ -398,11 +374,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
         
         const newComment: Discussion = {
             id: newCommentId,
-            projectId,
-            userId: currentUser.id,
-            content,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            ...newCommentData,
         };
 
         revalidatePath(`/projects/${projectId}`);
@@ -521,18 +493,18 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
       }) as EditProjectPageDataResponse;
     }
 
-    const tagsMap = new Map<string, GlobalTag>();
-    allTags.forEach((tag) => tagsMap.set(tag.id, tag));
+    // No longer needed due to `isCategory` standardization
+    // const tagsMap = new Map<string, GlobalTag>();
+    // allTags.forEach((tag) => tagsMap.set(tag.id, tag));
 
     if (project.tags && Array.isArray(project.tags)) {
       const hydratedTags: ProjectTag[] = project.tags
         .map((projectTag) => {
-          const fullTag = tagsMap.get(projectTag.id);
-          if (!fullTag) return null;
+          // const globalTag = tagsMap.get(projectTag.id);
           return {
-            id: fullTag.id,
-            display: fullTag.display,
-            type: fullTag.type,
+            id: projectTag.id,
+            display: projectTag.display, // globalTag?.display || projectTag.display, // Use global display name if available
+            isCategory: projectTag.isCategory || false, // Preserve the project-specific isCategory flag
           };
         })
         .filter((tag): tag is ProjectTag => !!tag);

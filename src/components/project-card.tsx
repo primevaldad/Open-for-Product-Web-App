@@ -141,12 +141,15 @@ export default function ProjectCard({
                           <p className='font-medium leading-relaxed'>{suggestionText}</p>
                       </div>
                       )}
-                      <div className='flex items-center gap-2 mb-2'>
-                          {displayTags.filter((tag: ProjectTag) => tag.type === 'category').slice(0, 2).map((tag: ProjectTag) => (
-                              <Badge key={tag.id} variant={'secondary'} className='text-xs font-medium'>
-                                  {tag.display}
-                              </Badge>
-                          ))}
+                      <div className='flex flex-wrap items-center gap-2 mb-2'>
+                          {displayTags
+                              .sort((a, b) => (b.isCategory ? 1 : 0) - (a.isCategory ? 1 : 0))
+                              .slice(0, 3)
+                              .map((tag: ProjectTag) => (
+                                  <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'} className='text-xs font-medium'>
+                                      {tag.display}
+                                  </Badge>
+                              ))}
                            {recommendedPaths.length > 0 && (
                               <TooltipProvider>
                                   <Tooltip>

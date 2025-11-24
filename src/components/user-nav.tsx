@@ -20,8 +20,9 @@ import { CreditCard, LogOut, Settings, User as UserIcon, Bell } from "lucide-rea
 import Link from "next/link"
 import type { User } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
-import { useAuth } from "@/components/auth-provider"; // Import useAuth hook
+import { useAuth } from "@/components/auth-provider"; 
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserNavProps {
   currentUser: User | null;
@@ -29,14 +30,28 @@ interface UserNavProps {
 
 export function UserNav({ currentUser }: UserNavProps) {
   const router = useRouter();
-  const { signOut } = useAuth(); // Get the new signOut function from context
+  const { currentUser: clientUser, loading, signOut } = useAuth(); 
 
   const handleLogout = async () => {
-    await signOut(); // Use the new signOut function
+    await signOut();
     router.push('/login');
   };
 
-  // If there is no user, or if the user is a guest, show Log In/Sign Up buttons
+  if (loading) {
+    return <Skeleton className="h-10 w-24" />;
+  }
+
+  // Escape hatch for when client is logged in but server is not.
+  if (clientUser && !currentUser) {
+    return (
+      <Button variant="outline" onClick={handleLogout}>
+        <LogOut className="mr-2 h-4 w-4" />
+        Log Out
+      </Button>
+    );
+  }
+
+  // Standard case for guests or logged-out users.
   if (!currentUser || currentUser.role === 'guest') {
     return (
         <div className="flex items-center gap-2">
@@ -58,7 +73,7 @@ export function UserNav({ currentUser }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border-2 border-primary/50">
-            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} data-ai-hint="woman smiling" />
+            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
             <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
           </Avatar>
           {hasUnread && <span className="absolute top-0 right-0 flex h-3 w-3">

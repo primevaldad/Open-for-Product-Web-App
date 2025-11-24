@@ -8,20 +8,17 @@ const MAX_TAG_LENGTH = 35;
 export const ProjectTagSchema = z.object({
   id: z.string().min(1, "Tag ID required").max(MAX_TAG_LENGTH),
   display: z.string().min(1, "Display text required").max(MAX_TAG_LENGTH),
-  type: z.enum(['category', 'relational', 'custom'], {
-    required_error: "Tag type is required.",
-    invalid_type_error: "Invalid tag type. Must be one of 'category', 'relational', or 'custom'.",
-  }),
-});
+  isCategory: z.boolean(),
+}).passthrough();
 
 export const ProjectMemberSchema = z.object({
 	userId: z.string(),
-	projectId: z.string(),
+	// projectId: z.string(), // projectId is not part of the form data for a member
 	role: z.enum(['lead', 'contributor', 'participant']),
 	pendingRole: z.enum(['lead', 'contributor', 'participant']).optional(),
 	createdAt: z.date().optional(),
 	updatedAt: z.date().optional()
-});
+}).passthrough();
 
 
 // Base properties common to both create and edit forms
@@ -29,6 +26,7 @@ export const ProjectBaseSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
   tagline: z.string().min(1, 'Tagline is required.'),
   description: z.string().min(1, 'Description is required.'),
+  project_type: z.enum(['public', 'private', 'personal']).default('public'),
   photoUrl: z.string().url("Please enter a valid URL.").or(z.literal('')).optional(),
   contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
   tags: z.array(ProjectTagSchema),
@@ -46,6 +44,7 @@ export const TaskSchema = z.object({
     assigneeId: z.string().optional(),
     estimatedHours: z.number().optional(),
     dueDate: z.date().optional(),
+    isMilestone: z.boolean().optional(),
 });
 
 
@@ -54,7 +53,7 @@ export const TaskSchema = z.object({
 // A single, shared refinement function to be used by both schemas.
 const sharedRefinement = (data: any, ctx: z.RefinementCtx) => {
   // 1. Validate category tag count
-  if (data.tags && data.tags.filter((t: any) => t.type === 'category').length > 3) {
+  if (data.tags && data.tags.filter((t: any) => t.isCategory).length > 3) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "A project can have a maximum of 3 category tags.",

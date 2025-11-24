@@ -1,0 +1,156 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id              String         @id @default(cuid())
+  name            String?
+  email           String?        @unique
+  emailVerified   DateTime?
+  image           String?
+  avatarUrl       String?
+  bio             String?
+  interests       String[]
+  steemUsername   String?
+
+  accounts        Account[]
+  sessions        Session[]
+  ownedProjects   Project[]      @relation("ProjectOwner")
+  ProjectMember   Project[]      @relation("ProjectMembers")
+  tasks           Task[]
+  discussions     Discussion[]
+  learningPaths   LearningPath[]
+  steemSync       SteemSync?     @relation(fields: [steemSyncId], references: [id])
+  steemSyncId     String?        @unique
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  name            String
+  description     String
+  repoUrl         String
+  tags            String[]
+
+  owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  ownerId         String
+  members         User[]        @relation("ProjectMembers")
+  tasks           Task[]
+  discussions     Discussion[]
+  projectPathLink ProjectPathLink[]
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      String
+  isMilestone Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  project     Project    @relation(fields: [projectId], references: [id])
+  projectId   String
+  assignee    User?      @relation(fields: [assigneeId], references: [id])
+  assigneeId  String?
+}
+
+model Discussion {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+
+  // self relation for threading
+  parentId  String?
+  parent    Discussion? @relation("DiscussionReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Discussion[] @relation("DiscussionReplies")
+}
+
+model LearningPath {
+  id           String            @id @default(cuid())
+  title        String
+  description  String
+
+  createdBy    User              @relation(fields: [createdById], references: [id])
+  createdById  String
+  projects     ProjectPathLink[]
+}
+
+model ProjectPathLink {
+  id              String        @id @default(cuid())
+  project         Project       @relation(fields: [projectId], references: [id])
+  projectId       String
+  learningPath    LearningPath  @relation(fields: [learningPathId], references: [id])
+  learningPathId  String
+  order           Int
+}
+
+model SteemSync {
+  id           String      @id @default(cuid())
+  lastSync     DateTime
+  user         User?
+  posts        SteemPost[]
+}
+
+model SteemPost {
+  id          Int       @id
+  author      String
+  permlink    String
+  title       String
+  body        String
+  created     DateTime
+  net_votes   Int
+  children    Int
+  curator_payout_value String
+  pending_payout_value String
+  url         String
+  
+  sync        SteemSync @relation(fields: [steemSyncId], references: [id])
+  steemSyncId String
+
+  @@unique([author, permlink])
+}

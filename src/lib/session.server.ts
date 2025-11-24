@@ -1,3 +1,4 @@
+// session.server.ts
 'use server';
 import { cookies } from 'next/headers';
 import { adminAuth } from './firebase.server';
@@ -7,44 +8,39 @@ import type { User } from './types';
 
 const SESSION_COOKIE_NAME = '__session';
 const SESSION_DURATION_MS = 60 * 60 * 24 * 5 * 1000; // 5 days
+const SESSION_DURATION_SECS = Math.floor(SESSION_DURATION_MS / 1000);
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // --- PUBLIC API ---
 
-/**
- * Creates a session cookie for the given ID token. If the user does not exist
- * in the database, a new guest user is created.
- * @param idToken The Firebase ID token of the user.
- * @returns The UID of the authenticated user.
- */
 export async function createSessionCookie(idToken: string): Promise<string> {
+  // force dynamic evaluation (keeps Next happy in server actions)
+  await Promise.resolve();
   try {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
-    // Ensure user exists in our database
-    try {
-      await findUserById(uid);
-    } catch (error) {
-      if (error instanceof UserNotFoundError) {
-        console.log(`First login for user ${uid}, creating guest user.`);
-        await createGuestUser(uid);
-      } else {
-        throw error; // Re-throw other errors
-      }
+    const user = await findUserById(uid);
+    if (!user) {
+      console.log(`First login for user ${uid}, creating user profile.`);
+      await createGuestUser(uid);
     }
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn: SESSION_DURATION_MS,
     });
 
-    (await cookies()).set(SESSION_COOKIE_NAME, sessionCookie, {
-      maxAge: SESSION_DURATION_MS,
+    // await the cookie store
+    const cookieStore = await cookies();
+
+    cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
+      maxAge: SESSION_DURATION_SECS, // seconds, not ms
       httpOnly: true,
       secure: IS_PROD,
       path: '/',
-      sameSite: 'lax',
+      // sameSite 'none' must be secure: true in browsers
+      sameSite: process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax',
     });
 
     return uid;
@@ -54,11 +50,10 @@ export async function createSessionCookie(idToken: string): Promise<string> {
   }
 }
 
-/**
- * Clears the session cookie, effectively logging the user out.
- */
 export async function clearSessionCookie(): Promise<void> {
-  (await cookies()).set(SESSION_COOKIE_NAME, '', {
+  await Promise.resolve();
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, '', {
     maxAge: 0,
     httpOnly: true,
     secure: IS_PROD,
@@ -66,32 +61,31 @@ export async function clearSessionCookie(): Promise<void> {
   });
 }
 
-/**
- * Retrieves the currently authenticated user from the session cookie.
- * @returns The authenticated user object, or null if no valid session exists.
- * @throws {NotAuthenticatedError} If the session is invalid or the user is not found.
- */
-export async function getAuthenticatedUser(): Promise<User> {
-  const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+export async function getAuthenticatedUser(): Promise<User | null> {
+  await Promise.resolve();
+  const cookieStore = await cookies();
+
+  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!sessionCookie) {
-    throw new NotAuthenticatedError();
+    return null;
   }
 
   try {
     const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
     const user = await findUserById(decodedToken.uid);
+    if (!user) {
+      console.warn(`User with ID ${decodedToken.uid} not found in database.`);
+      return null;
+    }
     return user;
   } catch (error) {
-    // Clear the invalid cookie
-    await clearSessionCookie();
-
-    if (error instanceof UserNotFoundError) {
-      console.warn('User from session not found in DB', (error as Error).message);
-      throw new NotAuthenticatedError('User not found');
+    console.error('Error verifying session cookie. Raw error:', error);
+    try {
+      console.error('Error verifying session cookie. JSON serialized:', JSON.stringify(error));
+    } catch (e) {
+      console.error('Could not serialize error to JSON.');
     }
-
-    console.error('Error verifying session cookie:', error);
-    throw new NotAuthenticatedError();
+    return null;
   }
 }

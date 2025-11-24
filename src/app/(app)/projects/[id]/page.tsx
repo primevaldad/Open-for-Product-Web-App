@@ -7,7 +7,7 @@ import {
     getAllUsers, 
     getRecommendedLearningPathsForProject 
 } from '@/lib/data.server';
-import { getAuthenticatedUser } from '@/app/actions/users';
+import { getAuthenticatedUser } from '@/lib/session.server';
 import ProjectDetailClientPage from './project-detail-client-page';
 import type { 
     User, 
@@ -28,12 +28,12 @@ interface ProjectPageData {
 }
 
 async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
-    const [project, discussions, tasks, users, {data: currentUser}] = await Promise.all([
-        findProjectById(projectId),
+    const currentUser = await getAuthenticatedUser();
+    const [project, discussions, tasks, users] = await Promise.all([
+        findProjectById(projectId, currentUser),
         getDiscussionsForProject(projectId),
         findTasksByProjectId(projectId),
         getAllUsers(),
-        getAuthenticatedUser(),
     ]);
 
     if (!project) {

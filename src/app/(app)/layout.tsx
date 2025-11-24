@@ -16,13 +16,7 @@ export default async function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let currentUser;
-  try {
-    currentUser = await getAuthenticatedUser();
-  } catch (error) {
-    // If user is not authenticated, we can treat them as a guest.
-    currentUser = null;
-  }
+  const currentUser = await getAuthenticatedUser();
 
   // Onboarding check for authenticated users
   if (currentUser && currentUser.role !== 'guest' && !currentUser.onboardingCompleted) {
@@ -64,14 +58,7 @@ export default async function AppLayout({
                             <Logo />
                             <h1 className="text-lg font-semibold">Open for Product</h1>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Button asChild variant="ghost">
-                                <Link href="/login">Login</Link>
-                            </Button>
-                            <Button asChild>
-                                <Link href="/signup">Sign Up</Link>
-                            </Button>
-                        </div>
+                        <UserNav currentUser={currentUser} />
                     </header>
                     <main className="flex-1 overflow-auto p-4 md:p-6">
                         {children}
