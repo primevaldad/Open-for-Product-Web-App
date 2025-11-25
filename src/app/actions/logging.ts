@@ -1,24 +1,21 @@
 'use server';
 
 import { adminDb, findProjectById } from '@/lib/data.server';
-import { FieldValue } from 'firebase-admin/firestore';
-import type { Activity, Project } from '@/lib/types';
+import type { Activity, Project, ActivityType } from '@/lib/types';
 import { getAuthenticatedUser } from '@/lib/session.server';
 
 interface LogActivityParams {
     projectId?: string;
     actorId: string;
-    type: 'project_created' | 'project_updated' | 'task_created' | 'task_updated' | 'task_deleted' | 'discussion_created' | 'user_joined' | 'user_left';
-    metadata?: Record<string, any>;
+    type: ActivityType;
+    context?: Record<string, any>;
 }
 
 async function fanOutActivity(activityData: Activity, project?: Project) {
     const userIdsToUpdate = new Set<string>();
     
-    // Always add the actor to the list of users to be notified
     userIdsToUpdate.add(activityData.actorId);
 
-    // If there is a project associated with the activity, add all project members
     if (project) {
         if (project.ownerId) {
             userIdsToUpdate.add(project.ownerId);
@@ -38,7 +35,7 @@ async function fanOutActivity(activityData: Activity, project?: Project) {
 }
 
 export async function logActivity(params: LogActivityParams) {
-    const { projectId, actorId, type, metadata } = params;
+    const { projectId, actorId, type, context } = params;
     const user = await getAuthenticatedUser();
     
     if (!user || user.id !== actorId) {
@@ -48,27 +45,25 @@ export async function logActivity(params: LogActivityParams) {
 
     try {
         const activityRef = adminDb.collection('activity').doc();
+        
         const activityData: Activity = {
             id: activityRef.id,
-            projectId: projectId ?? null,
-            actorId,
             type,
-            metadata: metadata ?? {},
-            timestamp: FieldValue.serverTimestamp(),
+            actorId,
+            timestamp: new Date().toISOString(), // Use serializable ISO string
+            projectId: projectId ?? undefined,
+            context: context ?? {},
         };
 
-        // First, write to the global activity log
         await activityRef.set(activityData);
 
-        // Then, fan out the activity to all relevant users' feeds
         let project: Project | undefined;
         if (projectId) {
             const hydratedProject = await findProjectById(projectId);
-            // The fan out needs the raw project, not the hydrated one
             if (hydratedProject) {
                 project = {
                     ...hydratedProject,
-                    ownerId: hydratedProject.owner?.id ?? null,
+                    ownerId: hydratedProject.owner?.id ?? undefined,
                     team: hydratedProject.team.map(m => ({ userId: m.user.id, role: m.role }))
                 };
             }
