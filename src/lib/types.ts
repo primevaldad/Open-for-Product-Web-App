@@ -225,17 +225,45 @@ export type HomePageDataResponse =
     | ({ success: true } & HomePageData)
     | { success: false; message: string };
 
-export type CreateProjectPageDataResponse =
-    | { success: true; allTags: Tag[]; allUsers: User[] }
-    | { success: false; error: string };
+// --- CreateProjectPageData ---
+export interface CreateProjectPageDataSuccess {
+    success: true;
+    allTags: Tag[];
+    allUsers: User[];
+}
+export interface CreateProjectPageDataError {
+    success: false;
+    error: string;
+}
+export type CreateProjectPageDataResponse = CreateProjectPageDataSuccess | CreateProjectPageDataError;
 
-export type EditProjectPageDataResponse =
-    | { success: true; project: HydratedProject; allTags: Tag[]; allUsers: User[] }
-    | { success: false; error: string };
+// --- EditProjectPageData ---
+export interface EditProjectPageDataSuccess {
+    success: true;
+    project: HydratedProject;
+    allTags: Tag[];
+    allUsers: User[];
+}
+export interface EditProjectPageDataError {
+    success: false;
+    error: string;
+}
+export type EditProjectPageDataResponse = EditProjectPageDataSuccess | EditProjectPageDataError;
 
-export type DraftsPageDataResponse =
-    | { success: true; drafts: HydratedProject[]; allLearningPaths: LearningPath[]; allProjectPathLinks: ProjectPathLink[] }
-    | { success: false; error: string };
+
+// --- DraftsPageData ---
+export interface DraftsPageDataSuccess {
+    success: true;
+    drafts: HydratedProject[];
+    allLearningPaths: LearningPath[];
+    allProjectPathLinks: ProjectPathLink[];
+}
+export interface DraftsPageDataError {
+    success: false;
+    error: string;
+}
+export type DraftsPageDataResponse = DraftsPageDataSuccess | DraftsPageDataError;
+
 
 // --- Server Action Prop Types ---
 
@@ -321,3 +349,4 @@ export interface SteemPost {
     curator_payout_value: string;
     pending_payout_value: string;
 }
+

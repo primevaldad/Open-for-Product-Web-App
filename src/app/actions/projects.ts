@@ -475,11 +475,11 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
     ]);
 
     if (!project) {
-      return deepSerialize({ success: false, error: "Project not found." }) as EditProjectPageDataResponse;
+      return { success: false, error: "Project not found." };
     }
     
     if (!currentUser) {
-        return deepSerialize({ success: false, error: "User not authenticated." }) as EditProjectPageDataResponse;
+        return { success: false, error: "User not authenticated." };
     }
 
     const isLead = project.team.some(
@@ -487,10 +487,10 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
     );
 
     if (!isLead) {
-      return deepSerialize({
+      return {
         success: false,
         error: "You do not have permission to edit this project.",
-      }) as EditProjectPageDataResponse;
+      };
     }
 
     // No longer needed due to `isCategory` standardization
@@ -511,19 +511,19 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
       project.tags = hydratedTags;
     }
 
-    return deepSerialize({
+    return {
       success: true,
       project,
       allTags,
       allUsers,
-    }) as EditProjectPageDataResponse;
+    };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    return deepSerialize({
+    return {
       success: false,
       error: `Failed to load project data: ${errorMessage}`,
-    }) as EditProjectPageDataResponse;
+    };
   }
 }
 
@@ -537,21 +537,21 @@ export async function getCreateProjectPageData(): Promise<CreateProjectPageDataR
     ]);
 
     if (!currentUser) {
-      return deepSerialize({ success: false, error: "User not authenticated." }) as CreateProjectPageDataResponse;
+      return { success: false, error: "User not authenticated." };
     }
 
-    return deepSerialize({
+    return {
       success: true,
       allTags,
       allUsers,
-    }) as CreateProjectPageDataResponse;
+    };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    return deepSerialize({
+    return {
       success: false,
       error: `Failed to load create page data: ${errorMessage}`,
-    }) as CreateProjectPageDataResponse;
+    };
   }
 }
 
@@ -560,7 +560,7 @@ export async function getDraftsPageData(): Promise<DraftsPageDataResponse> {
   try {
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) {
-      return deepSerialize({ success: false, error: "User not authenticated." }) as DraftsPageDataResponse;
+      return { success: false, error: "User not authenticated." };
     }
 
     const [projectsData, usersData, allLearningPaths, allProjectPathLinks] = await Promise.all([
@@ -579,18 +579,18 @@ export async function getDraftsPageData(): Promise<DraftsPageDataResponse> {
       )
       .map(p => toHydratedProject(p, usersMap));
 
-    return deepSerialize({
+    return {
       success: true,
       drafts: hydratedDrafts,
       allLearningPaths: allLearningPaths.paths,
       allProjectPathLinks,
-    }) as DraftsPageDataResponse;
+    };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
-    return deepSerialize({
+    return {
       success: false,
       error: `Failed to load drafts data: ${errorMessage}`,
-    }) as DraftsPageDataResponse;
+    };
   }
 }
