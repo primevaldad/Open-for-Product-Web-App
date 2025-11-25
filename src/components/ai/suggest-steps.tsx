@@ -16,7 +16,7 @@ type Suggestion = {
 };
 
 interface SuggestStepsProps {
-    currentUser: User;
+    currentUser: User | null; // Can be null
     suggestedProjects: HydratedProject[] | null;
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
@@ -24,6 +24,11 @@ interface SuggestStepsProps {
 }
 
 export function SuggestSteps({ currentUser, suggestedProjects, allProjectPathLinks, allLearningPaths, aiEnabled }: SuggestStepsProps) {
+  // If there's no user, we don't render anything. This must be done before any hooks are called.
+  if (!currentUser) {
+    return null;
+  }
+
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [suggestedProject, setSuggestedProject] = useState<HydratedProject | null>(null);
@@ -82,6 +87,11 @@ export function SuggestSteps({ currentUser, suggestedProjects, allProjectPathLin
     : suggestedProject;
 
   const suggestionText = suggestion?.suggestedNextSteps?.[0];
+
+  // Don't render if the user is a guest.
+  if (currentUser.role === 'guest') {
+      return null;
+  }
 
   return (
     <Card className="bg-gradient-to-br from-primary/20 to-background">

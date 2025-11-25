@@ -7,14 +7,12 @@ import {
     getAllTags, 
     getAllLearningPaths, 
     getAllProjectPathLinks, 
-    getAiSuggestedProjects 
+    getAiSuggestedProjects, 
+    getAllUsers
 } from '@/lib/data.server';
-import type { HydratedProject, User, HomePageDataResponse, Tag, ProjectTag } from '@/lib/types';
-import { NotAuthenticatedError } from '@/lib/errors';
+import type { HydratedProject, User, HomePageDataResponse } from '@/lib/types';
 import { toHydratedProject } from '@/lib/utils.server';
 
-// The user object can contain non-serializable data (like functions) when coming from the DB.
-// This helper removes them to avoid errors when passing data from Server Components to Client Components.
 function cleanUser(user: User): User {
     const { id, name, email, role, username, avatarUrl, bio, website, onboardingCompleted, aiFeaturesEnabled, createdAt, updatedAt } = user;
     return { id, name, email, role, username, avatarUrl, bio, website, onboardingCompleted, aiFeaturesEnabled, createdAt, updatedAt };
@@ -24,33 +22,20 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
     try {
         const currentUser = await getAuthenticatedUser();
 
-        // Fetch all necessary data in parallel
-        const [projectsData, tagsData, learningPathsResult, projectPathLinksData] = await Promise.all([
+        const [projectsData, tagsData, learningPathsResult, projectPathLinksData, usersData] = await Promise.all([
             getAllProjects(currentUser),
             getAllTags(),
             getAllLearningPaths(),
             getAllProjectPathLinks(),
+            getAllUsers(),
         ]);
 
-        const tagsMap = new Map<string, Tag>();
-        tagsData.forEach((tag) => tagsMap.set(tag.id, tag));
+        const usersMap = new Map(usersData.map((user) => [user.id, user]));
 
-        const allPublishedProjects: HydratedProject[] = projectsData.map(project => {
-            if (project.tags && Array.isArray(project.tags)) {
-                const hydratedTags: ProjectTag[] = project.tags.map(projectTag => {
-                    const globalTag = tagsMap.get(projectTag.id);
-                    return {
-                        id: projectTag.id,
-                        display: globalTag?.display || projectTag.display,
-                        isCategory: projectTag.isCategory || false,
-                    };
-                });
-                project.tags = hydratedTags;
-            }
-            return project as HydratedProject;
-        });
+        const allPublishedProjects: HydratedProject[] = projectsData
+            .filter(p => p.status === 'published')
+            .map(p => toHydratedProject(p, usersMap));
 
-        // Get AI-suggested projects if the user is logged in
         const suggestedProjects = currentUser
             ? await getAiSuggestedProjects(currentUser, allPublishedProjects)
             : null;
@@ -59,19 +44,20 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
 
         return {
             success: true,
-            allPublishedProjects: allPublishedProjects,
+            allPublishedProjects,
             currentUser: currentUser ? cleanUser(currentUser) : null,
             allTags: tagsData,
             allLearningPaths: learningPathsResult.paths,
             allProjectPathLinks: projectPathLinksData,
-            suggestedProjects: suggestedProjects,
-            aiEnabled: aiEnabled,
+            suggestedProjects,
+            aiEnabled,
         };
     } catch (error) {
         console.error('Error fetching home page data:', error);
+        const message = error instanceof Error ? error.message : 'An unknown error occurred';
         return {
             success: false,
-            message: error instanceof Error ? error.message : 'An unknown error occurred while fetching home page data.',
+            message: `Failed to fetch home page data: ${message}`,
         };
     }
 }

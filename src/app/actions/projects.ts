@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
+import { ActivityType } from '@/lib/types';
 import type {
   Project,
   ProjectTag,
@@ -19,7 +20,6 @@ import type {
   CreateProjectPageDataResponse,
   EditProjectPageDataResponse,
   DraftsPageDataResponse,
-  ActivityType,
 } from '@/lib/types';
 import {
   adminDb,

@@ -36,7 +36,6 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
   const isGuest = currentUser?.role === 'guest';
 
   const filteredProjects = allPublishedProjects.filter(p => {
-    // For guests, showMyProjects is always false, so this check is effectively skipped
     const myProjectsMatch = !showMyProjects || (currentUser && p.team.some(member => member.userId === currentUser.id));
     
     if (selectedTags.length === 0) {
@@ -65,7 +64,6 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
 
   return (
     <>
-      {!isGuest && currentUser && (
         <div className="mb-8">
             <SuggestSteps
                 currentUser={currentUser}
@@ -75,7 +73,6 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                 aiEnabled={aiEnabled}
             />
         </div>
-      )}
 
       <div className="mb-6 flex flex-col gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
         <h2 className="text-xl font-bold tracking-tight">Filter Projects</h2>
