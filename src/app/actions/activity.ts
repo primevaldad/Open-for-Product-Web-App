@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from "@/lib/session.server";
 import { getUserActivity, getAllProjects, getAllUsers } from "@/lib/data.server";
-import { toHydratedActivityItem } from "@/app/(app)/activity/utils";
+import { hydrateActivityItem } from "@/app/(app)/activity/utils";
 import { deepSerialize } from "@/lib/utils.server";
 
 export async function getActivityPageData() {
@@ -25,25 +25,16 @@ export async function getActivityPageData() {
         const usersMap = new Map(users.map(u => [u.id, u]));
 
         const hydratedActivity = activity
-            .map(item => toHydratedActivityItem(item, usersMap, projectsMap))
-            .filter(Boolean) // Remove nulls from items where actor wasn't found
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-        const userProjects = projects.filter(p => p.team.some(member => member.userId === currentUser.id));
+            .map(item => hydrateActivityItem(item, usersMap, projectsMap))
+            .filter(Boolean); // Filter out any null results from hydration
 
         return deepSerialize({
             success: true,
-            currentUser,
             activity: hydratedActivity,
-            projects: userProjects,
-            users,
         });
+
     } catch (error) {
-        const errorMessage =
-            error instanceof Error ? error.message : "An unknown error occurred.";
-        return deepSerialize({
-            success: false,
-            message: `Failed to load activity data: ${errorMessage}`,
-        });
+        const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+        return deepSerialize({ success: false, message });
     }
 }

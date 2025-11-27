@@ -15,26 +15,45 @@ export type HydratedActivityItem = {
 };
 
 /**
- * Transforms a raw Activity object into a HydratedActivityItem.
- *
- * @param item - The raw Activity object from Firestore.
- * @param usersMap - A Map of all users, keyed by userId.
- * @param projectsMap - A Map of all projects, keyed by projectId.
- * @returns A hydrated activity item ready for the UI.
+ * Safely converts a timestamp of unknown format (string, Firestore Timestamp, etc.) to a Date object.
+ * @param timestamp The timestamp to convert.
+ * @returns A valid Date object.
  */
-export const toHydratedActivityItem = (
+function toSafeDate(timestamp: any): Date {
+    // First, try a direct conversion. This works for ISO strings and some other formats.
+    const date = new Date(timestamp);
+    if (!isNaN(date.getTime())) {
+        return date;
+    }
+
+    // Next, check if it's a Firestore Timestamp object with a toDate method.
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+    }
+
+    // If all else fails, log the problematic timestamp and return the current date as a fallback.
+    // This prevents the UI from ever displaying "Invalid Date".
+    console.error('Could not parse timestamp. Raw value:', timestamp);
+    return new Date();
+}
+
+/**
+ * Converts a raw Activity object from the database into a HydratedActivityItem.
+ * This involves fetching the full User and Project objects from the provided maps.
+ *
+ * @param item The raw activity item from Firestore.
+ * @param usersMap A Map of User objects, keyed by user ID.
+ * @param projectsMap A Map of Project objects, keyed by project ID.
+ * @returns A hydrated activity item, or null if essential data is missing.
+ */
+export const hydrateActivityItem = (
     item: Activity,
     usersMap: Map<string, User>,
     projectsMap: Map<string, Project>
 ): HydratedActivityItem | null => {
 
     const actor = usersMap.get(item.actorId);
-
-    // If the actor can't be found, we can't render the item.
-    if (!actor) {
-        console.warn(`Could not find actor with ID: ${item.actorId} for activity ${item.id}`);
-        return null;
-    }
+    if (!actor) return null; // Don't show activity if the actor is not found
 
     const project = item.projectId ? projectsMap.get(item.projectId) : undefined;
 
@@ -42,7 +61,7 @@ export const toHydratedActivityItem = (
         id: item.id,
         actor,
         type: item.type,
-        timestamp: new Date(item.timestamp as string),
+        timestamp: toSafeDate(item.timestamp), // Use the robust conversion function
         project,
         context: item.context,
     };
