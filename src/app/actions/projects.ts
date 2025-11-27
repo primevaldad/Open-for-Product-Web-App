@@ -555,29 +555,29 @@ export async function getCreateProjectPageData(): Promise<CreateProjectPageDataR
   }
 }
 
-export async function getDraftsPageData(): Promise<DraftsPageDataResponse> {
+export async function getDraftsPageData(currentUser: User | null): Promise<DraftsPageDataResponse> {
   "use server";
   try {
-    const currentUser = await getAuthenticatedUser();
     if (!currentUser) {
       return { success: false, error: "User not authenticated." };
     }
 
-    const [projectsData, usersData, allLearningPaths, allProjectPathLinks] = await Promise.all([
-      getAllProjects(),
-      getAllUsers(),
+    const draftsQuery = adminDb.collection('projects')
+        .where('status', '==', 'draft')
+        .where('ownerId', '==', currentUser.id);
+
+    const [draftsSnapshot, usersData, allLearningPaths, allProjectPathLinks] = await Promise.all([
+      draftsQuery.get(),
+      getAllUsers(), // Still needed for hydration
       getAllLearningPaths(),
       getAllProjectPathLinks(),
     ]);
 
+    const projectsData = draftsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+
     const usersMap = new Map(usersData.map((user) => [user.id, user]));
 
-    const hydratedDrafts = projectsData
-      .filter(p =>
-        p.status === 'draft' &&
-        p.team.some(member => member.userId === currentUser.id && member.role === 'lead')
-      )
-      .map(p => toHydratedProject(p, usersMap));
+    const hydratedDrafts = projectsData.map(p => toHydratedProject(p, usersMap));
 
     return {
       success: true,

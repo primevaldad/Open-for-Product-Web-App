@@ -6,7 +6,9 @@ import { deepSerialize } from '@/lib/utils.server';
 
 export default async function DraftsPage() {
     const user = await getAuthenticatedUser();
-    const draftsResponse = await getDraftsPageData();
+    
+    // Pass the user to getDraftsPageData to ensure we only get the current user's drafts.
+    const draftsResponse = await getDraftsPageData(user);
 
     if (!draftsResponse.success) {
         return <div>Error: {draftsResponse.error}</div>;

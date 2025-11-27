@@ -1,91 +1,96 @@
-// session.server.ts
-'use server';
+import 'server-only';
 import { cookies } from 'next/headers';
-import { adminAuth } from './firebase.server';
-import { findUserById, createGuestUser } from './data.server';
-import { UserNotFoundError, NotAuthenticatedError } from './errors';
-import type { User } from './types';
-
-const SESSION_COOKIE_NAME = '__session';
-const SESSION_DURATION_MS = 60 * 60 * 24 * 5 * 1000; // 5 days
-const SESSION_DURATION_SECS = Math.floor(SESSION_DURATION_MS / 1000);
+import * as admin from 'firebase-admin';
+import { getApp, getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { SESSION_COOKIE_NAME } from '@/lib/constants';
+import type { User } from '@/lib/types';
+import { findUserById } from '@/lib/data.server';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
+const SERVICE_ACCOUNT = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
 
-// --- PUBLIC API ---
+// Ensure the Firebase app is initialized only once.
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(SERVICE_ACCOUNT),
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  });
+} else {
+  getApp();
+}
+
+export const adminAuth = getAuth();
+
+const SESSION_DURATION_MS = 60 * 60 * 24 * 5 * 1000; // 5 days in milliseconds
+const SESSION_DURATION_SECS = SESSION_DURATION_MS / 1000;
 
 export async function createSessionCookie(idToken: string): Promise<string> {
-  // force dynamic evaluation (keeps Next happy in server actions)
-  await Promise.resolve();
-  try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const uid = decodedToken.uid;
+    try {
+        const decodedIdToken = await adminAuth.verifyIdToken(idToken, true);
+        const uid = decodedIdToken.uid;
 
-    const user = await findUserById(uid);
-    if (!user) {
-      console.log(`First login for user ${uid}, creating user profile.`);
-      await createGuestUser(uid);
+        const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+            expiresIn: SESSION_DURATION_MS,
+        });
+
+        const cookieStore = cookies();
+
+        (await cookieStore).set(SESSION_COOKIE_NAME, sessionCookie, {
+            maxAge: SESSION_DURATION_SECS, // seconds, not ms
+            httpOnly: true,
+            secure: IS_PROD,
+            path: '/',
+            sameSite: process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax',
+        });
+
+        return uid;
+    } catch (error) {
+        console.error('Failed to create session:', error);
+        throw new Error(`Failed to create session: ${error}`);
     }
-
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_DURATION_MS,
-    });
-
-    // await the cookie store
-    const cookieStore = await cookies();
-
-    cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
-      maxAge: SESSION_DURATION_SECS, // seconds, not ms
-      httpOnly: true,
-      secure: IS_PROD,
-      path: '/',
-      // sameSite 'none' must be secure: true in browsers
-      sameSite: process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax',
-    });
-
-    return uid;
-  } catch (error) {
-    console.error('Failed to create session:', error);
-    throw new Error(`Failed to create session: ${error}`);
-  }
 }
 
 export async function clearSessionCookie(): Promise<void> {
-  await Promise.resolve();
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, '', {
-    maxAge: 0,
-    httpOnly: true,
-    secure: IS_PROD,
-    path: '/',
-  });
+    const cookieStore = cookies();
+    (await cookieStore).set(SESSION_COOKIE_NAME, '', {
+        maxAge: 0,
+        httpOnly: true,
+        secure: IS_PROD,
+        path: '/',
+    });
 }
 
 export async function getAuthenticatedUser(): Promise<User | null> {
-  await Promise.resolve();
-  const cookieStore = await cookies();
+    const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
 
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!sessionCookie) {
-    return null;
-  }
-
-  try {
-    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const user = await findUserById(decodedToken.uid);
-    if (!user) {
-      console.warn(`User with ID ${decodedToken.uid} not found in database.`);
-      return null;
+    if (!sessionCookie) {
+        return null;
     }
-    return user;
-  } catch (error) {
-    console.error('Error verifying session cookie. Raw error:', error);
+
     try {
-      console.error('Error verifying session cookie. JSON serialized:', JSON.stringify(error));
-    } catch (e) {
-      console.error('Could not serialize error to JSON.');
+        const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+        const user = await findUserById(decodedToken.uid);
+        if (!user) {
+            console.warn(`User with ID ${decodedToken.uid} not found in database.`);
+            return null;
+        }
+        return user;
+    } catch (error: any) {
+        // When a session cookie is invalid or expired, verifySessionCookie throws.
+        // We log this for debugging, but it's not a critical server error.
+        // We return null to indicate no authenticated user.
+        if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
+            // This is likely a Firebase Auth error, log it with details.
+            console.error(
+                `Error verifying session cookie. Code: ${error.code}, Message: ${error.message}`
+            );
+        } else {
+            // The error is not in the expected format, log it as-is to prevent crashing.
+            console.error('An unexpected error occurred during session verification:', error);
+        }
+        
+        // In any error case, the user is not authenticated.
+        return null;
     }
-    return null;
-  }
 }
