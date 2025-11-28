@@ -195,10 +195,15 @@ export interface Module {
 
 // Represents the progress of a user on a specific learning path.
 export interface UserLearningProgress {
+    id: string;
     userId: UserId;
     pathId: string;
     completedModules: string[];
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+    startedAt: Timestamp | string;
     lastAccessed: Timestamp | string;
+    completedAt?: Timestamp | string;
 }
 
 // --- Server Action Responses ---
@@ -349,4 +354,3 @@ export interface SteemPost {
     curator_payout_value: string;
     pending_payout_value: string;
 }
-

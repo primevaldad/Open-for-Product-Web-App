@@ -1,63 +1,49 @@
-
 'use server';
 
-import { getAuthenticatedUser } from '@/lib/session.server';
-import { 
-    getAllProjects, 
-    getAllTags, 
+import {                  
+    getAllPublishedProjects,
+    getAllTags as getAllGlobalTags, 
     getAllLearningPaths, 
-    getAllProjectPathLinks, 
-    getAiSuggestedProjects, 
-    getAllUsers
-} from '@/lib/data.server';
-import type { HydratedProject, User, HomePageDataResponse } from '@/lib/types';
-import { toHydratedProject } from '@/lib/utils.server';
-
-function cleanUser(user: User): User {
-    const { id, name, email, role, username, avatarUrl, bio, website, onboardingCompleted, aiFeaturesEnabled, createdAt, updatedAt } = user;
-    return { id, name, email, role, username, avatarUrl, bio, website, onboardingCompleted, aiFeaturesEnabled, createdAt, updatedAt };
-}
+    getAllProjectPathLinks
+} from "@/lib/data.server";
+import { getAuthenticatedUser } from "@/lib/session.server";
+import { HomePageData, HomePageDataResponse } from "@/lib/types";
+import { getSuggestedProjects } from "@/lib/suggestions";
+import { deepSerialize } from "@/lib/utils.server";
+import { cookies } from 'next/headers';
 
 export async function getHomePageData(): Promise<HomePageDataResponse> {
     try {
         const currentUser = await getAuthenticatedUser();
-
-        const [projectsData, tagsData, learningPathsResult, projectPathLinksData, usersData] = await Promise.all([
-            getAllProjects(currentUser),
-            getAllTags(),
+        const [projects, allTags, allLearningPaths, allProjectPathLinks] = await Promise.all([
+            getAllPublishedProjects(),
+            getAllGlobalTags(),
             getAllLearningPaths(),
             getAllProjectPathLinks(),
-            getAllUsers(),
         ]);
 
-        const usersMap = new Map(usersData.map((user) => [user.id, user]));
+        const aiEnabled = !!process.env.OPENAI_API_KEY;
 
-        const allPublishedProjects: HydratedProject[] = projectsData
-            .filter(p => p.status === 'published')
-            .map(p => toHydratedProject(p, usersMap));
+        const suggestedProjects = await getSuggestedProjects(projects, currentUser, allTags.tags, cookies().get('suggested-projects-dismissed')?.value === 'true');
 
-        const suggestedProjects = currentUser
-            ? await getAiSuggestedProjects(currentUser, allPublishedProjects)
-            : null;
-        
-        const aiEnabled = process.env.AI_SUGGESTIONS_ENABLED === 'true' && currentUser?.aiFeaturesEnabled === true;
-
-        return {
-            success: true,
-            allPublishedProjects,
-            currentUser: currentUser ? cleanUser(currentUser) : null,
-            allTags: tagsData,
-            allLearningPaths: learningPathsResult.paths,
-            allProjectPathLinks: projectPathLinksData,
+        const pageData: HomePageData = {
+            allPublishedProjects: projects,
+            currentUser,
+            allTags: allTags.tags,
+            allLearningPaths: allLearningPaths.paths,
+            allProjectPathLinks,
             suggestedProjects,
             aiEnabled,
         };
-    } catch (error) {
-        console.error('Error fetching home page data:', error);
-        const message = error instanceof Error ? error.message : 'An unknown error occurred';
-        return {
-            success: false,
-            message: `Failed to fetch home page data: ${message}`,
-        };
+
+        return deepSerialize({ success: true, ...pageData });
+
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+        console.error('Error fetching home page data:', e);
+        return deepSerialize({ 
+            success: false, 
+            error: errorMessage
+        });
     }
 }

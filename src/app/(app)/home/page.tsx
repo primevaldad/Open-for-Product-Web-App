@@ -11,7 +11,7 @@ export default async function HomePage() {
   if (!response.success) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-red-500">Error: {response.message}</p>
+        <p className="text-red-500">Error: {response.error}</p>
       </div>
     );
   }

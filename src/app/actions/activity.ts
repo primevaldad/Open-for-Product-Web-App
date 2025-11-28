@@ -17,7 +17,7 @@ export async function getActivityPageData() {
 
         const [activity, projects, users] = await Promise.all([
             getUserActivity(currentUser.id),
-            getAllProjects(),
+            getAllProjects(currentUser),
             getAllUsers(),
         ]);
 

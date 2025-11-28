@@ -172,6 +172,28 @@ export async function getAllProjects(currentUser: User | null): Promise<Hydrated
     });
 }
 
+export async function getAllPublishedProjects(): Promise<HydratedProject[]> {
+    const projectsSnap = await adminDb.collection('projects').where('status', '==', 'published').get();
+    if (projectsSnap.empty) {
+        return [];
+    }
+
+        const projects = projectsSnap.docs.map(doc => {
+        const projectData = doc.data() as Project;
+
+        return {
+            ...projectData,
+            id: doc.id,
+            createdAt: serializeTimestamp(projectData.createdAt),
+            updatedAt: serializeTimestamp(projectData.updatedAt),
+        } as HydratedProject;
+    });
+
+
+    return projects;
+}
+
+
 export async function findProjectById(projectId: string, currentUser: User | null): Promise<HydratedProject | undefined> {
     const projectSnap = await adminDb.collection('projects').doc(projectId).get();
     if (!projectSnap.exists) {
@@ -426,8 +448,20 @@ export async function findUserLearningProgress(userId: string, pathId: string): 
     if (progressSnap.empty) return undefined;
     const doc = progressSnap.docs[0];
     const data = doc.data();
-    return { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt), startedAt: serializeTimestamp(data.startedAt), completedAt: data.completedAt ? serializeTimestamp(data.completedAt) : undefined } as UserLearningProgress;
+    return {
+        id: doc.id,
+        userId: data.userId,
+        pathId: data.pathId,
+        completedModules: data.completedModules,
+        createdAt: serializeTimestamp(data.createdAt),
+        updatedAt: serializeTimestamp(data.updatedAt),
+        startedAt: serializeTimestamp(data.startedAt),
+        lastAccessed: serializeTimestamp(data.updatedAt), // Map updatedAt to lastAccessed
+        completedAt: data.completedAt ? serializeTimestamp(data.completedAt) : undefined
+    } as UserLearningProgress;
 }
+
+
 
 export async function updateUserLearningProgress({ userId, pathId, moduleId, completed }: { userId: string; pathId: string; moduleId: string; completed: boolean; }): Promise<UserLearningProgress> {
     const progressQuery = adminDb.collection('userLearningProgress').where('userId', '==', userId).where('pathId', '==', pathId).limit(1);
@@ -446,7 +480,14 @@ export async function updateUserLearningProgress({ userId, pathId, moduleId, com
     
     const updatedDoc = await progressRef.get();
     const data = updatedDoc.data()!;
-    return { id: updatedDoc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt), startedAt: serializeTimestamp(data.startedAt), completedAt: data.completedAt ? serializeTimestamp(data.completedAt) : undefined } as UserLearningProgress;
+    return { 
+        id: updatedDoc.id, 
+        ...data, 
+        createdAt: serializeTimestamp(data.createdAt), 
+        updatedAt: serializeTimestamp(data.updatedAt), 
+        startedAt: serializeTimestamp(data.startedAt), 
+        completedAt: data.completedAt ? serializeTimestamp(data.completedAt) : undefined 
+    } as UserLearningProgress;
 }
 
 

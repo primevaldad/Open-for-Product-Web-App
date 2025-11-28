@@ -2,13 +2,13 @@
 import Link from 'next/link';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { AuthProvider } from '@/components/auth-provider';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset, SidebarToggle } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
 import { ThemeProvider } from '@/components/theme-provider';
-import { PageHeader } from '@/components/page-header';
+import { DynamicHeader } from '@/components/dynamic-header';
 import { Logo } from '@/components/logo';
 
 export default async function AppLayout({
@@ -39,8 +39,8 @@ export default async function AppLayout({
                     <SidebarInset className="flex flex-col flex-1 rounded-tl-xl">
                         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 bg-background/80 px-4 shadow-sm backdrop-blur-sm md:px-6">
                         <div className="flex items-center gap-2">
-                            <SidebarTrigger className="md:hidden" />
-                            <PageHeader title="Dashboard" />
+                            <SidebarToggle />
+                            <DynamicHeader />
                         </div>
                         <UserNav currentUser={currentUser} />
                         </header>
