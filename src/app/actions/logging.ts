@@ -59,7 +59,7 @@ export async function logActivity(params: LogActivityParams) {
 
         let project: Project | undefined;
         if (projectId) {
-            const hydratedProject = await findProjectById(projectId);
+            const hydratedProject = await findProjectById(projectId, user);
             if (hydratedProject) {
                 project = {
                     ...hydratedProject,
