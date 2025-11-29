@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
-import { toDate } from '@/lib/utils';
+import { toDate } from '@/lib/utils.server';
 
 import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';

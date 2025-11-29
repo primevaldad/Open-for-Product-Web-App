@@ -73,7 +73,7 @@ export function UserNav({ currentUser }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border-2 border-primary/50">
-            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+            {currentUser.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />}
             <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
           </Avatar>
           {hasUnread && <span className="absolute top-0 right-0 flex h-3 w-3">

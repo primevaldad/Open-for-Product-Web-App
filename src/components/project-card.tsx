@@ -31,8 +31,12 @@ export default function ProjectCard({
     suggestionText 
 }: ProjectCardProps) {
   const router = useRouter();
-  const isLead = currentUser ? project.team.some(member => member.userId === currentUser.id && member.role === 'lead') : false;
-  const displayTags = project.tags || [];
+  
+  // Robustly handle missing or malformed project data
+  const team = Array.isArray(project.team) ? project.team : [];
+  const tags = Array.isArray(project.tags) ? project.tags : [];
+
+  const isLead = currentUser ? team.some(member => member.userId === currentUser.id && member.role === 'lead') : false;
   const recommendedPathLinks = allProjectPathLinks.filter(link => link.projectId === project.id);
   const recommendedPaths = recommendedPathLinks
       .map(link => allLearningPaths.find(p => p.pathId === link.learningPathId))
@@ -40,7 +44,7 @@ export default function ProjectCard({
 
   const fallbackImage = getDeterministicPlaceholder(project.id);
 
-  const sortedTeamMembers = [...project.team].sort((a, b) => {
+  const sortedTeamMembers = [...team].sort((a, b) => {
     const roleOrder = { lead: 0, contributor: 1, participant: 2 };
     return (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
   });
@@ -142,7 +146,7 @@ export default function ProjectCard({
                       </div>
                       )}
                       <div className='flex flex-wrap items-center gap-2 mb-2'>
-                          {displayTags
+                          {tags
                               .sort((a, b) => (b.isCategory ? 1 : 0) - (a.isCategory ? 1 : 0))
                               .slice(0, 3)
                               .map((tag: ProjectTag) => (
@@ -195,9 +199,9 @@ export default function ProjectCard({
                 <div className='mb-4'>
                   <div className='mb-1 flex justify-between text-xs text-muted-foreground'>
                     <span>Progress</span>
-                    <span>{project.progress}%</span>
+                    <span>{project.progress || 0}%</span>
                   </div>
-                  <Progress value={project.progress} className='h-2' />
+                  <Progress value={project.progress || 0} className='h-2' />
                 </div>
                 <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
                     <Sparkles className='h-4 w-4 text-amber-500' />
