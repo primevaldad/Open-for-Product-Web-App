@@ -18,18 +18,6 @@ export const serializeTimestamp = (timestamp: any): string => {
     return '';
 };
 
-/**
- * Converts a timestamp string from a serialized object back into a Date object.
- */
-export const toDate = (timestamp: string | Timestamp | undefined | null): Date => {
-  if (timestamp instanceof Timestamp) {
-    return timestamp.toDate();
-  } else if (typeof timestamp === 'string') {
-    return new Date(timestamp);
-  } else {
-    return new Date();
-  }
-};
 
 /**
  * Hydrates a project by embedding full user objects into the team array.

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { Discussion, User } from '@/lib/types';
-import { toDate, timeAgo } from '@/lib/utils.server';
+import { toDate, timeAgo } from '@/lib/utils';
 import { MarkdownEditor } from '@/components/markdown-editor';
 import Markdown from '@/components/ui/markdown';
 
