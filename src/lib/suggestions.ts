@@ -1,15 +1,15 @@
+
 import { HydratedProject, Tag, User } from "./types";
 
 /**
  * Filters and returns a list of suggested projects for a user.
  *
- * This is a simplified implementation for demonstration purposes. A real-world version
- * would likely involve a more complex recommendation algorithm or an AI-powered service
- * that could leverage the `allTags` parameter for broader topic matching.
+ * This implementation suggests projects based on a user's interests.
+ * It matches interests against project tags, names, and descriptions to provide more relevant results.
  *
  * @param allProjects - A list of all available hydrated projects.
  * @param currentUser - The user for whom to generate suggestions. Can be null.
- * @param allTags - A list of all global tags (not used in this simple version, but available for future use).
+ * @param allTags - A list of all global tags (not used in this version, but available for future use).
  * @param dismissed - A boolean indicating if the user has dismissed suggestions.
  * @returns An array of suggested projects, or null if suggestions are dismissed or not applicable.
  */
@@ -38,10 +38,24 @@ export async function getSuggestedProjects(
     // If the user has defined interests, try to find projects that match them.
     const userInterests = currentUser.interests;
     if (userInterests && userInterests.length > 0) {
-        const interestSet = new Set(userInterests);
-        const suggested = nonMemberProjects.filter(project =>
-            project.tags.some(tag => interestSet.has(tag.display))
-        );
+        const interestSet = new Set(userInterests.map(i => i.toLowerCase()));
+        
+        const suggested = nonMemberProjects.filter(project => {
+            // Match 1: Project tags
+            if (Array.isArray(project.tags) && project.tags.some(tag => interestSet.has(tag.display.toLowerCase()))) {
+                return true;
+            }
+
+            // Match 2: Project name or description
+            const searchText = `${project.name} ${project.description || ''}`.toLowerCase();
+            for (const interest of interestSet) {
+                if (searchText.includes(interest)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
 
         if (suggested.length > 0) {
             // Return up to 3 interest-based suggestions, sorted by most recent.
