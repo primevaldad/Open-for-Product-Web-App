@@ -1,7 +1,6 @@
 
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Timestamp } from 'firebase-admin/firestore';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -57,16 +56,25 @@ export const getDeterministicPlaceholder = (id: string | null | undefined) => {
 };
 
 /**
- * Converts a timestamp string from a serialized object back into a Date object.
+ * Converts a timestamp-like object or a string into a Date object.
+ * This function uses duck-typing to check for a .toDate() method, which makes it
+ * compatible with both Firebase/Firestore Timestamps and other similar structures,
+ * without needing a direct import that could cause build issues.
  */
-export const toDate = (timestamp: string | Timestamp | undefined | null): Date => {
-  if (timestamp instanceof Timestamp) {
+export const toDate = (timestamp: any): Date => {
+  // Duck-typing for Firestore Timestamp or similar objects
+  if (timestamp && typeof timestamp.toDate === 'function') {
     return timestamp.toDate();
-  } else if (typeof timestamp === 'string') {
-    return new Date(timestamp);
-  } else {
-    return new Date();
   }
+  // Handle ISO strings or other date string formats
+  if (typeof timestamp === 'string') {
+    const date = new Date(timestamp);
+    if (!isNaN(date.getTime())) {
+        return date;
+    }
+  }
+  // Fallback for null, undefined, or invalid formats
+  return new Date();
 };
 
 /**
