@@ -1,8 +1,12 @@
 import { redirect } from 'next/navigation';
 import { getActivityPageData } from "@/app/actions/activity";
-import { ActivityClientPage } from "./activity-client-page";
-import { User, HydratedProject } from '@/lib/types'; // Import necessary types
+import ActivityClientPage from "./activity-client-page";
+import { User, HydratedProject } from '@/lib/types';
 import { HydratedActivityItem } from './utils';
+
+// Re-export the type for other components to use
+export type { HydratedActivityItem as HydratedActivity };
+
 /**
  * ActivityPage is the primary server component for the activity feed.
  * It fetches all necessary data on the server and then passes it down to the
@@ -14,11 +18,13 @@ export default async function ActivityPage() {
 
     // Handle unauthenticated users or other errors by redirecting.
     if (!response.success) {
-        if ((response as { success: false; message: string }).message === "User not authenticated.") {
+        // Correctly access the error from the 'error' property.
+        const errorResponse = response as { success: false; error: string };
+        if (errorResponse.error === "User not authenticated.") {
             redirect('/login');
         }
         // Render a simple error message for other failures.
-        return <div className="flex h-screen items-center justify-center"><p>{(response as { success: false; message: string }).message}</p></div>;
+        return <div className="flex h-screen items-center justify-center"><p>{errorResponse.error}</p></div>;
     }
 
     // If data fetching is successful, pass the hydrated activity data to the client component.

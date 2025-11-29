@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/session.server";
 import { getUserActivity, getAllProjects, getAllUsers } from "@/lib/data.server";
 import { hydrateActivityItem } from "@/app/(app)/activity/utils";
 import { deepSerialize } from "@/lib/utils.server";
+import { HydratedActivityItem } from "@/app/(app)/activity/utils";
 
 export async function getActivityPageData() {
     try {
@@ -11,7 +12,7 @@ export async function getActivityPageData() {
         if (!currentUser) {
             return deepSerialize({ 
                 success: false, 
-                message: "User not authenticated."
+                error: "User not authenticated."
             });
         }
 
@@ -26,15 +27,18 @@ export async function getActivityPageData() {
 
         const hydratedActivity = activity
             .map(item => hydrateActivityItem(item, usersMap, projectsMap))
-            .filter(Boolean); // Filter out any null results from hydration
+            .filter((item): item is HydratedActivityItem => !!item); // Ensure we have a correctly typed array
 
         return deepSerialize({
             success: true,
+            currentUser,
             activity: hydratedActivity,
+            projects,
+            users,
         });
 
     } catch (error) {
         const message = error instanceof Error ? error.message : "An unexpected error occurred.";
-        return deepSerialize({ success: false, message });
+        return deepSerialize({ success: false, error: message });
     }
 }
