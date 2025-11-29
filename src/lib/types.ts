@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -228,7 +229,7 @@ export interface HomePageData {
 
 export type HomePageDataResponse =
     | ({ success: true } & HomePageData)
-    | { success: false; message: string };
+    | { success: false; error: string };
 
 // --- CreateProjectPageData ---
 export interface CreateProjectPageDataSuccess {
