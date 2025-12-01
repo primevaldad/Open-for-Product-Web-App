@@ -28,7 +28,7 @@ interface HomeClientPageProps {
 }
 
 const ProjectList = ({ projects, currentUser, allProjectPathLinks, allLearningPaths }: { projects: HydratedProject[], currentUser: User | null, allProjectPathLinks: ProjectPathLink[], allLearningPaths: LearningPath[] }) => {
-    if (projects.length === 0) {
+    if (!projects || projects.length === 0) {
         return null;
     }
 
@@ -48,7 +48,7 @@ const ProjectList = ({ projects, currentUser, allProjectPathLinks, allLearningPa
 };
 
 export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths, suggestedProjects, aiEnabled }: HomeClientPageProps) {
-    const [showMyProjects, setShowMyProjects] = useState(true);
+    const [showMyProjects, setShowMyProjects] = useState(false);
     const [showSuggested, setShowSuggested] = useState(true);
     const [selectedTags, setSelectedTags] = useState<ProjectTag[]>([]);
     const [matchAllTags, setMatchAllTags] = useState(false);
@@ -56,61 +56,47 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
 
     const isGuest = currentUser?.role === 'guest';
 
-    // 1. Clean and de-duplicate all incoming project data at the source.
     const cleanAndUniqueProjects = useMemo(() => {
         const validProjects = (allPublishedProjects || []).filter(p => p && p.id);
         return Array.from(new Map(validProjects.map(p => [p.id, p])).values());
     }, [allPublishedProjects]);
 
     const cleanSuggestedProjects = useMemo(() => {
-        const validSuggested = (suggestedProjects || []).filter(p => p && p.id);
-        const suggestedIds = new Set(validSuggested.map(p => p.id));
-        // Ensure suggested projects are also present in the main list for consistency
-        return cleanAndUniqueProjects.filter(p => suggestedIds.has(p.id));
-    }, [suggestedProjects, cleanAndUniqueProjects]);
+        return (suggestedProjects || []).filter(p => p && typeof p === 'object' && p.id);
+    }, [suggestedProjects]);
 
-    // 2. Create the list for "Explore Projects" - all projects excluding suggestions if they are shown separately.
-    const exploreProjects = useMemo(() => {
-        const suggestedIds = new Set(cleanSuggestedProjects.map(p => p.id));
-        if (showSuggested) {
-            return cleanAndUniqueProjects.filter(p => !suggestedIds.has(p.id));
-        }
-        return cleanAndUniqueProjects;
-    }, [cleanAndUniqueProjects, cleanSuggestedProjects, showSuggested]);
-
-
-    // 3. Apply filters to the "Explore Projects" list.
     const filteredExploreProjects = useMemo(() => {
-        const sourceProjects = exploreProjects;
+        const suggestedIds = new Set(cleanSuggestedProjects.map(p => p.id));
+
+        const sourceProjects = showSuggested
+            ? cleanAndUniqueProjects.filter(p => !suggestedIds.has(p.id))
+            : cleanAndUniqueProjects;
 
         const filtered = sourceProjects.filter(p => {
-            const team = p.team || [];
-            const myProjectsMatch = !showMyProjects || (currentUser && team.some(member => member.userId === currentUser.id));
-
-            if (selectedTags.length === 0) {
-                return myProjectsMatch;
+            if (showMyProjects && currentUser && !(p.team || []).some(member => member.userId === currentUser.id)) {
+                return false;
             }
 
-            const projectTagIds = (p.tags || []).map(t => t.id);
-            const tagMatch = matchAllTags
-                ? selectedTags.every(filterTag => projectTagIds.includes(filterTag.id))
-                : selectedTags.some(filterTag => projectTagIds.includes(filterTag.id));
-
-            return myProjectsMatch && tagMatch;
+            if (selectedTags.length > 0) {
+                const projectTagIds = new Set((p.tags || []).map(t => t.id));
+                const hasTag = matchAllTags
+                    ? selectedTags.every(st => projectTagIds.has(st.id))
+                    : selectedTags.some(st => projectTagIds.has(st.id));
+                if (!hasTag) return false;
+            }
+            
+            return true;
         });
 
         return [...filtered].sort((a, b) => {
-            switch (sortBy) {
-                case 'popular':
-                    return (b.team?.length || 0) - (a.team?.length || 0);
-                case 'latest':
-                default:
-                    return new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime();
-            }
+            if (sortBy === 'popular') return (b.team?.length || 0) - (a.team?.length || 0);
+            return new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime();
         });
-    }, [exploreProjects, showMyProjects, currentUser, selectedTags, matchAllTags, sortBy]);
 
-    const noResults = cleanSuggestedProjects.length === 0 && filteredExploreProjects.length === 0;
+    }, [cleanAndUniqueProjects, cleanSuggestedProjects, showSuggested, showMyProjects, currentUser, selectedTags, matchAllTags, sortBy]);
+
+    const shouldShowSuggestions = showSuggested && cleanSuggestedProjects.length > 0;
+    const noResults = !shouldShowSuggestions && filteredExploreProjects.length === 0;
 
     return (
         <>
@@ -119,12 +105,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex-grow">
                         <Label htmlFor="tag-selector" className="mb-2 block">Filter by Tags</Label>
-                        <TagSelector
-                            id="tag-selector"
-                            value={selectedTags}
-                            onChange={setSelectedTags}
-                            availableTags={allTags}
-                        />
+                        <TagSelector id="tag-selector" value={selectedTags} onChange={setSelectedTags} availableTags={allTags} />
                     </div>
                     <div className="grid grid-cols-2 gap-4 pt-2 md:grid-cols-1 md:pt-8 md:gap-6">
                         <div className="flex items-center space-x-2">
@@ -142,9 +123,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                             </div>
                         )}
                         <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="Sort by" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="latest">Latest</SelectItem>
                                 <SelectItem value="popular">Most Popular</SelectItem>
@@ -161,28 +140,18 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                 </div>
             ) : (
                 <div className="flex flex-col gap-8">
-                    {showSuggested && cleanSuggestedProjects.length > 0 && (
+                    {shouldShowSuggestions && (
                         <div>
                             <h2 className="text-2xl font-bold tracking-tight mb-4">Suggested for you</h2>
-                            <ProjectList 
-                                projects={cleanSuggestedProjects}
-                                currentUser={isGuest ? null : currentUser}
-                                allProjectPathLinks={allProjectPathLinks}
-                                allLearningPaths={allLearningPaths}
-                            />
+                            <ProjectList projects={cleanSuggestedProjects} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
                         </div>
                     )}
                     
                     {filteredExploreProjects.length > 0 && (
                         <div>
-                            <Separator />
-                            <h2 className="text-2xl font-bold tracking-tight mt-8 mb-4">Explore Projects</h2>
-                            <ProjectList 
-                                projects={filteredExploreProjects}
-                                currentUser={isGuest ? null : currentUser}
-                                allProjectPathLinks={allProjectPathLinks}
-                                allLearningPaths={allLearningPaths}
-                            />
+                           {shouldShowSuggestions && <Separator className="my-8"/>}
+                            <h2 className="text-2xl font-bold tracking-tight mb-4">Explore Projects</h2>
+                            <ProjectList projects={filteredExploreProjects} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
                         </div>
                     )}
                 </div>

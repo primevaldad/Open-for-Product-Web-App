@@ -1,32 +1,25 @@
+
 import { getHomePageData } from '@/app/actions/home';
+import { HomePageDataResponse } from '@/lib/types';
 import HomeClientPage from './home-client-page';
-import { Skeleton } from '@/components/ui/skeleton';
 
 // Revalidate the data every 5 minutes
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const response = await getHomePageData();
+  // Explicitly type the response for clarity and safety.
+  const data: HomePageDataResponse = await getHomePageData();
 
-  if (!response.success) {
+  // First, handle the error case by checking the `success` flag.
+  if (!data.success) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-red-500">Error: {response.error}</p>
+        <p className="text-red-500">Error: {data.error}</p>
       </div>
     );
   }
 
-  const { success, ...pageData } = response;
-
-  return (
-    <HomeClientPage
-      allPublishedProjects={pageData.allPublishedProjects}
-      currentUser={pageData.currentUser}
-      allTags={pageData.allTags}
-      allLearningPaths={pageData.allLearningPaths}
-      allProjectPathLinks={pageData.allProjectPathLinks}
-      suggestedProjects={pageData.suggestedProjects}
-      aiEnabled={pageData.aiEnabled}
-    />
-  );
+  // If successful, the data is safe to use.
+  // We can pass the full data object to the client component.
+  return <HomeClientPage {...data} />;
 }

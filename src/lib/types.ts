@@ -227,9 +227,13 @@ export interface HomePageData {
     aiEnabled: boolean;
 }
 
-export type HomePageDataResponse =
-    | ({ success: true } & HomePageData)
-    | { success: false; error: string };
+// --- HomePageData (Refactored for consistency) ---
+export type HomePageDataSuccess = { success: true } & HomePageData;
+export interface HomePageDataError {
+    success: false;
+    error: string;
+}
+export type HomePageDataResponse = HomePageDataSuccess | HomePageDataError;
 
 // --- CreateProjectPageData ---
 export interface CreateProjectPageDataSuccess {
