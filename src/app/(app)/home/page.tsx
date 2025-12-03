@@ -7,11 +7,11 @@ import HomeClientPage from './home-client-page';
 export const revalidate = 300;
 
 export default async function HomePage() {
-  // Explicitly type the response for clarity and safety.
   const data: HomePageDataResponse = await getHomePageData();
 
-  // First, handle the error case by checking the `success` flag.
-  if (!data.success) {
+  // Use the 'in' operator for a robust type guard. This allows TypeScript
+  // to correctly narrow the discriminated union and identify the error case.
+  if ('error' in data) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-red-500">Error: {data.error}</p>
@@ -20,6 +20,5 @@ export default async function HomePage() {
   }
 
   // If successful, the data is safe to use.
-  // We can pass the full data object to the client component.
   return <HomeClientPage {...data} />;
 }

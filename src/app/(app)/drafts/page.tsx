@@ -7,10 +7,12 @@ import { deepSerialize } from '@/lib/utils.server';
 export default async function DraftsPage() {
     const user = await getAuthenticatedUser();
     
-    // Pass the user to getDraftsPageData to ensure we only get the current user's drafts.
     const draftsResponse = await getDraftsPageData(user);
 
-    if (!draftsResponse.success) {
+    // The 'in' operator provides a clear type guard for TypeScript, allowing it
+    // to correctly narrow the discriminated union. If 'error' is a property
+    // of the response, we are dealing with the error case.
+    if ('error' in draftsResponse) {
         return <div>Error: {draftsResponse.error}</div>;
     }
 

@@ -173,24 +173,44 @@ export async function getAllProjects(currentUser: User | null): Promise<Hydrated
 }
 
 export async function getAllPublishedProjects(): Promise<HydratedProject[]> {
-    const projectsSnap = await adminDb.collection('projects').where('status', '==', 'published').get();
+    const [projectsSnap, tagsSnapshot] = await Promise.all([
+        adminDb.collection('projects').where('status', '==', 'published').get(),
+        adminDb.collection('tags').get()
+    ]);
+
     if (projectsSnap.empty) {
         return [];
     }
 
-        const projects = projectsSnap.docs.map(doc => {
-        const projectData = doc.data() as Project;
+    const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
+    const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
 
-        return {
-            ...projectData,
+    const projectsWithTags = projectsSnap.docs.map(doc => {
+        const data = doc.data();
+        const project = {
             id: doc.id,
-            createdAt: serializeTimestamp(projectData.createdAt),
-            updatedAt: serializeTimestamp(projectData.updatedAt),
-        } as HydratedProject;
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+            startDate: serializeTimestamp(data.startDate),
+            endDate: serializeTimestamp(data.endDate)
+        } as Project;
+
+        if (project.tags && Array.isArray(project.tags)) {
+            project.tags = project.tags.map(projectTag => {
+                const tagId = (projectTag as ProjectTag).id;
+                if (!tagId) return null;
+                const fullTag = tagsMap.get(tagId);
+                if (!fullTag) return { ...projectTag, isCategory: projectTag.isCategory || false };
+                return { id: fullTag.id, display: fullTag.display, isCategory: fullTag.isCategory };
+            }).filter((tag): tag is ProjectTag => !!tag);
+        } else {
+            project.tags = [];
+        }
+        return project;
     });
 
-
-    return projects;
+    return Promise.all(projectsWithTags.map(project => hydrateProject(project)));
 }
 
 
