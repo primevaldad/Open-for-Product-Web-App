@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -32,27 +31,18 @@ export function UserNav({ currentUser }: UserNavProps) {
   const router = useRouter();
   const { currentUser: clientUser, loading, signOut } = useAuth(); 
 
+  const user = clientUser || currentUser;
+
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
   };
 
   if (loading) {
-    return <Skeleton className="h-10 w-24" />;
+    return <Skeleton className="h-10 w-10 rounded-full" />;
   }
 
-  // Escape hatch for when client is logged in but server is not.
-  if (clientUser && !currentUser) {
-    return (
-      <Button variant="outline" onClick={handleLogout}>
-        <LogOut className="mr-2 h-4 w-4" />
-        Log Out
-      </Button>
-    );
-  }
-
-  // Standard case for guests or logged-out users.
-  if (!currentUser || currentUser.role === 'guest') {
+  if (!user || user.role === 'guest') {
     return (
         <div className="flex items-center gap-2">
             <Link href="/login">
@@ -65,7 +55,7 @@ export function UserNav({ currentUser }: UserNavProps) {
     );
   }
 
-  const unreadNotifications = currentUser.notifications?.filter(n => !n.read) ?? [];
+  const unreadNotifications = user.notifications?.filter(n => !n.read) ?? [];
   const hasUnread = unreadNotifications.length > 0;
 
   return (
@@ -73,8 +63,8 @@ export function UserNav({ currentUser }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border-2 border-primary/50">
-            {currentUser.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />}
-            <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+            {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
+            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
           </Avatar>
           {hasUnread && <span className="absolute top-0 right-0 flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -86,13 +76,13 @@ export function UserNav({ currentUser }: UserNavProps) {
       <DropdownMenuContent className="w-64" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{currentUser.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
+            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <Link href={`/profile/${currentUser.id}`}>
+          <Link href={`/profile/${user.id}`}>
             <DropdownMenuItem>
               <UserIcon className="mr-2 h-4 w-4" />
               <span>Profile</span>
@@ -112,8 +102,8 @@ export function UserNav({ currentUser }: UserNavProps) {
         <DropdownMenuSeparator />
          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
          <DropdownMenuGroup>
-            {currentUser.notifications && currentUser.notifications.length > 0 ? (
-              currentUser.notifications.slice(0, 3).map(n => (
+            {user.notifications && user.notifications.length > 0 ? (
+              user.notifications.slice(0, 3).map(n => (
                 <Link href={n.link} key={n.id}>
                   <DropdownMenuItem className="flex items-start gap-2">
                     <div className="w-4 pt-1">
