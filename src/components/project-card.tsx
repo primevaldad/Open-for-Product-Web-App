@@ -1,5 +1,4 @@
 'use client';
-import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle, Sparkles, User as UserIcon } from 'lucide-react';
@@ -32,7 +31,6 @@ export default function ProjectCard({
 }: ProjectCardProps) {
   const router = useRouter();
   
-  // Robustly handle missing or malformed project data
   const team = Array.isArray(project.team) ? project.team : [];
   const tags = Array.isArray(project.tags) ? project.tags : [];
 
@@ -49,7 +47,6 @@ export default function ProjectCard({
     return (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
   });
 
-  // De-duplicate members to prevent key errors from inconsistent data
   const uniqueMemberIds = new Set();
   const uniqueMembers = sortedTeamMembers.filter(member => {
     if (!member.userId || uniqueMemberIds.has(member.userId)) {
@@ -62,14 +59,9 @@ export default function ProjectCard({
   const visibleMembers = uniqueMembers.slice(0, MAX_VISIBLE_MEMBERS);
   const hiddenMembersCount = uniqueMembers.length - MAX_VISIBLE_MEMBERS;
 
-  const stopPropagation = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
-
-  const handleProfileNavigation = (e: React.MouseEvent | React.KeyboardEvent, user: User) => {
-    stopPropagation(e as React.MouseEvent);
-    router.push(`/profile/${user.username || user.id}`);
+  const handleNavigation = (e: React.MouseEvent, path: string) => {
+      e.stopPropagation();
+      router.push(path);
   };
   
   const renderMemberAvatar = (member: HydratedProjectMember) => {
@@ -79,34 +71,20 @@ export default function ProjectCard({
         return (
             <TooltipProvider>
                 <Tooltip>
-                    <TooltipTrigger>
-                        <Avatar className='border-2 border-background h-8 w-8'>
-                            <AvatarFallback>
-                                <UserIcon className='h-4 w-4 text-muted-foreground' />
-                            </AvatarFallback>
-                        </Avatar>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Unknown User</p>
-                    </TooltipContent>
+                    <TooltipTrigger><Avatar className='border-2 border-background h-8 w-8'><AvatarFallback><UserIcon className='h-4 w-4 text-muted-foreground' /></AvatarFallback></Avatar></TooltipTrigger>
+                    <TooltipContent><p>Unknown User</p></TooltipContent>
                 </Tooltip>
             </TooltipProvider>
         );
     }
+
+    const profileUrl = `/profile/${user.username || user.id}`;
     
     return (
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger 
-            asChild
-            onClick={(e) => handleProfileNavigation(e, user)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                handleProfileNavigation(e, user);
-              }
-            }}
-          >
-            <span role="button" tabIndex={0} aria-label={`View profile of ${user.name}`} className="cursor-pointer">
+          <TooltipTrigger asChild>
+            <span onClick={(e) => handleNavigation(e, profileUrl)} className="cursor-pointer" role="link" tabIndex={0}>
               <Avatar className={cn('border-2 h-8 w-8', role === 'lead' ? 'border-yellow-500' : 'border-background')}>
                 {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
                 <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
@@ -122,120 +100,121 @@ export default function ProjectCard({
   };
 
   return (
-      <Card className={cn(
-          'group relative flex flex-col overflow-hidden transition-all hover:shadow-lg',
-          isLead && 'border-2 border-yellow-500',
-          className
-      )}>
-          <Link href={`/projects/${project.id}`} className='contents'>
-              <CardHeader className='relative p-0 h-48'>
-                  <Image
-                      src={project.photoUrl || fallbackImage}
-                      alt={project.name}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      data-ai-hint="project image"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-transform duration-300 group-hover:scale-105" />
-                  
-                  <div className="relative flex flex-col justify-end h-full p-4 text-slate-100">
-                      {suggestionText && (
-                      <div className='mb-3 flex items-start gap-2.5 text-sm bg-primary/90 text-primary-foreground p-3 rounded-md shadow-sm'>
-                          <Sparkles className='h-4 w-4 mt-0.5 shrink-0' />
-                          <p className='font-medium leading-relaxed'>{suggestionText}</p>
-                      </div>
-                      )}
-                      <div className='flex flex-wrap items-center gap-2 mb-2'>
-                          {tags
-                              .sort((a, b) => (b.isCategory ? 1 : 0) - (a.isCategory ? 1 : 0))
-                              .slice(0, 3)
-                              .map((tag: ProjectTag) => (
-                                  <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'} className='text-xs font-medium'>
-                                      {tag.display}
-                                  </Badge>
-                              ))}
-                           {recommendedPaths.length > 0 && (
-                              <TooltipProvider>
-                                  <Tooltip>
-                                      <TooltipTrigger onClick={stopPropagation}>
-                                          <Badge variant={'secondary'} className='flex items-center gap-1.5'>
-                                              <BookOpen className='h-3 w-3' />
-                                              {recommendedPaths.length}
-                                          </Badge>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                          <p className='font-semibold mb-1'>Recommended Learning:</p>
-                                          <ul className='list-disc list-inside'>
-                                              {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
-                                          </ul>
-                                      </TooltipContent>
-                                  </Tooltip>
-                              </TooltipProvider>
-                          )}
-                      </div>
-                      <div className="bg-black/40 p-3 rounded-lg backdrop-blur-sm border border-white/10">
-                        <CardTitle className='text-lg font-bold leading-tight transition-colors'>
-                            {project.name}
-                        </CardTitle>
-                        <CardDescription className='line-clamp-2 text-sm text-slate-300 pt-1'>
-                            {project.tagline}
-                        </CardDescription>
-                      </div>
+      <Card 
+        className={cn(
+            'group relative flex flex-col overflow-hidden transition-all hover:shadow-lg cursor-pointer',
+            isLead && 'border-2 border-yellow-500',
+            className
+        )}
+        onClick={() => router.push(`/projects/${project.id}`)}
+      >
+          <CardHeader className='relative p-0 h-48'>
+              <Image
+                  src={project.photoUrl || fallbackImage}
+                  alt={project.name}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  data-ai-hint="project image"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-transform duration-300 group-hover:scale-105" />
+              
+              <div className="relative flex flex-col justify-end h-full p-4 text-slate-100">
+                  {suggestionText && (
+                  <div className='mb-3 flex items-start gap-2.5 text-sm bg-primary/90 text-primary-foreground p-3 rounded-md shadow-sm'>
+                      <Sparkles className='h-4 w-4 mt-0.5 shrink-0' />
+                      <p className='font-medium leading-relaxed'>{suggestionText}</p>
                   </div>
-                  {project.isExpertReviewed && (
-                      <div className="absolute top-2 right-2">
+                  )}
+                  <div className='flex flex-wrap items-center gap-2 mb-2'>
+                      {tags
+                          .sort((a, b) => (b.isCategory ? 1 : 0) - (a.isCategory ? 1 : 0))
+                          .slice(0, 3)
+                          .map((tag: ProjectTag) => (
+                              <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'} className='text-xs font-medium'>
+                                  {tag.display}
+                              </Badge>
+                          ))}
+                       {recommendedPaths.length > 0 && (
                           <TooltipProvider>
                               <Tooltip>
-                                  <TooltipTrigger onClick={stopPropagation}>
-                                      <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
+                                  <TooltipTrigger onClick={(e) => e.stopPropagation()}>
+                                      <Badge variant={'secondary'} className='flex items-center gap-1.5'>
+                                          <BookOpen className='h-3 w-3' />
+                                          {recommendedPaths.length}
+                                      </Badge>
                                   </TooltipTrigger>
-                                  <TooltipContent><p>Expert Reviewed</p></TooltipContent>
+                                  <TooltipContent>
+                                      <p className='font-semibold mb-1'>Recommended Learning:</p>
+                                      <ul className='list-disc list-inside'>
+                                          {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
+                                      </ul>
+                                  </TooltipContent>
                               </Tooltip>
                           </TooltipProvider>
-                      </div>
-                  )}
-              </CardHeader>
-              <CardContent className='flex-grow p-4'>
-                <div className='mb-4'>
-                  <div className='mb-1 flex justify-between text-xs text-muted-foreground'>
-                    <span>Progress</span>
-                    <span>{project.progress || 0}%</span>
+                      )}
                   </div>
-                  <Progress value={project.progress || 0} className='h-2' />
+                  <div className="bg-black/40 p-3 rounded-lg backdrop-blur-sm border border-white/10">
+                    <CardTitle className='text-lg font-bold leading-tight transition-colors'>
+                        {project.name}
+                    </CardTitle>
+                    <CardDescription className='line-clamp-2 text-sm text-slate-300 pt-1'>
+                        {project.tagline}
+                    </CardDescription>
+                  </div>
+              </div>
+              {project.isExpertReviewed && (
+                  <div className="absolute top-2 right-2">
+                      <TooltipProvider>
+                          <Tooltip>
+                              <TooltipTrigger onClick={(e) => e.stopPropagation()}>
+                                  <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
+                              </TooltipTrigger>
+                              <TooltipContent><p>Expert Reviewed</p></TooltipContent>
+                          </Tooltip>
+                      </TooltipProvider>
+                  </div>
+              )}
+          </CardHeader>
+          <CardContent className='flex-grow p-4'>
+            <div className='mb-4'>
+              <div className='mb-1 flex justify-between text-xs text-muted-foreground'>
+                <span>Progress</span>
+                <span>{project.progress || 0}%</span>
+              </div>
+              <Progress value={project.progress || 0} className='h-2' />
+            </div>
+            <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                <Sparkles className='h-4 w-4 text-amber-500' />
+                <span>AI Forecast: High Potential</span>
+            </div>
+          </CardContent>
+          <CardFooter className='flex items-center justify-between bg-muted/50 p-4 mt-auto'>
+            <div className='flex flex-grow items-center'>
+                <div className='flex items-end -space-x-2'>
+                    {visibleMembers.map((member) => (
+                        <div key={member.userId}>
+                            {renderMemberAvatar(member)}
+                        </div>
+                    ))}
                 </div>
-                <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
-                    <Sparkles className='h-4 w-4 text-amber-500' />
-                    <span>AI Forecast: High Potential</span>
-                </div>
-              </CardContent>
-              <CardFooter className='flex items-center justify-between bg-muted/50 p-4 mt-auto'>
-                <div className='flex flex-grow items-center'>
-                    <div className='flex items-end -space-x-2'>
-                        {visibleMembers.map((member) => (
-                            <div key={member.userId}>
-                                {renderMemberAvatar(member)}
-                            </div>
-                        ))}
-                    </div>
-                    {hiddenMembersCount > 0 && (
-                        <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                            <div className='ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground'>
-                                +{hiddenMembersCount}
-                            </div>
-                            </TooltipTrigger>
-                            <TooltipContent onClick={stopPropagation}>
-                            <p>
-                                {uniqueMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
-                            </p>
-                            </TooltipContent>
-                        </Tooltip>
-                        </TooltipProvider>
-                    )}
-                </div>
-              </CardFooter>
-          </Link>
+                {hiddenMembersCount > 0 && (
+                    <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                        <div className='ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground'>
+                            +{hiddenMembersCount}
+                        </div>
+                        </TooltipTrigger>
+                        <TooltipContent onClick={(e) => e.stopPropagation()}>
+                        <p>
+                            {uniqueMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
+                        </p>
+                        </TooltipContent>
+                    </Tooltip>
+                    </TooltipProvider>
+                )}
+            </div>
+          </CardFooter>
       </Card>
   );
 }

@@ -79,6 +79,18 @@ export async function findUserById(userId: string): Promise<User | undefined> {
     return undefined;
 }
 
+export async function findUserByUsername(username: string): Promise<User | undefined> {
+    if (!username) return undefined;
+    const userQuery = adminDb.collection('users').where('username', '==', username).limit(1);
+    const userSnapshot = await userQuery.get();
+    if (userSnapshot.empty) {
+        return undefined;
+    }
+    const userDoc = userSnapshot.docs[0];
+    const data = userDoc.data();
+    return { id: userDoc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
+}
+
 export async function createGuestUser(uid: string): Promise<User> {
     const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
         name: 'Guest User', username: 'guest', email: `${uid}@example.com`,
