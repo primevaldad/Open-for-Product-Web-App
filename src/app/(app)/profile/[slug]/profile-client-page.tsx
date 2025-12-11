@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AtSign, Calendar, Edit, Link as LinkIcon, MapPin, UserCheck, UserPlus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -59,7 +60,9 @@ export default function ProfileClientPage({
           </div>
           <div className="mt-4 md:mt-0 md:ml-auto flex flex-col items-stretch gap-2">
             {isCurrentUserProfile ? (
-              <Button><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>
+                <Link href="/settings">
+                    <Button><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>
+                </Link>
             ) : (
               <Button onClick={handleFollow} variant={isFollowing ? 'secondary' : 'default'}>
                 {isFollowing ? <UserCheck className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
