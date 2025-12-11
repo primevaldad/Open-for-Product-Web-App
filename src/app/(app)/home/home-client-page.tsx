@@ -49,6 +49,7 @@ const ProjectList = ({ projects, currentUser, allProjectPathLinks, allLearningPa
 
 export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths, suggestedProjects, aiEnabled }: HomeClientPageProps) {
     const [showMyProjects, setShowMyProjects] = useState(false);
+    const [showLeadProjectsOnly, setShowLeadProjectsOnly] = useState(false);
     const [showSuggested, setShowSuggested] = useState(true);
     const [selectedTags, setSelectedTags] = useState<ProjectTag[]>([]);
     const [matchAllTags, setMatchAllTags] = useState(false);
@@ -77,6 +78,12 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                 return false;
             }
 
+            if (showLeadProjectsOnly && currentUser) {
+                if (!(p.team || []).some(member => member.userId === currentUser.id && member.role === 'lead')) {
+                    return false;
+                }
+            }
+
             if (selectedTags.length > 0) {
                 const projectTagIds = new Set((p.tags || []).map(t => t.id));
                 const hasTag = matchAllTags
@@ -93,7 +100,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
             return new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime();
         });
 
-    }, [cleanAndUniqueProjects, cleanSuggestedProjects, showSuggested, showMyProjects, currentUser, selectedTags, matchAllTags, sortBy]);
+    }, [cleanAndUniqueProjects, cleanSuggestedProjects, showSuggested, showMyProjects, showLeadProjectsOnly, currentUser, selectedTags, matchAllTags, sortBy]);
 
     const shouldShowSuggestions = showSuggested && cleanSuggestedProjects.length > 0;
     const noResults = !shouldShowSuggestions && filteredExploreProjects.length === 0;
@@ -116,11 +123,17 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                             <Switch id="match-all" checked={matchAllTags} onCheckedChange={setMatchAllTags} />
                             <Label htmlFor="match-all">Match All Tags</Label>
                         </div>
-                        {!isGuest && currentUser && (
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="my-projects" checked={showMyProjects} onCheckedChange={(checked) => setShowMyProjects(!!checked)} />
-                                <Label htmlFor="my-projects">My Projects Only</Label>
-                            </div>
+                        {!isGuest && currentUser?.role !== 'guest' && (
+                           <>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="my-projects" checked={showMyProjects} onCheckedChange={(checked) => setShowMyProjects(!!checked)} />
+                                    <Label htmlFor="my-projects">My Projects Only</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="lead-projects" checked={showLeadProjectsOnly} onCheckedChange={(checked) => setShowLeadProjectsOnly(!!checked)} />
+                                    <Label htmlFor="lead-projects">Projects I Lead</Label>
+                                </div>
+                            </>
                         )}
                         <Select value={sortBy} onValueChange={setSortBy}>
                             <SelectTrigger className="w-full"><SelectValue placeholder="Sort by" /></SelectTrigger>
