@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import * as admin from 'firebase-admin';
 import { z } from 'zod';
-import { ActivityType } from '@/lib/types';
+import { ActivityType, EventType } from '@/lib/types';
 import type {
   Project,
   ProjectTag,
@@ -46,6 +46,7 @@ import {
 } from '@/lib/schemas';
 import { toHydratedProject, deepSerialize } from '@/lib/utils.server';
 import { logActivity } from './logging';
+import { createAndDispatchEvent } from '@/lib/events.server';
 
 const MAX_TAG_LENGTH = 35;
 
@@ -293,6 +294,12 @@ export async function joinProject(projectId: string): Promise<ServerActionRespon
     const updatedTeam = [...project.team, newMember];
     await updateProjectInDb(projectId, { team: updatedTeam });
 
+    await createAndDispatchEvent({
+      type: EventType.PROJECT_JOINED,
+      actorUserId: currentUser.id,
+      projectId,
+    });
+
     revalidatePath(`/projects/${projectId}`);
     const hydratedMember: HydratedProjectMember = { ...newMember, user: currentUser };
     return { success: true, data: deepSerialize(hydratedMember) };
@@ -324,12 +331,11 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
         const updatedTeam = [...project.team, newMember];
         await updateProjectInDb(projectId, { team: updatedTeam });
 
-        await addNotification({
-            userId,
-            message: `You have been added to the project '${project.name}' as a ${role}.`,
-            link: `/projects/${projectId}`,
-            read: false,
-            timestamp: new Date().toISOString(),
+        await createAndDispatchEvent({
+          type: EventType.USER_INVITED_TO_PROJECT,
+          actorUserId: currentUser.id,
+          targetUserId: userId,
+          projectId,
         });
 
         revalidatePath(`/projects/${projectId}`);
@@ -358,18 +364,14 @@ export async function addDiscussionComment(data: { projectId: string; content: s
         
         const newCommentId = await addDiscussionCommentToDb(projectId, newCommentData);
 
-        const project = await findProjectById(projectId);
-        const projectLeads = project?.team.filter(m => m.role === 'lead') || [];
-        for (const lead of projectLeads) {
-            if (lead.userId !== currentUser.id) {
-                await addNotification({
-                    userId: lead.userId,
-                    message: `${currentUser.name} commented on your project: ${project?.name}`,
-                    link: `/projects/${projectId}?tab=discussion`,
-                    read: false,
-                    timestamp: new Date().toISOString(),
-                });
-            }
+        if (parentId) {
+          // TODO: Fetch parent comment author and create a DISCUSSION_COMMENT_REPLIED event
+        } else {
+          await createAndDispatchEvent({
+            type: EventType.DISCUSSION_COMMENT_POSTED,
+            actorUserId: currentUser.id,
+            projectId,
+          });
         }
         
         const newComment: Discussion = {

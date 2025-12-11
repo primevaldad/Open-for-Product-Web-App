@@ -155,15 +155,6 @@ export interface HydratedTask extends Omit<Task, 'assignedToId'> {
     assignee?: User;
 }
 
-export interface Notification {
-    id: string;
-    userId: UserId;
-    message: string;
-    link?: string;
-    read: boolean;
-    timestamp: Timestamp | string;
-}
-
 // Represents a link between a Project and a Learning Path.
 export interface ProjectPathLink {
     id: string; // Unique ID for the link itself
@@ -285,6 +276,58 @@ export type UpdateTaskAction = (data: Task) => Promise<ServerActionResponse<Task
 export type DeleteTaskAction = (data: { id: string; projectId: string }) => Promise<ServerActionResponse<{}>>;
 
 // --- Activity and Notification Types ---
+
+export enum EventType {
+  TAG_CREATED = 'tag-created',
+  PROJECT_CREATED = 'project-created',
+  PROJECT_DRAFTED = 'project-drafted',
+  PROJECT_PUBLISHED = 'project-published',
+  PROJECT_DRAFT_UPDATED = 'project-draft-updated',
+  LEARNING_PATH_STARTED = 'learning-path-started',
+  LEARNING_PATH_PROGRESS = 'learning-path-progress',
+  LEARNING_PATH_COMPLETED = 'learning-path-completed',
+  LEARNING_PATH_CONNECTED_TO_PROJECT = 'learning-path-connected-to-project',
+  PROFILE_UPDATED = 'profile-updated',
+  SETTINGS_UPDATED = 'settings-updated',
+  PROJECT_JOINED = 'project-joined',
+  PROJECT_LEFT = 'project-left',
+  MEMBER_ROLE_APPLIED = 'member-role-applied',
+  MEMBER_ROLE_APPROVED = 'member-role-approved',
+  USER_INVITED_TO_PROJECT = 'user-invited-to-project',
+  DISCUSSION_COMMENT_POSTED = 'discussion-comment-posted',
+  DISCUSSION_COMMENT_REPLIED = 'discussion-comment-replied',
+  TASK_CREATED = 'task-created',
+  TASK_UPDATED = 'task-updated',
+  TASK_DELETED = 'task-deleted',
+  PROJECT_DETAILS_UPDATED = 'project-details-updated',
+  PROJECT_PHOTO_UPDATED = 'project-photo-updated',
+  PROJECT_VISIBILITY_UPDATED = 'project-visibility-updated',
+}
+
+export interface Event {
+    id: string;
+    type: EventType;
+    payload?: any;
+    createdAt: Timestamp | string;
+    actorUserId: UserId;
+    targetUserId?: UserId;
+    projectId?: ProjectId;
+}
+
+export interface Notification {
+    id: string;
+    userId: UserId;
+    eventId: string;
+    isRead: boolean;
+    createdAt: Timestamp | string;
+}
+
+export interface HydratedNotification extends Omit<Notification, 'userId'> {
+    event: Event;
+    actor: User;
+    targetUser?: User;
+    project?: Project;
+}
 
 export enum ActivityType {
     ProjectCreated = 'project-created',

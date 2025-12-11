@@ -37,23 +37,31 @@ model Session {
 model User {
   id              String         @id @default(cuid())
   name            String?
+  username        String?        @unique
   email           String?        @unique
   emailVerified   DateTime?
-  image           String?
+  image           String? // Deprecated in favor of avatarUrl
   avatarUrl       String?
   bio             String?
+  location        String?
+  website         String?
   interests       String[]
-  steemUsername   String?
+  createdAt       DateTime       @default(now())
 
-  accounts        Account[]
-  sessions        Session[]
-  ownedProjects   Project[]      @relation("ProjectOwner")
-  ProjectMember   Project[]      @relation("ProjectMembers")
-  tasks           Task[]
-  discussions     Discussion[]
-  learningPaths   LearningPath[]
-  steemSync       SteemSync?     @relation(fields: [steemSyncId], references: [id])
-  steemSyncId     String?        @unique
+  accounts      Account[]
+  sessions      Session[]
+  ownedProjects Project[]      @relation("ProjectOwner")
+  memberships   ProjectMember[]
+  tasks         Task[]
+  discussions   Discussion[]
+  learningPaths LearningPath[]
+
+  actorEvents   Event[]        @relation("ActorEvents")
+  targetEvents  Event[]        @relation("TargetEvents")
+  notifications Notification[]
+
+  steemSync   SteemSync? @relation(fields: [steemSyncId], references: [id])
+  steemSyncId String?    @unique
 }
 
 model VerificationToken {
@@ -65,33 +73,70 @@ model VerificationToken {
 }
 
 model Project {
-  id              String        @id @default(cuid())
-  name            String
-  description     String
-  repoUrl         String
-  tags            String[]
+  id               String        @id @default(cuid())
+  name             String
+  tagline          String?
+  description      String
+  repoUrl          String?
+  photoUrl         String?
+  isDraft          Boolean       @default(true)
+  isExpertReviewed Boolean       @default(false)
+  progress         Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id])
-  ownerId         String
-  members         User[]        @relation("ProjectMembers")
-  tasks           Task[]
-  discussions     Discussion[]
-  projectPathLink ProjectPathLink[]
+  owner            User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  ownerId          String
+  members          ProjectMember[]
+  tasks            Task[]
+  discussions      Discussion[]
+  projectPathLinks ProjectPathLink[]
+  tags             ProjectTag[]
+  events           Event[]
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  role      String // "lead", "contributor", "participant"
+  createdAt DateTime @default(now())
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@unique([userId, projectId])
+}
+
+model Tag {
+  id          String       @id @default(cuid())
+  display     String       @unique
+  isCategory  Boolean      @default(false)
+  projects    ProjectTag[]
+}
+
+model ProjectTag {
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId     String
+
+  @@id([projectId, tagId])
 }
 
 model Task {
-  id          String     @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String?
   status      String
-  isMilestone Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  isMilestone Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  project     Project    @relation(fields: [projectId], references: [id])
-  projectId   String
-  assignee    User?      @relation(fields: [assigneeId], references: [id])
-  assigneeId  String?
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+  assignee   User?   @relation(fields: [assigneeId], references: [id])
+  assigneeId String?
 }
 
 model Discussion {
@@ -99,21 +144,20 @@ model Discussion {
   content   String
   createdAt DateTime @default(now())
 
-  project   Project  @relation(fields: [projectId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
 
-  // self relation for threading
-  parentId  String?
-  parent    Discussion? @relation("DiscussionReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Discussion[] @relation("DiscussionReplies")
+  parentId String?
+  parent   Discussion?  @relation("DiscussionReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Discussion[] @relation("DiscussionReplies")
 }
 
 model LearningPath {
-  id           String            @id @default(cuid())
-  title        String
-  description  String
+  id          String @id @default(cuid())
+  title       String
+  description String
 
   createdBy    User              @relation(fields: [createdById], references: [id])
   createdById  String
@@ -121,34 +165,95 @@ model LearningPath {
 }
 
 model ProjectPathLink {
-  id              String        @id @default(cuid())
-  project         Project       @relation(fields: [projectId], references: [id])
-  projectId       String
-  learningPath    LearningPath  @relation(fields: [learningPathId], references: [id])
-  learningPathId  String
-  order           Int
+  id             String       @id @default(cuid())
+  order          Int
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId      String
+  learningPath   LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  learningPathId String
+}
+
+enum EventType {
+  TAG_CREATED
+  PROJECT_CREATED
+  PROJECT_DRAFTED
+  PROJECT_PUBLISHED
+  PROJECT_DRAFT_UPDATED
+  LEARNING_PATH_STARTED
+  LEARNING_PATH_PROGRESS
+  LEARNING_PATH_COMPLETED
+  LEARNING_PATH_CONNECTED_TO_PROJECT
+  PROFILE_UPDATED
+  SETTINGS_UPDATED
+  PROJECT_JOINED
+  PROJECT_LEFT
+  MEMBER_ROLE_APPLIED
+  MEMBER_ROLE_APPROVED
+  USER_INVITED_TO_PROJECT
+  DISCUSSION_COMMENT_POSTED
+  DISCUSSION_COMMENT_REPLIED
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_DELETED
+  PROJECT_DETAILS_UPDATED
+  PROJECT_PHOTO_UPDATED
+  PROJECT_VISIBILITY_UPDATED
+}
+
+model Event {
+  id           String    @id @default(cuid())
+  type         EventType
+  payload      Json?
+  createdAt    DateTime  @default(now())
+
+  actor        User      @relation("ActorEvents", fields: [actorUserId], references: [id], onDelete: Cascade)
+  actorUserId  String
+  targetUser   User?     @relation("TargetEvents", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetUserId String?
+  project      Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String?
+
+  notifications Notification[]
+
+  @@index([actorUserId])
+  @@index([targetUserId])
+  @@index([projectId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+
+  @@unique([userId, eventId])
+  @@index([userId])
 }
 
 model SteemSync {
-  id           String      @id @default(cuid())
-  lastSync     DateTime
-  user         User?
-  posts        SteemPost[]
+  id        String      @id @default(cuid())
+  lastSync  DateTime
+  user      User?
+  posts     SteemPost[]
 }
 
 model SteemPost {
-  id          Int       @id
-  author      String
-  permlink    String
-  title       String
-  body        String
-  created     DateTime
-  net_votes   Int
-  children    Int
+  id                   Int      @id
+  author               String
+  permlink             String
+  title                String
+  body                 String
+  created              DateTime
+  net_votes            Int
+  children             Int
   curator_payout_value String
   pending_payout_value String
-  url         String
-  
+  url                  String
+
   sync        SteemSync @relation(fields: [steemSyncId], references: [id])
   steemSyncId String
 
