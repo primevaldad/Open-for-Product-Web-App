@@ -7,17 +7,22 @@ import type { ServerActionResponse, User, Event, Notification, EventType } from 
 
 async function createEvent(type: EventType, actorUserId: string, targetUserId?: string, projectId?: string, payload?: any): Promise<Event> {
     const eventRef = adminDb.collection('events').doc();
-    const event: Event = {
+    
+    const eventData: any = {
         id: eventRef.id,
         type,
         actorUserId,
-        targetUserId,
-        projectId,
-        payload,
         createdAt: FieldValue.serverTimestamp(),
     };
-    await eventRef.set(event);
-    return event;
+
+    if (targetUserId) eventData.targetUserId = targetUserId;
+    if (projectId) eventData.projectId = projectId;
+    if (payload) eventData.payload = payload;
+
+    await eventRef.set(eventData);
+    
+    // We cast to Event because the dynamic object matches the interface
+    return eventData as Event;
 }
 
 async function createNotification(userId: string, eventId: string): Promise<void> {
