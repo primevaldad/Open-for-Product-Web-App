@@ -121,10 +121,11 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
   const projectTags: ProjectTag[] = tags.map(tag => ({
     ...tag,
     id: normalizeTag(tag.id),
-    display: tag.display || tag.id, // Ensure display is always present
+    display: tag.display || tag.id,
+    isCategory: tag.isCategory || false, // FIX: Ensure isCategory is always a boolean
   }));
 
-  const finalTeam = team.filter(m => m.userId !== undefined && m.role !== undefined) as ProjectMember[];
+  const finalTeam = team.filter(m => m.userId !== undefined && m.role !== undefined) as unknown as ProjectMember[]; // FIX: Use type assertion for Zod/TS mismatch
   if (!finalTeam.some((m) => m.userId === currentUser.id)) {
     finalTeam.push({ userId: currentUser.id, role: 'lead' });
   }
@@ -159,6 +160,12 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
     });
 
     if (!newProjectId) throw new Error('Failed to create project.');
+
+    await createAndDispatchEvent({
+        type: EventType.PROJECT_CREATED,
+        actorUserId: currentUser.id,
+        projectId: newProjectId,
+    });
 
     await logActivity({
         type: ActivityType.ProjectCreated,
@@ -227,7 +234,8 @@ export async function updateProject(values: EditProjectFormValues) {
     const projectTags: ProjectTag[] = tags.map(tag => ({
         ...tag,
         id: normalizeTag(tag.id),
-        display: tag.display || tag.id, // Ensure display is always present
+        display: tag.display || tag.id,
+        isCategory: tag.isCategory || false, // FIX: Ensure isCategory is always a boolean
     }));
 
     await adminDb.runTransaction(async (transaction) => {
@@ -251,7 +259,7 @@ export async function updateProject(values: EditProjectFormValues) {
         ...projectData,
         governance: finalGovernance,
         ...(projectData.team !== undefined && {
-          team: projectData.team.filter(m => m.userId !== undefined && m.role !== undefined) as ProjectMember[],
+          team: projectData.team.filter(m => m.userId !== undefined && m.role !== undefined) as unknown as ProjectMember[], // FIX: Use type assertion for Zod/TS mismatch
         }),
         contributionNeeds:
           typeof projectData.contributionNeeds === 'string'
@@ -283,7 +291,7 @@ export async function joinProject(projectId: string): Promise<ServerActionRespon
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
   try {
-    const project = await findProjectById(projectId);
+    const project = await findProjectById(projectId, currentUser); // FIX: Add currentUser argument
     if (!project) return { success: false, error: 'Project not found.' };
 
     const isAlreadyMember = project.team.some(member => member.userId === currentUser.id);
@@ -315,7 +323,7 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
     if (!currentUser) return { success: false, error: 'Authentication required.' };
 
     try {
-        const project = await findProjectById(projectId);
+        const project = await findProjectById(projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
@@ -393,7 +401,7 @@ export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' 
     if (!currentUser) return { success: false, error: 'Authentication required.' };
 
     try {
-        const project = await findProjectById(data.projectId);
+        const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
@@ -427,7 +435,7 @@ export async function updateTask(data: Task): Promise<ServerActionResponse<Task>
     if (!currentUser) return { success: false, error: 'Authentication required.' };
 
     try {
-        const project = await findProjectById(data.projectId);
+        const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
@@ -451,7 +459,7 @@ export async function deleteTask(data: { id: string; projectId: string }): Promi
     if (!currentUser) return { success: false, error: 'Authentication required.' };
 
     try {
-        const project = await findProjectById(data.projectId);
+        const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
@@ -471,7 +479,7 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
   try {
     const [currentUser, project, allTags, allUsers] = await Promise.all([
       getAuthenticatedUser(),
-      findProjectById(projectId),
+      findProjectById(projectId, await getAuthenticatedUser()), // FIX: Add currentUser argument
       getAllGlobalTags(),
       getAllUsers(),
     ]);
