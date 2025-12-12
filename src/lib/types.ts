@@ -322,7 +322,7 @@ export interface Notification {
     createdAt: Timestamp | string;
 }
 
-export interface HydratedNotification extends Omit<Notification, 'userId'> {
+export interface HydratedNotification extends Notification {
     event: Event;
     actor: User;
     targetUser?: User;

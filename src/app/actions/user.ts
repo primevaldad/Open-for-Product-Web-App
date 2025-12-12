@@ -1,8 +1,35 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { updateUser as updateUserInDb, findUserById } from '@/lib/data.server';
-import type { ServerActionResponse, User } from '@/lib/types';
+import { FieldValue } from 'firebase-admin/firestore';
+import { adminDb, updateUser as updateUserInDb, findUserById } from '@/lib/data.server';
+import type { ServerActionResponse, User, Event, Notification, EventType } from '@/lib/types';
+
+async function createEvent(type: EventType, actorUserId: string, targetUserId?: string, projectId?: string, payload?: any): Promise<Event> {
+    const eventRef = adminDb.collection('events').doc();
+    const event: Event = {
+        id: eventRef.id,
+        type,
+        actorUserId,
+        targetUserId,
+        projectId,
+        payload,
+        createdAt: FieldValue.serverTimestamp(),
+    };
+    await eventRef.set(event);
+    return event;
+}
+
+async function createNotification(userId: string, eventId: string): Promise<void> {
+    const notificationRef = adminDb.collection('notifications').doc();
+    const notification: Omit<Notification, 'id'> = {
+        userId,
+        eventId,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+    };
+    await notificationRef.set(notification);
+}
 
 export async function updateUser(userId: string, userData: Partial<User>): Promise<ServerActionResponse<User>> {
   try {
@@ -11,6 +38,12 @@ export async function updateUser(userId: string, userData: Partial<User>): Promi
     if (!updatedUser) {
       return { success: false, error: 'Failed to retrieve updated user.' };
     }
+
+    // --- Event and Notification Creation ---
+    const event = await createEvent('profile-updated' as EventType, userId, userId, undefined, { updatedFields: Object.keys(userData) });
+    await createNotification(userId, event.id);
+    // -------------------------------------
+
     revalidatePath('/', 'layout'); // Revalidate all paths to reflect user changes
     return { success: true, data: updatedUser };
   } catch (error) {

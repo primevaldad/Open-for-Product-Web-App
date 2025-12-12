@@ -1,10 +1,49 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import * as admin from 'firebase-admin';
 import { getAuthenticatedUser } from '@/lib/session.server';
-import { adminDb, findProjectById, findUserById, findUsersByIds } from '@/lib/data.server';
+import { adminDb, findProjectById, findUsersByIds } from '@/lib/data.server';
 import { deepSerialize } from '@/lib/utils.server';
-import type { Notification, HydratedNotification, Event, User, Project } from '@/lib/types';
+import type { Notification, HydratedNotification, Event, User, Project, UserId } from '@/lib/types';
+
+// --- Helper Function for Single Notification Hydration ---
+function hydrateNotification(
+  notification: Notification,
+  eventsMap: Map<string, Event>,
+  actorsMap: Map<UserId, User>,
+  targetsMap: Map<UserId, User>,
+  projectsMap: Map<string, Project>
+): HydratedNotification | null {
+  const event = eventsMap.get(notification.eventId);
+  if (!event) return null;
+
+  const actor = actorsMap.get(event.actorUserId);
+  if (!actor) return null;
+
+  const hydrated: HydratedNotification = {
+    ...notification,
+    event,
+    actor,
+  };
+
+  if (event.targetUserId) {
+    const targetUser = targetsMap.get(event.targetUserId);
+    if (targetUser) {
+      hydrated.targetUser = targetUser;
+    }
+  }
+
+  if (event.projectId) {
+    const project = projectsMap.get(event.projectId);
+    if (project) {
+      hydrated.project = project;
+    }
+  }
+
+  return hydrated;
+}
+
 
 /**
  * Fetches and hydrates notifications for the authenticated user.
@@ -16,6 +55,7 @@ export async function getHydratedNotifications(): Promise<{ success: boolean, no
   }
 
   try {
+    // 1. Fetch all raw data
     const notificationsSnapshot = await adminDb
       .collection('notifications')
       .where('userId', '==', currentUser.id)
@@ -35,10 +75,10 @@ export async function getHydratedNotifications(): Promise<{ success: boolean, no
         return deepSerialize({ success: true, notifications: [] });
     }
 
-    // Start hydration process
+    // 2. Create Lookup Maps
     const eventIds = [...new Set(notifications.map(n => n.eventId))];
     const eventDocs = await adminDb.collection('events').where(admin.firestore.FieldPath.documentId(), 'in', eventIds).get();
-    const eventsMap = new Map<string, Event>(eventDocs.docs.map(doc => ( { id: doc.id, ...doc.data() } as Event)));
+    const eventsMap = new Map<string, Event>(eventDocs.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Event]));
 
     const actorUserIds = [...new Set(Array.from(eventsMap.values()).map(e => e.actorUserId))];
     const targetUserIds = [...new Set(Array.from(eventsMap.values()).map(e => e.targetUserId).filter(Boolean) as string[])];
@@ -54,20 +94,13 @@ export async function getHydratedNotifications(): Promise<{ success: boolean, no
     const targetsMap = new Map<string, User>(targets.map(u => [u.id, u]));
     const projectsMap = new Map<string, Project>(projects.filter(Boolean).map(p => [p!.id, p!]));
 
-    const hydratedNotifications: HydratedNotification[] = notifications.map(notification => {
-        const event = eventsMap.get(notification.eventId);
-        if (!event) return null; // Should not happen
-
-        return {
-            ...notification,
-            event,
-            actor: actorsMap.get(event.actorUserId),
-            targetUser: event.targetUserId ? targetsMap.get(event.targetUserId) : undefined,
-            project: event.projectId ? projectsMap.get(event.projectId) : undefined,
-        };
-    }).filter((n): n is HydratedNotification => !!n);
+    // 3. Hydrate using the helper function and filter
+    const hydratedNotifications = notifications
+      .map(notification => hydrateNotification(notification, eventsMap, actorsMap, targetsMap, projectsMap))
+      .filter((n): n is HydratedNotification => n !== null);
 
     return deepSerialize({ success: true, notifications: hydratedNotifications });
+
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";

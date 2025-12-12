@@ -2,10 +2,11 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserById, updateUser as updateUserInDb, getAllTags } from '@/lib/data.server';
+import { findUserById, getAllTags } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { adminAuth } from '@/lib/firebase.server';
 import { deepSerialize } from '@/lib/utils.server';
+import { updateUser } from './user'; // Import the correct high-level action
 import type { User, Tag } from '@/lib/types';
 
 const UserSettingsSchema = z.object({
@@ -70,8 +71,12 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
             return { success: false, error: "User not found." };
         }
         
-        // Update Firestore DB
-        await updateUserInDb(currentUser.id, validatedFields.data);
+        // Use the centralized updateUser action
+        const result = await updateUser(currentUser.id, validatedFields.data);
+
+        if (!result.success) {
+            return { success: false, error: result.error };
+        }
 
         // Also update Firebase Auth if name has changed
         if (validatedFields.data.name) {
@@ -80,7 +85,6 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
             });
         }
 
-        revalidatePath('/', 'layout');
         return { success: true };
     } catch (error) {
         let errorMessage = "An unexpected error occurred.";
@@ -107,15 +111,17 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
     return { success: false, error: "User not found." };
   }
 
-  // Use the updateUser function which centralizes update logic
-  await updateUserInDb(id, {
+  // Use the centralized updateUser action
+  const result = await updateUser(id, {
     name,
     bio,
     interests,
     onboardingCompleted: true,
   });
 
-  revalidatePath('/', 'layout');
+  if (!result.success) {
+      return { success: false, error: result.error };
+  }
 
   return { success: true };
 }
