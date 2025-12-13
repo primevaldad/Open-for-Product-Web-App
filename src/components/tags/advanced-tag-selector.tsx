@@ -28,11 +28,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import type { Tag, ProjectTag } from '@/lib/types';
+import type { GlobalTag, ProjectTag } from '@/lib/types';
+import { upsertTag } from '@/app/actions/tags';
 
 interface AdvancedTagSelectorProps {
   id?: string;
-  availableTags?: Tag[];
+  availableTags?: GlobalTag[];
   value?: ProjectTag[];
   onChange: (value: ProjectTag[]) => void;
   isProject?: boolean; // Flag to show project-specific features
@@ -84,10 +85,18 @@ export default function AdvancedTagSelector({
     onChange(safeValue.filter((pt) => normalizeTag(pt.id) !== normalizedId));
   };
 
-  const handleCreate = (newTagDisplay: string) => {
+  const handleCreate = async (newTagDisplay: string) => {
     if (!newTagDisplay) return;
-    const newTagId = newTagDisplay.replace(/\s+/g, '-'); // Simple slugification
-    handleSelect(newTagId, newTagDisplay);
+    const newTag = { id: newTagDisplay.replace(/\s+/g, '-'), display: newTagDisplay };
+
+    const result = await upsertTag(newTag);
+
+    if (result.success && result.data) {
+        handleSelect(result.data.id, result.data.display);
+    } else {
+        console.error("Failed to create tag:", result.error);
+    }
+    
     setInputValue('');
   };
 
@@ -102,7 +111,6 @@ export default function AdvancedTagSelector({
 
     const categoryCount = safeValue.filter(t => t.isCategory && t.id !== editingTag.id).length;
     if (isProject && isCategory && categoryCount >= 3) {
-      // Here you might want to show a toast notification
       console.warn("A project can have a maximum of 3 category tags.");
       return; 
     }

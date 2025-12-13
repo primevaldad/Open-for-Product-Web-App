@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import type { User, Tag as GlobalTag, ProjectTag, ProjectPathLink, LearningPath, HydratedProject } from "@/lib/types";
+import type { User, GlobalTag, ProjectTag, ProjectPathLink, LearningPath, HydratedProject } from "@/lib/types";
 import TagSelector from "@/components/tags/tag-selector";
 import {
   Select,
@@ -46,6 +46,12 @@ const ProjectList = ({ projects, currentUser, allProjectPathLinks, allLearningPa
         </div>
     );
 };
+
+const projectTagFactory = (tag: { id: string; display: string }): ProjectTag => ({
+  id: tag.id,
+  display: tag.display,
+  isCategory: false,
+});
 
 export default function HomeClientPage({ allPublishedProjects, currentUser, allTags, allProjectPathLinks, allLearningPaths, suggestedProjects, aiEnabled }: HomeClientPageProps) {
     const [showMyProjects, setShowMyProjects] = useState(false);
@@ -112,7 +118,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex-grow">
                         <Label htmlFor="tag-selector" className="mb-2 block">Filter by Tags</Label>
-                        <TagSelector id="tag-selector" value={selectedTags} onChange={setSelectedTags} availableTags={allTags} />
+                        <TagSelector id="tag-selector" value={selectedTags} onChange={setSelectedTags} availableTags={allTags} tagFactory={projectTagFactory} />
                     </div>
                     <div className="grid grid-cols-2 gap-4 pt-2 md:grid-cols-1 md:pt-8 md:gap-6">
                         <div className="flex items-center space-x-2">

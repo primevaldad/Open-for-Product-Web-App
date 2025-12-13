@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { updateUser } from '@/app/actions/user';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, ProjectTag, Tag } from '@/lib/types';
+import { User, ProjectTag, GlobalTag } from '@/lib/types';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 
 const OnboardingSchema = z.object({
@@ -39,7 +39,7 @@ type OnboardingFormValues = z.infer<typeof OnboardingSchema>;
 
 interface OnboardingFormProps {
   user: User;
-  allTags: Tag[];
+  allTags: GlobalTag[];
 }
 
 export function OnboardingForm({ user, allTags }: OnboardingFormProps) {

@@ -17,7 +17,7 @@ export interface User {
     email: string;
     role?: string; // Can be 'guest' or undefined for regular users
     avatarUrl?: string;
-    interests?: string[];
+    interests?: ProfileTag[];
     bio?: string;
     draftProjects?: ProjectId[]; // IDs of projects the user is drafting
     onboardingCompleted: boolean;
@@ -65,8 +65,14 @@ export interface ProjectTag {
     isCategory: boolean;
 }
 
+// This represents a tag that is associated with a user profile.
+export interface ProfileTag {
+    id: string;
+    display: string;
+}
+
 // This represents a globally available tag that can be added to projects.
-export interface Tag {
+export interface GlobalTag {
     id: string;
     normalized: string;
     display: string;
@@ -211,7 +217,7 @@ export interface ServerActionResponse<T = any> {
 export interface HomePageData {
     allPublishedProjects: HydratedProject[];
     currentUser: User | null;
-    allTags: Tag[];
+    allTags: GlobalTag[];
     allLearningPaths: LearningPath[];
     allProjectPathLinks: ProjectPathLink[];
     suggestedProjects: HydratedProject[] | null;
@@ -229,7 +235,7 @@ export type HomePageDataResponse = HomePageDataSuccess | HomePageDataError;
 // --- CreateProjectPageData ---
 export interface CreateProjectPageDataSuccess {
     success: true;
-    allTags: Tag[];
+    allTags: GlobalTag[];
     allUsers: User[];
 }
 export interface CreateProjectPageDataError {
@@ -242,7 +248,7 @@ export type CreateProjectPageDataResponse = CreateProjectPageDataSuccess | Creat
 export interface EditProjectPageDataSuccess {
     success: true;
     project: HydratedProject;
-    allTags: Tag[];
+    allTags: GlobalTag[];
     allUsers: User[];
 }
 export interface EditProjectPageDataError {

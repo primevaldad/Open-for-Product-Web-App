@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/markdown-editor';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 import { useToast } from '@/hooks/use-toast';
-import type { User, Tag, ProjectTag } from '@/lib/types';
+import type { User, GlobalTag, ProjectTag } from '@/lib/types';
 import type { updateUserSettings } from '@/app/actions/settings';
 import { Switch } from '@/components/ui/switch';
 
@@ -45,7 +45,7 @@ type SettingsFormValues = z.infer<typeof SettingsSchema>;
 
 interface SettingsFormProps {
   currentUser: User;
-  allTags: Tag[];
+  allTags: GlobalTag[];
   updateUserSettings: typeof updateUserSettings;
 }
 
