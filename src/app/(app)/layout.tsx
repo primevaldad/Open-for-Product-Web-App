@@ -38,9 +38,12 @@ export default async function AppLayout({
                     <div className="flex h-full min-h-screen w-full bg-background">
                     <AppSidebar user={currentUser} />
                     <SidebarInset className="flex flex-col flex-1 rounded-tl-xl">
-                        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 bg-background/80 px-4 shadow-sm backdrop-blur-sm md:px-6">
-                        <div className="flex items-center gap-2">
+                        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm md:px-6">
+                        <div className="flex items-center gap-4">
                             <SidebarToggle />
+                            <Link href="/">
+                                <Logo />
+                            </Link>
                             <DynamicHeader />
                         </div>
                         <div className="flex items-center gap-4">
@@ -48,7 +51,7 @@ export default async function AppLayout({
                             <UserNav currentUser={currentUser} />
                         </div>
                         </header>
-                        <main className="flex-1 overflow-a@/components/NotificationBellContentutoflow p-4 md:p-6">
+                        <main className="flex-1 overflow-auto p-4 md:p-6">
                             {children}
                         </main>
                     </SidebarInset>
@@ -57,11 +60,11 @@ export default async function AppLayout({
             ) : (
                 // Guest (Unauthenticated) User Layout
                 <div className="flex flex-col min-h-screen w-full bg-background">
-                    <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-                        <div className="flex items-center gap-4">
+                    <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b bg-background/80 px-4 py-2 backdrop-blur-sm md:px-6">
+                        <Link href="/" className="flex items-center gap-4">
                             <Logo />
                             <h1 className="text-lg font-semibold">Open for Product</h1>
-                        </div>
+                        </Link>
                         <UserNav currentUser={currentUser} />
                     </header>
                     <main className="flex-1 overflow-auto p-4 md:p-6">

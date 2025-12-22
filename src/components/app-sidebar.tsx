@@ -11,7 +11,6 @@ import {
   Library,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { User } from "@/lib/types";
 
@@ -25,6 +24,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Logo } from "./logo";
 
 interface AppSidebarProps {
     user: User;
@@ -45,9 +45,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
     return (
         <Sidebar className="border-r" collapsible="icon">
-            <SidebarHeader className="p-4">
+            <SidebarHeader className="px-4 py-2">
                 <Link href="/home" className="flex items-center gap-3">
-                    <Image src="/logo.png" alt="Open for Product Logo" width={36} height={36} className="shrink-0" />
+                    <Logo />
                     <span className="text-lg font-semibold text-sidebar-foreground">Open for Product</span>
                 </Link>
             </SidebarHeader>

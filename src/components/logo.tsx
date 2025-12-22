@@ -1,8 +1,10 @@
-
-import { Mountain } from 'lucide-react';
+import Image from 'next/image';
 
 export const Logo = () => (
-    <div className="flex items-center gap-2">
-        <Mountain className="h-6 w-6" />
-    </div>
+  <Image
+    src="/logo.png"
+    alt="Open for Product Logo"
+    width={50}
+    height={50}
+  />
 );
