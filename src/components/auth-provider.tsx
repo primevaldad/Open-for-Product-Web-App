@@ -1,7 +1,6 @@
-
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react';
 import type { User } from '@/lib/types';
 import { onAuthStateChanged, signOut as firebaseSignOut, getIdToken, signInAnonymously } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -29,65 +28,65 @@ interface AuthProviderProps {
 export function AuthProvider({ serverUser, children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(serverUser);
   const [loading, setLoading] = useState(true);
+  const sessionErrorOccurred = useRef(false);
 
   const signOut = useCallback(async () => {
-    setLoading(true);
     try {
-        await firebaseSignOut(auth);
-        await fetch('/api/auth/logout', { method: 'POST' });
-        setCurrentUser(null);
-        setLoading(false);
-        // onAuthStateChanged will handle signing in a new anonymous user
+      await firebaseSignOut(auth);
+      await fetch('/api/auth/logout', { method: 'POST' });
+      // onAuthStateChanged will handle the rest
     } catch (error) {
-        console.error('Sign-out failed:', error);
-        setLoading(false);
-        }
+      console.error('Sign-out failed:', error);
+    }
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const handleAuthChange = async (firebaseUser: import('firebase/auth').User | null) => {
+      setLoading(true);
       if (firebaseUser) {
-        // A user is signed in (either regular or anonymous).
-        // Sync this state with the backend to create a session.
+        // If we have a firebase user, it means any previous session error is resolved, so we reset the flag.
+        sessionErrorOccurred.current = false;
         const token = await getIdToken(firebaseUser);
-        
         const sessionResponse = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken: token }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: token }),
         });
 
         if (sessionResponse.ok) {
-            // Session created, now fetch the app-specific user profile.
-            const appUser = await findUserById(firebaseUser.uid);
-            setCurrentUser(appUser || null);
+          const appUser = await findUserById(firebaseUser.uid);
+          setCurrentUser(appUser || null);
         } else {
-            console.error('Failed to create session, signing out:', await sessionResponse.text());
-            // If the session creation fails (e.g., token is invalid), sign out fully.
-            await signOut();
+          console.error('Failed to create session, signing out:', await sessionResponse.text());
+          // Set the flag to prevent a retry loop
+          sessionErrorOccurred.current = true;
+          await firebaseSignOut(auth);
+          await fetch('/api/auth/logout', { method: 'POST' });
         }
-
       } else {
         // No user is signed in to Firebase on the client.
-        // Attempt to sign them in anonymously.
-        try {
-          await signInAnonymously(auth);
-          // The listener will re-run with the new anonymous user.
-        } catch (error) {
-          console.error('Automatic anonymous sign-in failed:', error);
-          setCurrentUser(null);
+        setCurrentUser(null);
+        // Only attempt to sign in anonymously if we didn't just fail to create a session.
+        if (!sessionErrorOccurred.current) {
+            try {
+              await signInAnonymously(auth);
+              // The listener will re-run with the new anonymous user.
+            } catch (error) {
+              console.error('Automatic anonymous sign-in failed:', error);
+            }
         }
       }
       setLoading(false);
-    });
+    };
+
+    const unsubscribe = onAuthStateChanged(auth, handleAuthChange);
 
     return () => unsubscribe();
-  }, [signOut]);
+  }, []); // Empty dependency array is key.
 
   return (
     <AuthContext.Provider value={{ currentUser, loading, signOut }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
-
