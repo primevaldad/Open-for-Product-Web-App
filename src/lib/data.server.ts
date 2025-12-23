@@ -227,6 +227,7 @@ export async function getAllPublishedProjects(): Promise<HydratedProject[]> {
 
 
 export async function findProjectById(projectId: string, currentUser: User | null): Promise<HydratedProject | undefined> {
+    if (!projectId) return undefined;
     const projectSnap = await adminDb.collection('projects').doc(projectId).get();
     if (!projectSnap.exists) {
         return undefined;
@@ -549,3 +550,6 @@ export async function logOrphanedUser(user: User): Promise<void> {
         console.error(`[AUTH_ACTION_TRACE] Failed to log orphaned user: ${user.id}`, error);
     }
 }
+
+
+    
