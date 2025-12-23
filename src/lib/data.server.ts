@@ -378,6 +378,7 @@ export async function getUserActivity(userId: string): Promise<Activity[]> {
 // --- Task Data Access ---
 
 export async function findTasksByProjectId(projectId: string): Promise<Task[]> {
+    if (!projectId) return [];
     const taskSnapshot = await adminDb.collection('projects').doc(projectId).collection('tasks').get();
     return taskSnapshot.docs.map(doc => {
         const data = doc.data();
@@ -552,5 +553,7 @@ export async function logOrphanedUser(user: User): Promise<void> {
     }
 }
 
+
+    
 
     
