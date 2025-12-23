@@ -401,6 +401,7 @@ export async function deleteTaskFromDb(projectId: string, taskId: string): Promi
 // --- Discussion Data Access ---
 
 export async function getDiscussionsForProject(projectId: string): Promise<Discussion[]> {
+    if (!projectId) return [];
     const discussionSnapshot = await adminDb.collection('projects').doc(projectId).collection('discussions').orderBy('createdAt', 'desc').get();
     return discussionSnapshot.docs.map(doc => {
         const data = doc.data();
