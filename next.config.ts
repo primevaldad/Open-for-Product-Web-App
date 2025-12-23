@@ -1,3 +1,4 @@
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -5,10 +6,6 @@ const nextConfig: NextConfig = {
   typescript: {
     // This will force the build to succeed even if there are TypeScript errors.
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    // This will skip ESLint checks during the build process.
-    ignoreDuringBuilds: true,
   },
   images: {
     loader: 'custom',
