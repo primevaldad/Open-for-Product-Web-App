@@ -1,95 +1,161 @@
 'use client';
 
-import { useRef } from 'react';
-import { Bold, Italic, Code, Link as LinkIcon, List, Heading, ExternalLink } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Bold, Code, Italic, Link as LinkIcon, List, Heading, ExternalLink } from 'lucide-react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Mention from '@tiptap/extension-mention';
+import { Markdown } from 'tiptap-markdown';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from 'rehype-highlight';
-import ReactTextareaAutocomplete, { Item } from "@webscopeio/react-textarea-autocomplete";
-import "@webscopeio/react-textarea-autocomplete/style.css";
+import tippy from 'tippy.js';
 import 'highlight.js/styles/github-dark.css';
+import 'tippy.js/dist/tippy.css';
+
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { User } from '@/lib/types';
 import { UserMentionItem } from './user-mention-item';
+
+// TipTap mention suggestion list component
+const MentionList = forwardRef((props: any, ref) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => setSelectedIndex(0), [props.items]);
+
+  useImperativeHandle(ref, () => ({
+    onKeyDown: ({ event }: { event: React.KeyboardEvent }) => {
+      if (event.key === 'ArrowUp') {
+        setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length);
+        return true;
+      }
+      if (event.key === 'ArrowDown') {
+        setSelectedIndex((selectedIndex + 1) % props.items.length);
+        return true;
+      }
+      if (event.key === 'Enter') {
+        props.command({ id: props.items[selectedIndex].id, label: props.items[selectedIndex].name });
+        return true;
+      }
+      return false;
+    },
+  }));
+
+  if (props.items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="z-50 p-2 bg-background border border-border rounded-md shadow-lg">
+      {props.items.map((item: User, index: number) => (
+        <div
+          key={index}
+          className={`p-2 rounded-md cursor-pointer ${index === selectedIndex ? 'bg-muted' : ''}`}
+          onClick={() => props.command({ id: item.id, label: item.name })}
+        >
+          <UserMentionItem name={item.name} avatarUrl={item.avatarUrl} />
+        </div>
+      ))}
+    </div>
+  );
+});
+MentionList.displayName = 'MentionList';
 
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
-  users?: User[]; // Make users optional to handle async loading
+  users?: User[];
 }
 
-// There are no official types for this library, so we have to use 'any' here.
-const TextareaAutocomplete = ReactTextareaAutocomplete as any;
-
 export function MarkdownEditor({ value, onChange, placeholder, className, users = [] }: MarkdownEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+      }),
+      Markdown.configure({
+        html: false,
+        transformCopiedText: true,
+      }),
+      Link.configure({ openOnClick: false, autolink: true }),
+      Mention.configure({
+        HTMLAttributes: { class: 'mention' },
+        renderLabel({ options, node }) {
+          return `@${node.attrs.label ?? node.attrs.id}`
+        },
+        suggestion: {
+          items: (query: string) => users.filter(user => user.name.toLowerCase().startsWith(query.toLowerCase())).slice(0, 5),
+          render: () => {
+            let reactRenderer: ReactRenderer<any>;
+            let popup: any;
 
-  const handleFormat = (formatType: 'bold' | 'italic' | 'code' | 'link' | 'list' | 'heading' | 'external-link') => {
-    if (!textareaRef.current) return;
+            return {
+              onStart: (props: any) => {
+                reactRenderer = new ReactRenderer(MentionList, {
+                  props,
+                  editor: props.editor,
+                });
 
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end);
-
-    let markdown;
-    let newCursorPosition;
-
-    switch (formatType) {
-      case 'bold':
-        markdown = `**${selectedText}**`;
-        newCursorPosition = start + 2;
-        break;
-      case 'italic':
-        markdown = `*${selectedText}*`;
-        newCursorPosition = start + 1;
-        break;
-      case 'code':
-        markdown = "`" + selectedText + "`";
-        newCursorPosition = start + 1;
-        break;
-      case 'link':
-        markdown = `[${selectedText}](url)`;
-        newCursorPosition = start + 1;
-        break;
-      case 'external-link':
-        markdown = `[${selectedText}](https://)`;
-        newCursorPosition = start + 1;
-        break;
-      case 'list':
-        markdown = `\n- ${selectedText}`;
-        newCursorPosition = start + 3;
-        break;
-      case 'heading':
-        markdown = `# ${selectedText}`;
-        newCursorPosition = start + 2;
-        break;
-      default:
-        return;
-    }
-
-    const newValue = value.substring(0, start) + markdown + value.substring(end);
-    onChange(newValue);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(newCursorPosition, newCursorPosition + selectedText.length);
-    }, 0);
-  };
+                popup = tippy('body', {
+                  getReferenceClientRect: props.clientRect,
+                  appendTo: () => document.body,
+                  content: reactRenderer.element,
+                  showOnCreate: true,
+                  interactive: true,
+                  trigger: 'manual',
+                  placement: 'bottom-start',
+                });
+              },
+              onUpdate(props: any) {
+                reactRenderer.updateProps(props);
+                popup[0].setProps({ getReferenceClientRect: props.clientRect });
+              },
+              onKeyDown(props: any) {
+                if (props.event.key === 'Escape') {
+                  popup[0].hide();
+                  return true;
+                }
+                return reactRenderer.ref?.onKeyDown(props);
+              },
+              onExit() {
+                popup[0].destroy();
+                reactRenderer.destroy();
+              },
+            };
+          },
+        },
+      }),
+    ],
+    content: value,
+    onUpdate: ({ editor }) => {
+      onChange(editor.storage.markdown.getMarkdown());
+    },
+    editorProps: {
+      attributes: {
+        class: `prose dark:prose-invert min-h-[160px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
+      },
+    },
+  });
 
   const formattingTools = [
-    { type: 'bold', icon: Bold, tooltip: 'Bold' },
-    { type: 'italic', icon: Italic, tooltip: 'Italic' },
-    { type: 'code', icon: Code, tooltip: 'Code' },
-    { type: 'link', icon: LinkIcon, tooltip: 'Link' },
-    { type: 'external-link', icon: ExternalLink, tooltip: 'External Link' },
-    { type: 'list', icon: List, tooltip: 'List' },
-    { type: 'heading', icon: Heading, tooltip: 'Heading' },
+    { action: () => editor?.chain().focus().toggleBold().run(), icon: Bold, tooltip: 'Bold' },
+    { action: () => editor?.chain().focus().toggleItalic().run(), icon: Italic, tooltip: 'Italic' },
+    { action: () => editor?.chain().focus().toggleCode().run(), icon: Code, tooltip: 'Code' },
+    { action: () => { const url = window.prompt('URL'); if (url) editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run(); }, icon: LinkIcon, tooltip: 'Link' },
+    { action: () => editor?.chain().focus().toggleBulletList().run(), icon: List, tooltip: 'List' },
+    { action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(), icon: Heading, tooltip: 'Heading' },
   ] as const;
+
+  useEffect(() => {
+    if (editor && value !== editor.storage.markdown.getMarkdown()) {
+      editor.commands.setContent(value);
+    }
+  }, [value, editor]);
 
   return (
     <Tabs defaultValue="write" className="w-full">
@@ -99,63 +165,24 @@ export function MarkdownEditor({ value, onChange, placeholder, className, users 
           <TabsTrigger value="preview">Preview</TabsTrigger>
         </TabsList>
         <div className="flex items-center gap-1 pr-1">
-          {formattingTools.map(tool => (
-            <Tooltip key={tool.type}>
+          {formattingTools.map((tool, i) => (
+            <Tooltip key={i}>
               <TooltipTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" onClick={() => handleFormat(tool.type)}>
+                <Button type="button" variant="ghost" size="icon" onClick={tool.action}>
                   <tool.icon className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{tool.tooltip}</p>
-              </TooltipContent>
+              <TooltipContent><p>{tool.tooltip}</p></TooltipContent>
             </Tooltip>
           ))}
         </div>
       </div>
       <TabsContent value="write">
-        <TextareaAutocomplete
-          className={`w-full p-2 border rounded-md bg-background text-foreground ${className}`}
-          loadingComponent={() => <span>Loading...</span>}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-          innerRef={(ref: HTMLTextAreaElement) => {
-            (textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = ref;
-          }}
-          minChar={0}
-          trigger={{
-            '@': {
-              dataProvider: (token: string) => {
-                if (!users) return []; // Guard against undefined users array
-                return users
-                  .filter(user => user.name.toLowerCase().includes(token.toLowerCase()))
-                  .map(user => ({ 
-                      id: user.id,
-                      name: user.name,
-                      avatarUrl: user.avatarUrl, // Corrected field
-                  }));
-              },
-              component: UserMentionItem,
-              output: (item: Item & { id: string }) => `[@${item.name}](/users/${item.id})`,
-            },
-          }}
-        />
+        <EditorContent editor={editor} />
       </TabsContent>
       <TabsContent value="preview">
         <div className="rounded-md border border-input p-4 min-h-[220px]">
-           <ReactMarkdown 
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={{
-              a: ({node, ...props}) => {
-                if (props.href && (props.href.startsWith('http') || props.href.startsWith('https'))) {
-                  return <a {...props} target="_blank" rel="noopener noreferrer" />
-                }
-                return <a {...props} />
-              }
-            }}
-          >
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
             {value || "Nothing to preview."}
           </ReactMarkdown>
         </div>
