@@ -29,12 +29,13 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(serverUser);
   const [loading, setLoading] = useState(true);
   const sessionErrorOccurred = useRef(false);
+  const initialLoad = useRef(true);
 
   const signOut = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
-      await fetch('/api/auth/logout', { method: 'POST' });
-      // onAuthStateChanged will handle the rest
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      setCurrentUser(null);
     } catch (error) {
       console.error('Sign-out failed:', error);
     }
@@ -42,9 +43,13 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
 
   useEffect(() => {
     const handleAuthChange = async (firebaseUser: import('firebase/auth').User | null) => {
-      setLoading(true);
+      if (initialLoad.current && serverUser) {
+        setLoading(false);
+        initialLoad.current = false;
+        return;
+      }
+
       if (firebaseUser) {
-        // If we have a firebase user, it means any previous session error is resolved, so we reset the flag.
         sessionErrorOccurred.current = false;
         const token = await getIdToken(firebaseUser);
         const sessionResponse = await fetch('/api/auth/session', {
@@ -58,19 +63,14 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
           setCurrentUser(appUser || null);
         } else {
           console.error('Failed to create session, signing out:', await sessionResponse.text());
-          // Set the flag to prevent a retry loop
           sessionErrorOccurred.current = true;
-          await firebaseSignOut(auth);
-          await fetch('/api/auth/logout', { method: 'POST' });
+          await signOut();
         }
       } else {
-        // No user is signed in to Firebase on the client.
         setCurrentUser(null);
-        // Only attempt to sign in anonymously if we didn't just fail to create a session.
         if (!sessionErrorOccurred.current) {
             try {
               await signInAnonymously(auth);
-              // The listener will re-run with the new anonymous user.
             } catch (error) {
               console.error('Automatic anonymous sign-in failed:', error);
             }
@@ -82,7 +82,7 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
     const unsubscribe = onAuthStateChanged(auth, handleAuthChange);
 
     return () => unsubscribe();
-  }, []); // Empty dependency array is key.
+  }, [serverUser, signOut]);
 
   return (
     <AuthContext.Provider value={{ currentUser, loading, signOut }}>
