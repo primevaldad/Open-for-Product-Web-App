@@ -1,8 +1,8 @@
 'use client';
 
-import { Bold, Code, Italic, Link as LinkIcon, List, Heading, ExternalLink } from 'lucide-react';
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
+import { Bold, Code, Italic, Link as LinkIcon, List, Heading } from 'lucide-react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Mention from '@tiptap/extension-mention';
@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { User } from '@/lib/types';
-import { UserMentionItem } from './user-mention-item';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 
-// TipTap mention suggestion list component
 const MentionList = forwardRef((props: any, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -37,7 +37,7 @@ const MentionList = forwardRef((props: any, ref) => {
         return true;
       }
       if (event.key === 'Enter') {
-        props.command({ id: props.items[selectedIndex].id, label: props.items[selectedIndex].name });
+        props.command({ id: props.items[selectedIndex].username || props.items[selectedIndex].id, label: props.items[selectedIndex].name });
         return true;
       }
       return false;
@@ -53,10 +53,14 @@ const MentionList = forwardRef((props: any, ref) => {
       {props.items.map((item: User, index: number) => (
         <div
           key={index}
-          className={`p-2 rounded-md cursor-pointer ${index === selectedIndex ? 'bg-muted' : ''}`}
-          onClick={() => props.command({ id: item.id, label: item.name })}
+          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${index === selectedIndex ? 'bg-muted' : ''}`}
+          onClick={() => props.command({ id: item.username || item.id, label: item.name })}
         >
-          <UserMentionItem name={item.name} avatarUrl={item.avatarUrl} />
+          <Avatar className="h-8 w-8">
+            {item.avatarUrl && <AvatarImage src={item.avatarUrl} alt={item.name} />}
+            <AvatarFallback>{getInitials(item.name)}</AvatarFallback>
+          </Avatar>
+          <span className="font-medium">{item.name}</span>
         </div>
       ))}
     </div>
@@ -73,6 +77,8 @@ interface MarkdownEditorProps {
 }
 
 export function MarkdownEditor({ value, onChange, placeholder, className, users = [] }: MarkdownEditorProps) {
+  const isUpdatingFromEditor = useRef(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -85,11 +91,12 @@ export function MarkdownEditor({ value, onChange, placeholder, className, users 
       Link.configure({ openOnClick: false, autolink: true }),
       Mention.configure({
         HTMLAttributes: { class: 'mention' },
-        renderLabel({ options, node }) {
-          return `@${node.attrs.label ?? node.attrs.id}`
+        renderLabel({ node }) {
+          return `@${node.attrs.label ?? node.attrs.id}`;
         },
         suggestion: {
-          items: (query: string) => users.filter(user => user.name.toLowerCase().startsWith(query.toLowerCase())).slice(0, 5),
+          items: ({ query }: { query: string; editor: Editor; }) => 
+            users.filter(user => user.name.toLowerCase().startsWith(query.toLowerCase())).slice(0, 5),
           render: () => {
             let reactRenderer: ReactRenderer<any>;
             let popup: any;
@@ -120,7 +127,8 @@ export function MarkdownEditor({ value, onChange, placeholder, className, users 
                   popup[0].hide();
                   return true;
                 }
-                return reactRenderer.ref?.onKeyDown(props);
+                const mentionListRef = reactRenderer.ref as any;
+                return mentionListRef?.onKeyDown(props);
               },
               onExit() {
                 popup[0].destroy();
@@ -133,13 +141,15 @@ export function MarkdownEditor({ value, onChange, placeholder, className, users 
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      onChange(editor.storage.markdown.getMarkdown());
+      isUpdatingFromEditor.current = true;
+      onChange((editor as any).getMarkdown());
     },
     editorProps: {
       attributes: {
         class: `prose dark:prose-invert min-h-[160px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
       },
     },
+    immediatelyRender: false,
   });
 
   const formattingTools = [
@@ -152,8 +162,13 @@ export function MarkdownEditor({ value, onChange, placeholder, className, users 
   ] as const;
 
   useEffect(() => {
-    if (editor && value !== editor.storage.markdown.getMarkdown()) {
-      editor.commands.setContent(value);
+    if (isUpdatingFromEditor.current) {
+      isUpdatingFromEditor.current = false;
+      return;
+    }
+
+    if (editor) {
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 
