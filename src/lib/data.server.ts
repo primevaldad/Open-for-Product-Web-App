@@ -1,4 +1,3 @@
-
 'server-only';
 
 import admin from 'firebase-admin';
@@ -321,7 +320,7 @@ export async function updateProjectMemberRole({ projectId, userId, role, pending
             // Add new member if they don't exist, which happens during an application
             const newMember: ProjectMember = {
                 userId,
-                role: role || 'participant', // Default to participant if no role is specified
+                role: role || 'participant',
                 createdAt: new Date().toISOString(),
             };
             if (pendingRole) {
@@ -336,16 +335,25 @@ export async function updateProjectMemberRole({ projectId, userId, role, pending
 
 // --- Activity Functions ---
 
-export async function getUserActivity(userId: string): Promise<Activity[]> {
-    const feedRef = adminDb.collection('users').doc(userId).collection('feed');
-    const activitySnapshot = await feedRef.orderBy('timestamp', 'desc').limit(50).get();
+export async function getGlobalActivityFeed(): Promise<Activity[]> {
+    const activitySnapshot = await adminDb.collection('activity')
+        .orderBy('timestamp', 'desc')
+        .limit(100)
+        .get();
+
+    if (activitySnapshot.empty) {
+        return [];
+    }
 
     return activitySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
-            ...data,
             id: doc.id,
+            type: data.type,
+            actorId: data.actorId,
             timestamp: serializeTimestamp(data.timestamp),
+            projectId: data.projectId,
+            context: data.context || {},
         } as Activity;
     });
 }
@@ -528,8 +536,3 @@ export async function logOrphanedUser(user: User): Promise<void> {
         console.error(`[AUTH_ACTION_TRACE] Failed to log orphaned user: ${user.id}`, error);
     }
 }
-
-
-    
-
-    

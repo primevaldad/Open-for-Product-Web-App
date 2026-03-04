@@ -1,7 +1,7 @@
 'use server';
 
 import { getAuthenticatedUser } from "@/lib/session.server";
-import { getUserActivity, getAllProjects, getAllUsers } from "@/lib/data.server";
+import { getGlobalActivityFeed, getAllProjects, getAllUsers } from "@/lib/data.server";
 import { hydrateActivityItem } from "@/app/(app)/activity/utils";
 import { deepSerialize } from "@/lib/utils.server";
 import { HydratedActivityItem } from "@/app/(app)/activity/utils";
@@ -17,7 +17,7 @@ export async function getActivityPageData() {
         }
 
         const [activity, projects, users] = await Promise.all([
-            getUserActivity(currentUser.id),
+            getGlobalActivityFeed(),
             getAllProjects(currentUser),
             getAllUsers(),
         ]);

@@ -55,11 +55,34 @@ export const hydrateActivityItem = (
     usersMap: Map<string, User>,
     projectsMap: Map<string, Project>
 ): HydratedActivityItem | null => {
+    console.log('--- Processing Activity Item ---', item);
 
-    const actor = usersMap.get(item.actorId);
-    if (!actor) return null; // Don't show activity if the actor is not found
+    const actorId = item.actorId;
+    if (!actorId) {
+        console.log('-> ❌ Activity rejected: No actorId found on item.');
+        return null; 
+    }
+    console.log(`-> Actor ID found: ${actorId}`);
+
+    const actor = usersMap.get(actorId);
+    if (!actor) {
+        console.log(`-> ❌ Activity rejected: User not found in usersMap for ID: ${actorId}`);
+        console.log('Available user IDs in map:', Array.from(usersMap.keys()));
+        return null;
+    }
+    console.log('-> ✅ Actor found:', actor);
 
     const project = item.projectId ? projectsMap.get(item.projectId) : undefined;
+    if (item.projectId) {
+        if (project) {
+            console.log(`-> ✅ Project found for ID ${item.projectId}:`, project);
+        } else {
+            console.log(`-> ⚠️ Project not found in projectsMap for ID: ${item.projectId}`);
+            console.log('Available project IDs in map:', Array.from(projectsMap.keys()));
+        }
+    } else {
+        console.log('-> ℹ️ No projectId associated with this activity.');
+    }
 
     // Server-side timestamp serialization with type-safe checks.
     const rawTimestamp = item.timestamp;
@@ -77,13 +100,12 @@ export const hydrateActivityItem = (
       serializedTimestamp = new Date().toISOString();
     }
 
+    console.log('-> ✅ Activity hydrated successfully!');
     return {
         id: item.id,
-        // CLONE ACTOR: Create a shallow copy of the actor object to prevent mutation by reference.
         actor: { ...actor },
         type: item.type,
         timestamp: serializedTimestamp,
-        // CLONE PROJECT: Also clone the project object for safety.
         project: project ? { ...project } : undefined,
         context: item.context,
     };
