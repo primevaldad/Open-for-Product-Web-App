@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { FieldValue, admin } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, updateUser as updateUserInDb, findUserById } from '@/lib/data.server';
 import type { ServerActionResponse, User, Event, Notification, EventType, ProfileTag } from '@/lib/types';
 
@@ -30,7 +30,7 @@ async function createNotification(userId: string, eventId: string): Promise<void
         userId,
         eventId,
         isRead: false,
-        createdAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp() as any,
     };
     await notificationRef.set(notification);
 }
@@ -50,12 +50,12 @@ async function manageUserInterests(
 
   for (const tagId of tagsToAdd) {
     const tagRef = tagsCollection.doc(tagId);
-    transaction.update(tagRef, { usageCount: admin.firestore.FieldValue.increment(1) });
+    transaction.update(tagRef, { usageCount: FieldValue.increment(1) });
   }
 
   for (const tagId of tagsToRemove) {
     const tagRef = tagsCollection.doc(tagId);
-    transaction.update(tagRef, { usageCount: admin.firestore.FieldValue.increment(-1) });
+    transaction.update(tagRef, { usageCount: FieldValue.increment(-1) });
   }
 }
 

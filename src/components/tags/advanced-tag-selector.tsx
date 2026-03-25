@@ -75,7 +75,7 @@ export default function AdvancedTagSelector({
     const newProjectTag: ProjectTag = {
       id: normalizedId,
       display: display,
-      isCategory: originalTag ? originalTag.isCategory : false, 
+      isCategory: originalTag ? Boolean(originalTag.isCategory) : false, 
     };
     onChange([...safeValue, newProjectTag]);
   };
@@ -140,6 +140,7 @@ export default function AdvancedTagSelector({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            type="button"
             id={id}
             variant="outline"
             role="combobox"
@@ -275,10 +276,10 @@ export default function AdvancedTagSelector({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingTag(null)}>
+            <Button type="button" variant="outline" onClick={() => setEditingTag(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit}>Save</Button>
+            <Button type="button" onClick={handleSaveEdit}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

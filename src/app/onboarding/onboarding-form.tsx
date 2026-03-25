@@ -45,11 +45,15 @@ interface OnboardingFormProps {
 export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   const router = useRouter();
   
-  const userInterestTags: ProjectTag[] = (user.interests || []).map(interest => ({
-    id: interest,
-    display: interest,
-    isCategory: allTags.find(t => t.id === interest)?.isCategory || false,
-  }));
+  const userInterestTags: ProjectTag[] = Array.isArray(user.interests) ? user.interests.map((interest: any) => {
+    const tagId = typeof interest === 'string' ? interest : interest.id;
+    const tagDisplay = typeof interest === 'string' ? interest : interest.display;
+    return {
+      id: tagId,
+      display: tagDisplay,
+      isCategory: Boolean(allTags.find(t => t.id === tagId)?.isCategory),
+    };
+  }) : [];
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(OnboardingSchema),
@@ -64,7 +68,7 @@ export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   async function onSubmit(values: OnboardingFormValues) {
     const dataToUpdate = {
       ...values,
-      interests: values.interests.map(tag => tag.id),
+      interests: values.interests.map(tag => ({ id: tag.id, display: tag.display })),
       onboardingCompleted: true,
     };
 
