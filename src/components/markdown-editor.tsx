@@ -144,7 +144,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className, users 
       isUpdatingFromEditor.current = true;
       const md = typeof (editor as any).getMarkdown === 'function' 
         ? (editor as any).getMarkdown() 
-        : editor.storage.markdown.getMarkdown();
+        : (editor.storage as any).markdown.getMarkdown();
       onChange(md);
     },
     editorProps: {
