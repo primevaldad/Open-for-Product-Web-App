@@ -4,8 +4,8 @@ import type { SteemPost, UserId } from '@/lib/types';
 
 function getServiceAccount() {
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!serviceAccountKey) {
-    console.warn('FIREBASE_SERVICE_ACCOUNT_KEY not found. Relying on default credentials. This is expected in a GCP environment.');
+  if (!serviceAccountKey || serviceAccountKey === 'undefined') {
+    console.warn('FIREBASE_SERVICE_ACCOUNT_KEY not found or undefined. Relying on default credentials. This is expected in a GCP environment.');
     return undefined;
   }
   try {
