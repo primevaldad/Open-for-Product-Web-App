@@ -8,12 +8,23 @@ import type { User } from '@/lib/types';
 import { findUserById } from '@/lib/data.server';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
-const SERVICE_ACCOUNT = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
+const getServiceAccount = () => {
+  const key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!key || key === 'undefined') return null;
+  try {
+    return JSON.parse(key);
+  } catch (e) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY in session.server.ts', e);
+    return null;
+  }
+};
+
+const SERVICE_ACCOUNT = getServiceAccount();
 
 // Ensure the Firebase app is initialized only once.
 if (!getApps().length) {
   initializeApp({
-    credential: cert(SERVICE_ACCOUNT),
+    credential: SERVICE_ACCOUNT ? cert(SERVICE_ACCOUNT) : admin.credential.applicationDefault(),
     databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
   });
 } else {
