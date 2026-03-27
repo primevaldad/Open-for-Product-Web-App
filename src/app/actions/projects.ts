@@ -605,7 +605,10 @@ export async function getDraftsPageData(currentUser: User | null): Promise<Draft
       getAllProjectPathLinks(),
     ]);
 
-    const projectsData = draftsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+    const projectsData = draftsSnapshot.docs.map(doc => {
+      const { embedding, ...data } = doc.data();
+      return { ...data, id: doc.id };
+    }) as Project[];
 
     const usersMap = new Map(usersData.map((user) => [user.id, user]));
 

@@ -7,16 +7,19 @@ import { getAuthenticatedUser } from '@/lib/session.server';
 import { adminAuth } from '@/lib/firebase.server';
 import { deepSerialize } from '@/lib/utils.server';
 import { updateUser } from './user'; // Import the correct high-level action
-import type { User, Tag } from '@/lib/types';
+import type { User, GlobalTag } from '@/lib/types';
 
 const UserSettingsSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
   username: z.string().min(3, 'Username must be at least 3 characters').or(z.literal('')).optional(),
-  bio: z.string().max(160, 'Bio must not be longer than 160 characters.').optional(),
-  interests: z.array(z.string()).optional(),
+  bio: z.string().max(2000, 'Bio must not be longer than 2000 characters.').optional(),
+  interests: z.array(z.union([
+    z.string(),
+    z.object({ id: z.string(), display: z.string() })
+  ])).optional(),
   company: z.string().optional(),
   location: z.string().optional(),
-  website: z.string().url('Please enter a valid URL.').or(z.literal('')).optional(),
+  website: z.string().optional(),
   steemUsername: z.string().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
 });
@@ -26,7 +29,10 @@ const OnboardingSchema = z.object({
   id: z.string().min(1, { message: 'User ID is required.' }),
   name: z.string().min(1, { message: 'Name is required.' }),
   bio: z.string().optional(),
-  interests: z.array(z.string()).min(1, { message: 'Please select at least one interest.' }),
+  interests: z.array(z.union([
+    z.string(),
+    z.object({ id: z.string(), display: z.string() })
+  ])).min(1, { message: 'Please select at least one interest.' }),
 });
 
 export async function getSettingsPageData() {
@@ -72,7 +78,7 @@ export async function updateUserSettings(values: z.infer<typeof UserSettingsSche
         }
         
         // Use the centralized updateUser action
-        const result = await updateUser(currentUser.id, validatedFields.data);
+        const result = await updateUser(currentUser.id, validatedFields.data as any);
 
         if (!result.success) {
             return { success: false, error: result.error };
@@ -115,7 +121,7 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   const result = await updateUser(id, {
     name,
     bio,
-    interests,
+    interests: interests as any,
     onboardingCompleted: true,
   });
 

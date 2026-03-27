@@ -70,6 +70,7 @@ export function deepSerialize<T>(obj: T, visited = new WeakSet()): T {
     const serializedObj: { [key: string]: unknown } = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            if (key === 'embedding') continue;
             const value = deepSerialize((obj as Record<string, unknown>)[key], visited);
             // Only include the key in the new object if its value is not undefined.
             if (value !== undefined) {

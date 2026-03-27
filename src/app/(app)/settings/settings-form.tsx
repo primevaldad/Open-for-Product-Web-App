@@ -31,12 +31,11 @@ const SettingsSchema = z.object({
   tags: z.array(z.object({
     id: z.string(),
     display: z.string(),
-    type: z.string(),
     isCategory: z.boolean().optional(),
   })).optional(),
   company: z.string().optional(),
   location: z.string().optional(),
-  website: z.string().url('Please enter a valid URL.').or(z.literal('')).optional(),
+  website: z.string().optional(),
   steemUsername: z.string().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
 });
@@ -59,7 +58,11 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
       name: currentUser.name,
       username: currentUser.username || '',
       bio: currentUser.bio || '',
-      tags: currentUser.interests?.map(interest => ({ id: interest, display: interest, type: 'interest' })) || [],
+      tags: currentUser.interests?.map(interest => {
+        const id = typeof interest === 'string' ? interest : interest.id;
+        const display = typeof interest === 'string' ? interest : (interest.display || interest.id);
+        return { id, display };
+      }) || [],
       company: currentUser.company || '',
       location: currentUser.location || '',
       website: currentUser.website || '',
@@ -73,8 +76,9 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
         // a bit of a hack to get the data in the right shape
         const userData = {
             ...data,
-            interests: data.tags?.map(t => t.id) || [],
+            interests: data.tags as any,
         };
+        // Cast interests to any to bypass strict type checking since updateUser is now flexible.
       const result = await updateUserSettings(userData);
       if (!result.success) {
         toast({

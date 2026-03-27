@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import type { User, GlobalTag, ProjectTag, ProjectPathLink, LearningPath, HydratedProject } from "@/lib/types";
 import TagSelector from "@/components/tags/tag-selector";
 import {
@@ -15,12 +16,16 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import ProjectCard from "@/components/project-card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Loader2, X } from "lucide-react";
 import { searchProjectsSemantic } from "@/app/actions/search";
-import { useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface HomeClientPageProps {
@@ -69,6 +74,7 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
     const [searchQuery, setSearchQuery] = useState("");
     const [semanticResults, setSemanticResults] = useState<HydratedProject[] | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    const [suggestionsOpen, setSuggestionsOpen] = useState<string[]>(["suggestions"]);
 
     const isGuest = currentUser?.role === 'guest';
 
@@ -78,13 +84,13 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
             return;
         }
 
-        console.log("Triggering semantic search for:", query);
         setIsSearching(true);
         try {
             const response = await searchProjectsSemantic(query);
-            console.log("Search response:", response);
             if (response.success && response.data) {
                 setSemanticResults(response.data);
+                // Auto-collapse suggestions when search results are found
+                setSuggestionsOpen([]);
             } else {
                 toast.error(response.error || "Failed to perform semantic search");
             }
@@ -99,10 +105,11 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
     useEffect(() => {
         const timer = setTimeout(() => {
             if (searchQuery) {
-                console.log("Auto-search triggered for:", searchQuery);
                 handleSearch(searchQuery);
             } else {
                 setSemanticResults(null);
+                // Re-expand suggestions when search is cleared
+                setSuggestionsOpen(["suggestions"]);
             }
         }, 500);
 
@@ -170,33 +177,40 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                     )}
                 </div>
 
-                <div className="relative">
-                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search projects with AI (e.g. 'apps to help me save money' or 'climate change solutions')..." 
-                        className="pl-10 pr-10 py-6 text-lg"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                handleSearch(searchQuery);
-                            } else if (e.key === 'Escape') {
-                                setSearchQuery("");
-                                setSemanticResults(null);
-                            }
-                        }}
-                    />
-                    {isSearching ? (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-muted-foreground" />
-                    ) : searchQuery ? (
-                        <button 
-                            onClick={() => setSearchQuery("")}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
-                        >
-                            <X className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                    ) : null}
-                </div>
+                {aiEnabled && (
+                  <div className="relative">
+                      <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                          placeholder="Search projects with AI (e.g. 'apps to help me save money' or 'climate change solutions')..." 
+                          className="pl-10 pr-10 py-6 text-lg"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                  handleSearch(searchQuery);
+                              } else if (e.key === 'Escape') {
+                                  setSearchQuery("");
+                                  setSemanticResults(null);
+                                  setSuggestionsOpen(["suggestions"]);
+                              }
+                          }}
+                      />
+                      {isSearching ? (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-muted-foreground" />
+                      ) : searchQuery ? (
+                          <button 
+                              onClick={() => {
+                                  setSearchQuery("");
+                                  setSemanticResults(null);
+                                  setSuggestionsOpen(["suggestions"]);
+                              }}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
+                          >
+                              <X className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                      ) : null}
+                  </div>
+                )}
 
                 <Separator />
 
@@ -206,9 +220,16 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                         <TagSelector id="tag-selector" value={selectedTags} onChange={setSelectedTags} availableTags={allTags} tagFactory={projectTagFactory} />
                     </div>
                     <div className="grid grid-cols-2 gap-4 pt-2 md:grid-cols-1 md:pt-8 md:gap-6">
-                        <div className="flex items-center space-x-2">
-                            <Switch id="show-suggested" checked={showSuggested} onCheckedChange={setShowSuggested} />
-                            <Label htmlFor="show-suggested">Show Suggestions</Label>
+                        <div className={cn("flex items-center space-x-2", !aiEnabled && "opacity-50 cursor-not-allowed")}>
+                            <Switch 
+                                id="show-suggested" 
+                                checked={aiEnabled && showSuggested} 
+                                onCheckedChange={setShowSuggested} 
+                                disabled={!aiEnabled}
+                            />
+                            <Label htmlFor="show-suggested" className={cn(!aiEnabled && "text-muted-foreground")}>
+                                Show Suggestions {!aiEnabled && "(AI required)"}
+                            </Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <Switch id="match-all" checked={matchAllTags} onCheckedChange={setMatchAllTags} />
@@ -255,11 +276,22 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                     ) : (
                         <>
                             {shouldShowSuggestions && (
-                                <div>
-                                    <h2 className="text-2xl font-bold tracking-tight mb-4">Suggested for you</h2>
+                        <Accordion 
+                            type="multiple" 
+                            value={suggestionsOpen} 
+                            onValueChange={setSuggestionsOpen}
+                            className="w-full border-none"
+                        >
+                            <AccordionItem value="suggestions" className="border-none">
+                                <AccordionTrigger className="hover:no-underline py-0 mb-4">
+                                    <h2 className="text-2xl font-bold tracking-tight">Suggested for you</h2>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-0 overflow-visible">
                                     <ProjectList projects={cleanSuggestedProjects} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
-                                </div>
-                            )}
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                    )}
                             
                             {filteredExploreProjects.length > 0 && (
                                 <div>

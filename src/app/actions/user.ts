@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, updateUser as updateUserInDb, findUserById } from '@/lib/data.server';
-import type { ServerActionResponse, User, Event, Notification, EventType, ProfileTag } from '@/lib/types';
+import type { ServerActionResponse, User, Event, Notification, EventType, ProfileTag, GlobalTag } from '@/lib/types';
 
 async function createEvent(type: EventType, actorUserId: string, targetUserId?: string, projectId?: string, payload?: any): Promise<Event> {
     const eventRef = adminDb.collection('events').doc();
@@ -35,27 +35,60 @@ async function createNotification(userId: string, eventId: string): Promise<void
     await notificationRef.set(notification);
 }
 
-// --- Tag Management --- //
+const MAX_TAG_LENGTH = 35;
+const normalizeTag = (tag: string): string => {
+  return tag.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').slice(0, MAX_TAG_LENGTH);
+};
+
 async function manageUserInterests(
   transaction: FirebaseFirestore.Transaction,
   newInterests: ProfileTag[],
-  currentInterests: ProfileTag[]
+  currentInterests: ProfileTag[],
+  userId: string
 ): Promise<void> {
   const tagsCollection = adminDb.collection('tags');
-  const newTagIds = newInterests.map((t) => t.id);
-  const currentTagIds = currentInterests.map((t) => t.id);
+  const newTagIds = (newInterests as any[]).map((t) => normalizeTag(typeof t === 'string' ? t : t.id));
+  const currentTagIds = (currentInterests as any[]).map((t) => normalizeTag(typeof t === 'string' ? t : t.id));
 
-  const tagsToAdd = newTagIds.filter((id) => !currentTagIds.includes(id));
-  const tagsToRemove = currentTagIds.filter((id) => !newTagIds.includes(id));
+  const tagsToAddIds = newInterests ? newTagIds.filter((id) => !currentTagIds.includes(id)) : [];
+  const tagsToRemoveIds = currentInterests ? currentTagIds.filter((id) => !newTagIds.includes(id)) : [];
 
-  for (const tagId of tagsToAdd) {
-    const tagRef = tagsCollection.doc(tagId);
-    transaction.update(tagRef, { usageCount: FieldValue.increment(1) });
+  const allRelevantIds = [...new Set([...tagsToAddIds, ...tagsToRemoveIds])];
+  if (allRelevantIds.length === 0) return;
+
+  const tagRefs = allRelevantIds.map((id) => tagsCollection.doc(id));
+  const tagSnaps = await transaction.getAll(...tagRefs);
+  const tagSnapsMap = new Map(tagSnaps.map((snap) => [snap.id, snap]));
+
+  for (const id of tagsToAddIds) {
+    const tagRef = tagsCollection.doc(id);
+    const tagSnap = tagSnapsMap.get(id);
+    const pTag = (newInterests as any[]).find((t) => normalizeTag(typeof t === 'string' ? t : t.id) === id);
+    const display = typeof pTag === 'string' ? pTag : (pTag?.display || id);
+
+    if (tagSnap && tagSnap.exists) {
+      transaction.update(tagRef, { usageCount: FieldValue.increment(1) });
+    } else {
+      const newGlobalTag: Omit<GlobalTag, 'usageCount'> & { usageCount: number } = {
+        id,
+        normalized: id,
+        display: display,
+        isCategory: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: userId,
+        usageCount: 1,
+      };
+      transaction.set(tagRef, newGlobalTag);
+    }
   }
 
-  for (const tagId of tagsToRemove) {
-    const tagRef = tagsCollection.doc(tagId);
-    transaction.update(tagRef, { usageCount: FieldValue.increment(-1) });
+  for (const id of tagsToRemoveIds) {
+    const tagRef = tagsCollection.doc(id);
+    const tagSnap = tagSnapsMap.get(id);
+    if (tagSnap && tagSnap.exists) {
+      transaction.update(tagRef, { usageCount: FieldValue.increment(-1) });
+    }
   }
 }
 
@@ -70,14 +103,14 @@ export async function updateUser(userId: string, userData: Partial<User>): Promi
       }
       const currentUserData = userDoc.data() as User;
 
-      // If interests are being updated, manage the tags
-      if (userData.interests) {
-        await manageUserInterests(
-          transaction,
-          userData.interests as ProfileTag[],
-          currentUserData.interests || []
-        );
-      }
+        if (userData.interests) {
+          await manageUserInterests(
+            transaction,
+            userData.interests as ProfileTag[],
+            currentUserData.interests || [],
+            userId
+          );
+        }
 
       // Perform the user update
       transaction.update(userRef, userData);

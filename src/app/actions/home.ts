@@ -51,7 +51,8 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
         ]);
 
         const cookieStore = await cookies();
-        const aiEnabled = cookieStore.get('ai-enabled')?.value === 'true' || false;
+        const globalAiEnabled = cookieStore.get('ai-enabled')?.value === 'true';
+        const aiEnabled = currentUser ? (currentUser.aiFeaturesEnabled ?? globalAiEnabled) : globalAiEnabled;
 
         const suggestedProjects = await getSuggestedProjects(projects, currentUser, allTags, false, aiEnabled);
 

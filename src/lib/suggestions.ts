@@ -1,15 +1,69 @@
 
 import { HydratedProject, GlobalTag, User } from "./types";
+import { generateProjectEmbedding } from "./ai.server";
+import { adminDb } from "./data.server";
+import { FieldValue } from "firebase-admin/firestore";
+import { toHydratedProject, serializeTimestamp } from "./utils.server";
+import { getAllUsers } from "./data.server";
 
 /**
- * Placeholder for a future real AI suggestion service.
- * @param projects - The projects to choose from.
- * @returns A promise that resolves to an array of AI-suggested projects.
+ * Fetches AI-powered project suggestions based on the user's profile.
+ * @param user - The current user.
+ * @returns A promise that resolves to an array of suggested hydrated projects.
  */
-async function fetchAiSuggestions(projects: HydratedProject[]): Promise<HydratedProject[]> {
-    // This is a placeholder. A real implementation would call an AI service.
-    console.log("AI suggestions are enabled, but the service is not yet implemented.");
-    return [];
+async function fetchAiSuggestions(user: User): Promise<HydratedProject[]> {
+    try {
+        const profileText = [
+            user.bio || "",
+            (user.interests || []).map(i => i.display).join(", ")
+        ].join("\n").trim();
+
+        if (!profileText) return [];
+
+        const embedding = await generateProjectEmbedding(profileText);
+        if (!embedding) return [];
+
+        const vectorValue = (FieldValue as any).vector(embedding);
+        
+        const projectsRef = adminDb.collection('projects');
+        const searchResult = await projectsRef
+            .where('status', '==', 'published')
+            .findNearest('embedding', vectorValue, {
+                limit: 10, // Fetch more to allow filtering out member projects
+                distanceMeasure: 'COSINE',
+            })
+            .get();
+
+        if (searchResult.empty) return [];
+
+        // Hydrate results
+        const usersData = await getAllUsers();
+        const usersMap = new Map(usersData.map((u) => [u.id, u]));
+
+        const projects = searchResult.docs
+            .map((doc) => {
+                const { embedding: _, ...data } = doc.data();
+                // Check if user is already a member
+                const team = data.team || [];
+                if (team.some((m: any) => m.userId === user.id)) return null;
+
+                return toHydratedProject({
+                    ...data,
+                    id: doc.id,
+                    createdAt: serializeTimestamp(data.createdAt),
+                    updatedAt: serializeTimestamp(data.updatedAt),
+                    startDate: serializeTimestamp(data.startDate),
+                    endDate: serializeTimestamp(data.endDate),
+                } as any, usersMap);
+            })
+            .filter((p): p is HydratedProject => !!p)
+            .slice(0, 3); // Return top 3 non-member matches
+
+        return projects;
+    } catch (error) {
+        console.error("Failed to fetch AI suggestions:", error);
+        return [];
+    }
 }
 
 /**
@@ -48,7 +102,7 @@ export async function getSuggestedProjects(
 
         // 1. AI Suggestions
         if (aiEnabled) {
-            const aiSuggestions = await fetchAiSuggestions(nonMemberProjects);
+            const aiSuggestions = await fetchAiSuggestions(currentUser);
             for (const project of aiSuggestions) {
                 if (suggestions.length < 3 && project && project.id && !suggestionIds.has(project.id)) {
                     suggestions.push(project);
@@ -83,13 +137,10 @@ export async function getSuggestedProjects(
         }
     }
 
-    // --- FALLBACK 1: Fill with random projects ---
+    // --- FALLBACK 1: Fill with random projects (strictly excluding member projects) ---
     if (suggestions.length < 3) {
-        let candidates = validProjects.filter(p => !suggestionIds.has(p.id) && !p.team?.some(m => m.userId === currentUser?.id));
-        if (candidates.length < (3 - suggestions.length)) {
-            candidates = validProjects.filter(p => !suggestionIds.has(p.id));
-        }
-
+        const candidates = validProjects.filter(p => !suggestionIds.has(p.id) && !p.team?.some(m => m.userId === currentUser?.id));
+        
         const shuffled = candidates.sort(() => 0.5 - Math.random());
         while (suggestions.length < 3 && shuffled.length > 0) {
             const candidate = shuffled.pop()!;
@@ -98,10 +149,10 @@ export async function getSuggestedProjects(
         }
     }
 
-    // --- FALLBACK 2: Fill with most recent projects ---
+    // --- FALLBACK 2: Fill with most recent projects (strictly excluding member projects) ---
     if (suggestions.length < 3) {
         const recentProjects = validProjects
-            .filter(p => !suggestionIds.has(p.id))
+            .filter(p => !suggestionIds.has(p.id) && !p.team?.some(m => m.userId === currentUser?.id))
             .sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
 
         while (suggestions.length < 3 && recentProjects.length > 0) {

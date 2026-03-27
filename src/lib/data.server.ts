@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
-import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, Tag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember } from './types';
+import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember } from './types';
 import { serializeTimestamp } from './utils.server';
 
 // This file contains server-side data access functions.
@@ -63,7 +63,7 @@ async function hydrateProject(project: Project): Promise<HydratedProject> {
 export async function getAllUsers(): Promise<User[]> {
     const userSnapshot = await adminDb.collection('users').get();
     const users = userSnapshot.docs.map(doc => {
-        const data = doc.data();
+        const { embedding, ...data } = doc.data();
         return { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
     });
     return users.filter(user => user.name !== 'Guest User');
@@ -73,7 +73,7 @@ export async function findUserById(userId: string): Promise<User | undefined> {
     if (!userId) return undefined;
     const userSnap = await adminDb.collection('users').doc(userId).get();
     if (userSnap.exists) {
-        const data = userSnap.data();
+        const { embedding, ...data } = userSnap.data()!;
         return { id: userSnap.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
     }
     return undefined;
@@ -87,7 +87,7 @@ export async function findUserByUsername(username: string): Promise<User | undef
         return undefined;
     }
     const userDoc = userSnapshot.docs[0];
-    const data = userDoc.data();
+    const { embedding, ...data } = userDoc.data();
     return { id: userDoc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
 }
 
@@ -114,7 +114,7 @@ export async function findUsersByIds(userIds: string[]): Promise<User[]> {
         const q = adminDb.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk);
         const userSnapshot = await q.get();
         userSnapshot.docs.forEach(doc => {
-            const data = doc.data();
+            const { embedding, ...data } = doc.data();
             users.push({ id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User);
         });
     }
@@ -139,10 +139,10 @@ async function _fetchAllProjectsUnfiltered(): Promise<HydratedProject[]> {
         adminDb.collection('projects').get(),
         adminDb.collection('tags').get()
     ]);
-    const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
+    const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GlobalTag));
     const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
     const projectsWithTags = projectSnapshot.docs.map(doc => {
-        const data = doc.data();
+        const { embedding, ...data } = doc.data();
         const project = { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt), startDate: serializeTimestamp(data.startDate), endDate: serializeTimestamp(data.endDate) } as Project;
         if (project.tags && Array.isArray(project.tags)) {
             project.tags = project.tags.map(projectTag => {
@@ -194,11 +194,11 @@ export async function getAllPublishedProjects(): Promise<HydratedProject[]> {
         return [];
     }
 
-    const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
+    const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GlobalTag));
     const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
 
     const projectsWithTags = projectsSnap.docs.map(doc => {
-        const data = doc.data();
+        const { embedding, ...data } = doc.data();
         const project = {
             id: doc.id,
             ...data,
@@ -233,7 +233,7 @@ export async function findProjectById(projectId: string, currentUser: User | nul
         return undefined;
     }
 
-    const data = projectSnap.data() as Project;
+    const { embedding, ...data } = projectSnap.data() as Project;
     const projectData: Project = {
         id: projectSnap.id,
         ...data,
@@ -245,7 +245,7 @@ export async function findProjectById(projectId: string, currentUser: User | nul
 
     if (projectData.tags && Array.isArray(projectData.tags)) {
         const tagsSnapshot = await adminDb.collection('tags').get();
-        const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
+        const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GlobalTag));
         const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
         projectData.tags = projectData.tags.map(projectTag => {
             const tagId = (projectTag as ProjectTag).id;
@@ -407,11 +407,11 @@ export async function addNotification(notification: Omit<Notification, 'id'>): P
 
 // --- Tag Data Access ---
 
-export async function getAllTags(): Promise<Tag[]> {
+export async function getAllTags(): Promise<GlobalTag[]> {
     const tagsSnapshot = await adminDb.collection('tags').orderBy('usageCount', 'desc').get();
     return tagsSnapshot.docs.map(doc => {
         const data = doc.data();
-        return { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as Tag;
+        return { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as GlobalTag;
     });
 }
 
@@ -498,7 +498,7 @@ export async function updateUserLearningProgress({ userId, pathId, moduleId, com
     }
     
     const updatedDoc = await progressRef.get();
-    const data = updatedDoc.data()!;
+    const { embedding, ...data } = updatedDoc.data()!;
     return { 
         id: updatedDoc.id, 
         ...data, 
