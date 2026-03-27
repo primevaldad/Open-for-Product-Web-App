@@ -21,10 +21,18 @@ function getServiceAccount() {
 const serviceAccount = getServiceAccount();
 
 if (!getApps().length) {
-  admin.initializeApp({
-    credential: serviceAccount ? admin.credential.cert(serviceAccount) : undefined,
+  const options: admin.AppOptions = {
     databaseURL: `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'open-for-product'}.firebaseio.com`,
-  });
+  };
+
+  if (serviceAccount) {
+    options.credential = admin.credential.cert(serviceAccount);
+  } else {
+    // Rely on Application Default Credentials in GCP environments (like App Hosting)
+    options.credential = admin.credential.applicationDefault();
+  }
+
+  admin.initializeApp(options);
 }
 
 const adminDb = admin.firestore();
