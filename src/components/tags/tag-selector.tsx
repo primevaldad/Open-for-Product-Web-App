@@ -30,7 +30,7 @@ interface TagSelectorProps<T extends { id: string; display: string }> {
   tagFactory: (tag: { id: string; display: string }) => T;
 }
 
-const normalizeTag = (tag: string) => tag.toLowerCase().trim();
+const normalizeTag = (tag: string) => (tag || '').toLowerCase().trim();
 
 export default function TagSelector<T extends { id: string; display: string }>({
   id,
@@ -80,7 +80,7 @@ export default function TagSelector<T extends { id: string; display: string }>({
     return safeAvailableTags.filter(
       (tag) =>
         !selectedTagsMap.has(normalizeTag(tag.id)) &&
-        tag.display.toLowerCase().includes(lowercasedInput)
+        (tag.display || '').toLowerCase().includes(lowercasedInput)
     );
   }, [safeAvailableTags, selectedTagsMap, inputValue]);
 

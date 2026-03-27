@@ -8,7 +8,7 @@ import {
     getAllProjectPathLinks
 } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
-import { HomePageData, HomePageDataResponse, Tag, HydratedProject } from "@/lib/types";
+import { HomePageData, HomePageDataResponse, GlobalTag, HydratedProject } from "@/lib/types";
 import { getSuggestedProjects } from "@/lib/suggestions";
 import { cookies } from 'next/headers';
 
@@ -30,6 +30,11 @@ const convertProjectTimestamps = (project: HydratedProject): HydratedProject => 
     newProject.updatedAt = toISO(newProject.updatedAt);
     newProject.startDate = toISO(newProject.startDate);
     newProject.endDate = toISO(newProject.endDate);
+
+    // Delete non-serializable Firestore Vector field before sending to client
+    if ('embedding' in newProject) {
+        delete (newProject as any).embedding;
+    }
 
     return newProject;
 };

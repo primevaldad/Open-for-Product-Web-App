@@ -56,6 +56,7 @@ export interface Project {
         sustainabilityShare: number; // Percentage for project sustainability
     };
     progress?: number;
+    embedding?: any; // VectorValue
 }
 
 // This represents a tag that is associated with a project.
@@ -116,6 +117,7 @@ export interface HydratedProject {
         sustainabilityShare: number;
     };
     progress?: number;
+    embedding?: any; // VectorValue
 }
 
 export interface HydratedProjectMember {

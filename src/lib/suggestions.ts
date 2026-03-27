@@ -1,5 +1,5 @@
 
-import { HydratedProject, Tag, User } from "./types";
+import { HydratedProject, GlobalTag, User } from "./types";
 
 /**
  * Placeholder for a future real AI suggestion service.
@@ -25,7 +25,7 @@ async function fetchAiSuggestions(projects: HydratedProject[]): Promise<Hydrated
 export async function getSuggestedProjects(
     allProjects: HydratedProject[],
     currentUser: User | null,
-    allTags: Tag[], // Kept for API consistency.
+    allTags: GlobalTag[], // Kept for API consistency.
     dismissed: boolean,
     aiEnabled: boolean
 ): Promise<HydratedProject[] | null> {
@@ -59,7 +59,7 @@ export async function getSuggestedProjects(
 
         // 2. Interest-based suggestions
         if (suggestions.length < 3) {
-            const interests = (currentUser.interests || []).map(i => i.toLowerCase()).filter(Boolean);
+            const interests = (currentUser.interests || []).map(i => i.display?.toLowerCase()).filter(Boolean);
             if (interests.length > 0) {
                 const interestSet = new Set(interests);
                 for (const project of nonMemberProjects) {

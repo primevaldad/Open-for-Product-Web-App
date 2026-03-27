@@ -2,12 +2,14 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache';
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { generateProjectEmbedding } from '@/lib/ai.server';
 import { z } from 'zod';
 import { ActivityType, EventType } from '@/lib/types';
 import type {
   Project,
   ProjectTag,
-  Tag as GlobalTag,
+  GlobalTag,
   User,
   ServerActionResponse,
   Discussion,
@@ -139,7 +141,10 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
 
       await manageTagsForProject(transaction, projectTags, [], currentUser);
 
-      const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> = {
+      const textToEmbed = [name, tagline, description, contributionNeeds, projectTags.map(t => t.display).join(' ')].join('\\n');
+      const embeddingArray = await generateProjectEmbedding(textToEmbed);
+
+      const newProjectData: Omit<Project, 'id' | 'fallbackSuggestion'> & { embedding?: any } = {
         name,
         photoUrl: photoUrl || '',
         startDate: admin.firestore.Timestamp.fromDate(new Date()),
@@ -156,6 +161,10 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
         updatedAt: new Date().toISOString(),
         ownerId: currentUser.id,
       };
+
+      if (embeddingArray) {
+        newProjectData.embedding = (FieldValue as any).vector(embeddingArray);
+      }
       transaction.set(newProjectRef, newProjectData);
     });
 
@@ -255,7 +264,16 @@ export async function updateProject(values: EditProjectFormValues) {
         sustainabilityShare: governance?.sustainabilityShare ?? 15,
       };
 
-      const updatedData: Partial<Project> = {
+      const textToEmbed = [
+        projectData.name || project.name, 
+        projectData.tagline || project.tagline, 
+        projectData.description || project.description, 
+        (projectData.contributionNeeds || project.contributionNeeds).toString(), 
+        projectTags.map(t => t.display).join(' ')
+      ].join('\\n');
+      const embeddingArray = await generateProjectEmbedding(textToEmbed);
+
+      const updatedData: Partial<Project> & { embedding?: any } = {
         ...projectData,
         governance: finalGovernance,
         ...(projectData.team !== undefined && {
@@ -268,6 +286,10 @@ export async function updateProject(values: EditProjectFormValues) {
         tags: projectTags,
         updatedAt: new Date().toISOString(),
       };
+
+      if (embeddingArray) {
+        updatedData.embedding = (FieldValue as any).vector(embeddingArray);
+      }
       transaction.update(projectRef, updatedData);
     });
 

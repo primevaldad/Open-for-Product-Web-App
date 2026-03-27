@@ -16,6 +16,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import ProjectCard from "@/components/project-card";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Sparkles, Loader2, X } from "lucide-react";
+import { searchProjectsSemantic } from "@/app/actions/search";
+import { useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface HomeClientPageProps {
     allPublishedProjects: HydratedProject[];
@@ -60,8 +66,48 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
     const [selectedTags, setSelectedTags] = useState<ProjectTag[]>([]);
     const [matchAllTags, setMatchAllTags] = useState(false);
     const [sortBy, setSortBy] = useState('latest');
+    const [searchQuery, setSearchQuery] = useState("");
+    const [semanticResults, setSemanticResults] = useState<HydratedProject[] | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
 
     const isGuest = currentUser?.role === 'guest';
+
+    const handleSearch = useCallback(async (query: string) => {
+        if (!query.trim()) {
+            setSemanticResults(null);
+            return;
+        }
+
+        console.log("Triggering semantic search for:", query);
+        setIsSearching(true);
+        try {
+            const response = await searchProjectsSemantic(query);
+            console.log("Search response:", response);
+            if (response.success && response.data) {
+                setSemanticResults(response.data);
+            } else {
+                toast.error(response.error || "Failed to perform semantic search");
+            }
+        } catch (error) {
+            console.error("Search error:", error);
+            toast.error("An unexpected error occurred during search");
+        } finally {
+            setIsSearching(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery) {
+                console.log("Auto-search triggered for:", searchQuery);
+                handleSearch(searchQuery);
+            } else {
+                setSemanticResults(null);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery, handleSearch]);
 
     const cleanAndUniqueProjects = useMemo(() => {
         const validProjects = (allPublishedProjects || []).filter(p => p && p.id);
@@ -114,7 +160,46 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
     return (
         <>
             <div className="mb-6 flex flex-col gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-                <h2 className="text-xl font-bold tracking-tight">Filter Projects</h2>
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold tracking-tight">Search & Filter</h2>
+                    {aiEnabled && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            AI Powered
+                        </div>
+                    )}
+                </div>
+
+                <div className="relative">
+                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search projects with AI (e.g. 'apps to help me save money' or 'climate change solutions')..." 
+                        className="pl-10 pr-10 py-6 text-lg"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleSearch(searchQuery);
+                            } else if (e.key === 'Escape') {
+                                setSearchQuery("");
+                                setSemanticResults(null);
+                            }
+                        }}
+                    />
+                    {isSearching ? (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-muted-foreground" />
+                    ) : searchQuery ? (
+                        <button 
+                            onClick={() => setSearchQuery("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
+                        >
+                            <X className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                    ) : null}
+                </div>
+
+                <Separator />
+
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex-grow">
                         <Label htmlFor="tag-selector" className="mb-2 block">Filter by Tags</Label>
@@ -159,19 +244,31 @@ export default function HomeClientPage({ allPublishedProjects, currentUser, allT
                 </div>
             ) : (
                 <div className="flex flex-col gap-8">
-                    {shouldShowSuggestions && (
+                    {semanticResults ? (
                         <div>
-                            <h2 className="text-2xl font-bold tracking-tight mb-4">Suggested for you</h2>
-                            <ProjectList projects={cleanSuggestedProjects} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
+                            <div className="flex items-center gap-2 mb-4">
+                                <h2 className="text-2xl font-bold tracking-tight">Top Semantic Matches</h2>
+                                <span className="text-muted-foreground text-sm font-normal">(AI-generated based on your query)</span>
+                            </div>
+                            <ProjectList projects={semanticResults} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
                         </div>
-                    )}
-                    
-                    {filteredExploreProjects.length > 0 && (
-                        <div>
-                           {shouldShowSuggestions && <Separator className="my-8"/>}
-                            <h2 className="text-2xl font-bold tracking-tight mb-4">Explore Projects</h2>
-                            <ProjectList projects={filteredExploreProjects} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
-                        </div>
+                    ) : (
+                        <>
+                            {shouldShowSuggestions && (
+                                <div>
+                                    <h2 className="text-2xl font-bold tracking-tight mb-4">Suggested for you</h2>
+                                    <ProjectList projects={cleanSuggestedProjects} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
+                                </div>
+                            )}
+                            
+                            {filteredExploreProjects.length > 0 && (
+                                <div>
+                                {shouldShowSuggestions && <Separator className="my-8"/>}
+                                    <h2 className="text-2xl font-bold tracking-tight mb-4">Explore Projects</h2>
+                                    <ProjectList projects={filteredExploreProjects} currentUser={currentUser} allProjectPathLinks={allProjectPathLinks} allLearningPaths={allLearningPaths} />
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             )}

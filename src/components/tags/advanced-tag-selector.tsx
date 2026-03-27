@@ -39,7 +39,7 @@ interface AdvancedTagSelectorProps {
   isProject?: boolean; // Flag to show project-specific features
 }
 
-const normalizeTag = (tag: string) => tag.toLowerCase().trim();
+const normalizeTag = (tag: string) => (tag || '').toLowerCase().trim();
 
 export default function AdvancedTagSelector({
   id,
@@ -129,7 +129,7 @@ export default function AdvancedTagSelector({
     return safeAvailableTags.filter(
       (tag) =>
         !selectedTagsMap.has(normalizeTag(tag.id)) &&
-        tag.display.toLowerCase().includes(lowercasedInput)
+        (tag.display || '').toLowerCase().includes(lowercasedInput)
     );
   }, [safeAvailableTags, selectedTagsMap, inputValue]);
 
