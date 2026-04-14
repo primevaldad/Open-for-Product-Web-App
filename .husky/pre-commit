@@ -1,0 +1,26 @@
+
+
+# Check apphosting.yaml for hardcoded values
+if git diff --cached --name-only | grep -E 'apphosting\.yaml$'; then
+  if git diff --cached 'apphosting.yaml' | grep -E '^\+.*value:.*"AIza'; then
+    echo "ERROR: Hardcoded Firebase API Key detected in apphosting.yaml!"
+    echo "Please use Secret Manager and set 'secret:' instead of 'value:'."
+    echo "Commit rejected."
+    exit 1
+  fi
+  # We should also generally prevent value: "..." for other keys
+  if git diff --cached 'apphosting.yaml' | grep -E '^\+.*value:[[:space:]]*"[^"]+"'; then
+    echo "WARNING: Hardcoded environment variables detected in apphosting.yaml!"
+    echo "If these are sensitive, please use Secret Manager ('secret:')."
+    # To be extremely strict, uncomment the next line:
+    # exit 1
+  fi
+fi
+
+# General check for Firebase API Keys in any modified file
+if git diff --cached -p | grep -E '^\+.*AIza[a-zA-Z0-9_-]{35}'; then
+  echo "ERROR: Firebase API Key (AIza...) detected in staged files."
+  echo "Please use environment variables or Secret Manager."
+  echo "Commit rejected."
+  exit 1
+fi
