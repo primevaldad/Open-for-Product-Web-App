@@ -9,20 +9,20 @@ env:
     secret: NEXT_PUBLIC_FIREBASE_API_KEY
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "open-for-product.firebaseapp.com"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "open-for-product"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "open-for-product.firebasestorage.app"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "36569631324"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    secret: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:36569631324:web:9cacdc439f6b8ced253499"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-    secret: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    value: "G-ZT8QHXENFE"
     availability: [BUILD, RUNTIME]
