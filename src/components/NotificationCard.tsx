@@ -22,6 +22,7 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
     const projectName = project ? <strong>{project.name}</strong> : 'a project';
 
     switch (event.type) {
+        // --- Membership & Role Events ---
         case EventType.PROJECT_JOINED:
             return <p>{actorName} joined {projectName}.</p>;
         case EventType.PROJECT_LEFT:
@@ -32,10 +33,57 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
             return <p>Your application for <strong>{event.payload?.role}</strong> in {projectName} was approved.</p>;
         case EventType.USER_INVITED_TO_PROJECT:
             return <p>You have been invited to join {projectName} as a <strong>{event.payload?.role}</strong>.</p>;
+
+        // --- Discussion Events ---
         case EventType.DISCUSSION_COMMENT_POSTED:
             return <p>{actorName} posted a new discussion in {projectName}.</p>;
         case EventType.DISCUSSION_COMMENT_REPLIED:
             return <p>{actorName} replied to your comment in {projectName}.</p>;
+
+        // --- Profile & Settings Events ---
+        case EventType.PROFILE_UPDATED:
+            return <p>Your profile was updated successfully.</p>;
+        case EventType.SETTINGS_UPDATED:
+            return <p>Your settings were updated successfully.</p>;
+
+        // --- Project Lifecycle Events ---
+        case EventType.PROJECT_CREATED:
+            return <p>{actorName} created {projectName}.</p>;
+        case EventType.PROJECT_DRAFTED:
+            return <p>{actorName} saved a draft for {projectName}.</p>;
+        case EventType.PROJECT_PUBLISHED:
+            return <p>{actorName} published {projectName}.</p>;
+        case EventType.PROJECT_DRAFT_UPDATED:
+            return <p>{actorName} updated the draft for {projectName}.</p>;
+        case EventType.PROJECT_DETAILS_UPDATED:
+            return <p>{actorName} updated {projectName}.</p>;
+        case EventType.PROJECT_PHOTO_UPDATED:
+            return <p>{actorName} updated the photo for {projectName}.</p>;
+        case EventType.PROJECT_VISIBILITY_UPDATED:
+            return <p>{actorName} changed the visibility of {projectName}.</p>;
+
+        // --- Task Events ---
+        case EventType.TASK_CREATED:
+            return <p>{actorName} created a new task{event.payload?.taskTitle ? `: "${event.payload.taskTitle}"` : ''} in {projectName}.</p>;
+        case EventType.TASK_UPDATED:
+            return <p>{actorName} updated a task{event.payload?.taskTitle ? `: "${event.payload.taskTitle}"` : ''} in {projectName}.</p>;
+        case EventType.TASK_DELETED:
+            return <p>{actorName} deleted a task{event.payload?.taskTitle ? `: "${event.payload.taskTitle}"` : ''} in {projectName}.</p>;
+
+        // --- Tag Events ---
+        case EventType.TAG_CREATED:
+            return <p>{actorName} created a new tag: <strong>{event.payload?.tagName}</strong>.</p>;
+
+        // --- Learning Path Events ---
+        case EventType.LEARNING_PATH_STARTED:
+            return <p>{actorName} started a learning path{event.payload?.pathTitle ? `: "${event.payload.pathTitle}"` : ''}.</p>;
+        case EventType.LEARNING_PATH_PROGRESS:
+            return <p>{actorName} made progress on a learning path{event.payload?.pathTitle ? `: "${event.payload.pathTitle}"` : ''}.</p>;
+        case EventType.LEARNING_PATH_COMPLETED:
+            return <p>{actorName} completed a learning path{event.payload?.pathTitle ? `: "${event.payload.pathTitle}"` : ''}!</p>;
+        case EventType.LEARNING_PATH_CONNECTED_TO_PROJECT:
+            return <p>{actorName} connected a learning path to {projectName}.</p>;
+
         default:
             return <p>An unknown notification type was received.</p>;
     }

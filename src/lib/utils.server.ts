@@ -51,7 +51,12 @@ export function deepSerialize<T>(obj: T, visited = new WeakSet()): T {
         return obj;
     }
 
-    // Duck-typing to check for Firestore Timestamp
+    // Handle Date instances — convert to ISO strings for safe serialization.
+    if (obj instanceof Date) {
+        return obj.toISOString() as T;
+    }
+
+    // Duck-typing to check for Firestore Timestamp (has .toDate method).
     if (typeof (obj as any).toDate === 'function') {
         return (obj as any).toDate().toISOString() as T;
     }
@@ -67,15 +72,17 @@ export function deepSerialize<T>(obj: T, visited = new WeakSet()): T {
         return obj.map(item => deepSerialize(item, visited)).filter(item => item !== undefined) as T;
     }
 
+    // Build a fresh plain object to ensure we always have Object.prototype.
+    // This handles Firestore objects with null prototypes that cause
+    // "Classes or null prototypes are not supported" in Next.js serialization.
     const serializedObj: { [key: string]: unknown } = {};
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            if (key === 'embedding') continue;
-            const value = deepSerialize((obj as Record<string, unknown>)[key], visited);
-            // Only include the key in the new object if its value is not undefined.
-            if (value !== undefined) {
-                serializedObj[key] = value;
-            }
+    const keys = Object.keys(obj);
+    for (const key of keys) {
+        if (key === 'embedding') continue;
+        const value = deepSerialize((obj as Record<string, unknown>)[key], visited);
+        // Only include the key in the new object if its value is not undefined.
+        if (value !== undefined) {
+            serializedObj[key] = value;
         }
     }
     return serializedObj as T;

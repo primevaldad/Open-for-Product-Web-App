@@ -543,12 +543,12 @@ export async function getEditProjectPageData(projectId: string): Promise<EditPro
       project.tags = hydratedTags;
     }
 
-    return {
+    return deepSerialize({
       success: true,
       project,
       allTags,
       allUsers,
-    };
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
@@ -572,11 +572,11 @@ export async function getCreateProjectPageData(): Promise<CreateProjectPageDataR
       return { success: false, error: "User not authenticated." };
     }
 
-    return {
+    return deepSerialize({
       success: true,
       allTags,
       allUsers,
-    };
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";
@@ -614,12 +614,12 @@ export async function getDraftsPageData(currentUser: User | null): Promise<Draft
 
     const hydratedDrafts = projectsData.map(p => toHydratedProject(p, usersMap));
 
-    return {
+    return deepSerialize({
       success: true,
       drafts: hydratedDrafts,
       allLearningPaths: allLearningPaths.paths,
       allProjectPathLinks,
-    };
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred.";

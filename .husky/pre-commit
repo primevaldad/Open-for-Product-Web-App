@@ -1,5 +1,4 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+
 
 # Check apphosting.yaml for hardcoded values
 if git diff --cached --name-only | grep -E 'apphosting\.yaml$'; then

@@ -10,6 +10,7 @@ import {
 import { getAuthenticatedUser } from "@/lib/session.server";
 import { HomePageData, HomePageDataResponse, GlobalTag, HydratedProject } from "@/lib/types";
 import { getSuggestedProjects } from "@/lib/suggestions";
+import { deepSerialize } from "@/lib/utils.server";
 import { cookies } from 'next/headers';
 
 // Helper function to convert Firestore Timestamps in a project to ISO strings
@@ -72,7 +73,7 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
             aiEnabled,
         };
 
-        return { success: true, ...pageData };
+        return deepSerialize({ success: true, ...pageData });
 
     } catch (e) {
         const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
