@@ -6,8 +6,11 @@ export default function myImageLoader({ src, width, quality }) {
     return src;
   }
 
-  // For Firebase Storage images, return the original URL. Don't use the optimizer.
-  if (src.startsWith('https://firebasestorage.googleapis.com')) {
+  // For Firebase/GCS Storage images, return the original URL. Don't use the optimizer.
+  if (
+    src.startsWith('https://firebasestorage.googleapis.com') ||
+    src.startsWith('https://storage.googleapis.com')
+  ) {
     return src;
   }
 

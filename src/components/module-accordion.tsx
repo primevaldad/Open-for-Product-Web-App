@@ -7,7 +7,6 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
-import Markdown from "@/components/ui/markdown";
 import type { Module } from '@/lib/types';
 
 type ModuleAccordionProps = {
@@ -27,8 +26,11 @@ export default function ModuleAccordion({ module }: ModuleAccordionProps) {
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="pl-12">
-                    <p className="mb-4 text-muted-foreground">{module.description}</p>
-                    <Markdown content={module.content || ''} />
+                    {module.contentUrl ? (
+                        <a href={module.contentUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">View content</a>
+                    ) : (
+                        <p className="text-muted-foreground text-sm">No content available.</p>
+                    )}
                 </AccordionContent>
             </AccordionItem>
         </Accordion>

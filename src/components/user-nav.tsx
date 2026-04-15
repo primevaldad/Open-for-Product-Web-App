@@ -55,7 +55,7 @@ export function UserNav({ currentUser }: UserNavProps) {
     );
   }
 
-  const unreadNotifications = user.notifications?.filter(n => !n.read) ?? [];
+  const unreadNotifications = user.notifications?.filter(n => !n.isRead) ?? [];
   const hasUnread = unreadNotifications.length > 0;
 
   return (
@@ -104,14 +104,12 @@ export function UserNav({ currentUser }: UserNavProps) {
          <DropdownMenuGroup>
             {user.notifications && user.notifications.length > 0 ? (
               user.notifications.slice(0, 3).map(n => (
-                <Link href={n.link} key={n.id}>
-                  <DropdownMenuItem className="flex items-start gap-2">
-                    <div className="w-4 pt-1">
-                      {!n.read && <span className="inline-flex rounded-full h-2 w-2 bg-primary"></span>}
-                    </div>
-                    <span className="flex-1 text-xs text-wrap">{n.message}</span>
-                  </DropdownMenuItem>
-                </Link>
+                <DropdownMenuItem key={n.id} className="flex items-start gap-2">
+                  <div className="w-4 pt-1">
+                    {!n.isRead && <span className="inline-flex rounded-full h-2 w-2 bg-primary"></span>}
+                  </div>
+                  <span className="flex-1 text-xs text-wrap">Notification {n.id.slice(0, 8)}</span>
+                </DropdownMenuItem>
               ))
             ) : (
               <DropdownMenuItem disabled>

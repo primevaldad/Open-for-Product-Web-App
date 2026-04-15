@@ -149,8 +149,8 @@ export default function UserProfilePageClient({
             </div>
             <div className='mt-4 flex flex-wrap gap-2'>
               {user.interests?.map(interest => (
-                <Badge key={interest} variant='secondary'>
-                  {interest}
+                <Badge key={interest.id} variant='secondary'>
+                  {interest.display}
                 </Badge>
               ))}
             </div>

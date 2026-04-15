@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Tag, User } from "@/lib/types";
+import type { GlobalTag, User } from "@/lib/types";
 import { getCreateProjectPageData } from "@/app/actions/projects";
 import { CreateProjectForm } from "./create-project-form";
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface PageData {
-  allTags: Tag[];
+  allTags: GlobalTag[];
   allUsers: User[];
 }
 
@@ -29,10 +29,11 @@ export default function CreateProjectPage() {
                         allUsers: response.allUsers,
                     });
                 } else {
-                    if (response.error === 'User not authenticated.') {
+                    const errorResponse = response as { error: string };
+                    if (errorResponse.error === 'User not authenticated.') {
                         router.push('/login');
                     } else {
-                        setError(response.error);
+                        setError(errorResponse.error);
                     }
                 }
             } catch (err) {

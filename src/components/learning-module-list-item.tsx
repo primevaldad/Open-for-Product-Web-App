@@ -24,7 +24,7 @@ export default function LearningModuleListItem({ pathId, module, isCompleted }: 
                         {module.title}
                     </p>
                     <p className={cn("text-sm text-muted-foreground", isCompleted && "line-through")}>
-                        {module.description}
+                        {module.duration} min
                     </p>
                 </div>
             </div>

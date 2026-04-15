@@ -3,61 +3,83 @@
 
 import { useState } from 'react';
 import { Input } from './input';
-import { Button } from './button';
-import { uploadFile } from '@/lib/firebase/storage';
+import { uploadProjectImage } from '@/app/actions/upload';
 
 interface ImageUploadProps {
   onUploadComplete: (url: string) => void;
+  onUploadError?: (error: string) => void;
   initialImageUrl?: string;
   folder: string;
   id?: string;
 }
 
-export default function ImageUpload({ onUploadComplete, initialImageUrl, folder, id }: ImageUploadProps) {
-  const [file, setFile] = useState<File | null>(null);
+export default function ImageUpload({ onUploadComplete, onUploadError, initialImageUrl, folder, id }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialImageUrl || null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(selectedFile);
-    }
-  };
+    if (!selectedFile) return;
 
-  const handleUpload = async () => {
-    if (!file) return;
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setPreviewUrl(reader.result as string);
+    reader.readAsDataURL(selectedFile);
 
     setIsUploading(true);
+    setError(null);
+
     try {
-      const filePath = `${folder}/${Date.now()}-${file.name}`;
-      const downloadURL = await uploadFile(file, filePath);
-      onUploadComplete(downloadURL);
-      setPreviewUrl(downloadURL);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      // Handle error (e.g., show a notification to the user)
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('folder', folder);
+
+      const result = await uploadProjectImage(formData);
+
+      if (result.success && result.url) {
+        onUploadComplete(result.url);
+        setPreviewUrl(result.url);
+      } else {
+        const errMsg = result.error ?? 'Upload failed.';
+        setError(errMsg);
+        onUploadError?.(errMsg);
+        // Revert preview on failure
+        setPreviewUrl(initialImageUrl || null);
+      }
+    } catch (err) {
+      const errMsg = 'An unexpected error occurred during upload.';
+      setError(errMsg);
+      onUploadError?.(errMsg);
+      setPreviewUrl(initialImageUrl || null);
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex flex-col space-y-4">
       {previewUrl && (
-        <div className="mt-4">
-          <img src={previewUrl} alt="Preview" className="max-w-xs max-h-48 rounded-md" />
+        <div className="mt-2">
+          <img src={previewUrl} alt="Preview" className="max-w-xs max-h-48 rounded-md object-cover border" />
         </div>
       )}
-      <Input type="file" onChange={handleFileChange} accept="image/*" id={id} />
-      <Button onClick={handleUpload} disabled={!file || isUploading}>
-        {isUploading ? 'Uploading...' : 'Upload Image'}
-      </Button>
+      <div className="flex items-center space-x-4">
+        <Input
+          type="file"
+          onChange={handleFileChange}
+          accept="image/*"
+          id={id}
+          disabled={isUploading}
+          className="max-w-md"
+        />
+        {isUploading && (
+          <span className="text-sm text-muted-foreground animate-pulse">Uploading…</span>
+        )}
+      </div>
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
     </div>
   );
 }

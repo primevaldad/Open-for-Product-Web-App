@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import HomeClientPage from '@/app/(app)/home/home-client-page';
-import type { HydratedProject, Tag, User } from '@/lib/types';
+import type { HydratedProject, GlobalTag, User } from '@/lib/types';
 
 // Mock the necessary components and hooks
 jest.mock('@/components/ai/suggest-steps', () => ({
@@ -23,36 +23,42 @@ const mockUser: User = {
   name: 'Test User',
   email: 'test@example.com',
   role: 'user',
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString() as any,
+  updatedAt: new Date().toISOString() as any,
+  onboardingCompleted: false,
 };
 
-const mockTags: Tag[] = [
-  { id: '1', name: 'Creative', description: 'Creative projects' },
-  { id: '2', name: 'Technical', description: 'Technical projects' },
-];
+const mockTags: GlobalTag[] = [] as any;
 
 const mockProjects: HydratedProject[] = [
   {
     id: 'p1',
     name: 'Test Project 1',
+    tagline: 'tagline',
     description: 'Creative Project 1',
-    tags: [{ id: '1', name: 'Creative' }],
-    team: [{ userId: '1', user: mockUser, role: 'owner' }],
-    createdAt: new Date('2024-01-01T00:00:00.000Z'),
-    // @ts-ignore
-    category: 'Creative',
-  },
+    tags: [{ id: '1', display: 'Creative', isCategory: true }],
+    team: [{ userId: '1', user: mockUser, role: 'lead' }],
+    createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
+    updatedAt: new Date().toISOString(),
+    startDate: new Date().toISOString() as any,
+    endDate: new Date().toISOString() as any,
+    status: 'published',
+    contributionNeeds: [],
+  } as any,
   {
     id: 'p2',
     name: 'Test Project 2',
+    tagline: 'tagline',
     description: 'Technical Project 1',
-    tags: [{ id: '2', name: 'Technical' }],
-    team: [{ userId: '2', user: { ...mockUser, id: '2' }, role: 'owner' }],
-    createdAt: new Date('2024-01-02T00:00:00.000Z'),
-    // @ts-ignore
-    category: 'Technical',
-  },
+    tags: [{ id: '2', display: 'Technical', isCategory: true }],
+    team: [{ userId: '2', user: { ...mockUser, id: '2' }, role: 'lead' }],
+    createdAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
+    updatedAt: new Date().toISOString(),
+    startDate: new Date().toISOString() as any,
+    endDate: new Date().toISOString() as any,
+    status: 'published',
+    contributionNeeds: [],
+  } as any,
 ];
 
 describe('HomeClientPage', () => {
@@ -67,6 +73,8 @@ describe('HomeClientPage', () => {
         allTags={mockTags}
         allProjectPathLinks={[]}
         allLearningPaths={[]}
+        suggestedProjects={null}
+        aiEnabled={false}
       />
     );
   });

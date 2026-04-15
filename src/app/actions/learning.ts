@@ -38,7 +38,8 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
     }
 
     try {
-        await updateUserLearningProgress(validatedFields.data);
+        const { userId, pathId, moduleId, completed } = validatedFields.data;
+        await updateUserLearningProgress({ userId, pathId, moduleId, completed });
 
         // Revalidate relevant paths
         revalidatePath(`/learning/${validatedFields.data.pathId}/${validatedFields.data.moduleId}`);

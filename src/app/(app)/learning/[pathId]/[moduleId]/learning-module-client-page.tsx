@@ -123,10 +123,10 @@ export default function LearningModuleClientPage({
       <ModuleHeader {...{ pathId, pathTitle, module, userProgress, currentUser, prevModule, nextModule, onNextModule: handleNextModule }} />
       <main className="flex-1 overflow-auto p-4 md:p-6">
          <div className="mx-auto max-w-3xl space-y-6">
-            {module.videoUrl && (
+            {module.contentType === 'video' && module.contentUrl && (
                 <div className="aspect-video w-full overflow-hidden rounded-lg border">
                     <iframe 
-                        src={module.videoUrl}
+                        src={module.contentUrl}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -137,10 +137,12 @@ export default function LearningModuleClientPage({
              <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl">{module.title}</CardTitle>
-                    <CardDescription>{module.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="prose prose-sm max-w-none text-foreground">
-                    <p>{module.content}</p>
+                    {module.contentType === 'article' && module.contentUrl && (
+                        <a href={module.contentUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">Open Article</a>
+                    )}
+                    {!module.contentUrl && <p className="text-muted-foreground">No content available for this module.</p>}
                 </CardContent>
              </Card>
              <Card>

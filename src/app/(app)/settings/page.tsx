@@ -6,14 +6,13 @@ import { Separator } from "@/components/ui/separator";
 import SettingsForm from "./settings-form";
 import { getSettingsPageData, updateUserSettings } from '@/app/actions/settings';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { User, Tag } from "@/lib/types";
-
+import type { User, GlobalTag } from "@/lib/types";
 
 // Define the shapes of the success and error responses from the server action
 interface SuccessResponse {
     success: true;
     user: User;
-    allTags: Tag[];
+    allTags: GlobalTag[];
 }
 
 interface ErrorResponse {
@@ -27,7 +26,7 @@ type PageDataResponse = SuccessResponse | ErrorResponse;
 // This interface is what the component's state will hold
 interface PageData {
   user: User;
-  allTags: Tag[];
+  allTags: GlobalTag[];
 }
 
 export default function SettingsPage() {
@@ -47,10 +46,11 @@ export default function SettingsPage() {
                     setData({ user: response.user, allTags: response.allTags });
                 } else {
                     // This is an ErrorResponse
-                    if (response.message === 'User not authenticated.') {
+                    const errorResponse = response as ErrorResponse;
+                    if (errorResponse.message === 'User not authenticated.') {
                         router.push('/login');
                     } else {
-                        setError(response.message);
+                        setError(errorResponse.message);
                     }
                 }
             } catch (err) {

@@ -91,12 +91,13 @@ export default function SignUpPage() {
         }
       } catch (err: unknown) {
         let errorMessage = 'An unknown error occurred.';
-        if (err.code === 'auth/email-already-in-use') {
+        const firebaseError = err as { code?: string };
+        if (firebaseError.code === 'auth/email-already-in-use') {
           errorMessage = 'This email address is already in use by another account.';
-        } else if (err.code === 'auth/weak-password') {
+        } else if (firebaseError.code === 'auth/weak-password') {
           errorMessage = 'The password is too weak.';
-        } else if (err.code === 'auth/api-key-not-valid') {
-            errorMessage = 'The provided Firebase API key is not valid. Please check the configuration.'
+        } else if (firebaseError.code === 'auth/api-key-not-valid') {
+            errorMessage = 'The provided Firebase API key is not valid. Please check the configuration.';
         }
         setError(errorMessage);
         console.error('Client-side signup error:', err);

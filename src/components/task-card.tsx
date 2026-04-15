@@ -41,7 +41,7 @@ export default function TaskCard({ task, assignee, onEdit, onDelete }: TaskCardP
       <CardContent>
         {description && <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{description}</p>}
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-            {dueDate && <span>Due: {new Date(dueDate).toLocaleDateString()}</span>}
+            {dueDate && <span>Due: {new Date(typeof dueDate === 'string' ? dueDate : (dueDate as any).toDate?.() ?? dueDate).toLocaleDateString()}</span>}
             {estimatedHours != null && <span>{estimatedHours} hrs</span>}
         </div>
       </CardContent>

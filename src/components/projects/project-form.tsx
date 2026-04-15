@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Timestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -24,22 +23,22 @@ import UserSelector from '@/components/users/user-selector';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 import ImageUpload from '@/components/ui/image-upload';
 import { CreateProjectSchema, EditProjectSchema, CreateProjectFormValues, EditProjectFormValues } from '@/lib/schemas';
-import type { User, Tag, Project, ProjectTag, ProjectMember } from "@/lib/types";
+import type { User, GlobalTag, Project, ProjectTag, ProjectMember } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { saveProjectDraft, publishProject, updateProject } from "@/app/actions/projects";
 
 interface ProjectFormProps {
   initialData?: Project;
   users: User[];
-  tags: Tag[];
+  tags: GlobalTag[];
 }
 
 type ProjectFormValues = CreateProjectFormValues | EditProjectFormValues;
 
 // Helper to convert Firestore Timestamp or string to Date
-const toDate = (value: Timestamp | string | undefined): Date | undefined => {
+const toDate = (value: any): Date | undefined => {
     if (!value) return undefined;
-    if (value instanceof Timestamp) return value.toDate();
+    if (typeof value?.toDate === 'function') return value.toDate();
     if (typeof value === 'string') return new Date(value);
     return undefined;
 };
@@ -149,7 +148,7 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
   }
 
   function handleTagsChange(newTags: ProjectTag[]) {
-    form.setValue('tags', newTags, { shouldValidate: true, shouldDirty: true });
+    form.setValue('tags', newTags as any, { shouldValidate: true, shouldDirty: true });
     form.trigger('tags');
   }
 

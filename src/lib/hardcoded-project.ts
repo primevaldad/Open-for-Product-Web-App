@@ -11,11 +11,11 @@ export const hardcodedProject: HydratedProject = {
   tagline: 'Discover, Collaborate, and Build the Future of Open Source.',
   owner: {} as any, // This is a placeholder, as the owner is not needed for the hardcoded project
   tags: [
-    { id: 'nextjs', display: 'Next.js', type: 'category' },
-    { id: 'react', display: 'React', type: 'category' },
-    { id: 'typescript', display: 'TypeScript', type: 'category' },
-    { id: 'tailwind-css', display: 'Tailwind CSS', type: 'category' },
-    { id: 'firebase', display: 'Firebase', type: 'category' },
+    { id: 'nextjs', display: 'Next.js', isCategory: true },
+    { id: 'react', display: 'React', isCategory: true },
+    { id: 'typescript', display: 'TypeScript', isCategory: true },
+    { id: 'tailwind-css', display: 'Tailwind CSS', isCategory: false },
+    { id: 'firebase', display: 'Firebase', isCategory: false },
   ],
   team: [
     {
@@ -40,6 +40,8 @@ export const hardcodedProject: HydratedProject = {
   status: 'published',
   createdAt: '2024-01-15T00:00:00.000Z' as any,
   updatedAt: '2024-01-15T00:00:00.000Z' as any,
+  startDate: '2024-01-15T00:00:00.000Z' as any,
+  endDate: '2025-01-15T00:00:00.000Z' as any,
   contributionNeeds: [],
   progress: 75,
 };

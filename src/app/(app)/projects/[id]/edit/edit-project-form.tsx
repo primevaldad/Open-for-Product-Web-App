@@ -1,12 +1,12 @@
 'use client';
 
-import type { User, Tag, Project } from "@/lib/types";
+import type { User, GlobalTag, Project } from "@/lib/types";
 import { ProjectForm } from "@/components/projects/project-form";
 
 interface EditProjectFormProps {
   project: Project;
   users: User[];
-  allTags: Tag[];
+  allTags: GlobalTag[];
 }
 
 export default function EditProjectForm({ project, users, allTags }: EditProjectFormProps) {
