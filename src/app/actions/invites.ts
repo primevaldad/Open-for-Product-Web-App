@@ -22,6 +22,40 @@ export async function inviteMember(data: { projectId: string; email: string; rol
         const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
         if (!isLead) return { success: false, error: 'Only project leads can invite members.' };
 
+        // 1. Check if the user already exists in the system
+        const targetUser = await findUserByEmail(email);
+        
+        if (targetUser) {
+            // Check if they are already on the team
+            const isAlreadyMember = project.team.some(member => member.userId === targetUser.id);
+            if (isAlreadyMember) {
+                return { success: false, error: 'This user is already a member of the project team.' };
+            }
+
+            // Add them as a pending member directly
+            const newMember: ProjectMember = {
+                userId: targetUser.id,
+                role: 'participant', // Default role for applications
+                pendingRole: role,     // The role the lead is inviting them to
+                createdAt: new Date().toISOString()
+            };
+
+            const updatedTeam = [...project.team, newMember];
+            await updateProjectInDb(projectId, { team: updatedTeam });
+
+            // Notify the user they've been invited
+            await createAndDispatchEvent({
+                type: EventType.USER_INVITED_TO_PROJECT,
+                actorUserId: currentUser.id,
+                targetUserId: targetUser.id,
+                projectId,
+            });
+
+            revalidatePath(`/projects/${projectId}`);
+            return { success: true, message: `${targetUser.name || email} has been added to pending members for approval.` };
+        }
+
+        // 2. If user doesn't exist, proceed with the 'invites' collection record
         // Check if an invite already exists
         const existingInviteQuery = await adminDb.collection('invites')
             .where('projectId', '==', projectId)

@@ -5,8 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { HydratedProjectMember, User } from '@/lib/types';
-import { getInitials } from '@/lib/utils';
+import { getInitials, toDate } from '@/lib/utils';
 import { Loader2, UserPlus } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -231,7 +232,12 @@ export default function ProjectTeam({
                                         <AvatarFallback>{getInitials(member.user?.name)}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <p className="font-semibold">{member.user?.name || 'Unknown User'}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold">{member.user?.name || 'Unknown User'}</p>
+                                            {member.user?.updatedAt && (Date.now() - toDate(member.user.updatedAt).getTime() > 180 * 24 * 60 * 60 * 1000) && (
+                                                <Badge variant="secondary" className="text-[10px] h-4 px-1">Inactive</Badge>
+                                            )}
+                                        </div>
                                         <p className="text-sm text-gray-500 capitalize">{member.role}</p>
                                     </div>
                                 </div>

@@ -1,4 +1,3 @@
-
 'server-only';
 
 import { FieldValue } from 'firebase-admin/firestore';
@@ -48,62 +47,33 @@ async function createEvent(event: Omit<Event, 'id' | 'createdAt'>): Promise<Even
  * @param event The event to dispatch.
  */
 async function dispatchEvent(event: Event): Promise<void> {
+    const getProjectLeads = (project: Project) => {
+        const leadIds = project.team
+            .filter(m => m.role === 'lead')
+            .map(m => m.userId);
+        if (project.ownerId) leadIds.push(project.ownerId);
+        return [...new Set(leadIds)];
+    };
+
     switch (event.type) {
-        case EventType.PROJECT_JOINED: {
-            const { projectId, actorUserId } = event;
-            if (projectId) {
-                const project = await findProjectById(projectId, null);
-                if (project && project.owner) {
-                    await createNotification({
-                        userId: project.owner.id,
-                        eventId: event.id,
-                    });
-                }
-            }
-            break;
-        }
-
-        case EventType.PROJECT_LEFT: {
-            const { projectId, actorUserId } = event;
-            if (projectId) {
-                const project = await findProjectById(projectId, null);
-                if (project && project.owner) {
-                    await createNotification({
-                        userId: project.owner.id,
-                        eventId: event.id,
-                    });
-                }
-            }
-            break;
-        }
-
+        case EventType.PROJECT_JOINED:
+        case EventType.PROJECT_LEFT:
         case EventType.MEMBER_ROLE_APPLIED: {
-            const { projectId, actorUserId, payload } = event;
+            const { projectId } = event;
             if (projectId) {
                 const project = await findProjectById(projectId, null);
-                if (project && project.owner) {
-                    await createNotification({
-                        userId: project.owner.id,
-                        eventId: event.id,
-                    });
+                if (project) {
+                    for (const userId of getProjectLeads(project)) {
+                        await createNotification({ userId, eventId: event.id });
+                    }
                 }
             }
             break;
         }
 
-        case EventType.MEMBER_ROLE_APPROVED: {
-            const { targetUserId, projectId } = event;
-            if (targetUserId) {
-                await createNotification({
-                    userId: targetUserId,
-                    eventId: event.id,
-                });
-            }
-            break;
-        }
-
+        case EventType.MEMBER_ROLE_APPROVED:
         case EventType.USER_INVITED_TO_PROJECT: {
-            const { targetUserId, projectId } = event;
+            const { targetUserId } = event;
             if (targetUserId) {
                 await createNotification({
                     userId: targetUserId,

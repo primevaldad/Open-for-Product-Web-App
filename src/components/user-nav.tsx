@@ -20,7 +20,7 @@ import Link from "next/link"
 import type { User } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider"; 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserNavProps {
@@ -29,13 +29,14 @@ interface UserNavProps {
 
 export function UserNav({ currentUser }: UserNavProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { currentUser: clientUser, loading, signOut } = useAuth(); 
 
   const user = clientUser || currentUser;
 
   const handleLogout = async () => {
     await signOut();
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   if (loading) {
@@ -43,12 +44,13 @@ export function UserNav({ currentUser }: UserNavProps) {
   }
 
   if (!user || user.role === 'guest') {
+    const redirectTo = encodeURIComponent(pathname);
     return (
         <div className="flex items-center gap-2">
-            <Link href="/login">
+            <Link href={`/login?redirectTo=${redirectTo}`}>
                 <Button variant="ghost">Log In</Button>
             </Link>
-            <Link href="/signup">
+            <Link href={`/signup?redirectTo=${redirectTo}`}>
                 <Button>Sign Up</Button>
             </Link>
         </div>

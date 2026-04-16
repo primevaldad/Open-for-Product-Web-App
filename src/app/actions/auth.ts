@@ -3,9 +3,10 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { FieldValue } from 'firebase-admin/firestore';
 
 import { adminDb, logOrphanedUser, findUserById } from '@/lib/data.server';
-import { createSessionCookie, clearSessionCookie } from '@/lib/session.server';
+import { createSessionCookie, clearSessionCookie, adminAuth } from '@/lib/session.server';
 import type { User } from '@/lib/types';
 import { FirebaseError } from 'firebase/app';
 import { checkAndConsumeInvites } from './invites';
@@ -36,9 +37,17 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
     const user = await findUserById(uid);
     if (user) {
         await checkAndConsumeInvites(user);
+        // Update updatedAt on every login for inactivity tracking
+        await adminDb.collection('users').doc(uid).update({
+            updatedAt: FieldValue.serverTimestamp()
+        });
+        revalidatePath('/home');
+        return { success: true };
+    } else {
+        // Handle case where user has Auth account but no Firestore doc
+        const email = (await adminAuth.getUser(uid)).email;
+        return { success: false, requiresSignup: true, email };
     }
-    revalidatePath('/home');
-    return { success: true };
   } catch (error) { // Type error as FirebaseError or generic Error
     if (error instanceof FirebaseError || error instanceof Error) {
         console.error("[AUTH_ACTION_TRACE] Login Server Action Error:", error.message);
@@ -80,7 +89,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
         const newUser: Omit<User, 'id' | 'createdAt' | 'updatedAt'> = {
             name,
             email,
-            role: '', // <-- FIX: Set role to an empty string as requested
+            role: '',
             username: name,
             avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
             bio: 'Just joined Open for Product!',

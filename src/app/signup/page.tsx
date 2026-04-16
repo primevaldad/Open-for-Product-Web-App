@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -46,8 +46,10 @@ const SignUpSchema = z
 
 type SignUpFormValues = z.infer<typeof SignUpSchema>;
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || '/onboarding';
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export default function SignUpPage() {
     resolver: zodResolver(SignUpSchema),
     defaultValues: {
       name: '',
-      email: '',
+      email: searchParams.get('email') || '',
       password: '',
       confirmPassword: '',
     },
@@ -85,7 +87,8 @@ export default function SignUpPage() {
             title: 'Account Created!',
             description: "You're now logged in.",
           });
-          router.push('/onboarding');
+          // Use window.location.href for a hard refresh to ensure the session is picked up
+          window.location.href = redirectTo;
         } else {
           setError(result.error || 'An unexpected server error occurred.');
         }
@@ -187,7 +190,7 @@ export default function SignUpPage() {
           </Form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
-            <Link href="/login" className="underline">
+            <Link href={`/login?redirectTo=${encodeURIComponent(redirectTo)}`} className="underline">
               Log in
             </Link>
           </div>
@@ -195,4 +198,12 @@ export default function SignUpPage() {
       </Card>
     </div>
   );
+}
+
+export default function SignUpPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+            <SignUpForm />
+        </Suspense>
+    );
 }

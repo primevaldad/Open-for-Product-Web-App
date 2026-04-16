@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { DynamicHeader } from '@/components/dynamic-header';
 import { Logo } from '@/components/logo';
 import { NotificationBell } from '@/components/NotificationBell';
+import { OnboardingGuard } from '@/components/onboarding-guard';
 
 export default async function AppLayout({
   children,
@@ -18,11 +19,6 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const currentUser = await getAuthenticatedUser();
-
-  // Onboarding check for authenticated users
-  if (currentUser && currentUser.role !== 'guest' && !currentUser.onboardingCompleted && !currentUser.bypassOnboarding) {
-    redirect('/onboarding');
-  }
 
   return (
     <ThemeProvider
@@ -32,7 +28,8 @@ export default async function AppLayout({
         disableTransitionOnChange
     >
         <AuthProvider serverUser={currentUser}>
-            {currentUser ? (
+            <OnboardingGuard user={currentUser}>
+                {currentUser ? (
                 // Authenticated User Layout
                 <SidebarProvider>
                     <div className="flex h-full min-h-screen w-full bg-background">
@@ -72,6 +69,7 @@ export default async function AppLayout({
                     </main>
                 </div>
             )}
+            </OnboardingGuard>
         </AuthProvider>
     </ThemeProvider>
   );

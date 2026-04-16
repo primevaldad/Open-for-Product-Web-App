@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
@@ -15,6 +15,7 @@ import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
+import { useAuth } from '@/components/auth-provider';
 
 import {
     joinProject as joinProjectAction,
@@ -47,8 +48,10 @@ export default function ProjectDetailClientPage({
     discussions: initialDiscussions,
     learningPaths: initialLearningPaths,
     users: allUsers,
-    currentUser,
+    currentUser: serverUser,
 }: ProjectDetailClientPageProps) {
+    const { currentUser: clientUser } = useAuth();
+    const currentUser = clientUser || serverUser;
     const [project, setProject] = useState(initialProject);
     const [tasks, setTasks] = useState(initialTasks);
     const [discussions, setDiscussions] = useState(initialDiscussions);
@@ -231,6 +234,26 @@ export default function ProjectDetailClientPage({
         }
     };
 
+    const GuestOverlay = () => {
+        // use usePathname or window.location.pathname
+        return (
+            <div className="flex flex-col items-center justify-center p-8 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold mb-2">Login to View Project Details</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 text-center max-w-md">
+                    To see the full project description, task board, and participate in discussions, please join the Open for Product community.
+                </p>
+                <div className="flex gap-4">
+                    <Button onClick={() => router.push(`/login?redirectTo=${encodeURIComponent(window.location.pathname)}`)}>
+                        Log In
+                    </Button>
+                    <Button variant="outline" onClick={() => router.push(`/signup?redirectTo=${encodeURIComponent(window.location.pathname)}`)}>
+                        Sign Up
+                    </Button>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="container mx-auto px-4 py-8">
             <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
@@ -247,11 +270,14 @@ export default function ProjectDetailClientPage({
                     </TabList>
 
                     <TabPanel>
-                        <div className="prose dark:prose-invert max-w-none p-4">
-                            {!isGuest ? (
+                        <div className="prose dark:prose-invert max-w-none p-4 relative">
+                            <div className={isGuest ? "blur-md pointer-events-none select-none" : ""}>
                                 <Markdown content={project.description} />
-                            ) : (
-                                <p>Please log in to view the project description.</p>
+                            </div>
+                            {isGuest && (
+                                <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/30 dark:bg-black/30">
+                                    <GuestOverlay />
+                                </div>
                             )}
                         </div>
                     </TabPanel>
@@ -267,7 +293,14 @@ export default function ProjectDetailClientPage({
                                 </div>
                                 <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} />
                             </>
-                        ) : <p className="py-4">Login to view project tasks</p>}
+                        ) : (
+                            <div className="relative h-64 flex items-center justify-center">
+                                <div className="absolute inset-0 blur-sm pointer-events-none opacity-50">
+                                    <TaskBoard tasks={tasks.slice(0, 2)} users={users} onEditTask={() => {}} onDeleteTask={() => {}} />
+                                </div>
+                                <GuestOverlay />
+                            </div>
+                        )}
                     </TabPanel>
                     <TabPanel>
                          {!isGuest ? (
@@ -278,7 +311,18 @@ export default function ProjectDetailClientPage({
                                 currentUser={currentUser}
                                 users={users}
                             />
-                         ) : <p className="py-4">Login to join the discussion</p>}
+                         ) : (
+                            <div className="relative flex items-center justify-center">
+                                <div className="absolute inset-0 blur-md pointer-events-none opacity-50">
+                                    {/* Dummy discussions for visual effect */}
+                                    <p className="p-4">Sample discussion content...</p>
+                                    <p className="p-4">Sample discussion reply...</p>
+                                </div>
+                                <div className="py-12 w-full flex justify-center">
+                                    <GuestOverlay />
+                                </div>
+                            </div>
+                         )}
                     </TabPanel>
                     <TabPanel>
                         {currentUser ? (

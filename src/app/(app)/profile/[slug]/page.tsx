@@ -2,6 +2,7 @@ import { findUserByUsername, findUserById, getProjectsByUserId, getAllLearningPa
 import { notFound } from 'next/navigation';
 import ProfileClientPage from './profile-client-page';
 import { getAuthenticatedUser } from '@/lib/session.server';
+import { deepSerialize } from '@/lib/utils.server';
 
 export default async function UserProfilePage({ params }: { params: { slug: string } }) {
   let user = await findUserByUsername(params.slug);
@@ -23,12 +24,12 @@ export default async function UserProfilePage({ params }: { params: { slug: stri
 
   return (
     <ProfileClientPage
-      user={user}
-      userProjects={userProjects}
+      user={deepSerialize(user)}
+      userProjects={deepSerialize(userProjects)}
       isCurrentUserProfile={currentUser?.id === user.id}
-      allLearningPaths={allLearningPathsResult.paths}
-      allProjectPathLinks={allProjectPathLinks}
-      currentUser={currentUser}
+      allLearningPaths={deepSerialize(allLearningPathsResult.paths)}
+      allProjectPathLinks={deepSerialize(allProjectPathLinks)}
+      currentUser={deepSerialize(currentUser)}
     />
   );
 }

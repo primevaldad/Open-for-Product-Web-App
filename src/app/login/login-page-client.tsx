@@ -1,12 +1,13 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,19 +33,22 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function LoginPageClient() {
+function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || '/home';
   const { currentUser } = useAuth(); // Use auth context
+  const { toast } = useToast();
 
   // If the AuthProvider determines there's a user, redirect to home.
   // This handles the client-side check after the initial server check.
   useEffect(() => {
     if (currentUser && currentUser.role !== 'guest') {
-      router.push('/home');
+      router.push(redirectTo);
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, redirectTo]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,13 +75,21 @@ export default function LoginPageClient() {
             body: JSON.stringify({ idToken }),
         });
 
-        if (response.ok) {
-            // On successful session creation, redirect to the home page.
-            // The AuthProvider will pick up the new session and update the context.
-            router.push('/home');
+        const result = await response.json();
+
+        if (result.success) {
+            // Use window.location.href for a hard refresh to ensure the session is picked up
+            window.location.href = redirectTo;
+        } else if (result.requiresSignup) {
+            // Redirect to signup if Firestore doc is missing, pre-filling email
+            toast({
+                title: "Profile setup required",
+                description: "You have an account, but we need a few more details to set up your profile."
+            });
+            const signupUrl = `/signup?email=${encodeURIComponent(result.email || '')}&redirectTo=${encodeURIComponent(redirectTo)}`;
+            router.push(signupUrl);
         } else {
-            const errorData = await response.json();
-            setError(errorData.error || 'Failed to create session.');
+            setError(result.error || 'Failed to create session.');
         }
         
       } catch (error: unknown) {
@@ -149,7 +161,7 @@ export default function LoginPageClient() {
         <div className="text-center text-sm text-muted-foreground">
           <p>
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="font-semibold text-primary hover:underline">
+            <Link href={`/signup?redirectTo=${encodeURIComponent(redirectTo)}`} className="font-semibold text-primary hover:underline">
               Sign up
             </Link>
           </p>
@@ -166,4 +178,12 @@ export default function LoginPageClient() {
       </div>
     </div>
   );
+}
+
+export default function LoginPageClient() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+            <LoginForm />
+        </Suspense>
+    );
 }
