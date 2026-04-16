@@ -12,11 +12,13 @@ interface ProjectHeaderProps {
   project: HydratedProject;
   currentUser: User | null;
   onJoin: () => void;
+  onLeave: () => void;
 }
 
-export default function ProjectHeader({ project, currentUser, onJoin }: ProjectHeaderProps) {
+export default function ProjectHeader({ project, currentUser, onJoin, onLeave }: ProjectHeaderProps) {
   const isMember = currentUser ? project.team.some(member => member.user.id === currentUser.id) : false;
   const isLead = currentUser ? project.team.some(member => member.user.id === currentUser.id && member.role === 'lead') : false;
+  const leadCount = project.team.filter(m => m.role === 'lead').length;
   const fallbackImage = getDeterministicPlaceholder(project.id);
 
   return (
@@ -49,6 +51,11 @@ export default function ProjectHeader({ project, currentUser, onJoin }: ProjectH
             {!isMember && currentUser && (
                 <Button onClick={onJoin}>
                     Join Project
+                </Button>
+            )}
+            {isMember && (!isLead || leadCount > 1) && (
+                <Button variant="ghost" size="sm" onClick={onLeave} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                    Leave Project
                 </Button>
             )}
         </div>

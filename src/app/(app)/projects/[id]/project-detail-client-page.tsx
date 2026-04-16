@@ -18,6 +18,7 @@ import Markdown from '@/components/ui/markdown';
 
 import {
     joinProject as joinProjectAction,
+    leaveProject as leaveProjectAction,
     addDiscussionComment as addDiscussionCommentAction,
     addTask as addTaskAction,
     updateTask as updateTaskAction,
@@ -149,6 +150,12 @@ export default function ProjectDetailClientPage({
         handleServerResponse(result, 'Successfully joined the project!', 'Failed to join the project.');
     };
 
+    const handleLeaveProject = async () => {
+        if (!window.confirm('Are you sure you want to leave this project?')) return;
+        const result = await leaveProjectAction(project.id);
+        handleServerResponse(result, 'Successfully left the project.', 'Failed to leave the project.');
+    };
+
     const handleApplyForRole = async (userId: string, role: 'lead' | 'contributor' | 'participant') => {
         const result = await applyForRoleAction({ projectId: project.id, userId, role });
         handleServerResponse(result, 'Application submitted!', 'Failed to apply for role.');
@@ -226,7 +233,7 @@ export default function ProjectDetailClientPage({
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} />
+            <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
             
             <div className="mt-8">
                 <Tabs selectedIndex={tabIndex} onSelect={index => setTabIndex(index)}>
@@ -276,6 +283,7 @@ export default function ProjectDetailClientPage({
                     <TabPanel>
                         {currentUser ? (
                             <ProjectTeam 
+                                projectId={project.id}
                                 team={project.team}
                                 users={users}
                                 currentUser={currentUser}

@@ -7,9 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { HydratedProjectMember, User } from '@/lib/types';
 import { getInitials } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { inviteMember } from '@/app/actions/invites';
 
 interface ProjectTeamProps {
+    projectId: string;
     team: HydratedProjectMember[];
     users: User[];
     currentUser: User;
@@ -21,6 +25,7 @@ interface ProjectTeamProps {
 }
 
 export default function ProjectTeam({
+    projectId,
     team,
     currentUser,
     isLead,
@@ -29,6 +34,10 @@ export default function ProjectTeam({
     denyRoleApplication
 }: ProjectTeamProps) {
     const [loading, setLoading] = useState<Record<string, boolean>>({});
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteRole, setInviteRole] = useState<'lead' | 'contributor' | 'participant'>('participant');
+    const [isInviting, setIsInviting] = useState(false);
+    const { toast } = useToast();
 
     const { pendingMembers, approvedMembers } = useMemo(() => {
         const pending = team.filter(member => member.pendingRole);
@@ -72,6 +81,28 @@ export default function ProjectTeam({
         await denyRoleApplication(userId);
     };
 
+    const handleInvite = async () => {
+        if (!inviteEmail) return;
+        setIsInviting(true);
+        try {
+            const result = await inviteMember({ 
+                projectId, 
+                email: inviteEmail, 
+                role: inviteRole 
+            });
+            if (result.success) {
+                toast({ title: 'Success', description: result.message });
+                setInviteEmail('');
+            } else {
+                toast({ title: 'Error', description: result.error, variant: 'destructive' });
+            }
+        } catch (error) {
+            toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+        } finally {
+            setIsInviting(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {!currentUserMember?.pendingRole && selectableRoles.length > 0 && (
@@ -95,6 +126,40 @@ export default function ProjectTeam({
                         <Button onClick={handleApply} disabled={loading[currentUser.id] || !selectedRole}>
                             {loading[currentUser.id] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Apply
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            {isLead && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <UserPlus className="h-5 w-5" />
+                            Invite Member
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center space-x-4">
+                        <Input 
+                            type="email" 
+                            placeholder="Email address" 
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            className="flex-1"
+                        />
+                        <Select onValueChange={(value: 'lead' | 'contributor' | 'participant') => setInviteRole(value)} value={inviteRole}>
+                            <SelectTrigger className="w-[150px]">
+                                <SelectValue placeholder="Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="participant">Participant</SelectItem>
+                                <SelectItem value="contributor">Contributor</SelectItem>
+                                <SelectItem value="lead">Lead</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleInvite} disabled={isInviting || !inviteEmail}>
+                            {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Invite
                         </Button>
                     </CardContent>
                 </Card>

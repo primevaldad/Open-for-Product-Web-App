@@ -339,6 +339,35 @@ export async function joinProject(projectId: string): Promise<ServerActionRespon
   }
 }
 
+export async function leaveProject(projectId: string): Promise<ServerActionResponse<{}>> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required.' };
+
+  try {
+    const project = await findProjectById(projectId, currentUser);
+    if (!project) return { success: false, error: 'Project not found.' };
+
+    const isMember = project.team.some(member => member.userId === currentUser.id);
+    if (!isMember) return { success: false, error: 'You are not a member of this project.' };
+
+    const updatedTeam = project.team.filter(member => member.userId !== currentUser.id);
+    await updateProjectInDb(projectId, { team: updatedTeam });
+
+    await createAndDispatchEvent({
+      type: EventType.PROJECT_LEFT,
+      actorUserId: currentUser.id,
+      projectId,
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/', 'layout');
+    return { success: true, data: {} };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
 export async function addTeamMember(data: { projectId: string; userId: string; role: ProjectMember['role'] }): Promise<ServerActionResponse<HydratedProjectMember>> {
     const { projectId, userId, role } = data;
     const currentUser = await getAuthenticatedUser();

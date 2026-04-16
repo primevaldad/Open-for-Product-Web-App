@@ -1,0 +1,111 @@
+'use server';
+
+import { adminDb, findUserByEmail, findProjectById, updateProjectInDb, updateUser } from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import { EventType, User, ProjectMember } from '@/lib/types';
+import { FieldValue } from 'firebase-admin/firestore';
+import { revalidatePath } from 'next/cache';
+import { createAndDispatchEvent } from '@/lib/events.server';
+import { deepSerialize } from '@/lib/utils.server';
+
+const INVITE_EXPIRATION_DAYS = 14;
+
+export async function inviteMember(data: { projectId: string; email: string; role: 'lead' | 'contributor' | 'participant' }) {
+    const { projectId, email, role } = data;
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { success: false, error: 'Authentication required.' };
+
+    try {
+        const project = await findProjectById(projectId, currentUser);
+        if (!project) return { success: false, error: 'Project not found.' };
+
+        const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
+        if (!isLead) return { success: false, error: 'Only project leads can invite members.' };
+
+        // Check if an invite already exists
+        const existingInviteQuery = await adminDb.collection('invites')
+            .where('projectId', '==', projectId)
+            .where('email', '==', email)
+            .where('status', '==', 'pending')
+            .get();
+
+        if (!existingInviteQuery.empty) {
+            return { success: false, error: 'An invitation is already pending for this email.' };
+        }
+
+        const inviteData = {
+            projectId,
+            email,
+            role,
+            invitedBy: currentUser.id,
+            status: 'pending',
+            createdAt: FieldValue.serverTimestamp(),
+        };
+
+        await adminDb.collection('invites').add(inviteData);
+
+        return { success: true, message: `Invitation sent to ${email}` };
+    } catch (error) {
+        console.error('Failed to invite member:', error);
+        return { success: false, error: 'Failed to send invitation.' };
+    }
+}
+
+export async function checkAndConsumeInvites(user: User) {
+    if (!user.email) return;
+
+    try {
+        const invitesQuery = await adminDb.collection('invites')
+            .where('email', '==', user.email)
+            .where('status', '==', 'pending')
+            .get();
+
+        if (invitesQuery.empty) return;
+
+        const now = Date.now();
+        const expirationMs = INVITE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+
+        for (const doc of invitesQuery.docs) {
+            const invite = doc.data();
+            const createdAt = invite.createdAt.toDate().getTime();
+
+            // Check if expired
+            if (now - createdAt > expirationMs) {
+                await doc.ref.update({ status: 'expired' });
+                continue;
+            }
+
+            // Consume invite
+            const project = await findProjectById(invite.projectId, null);
+            if (project) {
+                const isAlreadyMember = project.team.some(m => m.userId === user.id);
+                if (!isAlreadyMember) {
+                    const newMember: ProjectMember = { 
+                        userId: user.id, 
+                        role: invite.role,
+                        createdAt: new Date().toISOString()
+                    };
+                    const updatedTeam = [...project.team, newMember];
+                    await updateProjectInDb(invite.projectId, { team: updatedTeam });
+                    
+                    // Set bypass flag on user
+                    await updateUser(user.id, { bypassOnboarding: true } as any);
+
+                    // Notify the lead
+                    await createAndDispatchEvent({
+                        type: EventType.INVITE_ACCEPTED,
+                        actorUserId: user.id,
+                        targetUserId: invite.invitedBy,
+                        projectId: invite.projectId,
+                    });
+                }
+            }
+
+            await doc.ref.update({ status: 'accepted', updatedAt: FieldValue.serverTimestamp() });
+        }
+        
+        revalidatePath('/', 'layout');
+    } catch (error) {
+        console.error('Error consuming invites:', error);
+    }
+}

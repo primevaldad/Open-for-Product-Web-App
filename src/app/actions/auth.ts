@@ -4,10 +4,11 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
-import { adminDb, logOrphanedUser } from '@/lib/data.server';
+import { adminDb, logOrphanedUser, findUserById } from '@/lib/data.server';
 import { createSessionCookie, clearSessionCookie } from '@/lib/session.server';
 import type { User } from '@/lib/types';
 import { FirebaseError } from 'firebase/app';
+import { checkAndConsumeInvites } from './invites';
 
 const SignUpSchema = z.object({
   idToken: z.string(),
@@ -31,7 +32,11 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
   const { idToken } = validatedFields.data;
 
   try {
-    await createSessionCookie(idToken);
+    const uid = await createSessionCookie(idToken);
+    const user = await findUserById(uid);
+    if (user) {
+        await checkAndConsumeInvites(user);
+    }
     revalidatePath('/home');
     return { success: true };
   } catch (error) { // Type error as FirebaseError or generic Error
@@ -83,6 +88,11 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
         };
         transaction.set(newUserRef, newUser);
     });
+
+    const user = await findUserById(uid);
+    if (user) {
+        await checkAndConsumeInvites(user);
+    }
 
     revalidatePath('/onboarding');
     return { success: true, userId: uid };

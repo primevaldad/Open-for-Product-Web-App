@@ -20,7 +20,7 @@ export default async function AppLayout({
   const currentUser = await getAuthenticatedUser();
 
   // Onboarding check for authenticated users
-  if (currentUser && currentUser.role !== 'guest' && !currentUser.onboardingCompleted) {
+  if (currentUser && currentUser.role !== 'guest' && !currentUser.onboardingCompleted && !currentUser.bypassOnboarding) {
     redirect('/onboarding');
   }
 

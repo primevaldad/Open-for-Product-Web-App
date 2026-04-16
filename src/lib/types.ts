@@ -30,6 +30,7 @@ export interface User {
     location?: string;
     website?: string;
     steemUsername?: string;
+    bypassOnboarding?: boolean;
 }
 
 export interface Project {
@@ -127,6 +128,16 @@ export interface HydratedProjectMember {
     pendingRole?: 'lead' | 'contributor' | 'participant';
     createdAt?: Timestamp | string;
     updatedAt?: Timestamp | string;
+}
+
+export interface ProjectInvite {
+    id: string;
+    projectId: string;
+    email: string;
+    role: 'lead' | 'contributor' | 'participant';
+    invitedBy: UserId;
+    status: 'pending' | 'accepted' | 'declined';
+    createdAt: Timestamp | string;
 }
 
 export interface Discussion {
@@ -310,6 +321,8 @@ export enum EventType {
   PROJECT_DETAILS_UPDATED = 'project-details-updated',
   PROJECT_PHOTO_UPDATED = 'project-photo-updated',
   PROJECT_VISIBILITY_UPDATED = 'project-visibility-updated',
+  INVITE_ACCEPTED = 'invite-accepted',
+  INVITE_REJECTED = 'invite-rejected',
 }
 
 export interface Event {
