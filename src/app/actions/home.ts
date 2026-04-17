@@ -75,7 +75,13 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
 
         return deepSerialize({ success: true, ...pageData });
 
-    } catch (e) {
+    } catch (e: any) {
+        // If this is a Next.js dynamic server usage error, re-throw it so Next.js 
+        // can handle it (by switching to dynamic rendering) without logging it as an application error.
+        if (e && typeof e === 'object' && ('digest' in e) && e.digest === 'DYNAMIC_SERVER_USAGE') {
+            throw e;
+        }
+
         const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
         console.error('Error fetching home page data:', e);
         

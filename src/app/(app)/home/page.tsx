@@ -3,8 +3,8 @@ import { getHomePageData } from '@/app/actions/home';
 import { HomePageDataResponse } from '@/lib/types';
 import HomeClientPage from './home-client-page';
 
-// Revalidate the data every 5 minutes
-export const revalidate = 300;
+// Force dynamic rendering because this page depends on user sessions (cookies)
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const data: HomePageDataResponse = await getHomePageData();
