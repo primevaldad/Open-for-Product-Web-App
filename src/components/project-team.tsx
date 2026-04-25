@@ -51,7 +51,7 @@ export default function ProjectTeam({
     const currentUserMember = userMap.get(currentUser.id);
 
     const availableRoles: Array<'participant' | 'contributor' | 'lead'> = ['participant', 'contributor', 'lead'];
-    
+
     const selectableRoles = useMemo(() => {
         if (!currentUserMember) {
             return availableRoles;
@@ -60,7 +60,7 @@ export default function ProjectTeam({
     }, [currentUserMember]);
 
     const [selectedRole, setSelectedRole] = useState<'lead' | 'contributor' | 'participant'>(selectableRoles[0] || 'participant');
-    
+
     useEffect(() => {
         if (selectableRoles.length > 0 && !selectableRoles.includes(selectedRole)) {
             setSelectedRole(selectableRoles[0]);
@@ -86,10 +86,10 @@ export default function ProjectTeam({
         if (!inviteEmail) return;
         setIsInviting(true);
         try {
-            const result = await inviteMember({ 
-                projectId, 
-                email: inviteEmail, 
-                role: inviteRole 
+            const result = await inviteMember({
+                projectId,
+                email: inviteEmail,
+                role: inviteRole
             });
             if (result.success) {
                 toast({ title: 'Success', description: result.message });
@@ -141,9 +141,9 @@ export default function ProjectTeam({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex items-center space-x-4">
-                        <Input 
-                            type="email" 
-                            placeholder="Email address" 
+                        <Input
+                            type="email"
+                            placeholder="Email address"
                             value={inviteEmail}
                             onChange={(e) => setInviteEmail(e.target.value)}
                             className="flex-1"
@@ -167,7 +167,7 @@ export default function ProjectTeam({
             )}
 
             {currentUserMember?.pendingRole && (
-                 <Card>
+                <Card>
                     <CardContent className='pt-6'>
                         <p>Your application for the <strong>{currentUserMember.pendingRole}</strong> role is pending approval.</p>
                     </CardContent>
@@ -193,18 +193,18 @@ export default function ProjectTeam({
                                     </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <Button 
-                                        size="sm" 
-                                        variant="outline" 
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
                                         onClick={() => handleApprove(member.userId, member.pendingRole!)}
                                         disabled={loading[member.userId]}
                                     >
                                         {loading[member.userId] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         Approve
                                     </Button>
-                                    <Button 
-                                        size="sm" 
-                                        variant="destructive" 
+                                    <Button
+                                        size="sm"
+                                        variant="destructive"
                                         onClick={() => handleDeny(member.userId)}
                                         disabled={loading[member.userId]}
                                     >
