@@ -136,8 +136,10 @@ export interface ProjectInvite {
     email: string;
     role: 'lead' | 'contributor' | 'participant';
     invitedBy: UserId;
-    status: 'pending' | 'accepted' | 'declined';
+    status: 'pending' | 'accepted' | 'declined' | 'expired';
+    token: string;
     createdAt: Timestamp | string;
+    expiresAt: Timestamp | string;
 }
 
 export interface Discussion {

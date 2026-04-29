@@ -58,7 +58,8 @@ async function dispatchEvent(event: Event): Promise<void> {
     switch (event.type) {
         case EventType.PROJECT_JOINED:
         case EventType.PROJECT_LEFT:
-        case EventType.MEMBER_ROLE_APPLIED: {
+        case EventType.MEMBER_ROLE_APPLIED:
+        case EventType.INVITE_ACCEPTED: {
             const { projectId } = event;
             if (projectId) {
                 const project = await findProjectById(projectId, null);

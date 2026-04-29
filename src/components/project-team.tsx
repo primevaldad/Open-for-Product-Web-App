@@ -8,10 +8,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { HydratedProjectMember, User } from '@/lib/types';
 import { getInitials, toDate } from '@/lib/utils';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, Mail } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { inviteMember } from '@/app/actions/invites';
+import { getProjectInvitesAction } from '@/app/actions/invite';
+import type { ProjectInvite } from '@/lib/types';
+import { InviteMemberModal } from './InviteMemberModal';
 
 interface ProjectTeamProps {
     projectId: string;
@@ -35,10 +37,20 @@ export default function ProjectTeam({
     denyRoleApplication
 }: ProjectTeamProps) {
     const [loading, setLoading] = useState<Record<string, boolean>>({});
-    const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState<'lead' | 'contributor' | 'participant'>('participant');
-    const [isInviting, setIsInviting] = useState(false);
+    const [emailInvites, setEmailInvites] = useState<ProjectInvite[]>([]);
+    const [loadingInvites, setLoadingInvites] = useState(false);
     const { toast } = useToast();
+
+    useEffect(() => {
+        if (isLead) {
+            setLoadingInvites(true);
+            getProjectInvitesAction(projectId).then(res => {
+                if (res.success && res.data) {
+                    setEmailInvites(res.data);
+                }
+            }).finally(() => setLoadingInvites(false));
+        }
+    }, [projectId, isLead]);
 
     const { pendingMembers, approvedMembers } = useMemo(() => {
         const pending = team.filter(member => member.pendingRole);
@@ -82,27 +94,7 @@ export default function ProjectTeam({
         await denyRoleApplication(userId);
     };
 
-    const handleInvite = async () => {
-        if (!inviteEmail) return;
-        setIsInviting(true);
-        try {
-            const result = await inviteMember({
-                projectId,
-                email: inviteEmail,
-                role: inviteRole
-            });
-            if (result.success) {
-                toast({ title: 'Success', description: result.message });
-                setInviteEmail('');
-            } else {
-                toast({ title: 'Error', description: result.error, variant: 'destructive' });
-            }
-        } catch (error) {
-            toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
-        } finally {
-            setIsInviting(false);
-        }
-    };
+
 
     return (
         <div className="space-y-6">
@@ -141,27 +133,41 @@ export default function ProjectTeam({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex items-center space-x-4">
-                        <Input
-                            type="email"
-                            placeholder="Email address"
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            className="flex-1"
+                        <p className="flex-1 text-sm text-gray-500">Send an email invitation to collaborate on this project.</p>
+                        <InviteMemberModal 
+                            projectId={projectId} 
+                            trigger={<Button>Send Invite</Button>} 
                         />
-                        <Select onValueChange={(value: 'lead' | 'contributor' | 'participant') => setInviteRole(value)} value={inviteRole}>
-                            <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="participant">Participant</SelectItem>
-                                <SelectItem value="contributor">Contributor</SelectItem>
-                                <SelectItem value="lead">Lead</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={handleInvite} disabled={isInviting || !inviteEmail}>
-                            {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Invite
-                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            {isLead && emailInvites.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Mail className="h-5 w-5" />
+                            Email Invitations
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {emailInvites.map(invite => (
+                            <div key={invite.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div>
+                                    <p className="font-semibold">{invite.email}</p>
+                                    <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
+                                        <Badge variant="outline">{invite.role}</Badge>
+                                        <span className="capitalize text-xs">
+                                            Status: <span className={
+                                                invite.status === 'pending' ? 'text-amber-500' :
+                                                invite.status === 'accepted' ? 'text-green-500' :
+                                                invite.status === 'declined' ? 'text-red-500' : 'text-gray-500'
+                                            }>{invite.status}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </CardContent>
                 </Card>
             )}
