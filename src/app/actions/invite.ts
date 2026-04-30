@@ -283,7 +283,7 @@ export async function cancelInviteAction(inviteId: string): Promise<ServerAction
 
         if (!isLead) return { success: false, error: 'Unauthorized' };
 
-        await inviteRef.delete();
+        await inviteRef.update({ status: 'cancelled' });
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message };

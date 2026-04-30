@@ -136,7 +136,7 @@ export interface ProjectInvite {
     email: string;
     role: 'lead' | 'contributor' | 'participant';
     invitedBy: UserId;
-    status: 'pending' | 'accepted' | 'declined' | 'expired';
+    status: 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled';
     token: string;
     createdAt: Timestamp | string;
     expiresAt: Timestamp | string;

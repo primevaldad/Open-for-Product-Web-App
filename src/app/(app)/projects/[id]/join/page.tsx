@@ -43,6 +43,10 @@ export default async function JoinPage({
         return <div className="p-8 text-center text-amber-500 font-semibold text-lg mt-10">This invitation has expired.</div>;
     }
 
+    if (inviteData.status === 'cancelled') {
+        return <div className="p-8 text-center text-red-500 font-semibold text-lg mt-10">This invitation was cancelled by the project lead.</div>;
+    }
+
     if (inviteData.status === 'accepted') {
         return <div className="p-8 text-center text-green-500 font-semibold mt-10">This invitation has already been accepted.</div>;
     }

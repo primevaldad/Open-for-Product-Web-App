@@ -204,7 +204,8 @@ export default function ProjectTeam({
         }
     }, [filteredCollaborators, isComboOpen]);
 
-
+    const pendingInvites = useMemo(() => emailInvites.filter(i => i.status === 'pending'), [emailInvites]);
+    const historyInvites = useMemo(() => emailInvites.filter(i => i.status !== 'pending'), [emailInvites]);
 
     return (
         <div className="space-y-6">
@@ -351,77 +352,87 @@ export default function ProjectTeam({
                 </Card>
             )}
 
-            {isLead && emailInvites.length > 0 && (
+            {isLead && pendingInvites.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Mail className="h-5 w-5" />
-                            Email Invitations
+                            Pending Invitations
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {emailInvites.map(invite => (
+                        {pendingInvites.map(invite => (
                             <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                 <div>
                                     <p className="font-semibold">{invite.email}</p>
                                     <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
                                         <Badge variant="outline" className="capitalize">{invite.role}</Badge>
+                                        <span className="text-amber-500 font-medium text-xs">Pending</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleResendInvite(invite.id)}
+                                        disabled={loading[invite.id]}
+                                        title="Resend Invitation"
+                                    >
+                                        <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                        onClick={() => handleCancelInvite(invite.id)}
+                                        disabled={loading[invite.id]}
+                                        title="Cancel Invitation"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
+            {isLead && historyInvites.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-muted-foreground">
+                            <Mail className="h-5 w-5" />
+                            Invitation History
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {historyInvites.map(invite => (
+                            <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg opacity-80">
+                                <div>
+                                    <p className="font-semibold text-muted-foreground">{invite.email}</p>
+                                    <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
+                                        <Badge variant="outline" className="capitalize opacity-70">{invite.role}</Badge>
                                         <span className="capitalize text-xs">
                                             Status: <span className={cn(
                                                 "font-medium",
-                                                invite.status === 'pending' ? 'text-amber-500' :
                                                 invite.status === 'accepted' ? 'text-green-500' :
-                                                invite.status === 'declined' ? 'text-red-500' : 'text-gray-500'
+                                                invite.status === 'declined' ? 'text-red-500' : 
+                                                invite.status === 'cancelled' ? 'text-gray-500' : 'text-gray-500'
                                             )}>{invite.status}</span>
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {invite.status === 'pending' && (
-                                        <>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                onClick={() => handleResendInvite(invite.id)}
-                                                disabled={loading[invite.id]}
-                                                title="Resend Invitation"
-                                            >
-                                                <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                onClick={() => handleCancelInvite(invite.id)}
-                                                disabled={loading[invite.id]}
-                                                title="Cancel Invitation"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </>
-                                    )}
                                     {invite.status === 'expired' && (
-                                        <>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                onClick={() => handleResendInvite(invite.id)}
-                                                disabled={loading[invite.id]}
-                                                title="Renew and Resend"
-                                            >
-                                                <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="text-gray-500"
-                                                onClick={() => handleCancelInvite(invite.id)}
-                                                disabled={loading[invite.id]}
-                                                title="Remove"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={() => handleResendInvite(invite.id)}
+                                            disabled={loading[invite.id]}
+                                            title="Renew and Resend"
+                                        >
+                                            <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
+                                        </Button>
                                     )}
                                 </div>
                             </div>
