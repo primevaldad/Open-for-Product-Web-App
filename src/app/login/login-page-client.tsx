@@ -46,9 +46,11 @@ function LoginForm() {
   // This handles the client-side check after the initial server check.
   useEffect(() => {
     if (currentUser && currentUser.role !== 'guest') {
-      router.push(redirectTo);
+      // Use window.location.href to bypass Next.js aggressive router cache
+      // which caches redirects and causes infinite loops.
+      window.location.href = redirectTo;
     }
-  }, [currentUser, router, redirectTo]);
+  }, [currentUser, redirectTo]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -77,7 +79,7 @@ function LoginForm() {
 
         const result = await response.json();
 
-        if (result.success) {
+        if (result.success || result.status === 'success') {
             // Use window.location.href for a hard refresh to ensure the session is picked up
             window.location.href = redirectTo;
         } else if (result.requiresSignup) {

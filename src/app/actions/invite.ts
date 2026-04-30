@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from '@/lib/session.server';
 import { sendFastmailEmail } from '@/lib/fastmail.server';
 import { ServerActionResponse, EventType, ProjectInvite, Project } from '@/lib/types';
 import { createAndDispatchEvent } from '@/lib/events.server';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, FieldPath } from 'firebase-admin/firestore';
 import crypto from 'crypto';
 import { deepSerialize } from '@/lib/utils.server';
 
@@ -17,6 +17,7 @@ export async function sendProjectInviteAction(data: {
     projectId: string;
     recipientEmail: string;
     role: 'lead' | 'contributor' | 'participant';
+    customMessage?: string;
 }): Promise<ServerActionResponse> {
     try {
         const currentUser = await getAuthenticatedUser();
@@ -24,7 +25,7 @@ export async function sendProjectInviteAction(data: {
             return { success: false, error: 'Unauthorized' };
         }
 
-        const { projectId, recipientEmail, role } = data;
+        const { projectId, recipientEmail, role, customMessage } = data;
 
         // Basic email validation
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
@@ -90,6 +91,7 @@ export async function sendProjectInviteAction(data: {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2>You're invited!</h2>
                 <p><strong>${inviterName}</strong> has invited you to join the project <strong>${projectData.name}</strong> as a ${role}.</p>
+                ${customMessage ? `<div style="background-color: #f4f4f4; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;">${customMessage}</div>` : ''}
                 <div style="margin: 30px 0;">
                     <a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Accept Invitation</a>
                 </div>
@@ -260,5 +262,135 @@ export async function getProjectInvitesAction(projectId: string): Promise<Server
     } catch (error: any) {
         console.error('Error fetching project invites:', error);
         return { success: false, error: error.message || 'An unexpected error occurred' };
+    }
+}
+
+export async function cancelInviteAction(inviteId: string): Promise<ServerActionResponse> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) return { success: false, error: 'Unauthorized' };
+
+        const inviteRef = adminDb.collection('projectInvites').doc(inviteId);
+        const inviteSnap = await inviteRef.get();
+        if (!inviteSnap.exists) return { success: false, error: 'Invitation not found' };
+
+        const inviteData = inviteSnap.data() as ProjectInvite;
+
+        // Verify permissions
+        const projectDoc = await adminDb.collection('projects').doc(inviteData.projectId).get();
+        const projectData = projectDoc.data() as Project;
+        const isLead = projectData.ownerId === currentUser.id || projectData.team.some(m => m.userId === currentUser.id && m.role === 'lead');
+
+        if (!isLead) return { success: false, error: 'Unauthorized' };
+
+        await inviteRef.delete();
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function resendInviteAction(inviteId: string, customMessage?: string): Promise<ServerActionResponse> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) return { success: false, error: 'Unauthorized' };
+
+        const inviteRef = adminDb.collection('projectInvites').doc(inviteId);
+        const inviteSnap = await inviteRef.get();
+        if (!inviteSnap.exists) return { success: false, error: 'Invitation not found' };
+
+        const inviteData = inviteSnap.data() as ProjectInvite;
+
+        // Verify permissions
+        const projectDoc = await adminDb.collection('projects').doc(inviteData.projectId).get();
+        const projectData = projectDoc.data() as Project;
+        const isLead = projectData.ownerId === currentUser.id || projectData.team.some(m => m.userId === currentUser.id && m.role === 'lead');
+
+        if (!isLead) return { success: false, error: 'Unauthorized' };
+
+        // Refresh token and expiry
+        const token = generateToken();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
+        await inviteRef.update({
+            token,
+            expiresAt: Timestamp.fromDate(expiresAt),
+            status: 'pending',
+            updatedAt: FieldValue.serverTimestamp()
+        });
+
+        // Prepare email
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        const inviteLink = `${baseUrl}/projects/${inviteData.projectId}/join?token=${token}`;
+        const subject = `Reminder: You've been invited to join ${projectData.name}`;
+        const inviterName = currentUser.name || 'A member';
+        
+        const htmlBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Invitation Reminder</h2>
+                <p>This is a reminder that <strong>${inviterName}</strong> has invited you to join the project <strong>${projectData.name}</strong>.</p>
+                ${customMessage ? `<div style="background-color: #f4f4f4; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;">${customMessage}</div>` : ''}
+                <div style="margin: 30px 0;">
+                    <a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Accept Invitation</a>
+                </div>
+                <p>If the button doesn't work, copy and paste this link into your browser:</p>
+                <p><a href="${inviteLink}">${inviteLink}</a></p>
+                <p style="color: #666; font-size: 12px; margin-top: 40px;">This invitation will expire in 7 days.</p>
+            </div>
+        `;
+
+        await sendFastmailEmail(inviteData.email, subject, htmlBody, `${inviterName} via Open for Product`);
+
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getCollaboratorsAction(): Promise<ServerActionResponse<{id: string, name: string, email: string, username?: string}[]>> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) return { success: false, error: 'Unauthorized' };
+
+        // 1. Fetch all projects (using the same pattern as data.server.ts)
+        const projectsSnap = await adminDb.collection('projects').get();
+        
+        const allMemberIds = new Set<string>();
+        
+        projectsSnap.docs.forEach(doc => {
+            const data = doc.data() as Project;
+            const isMember = data.ownerId === currentUser.id || (data.team && data.team.some(m => m.userId === currentUser.id));
+            
+            if (isMember) {
+                if (data.ownerId) allMemberIds.add(data.ownerId);
+                if (data.team) data.team.forEach(m => allMemberIds.add(m.userId));
+            }
+        });
+
+        allMemberIds.delete(currentUser.id); // Remove self
+
+        if (allMemberIds.size === 0) return { success: true, data: [] };
+
+        // 2. Fetch user details in batches
+        const memberIds = Array.from(allMemberIds);
+        const users: {id: string, name: string, email: string, username?: string}[] = [];
+
+        for (let i = 0; i < memberIds.length; i += 30) {
+            const chunk = memberIds.slice(i, i + 30);
+            const userSnap = await adminDb.collection('users')
+                .where(FieldPath.documentId(), 'in', chunk)
+                .get();
+            
+            userSnap.docs.forEach(doc => {
+                const data = doc.data();
+                users.push({ id: doc.id, name: data.name, email: data.email, username: data.username });
+            });
+        }
+
+        return { success: true, data: users };
+    } catch (error: any) {
+        console.error('getCollaboratorsAction error:', error);
+        return { success: false, error: error.message };
     }
 }

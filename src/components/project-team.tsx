@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,13 +8,17 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { HydratedProjectMember, User } from '@/lib/types';
 import { getInitials, toDate } from '@/lib/utils';
-import { Loader2, UserPlus, Mail } from 'lucide-react';
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { getProjectInvitesAction, acceptInviteAction } from '@/app/actions/invite';
+import { getProjectInvitesAction, acceptInviteAction, getCollaboratorsAction, cancelInviteAction, resendInviteAction, sendProjectInviteAction } from '@/app/actions/invite';
 import type { ProjectInvite } from '@/lib/types';
-import { InviteMemberModal } from './InviteMemberModal';
 import { useRouter } from 'next/navigation';
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown, X, Send, Trash2, RefreshCw, MessageSquare, Mail, UserPlus, Loader2 } from "lucide-react";
 
 interface ProjectTeamProps {
     projectId: string;
@@ -40,17 +44,35 @@ export default function ProjectTeam({
     const [loading, setLoading] = useState<Record<string, boolean>>({});
     const [emailInvites, setEmailInvites] = useState<ProjectInvite[]>([]);
     const [loadingInvites, setLoadingInvites] = useState(false);
+    const [collaborators, setCollaborators] = useState<{id: string, name: string, email: string, username?: string}[]>([]);
+    const [isInviting, setIsInviting] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteRole, setInviteRole] = useState<'lead' | 'contributor' | 'participant'>('participant');
+    const [customMessage, setCustomMessage] = useState('');
+    const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+    const [isComboOpen, setIsComboOpen] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
 
-    useEffect(() => {
+    const fetchInvites = useCallback(() => {
         setLoadingInvites(true);
         getProjectInvitesAction(projectId).then(res => {
             if (res.success && res.data) {
                 setEmailInvites(res.data);
             }
         }).finally(() => setLoadingInvites(false));
-    }, [projectId, isLead]);
+    }, [projectId]);
+
+    useEffect(() => {
+        fetchInvites();
+        if (isLead) {
+            getCollaboratorsAction().then(res => {
+                if (res.success && res.data) {
+                    setCollaborators(res.data);
+                }
+            });
+        }
+    }, [projectId, isLead, fetchInvites]);
 
     const { pendingMembers, approvedMembers } = useMemo(() => {
         const pending = team.filter(member => member.pendingRole);
@@ -100,7 +122,8 @@ export default function ProjectTeam({
             const res = await acceptInviteAction(token);
             if (res.success) {
                 toast({ title: 'Success', description: 'You have joined the project team!' });
-                router.refresh(); // Refresh to show the user as a member
+                router.refresh(); 
+                fetchInvites();
             } else {
                 toast({ title: 'Error', description: res.error, variant: 'destructive' });
             }
@@ -109,10 +132,77 @@ export default function ProjectTeam({
         }
     };
 
+    const handleSendInvite = async () => {
+        if (!inviteEmail) return;
+        setIsInviting(true);
+        try {
+            const res = await sendProjectInviteAction({
+                projectId,
+                recipientEmail: inviteEmail,
+                role: inviteRole,
+                customMessage
+            });
+            if (res.success) {
+                toast({ title: 'Success', description: `Invitation sent to ${inviteEmail}` });
+                setInviteEmail('');
+                setCustomMessage('');
+                fetchInvites();
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } finally {
+            setIsInviting(false);
+        }
+    };
+
+    const handleCancelInvite = async (id: string) => {
+        setLoading({ [id]: true });
+        try {
+            const res = await cancelInviteAction(id);
+            if (res.success) {
+                toast({ title: 'Success', description: 'Invitation cancelled' });
+                fetchInvites();
+            }
+        } finally {
+            setLoading({ [id]: false });
+        }
+    };
+
+    const handleResendInvite = async (id: string) => {
+        setLoading({ [id]: true });
+        try {
+            const res = await resendInviteAction(id, customMessage);
+            if (res.success) {
+                toast({ title: 'Success', description: 'Invitation resent' });
+                fetchInvites();
+            }
+        } finally {
+            setLoading({ [id]: false });
+        }
+    };
+
     const myInvite = useMemo(() => {
         if (isCurrentUserMember) return null;
         return emailInvites.find(i => i.email === currentUser.email && i.status === 'pending');
     }, [emailInvites, currentUser.email, isCurrentUserMember]);
+
+    const filteredCollaborators = useMemo(() => {
+        if (!inviteEmail) return [];
+        const search = inviteEmail.toLowerCase();
+        return collaborators.filter(c => 
+            (c.name && c.name.toLowerCase().includes(search)) || 
+            (c.email && c.email.toLowerCase().includes(search)) ||
+            (c.username && c.username.toLowerCase().includes(search))
+        ).slice(0, 5); // Limit to top 5 suggestions
+    }, [collaborators, inviteEmail]);
+
+    useEffect(() => {
+        if (filteredCollaborators.length > 0 && !isComboOpen) {
+            setIsComboOpen(true);
+        } else if (filteredCollaborators.length === 0 && isComboOpen) {
+            setIsComboOpen(false);
+        }
+    }, [filteredCollaborators, isComboOpen]);
 
 
 
@@ -176,12 +266,87 @@ export default function ProjectTeam({
                             Invite Member
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex items-center space-x-4">
-                        <p className="flex-1 text-sm text-gray-500">Send an email invitation to collaborate on this project.</p>
-                        <InviteMemberModal 
-                            projectId={projectId} 
-                            trigger={<Button>Send Invite</Button>} 
-                        />
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="flex-1 relative">
+                                <div className="relative w-full">
+                                    <Input
+                                        placeholder="Email address or name..."
+                                        value={inviteEmail}
+                                        onChange={(e) => {
+                                            setInviteEmail(e.target.value);
+                                            setIsComboOpen(true);
+                                        }}
+                                        onFocus={() => { if (filteredCollaborators.length > 0) setIsComboOpen(true); }}
+                                        onBlur={() => {
+                                            // Delay closing so clicks on suggestions register
+                                            setTimeout(() => setIsComboOpen(false), 200);
+                                        }}
+                                        className="pr-10"
+                                    />
+                                    <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+                                </div>
+                                {isComboOpen && filteredCollaborators.length > 0 && (
+                                    <div className="absolute top-full left-0 mt-1 w-full z-50 bg-popover text-popover-foreground rounded-md border shadow-md outline-none animate-in fade-in-0 zoom-in-95 overflow-hidden max-h-[300px] overflow-y-auto">
+                                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                                            Suggestions
+                                        </div>
+                                        <div className="p-1">
+                                            {filteredCollaborators.map((c) => (
+                                                <div
+                                                    key={c.id}
+                                                    onClick={() => {
+                                                        setInviteEmail(c.email);
+                                                        setIsComboOpen(false);
+                                                    }}
+                                                    onMouseDown={(e) => {
+                                                        // Prevent blur from firing before click
+                                                        e.preventDefault();
+                                                    }}
+                                                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">{c.name}</span>
+                                                        <span className="text-xs text-muted-foreground">{c.email}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <Select onValueChange={(value: any) => setInviteRole(value)} value={inviteRole}>
+                                <SelectTrigger className="w-full sm:w-[150px]">
+                                    <SelectValue placeholder="Role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="participant">Participant</SelectItem>
+                                    <SelectItem value="contributor">Contributor</SelectItem>
+                                    <SelectItem value="lead">Lead</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    size="icon"
+                                    onClick={() => setIsMessageModalOpen(true)}
+                                    className={cn(customMessage && "text-blue-600 border-blue-200 bg-blue-50")}
+                                    title="Edit invitation message"
+                                >
+                                    <MessageSquare className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                    onClick={handleSendInvite} 
+                                    disabled={isInviting || !inviteEmail}
+                                    className="flex-1 sm:flex-none"
+                                >
+                                    {isInviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                    Send
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             )}
@@ -196,25 +361,98 @@ export default function ProjectTeam({
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {emailInvites.map(invite => (
-                            <div key={invite.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                 <div>
                                     <p className="font-semibold">{invite.email}</p>
                                     <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
-                                        <Badge variant="outline">{invite.role}</Badge>
+                                        <Badge variant="outline" className="capitalize">{invite.role}</Badge>
                                         <span className="capitalize text-xs">
-                                            Status: <span className={
+                                            Status: <span className={cn(
+                                                "font-medium",
                                                 invite.status === 'pending' ? 'text-amber-500' :
                                                 invite.status === 'accepted' ? 'text-green-500' :
                                                 invite.status === 'declined' ? 'text-red-500' : 'text-gray-500'
-                                            }>{invite.status}</span>
+                                            )}>{invite.status}</span>
                                         </span>
                                     </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    {invite.status === 'pending' && (
+                                        <>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                onClick={() => handleResendInvite(invite.id)}
+                                                disabled={loading[invite.id]}
+                                                title="Resend Invitation"
+                                            >
+                                                <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                onClick={() => handleCancelInvite(invite.id)}
+                                                disabled={loading[invite.id]}
+                                                title="Cancel Invitation"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </>
+                                    )}
+                                    {invite.status === 'expired' && (
+                                        <>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                onClick={() => handleResendInvite(invite.id)}
+                                                disabled={loading[invite.id]}
+                                                title="Renew and Resend"
+                                            >
+                                                <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="text-gray-500"
+                                                onClick={() => handleCancelInvite(invite.id)}
+                                                disabled={loading[invite.id]}
+                                                title="Remove"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ))}
                     </CardContent>
                 </Card>
             )}
+
+            {/* Message Editor Modal */}
+            <Dialog open={isMessageModalOpen} onOpenChange={setIsMessageModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Personalize Invitation</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-sm text-muted-foreground mb-3">
+                            Add a custom message that will appear in the invitation email.
+                        </p>
+                        <Textarea 
+                            placeholder="e.g., Hey! We'd love to have your expertise on this project..."
+                            value={customMessage}
+                            onChange={(e) => setCustomMessage(e.target.value)}
+                            rows={5}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => {setCustomMessage(''); setIsMessageModalOpen(false)}}>Clear</Button>
+                        <Button onClick={() => setIsMessageModalOpen(false)}>Save Message</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {currentUserMember?.pendingRole && (
                 <Card>
