@@ -33,6 +33,7 @@ if (!getApps().length) {
   }
 
   admin.initializeApp(options);
+  admin.firestore().settings({ ignoreUndefinedProperties: true });
 }
 
 const adminDb = admin.firestore();

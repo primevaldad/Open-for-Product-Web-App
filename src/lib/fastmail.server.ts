@@ -47,22 +47,33 @@ export async function sendFastmailEmail(
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            using: ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:submission'],
+            using: ['urn:ietf:params:jmap:core', 'urn:ietf:params:jmap:mail', 'urn:ietf:params:jmap:submission'],
             methodCalls: [
-                ['Identity/get', { accountId, ids: null }, 'i1']
+                ['Identity/get', { accountId, ids: null }, 'i1'],
+                ['Mailbox/get', { accountId, ids: null }, 'm1']
             ]
         })
     });
 
     const identityData = await identityRes.json();
     const identities = identityData.methodResponses[0][1].list;
-    const ofpIdentity = identities.find((id: any) => id.email === 'OfPProjects@openforproduct.com');
+    const mailboxes = identityData.methodResponses[1][1].list;
+
+    // Find a suitable mailbox (Drafts or Sent)
+    const draftsMailbox = mailboxes.find((m: any) => m.role === 'drafts' || m.name.toLowerCase() === 'drafts');
+    const sentMailbox = mailboxes.find((m: any) => m.role === 'sent' || m.name.toLowerCase() === 'sent');
+    const fallbackMailbox = mailboxes[0];
+    
+    const targetMailboxId = (draftsMailbox || sentMailbox || fallbackMailbox).id;
+
+    const ofpIdentity = identities.find((id: any) => id.email.toLowerCase() === 'ofpprojects@openforproduct.com');
 
     if (!ofpIdentity) {
-        console.warn('OfPProjects@openforproduct.com identity not found, using primary.');
+        console.warn(`OfPProjects@openforproduct.com identity not found. Available identities: ${identities.map((i: any) => i.email).join(', ')}`);
     }
 
     const senderEmail = ofpIdentity ? ofpIdentity.email : identities[0].email;
+    const senderIdentityId = ofpIdentity ? ofpIdentity.id : identities[0].id;
 
     // 3. Send the email using Email/set (create) and EmailSubmission/set
     const sendRes = await fetch(apiUrl, {
@@ -85,6 +96,7 @@ export async function sendFastmailEmail(
                             from: [{ name: fromName, email: senderEmail }],
                             to: [{ email: to }],
                             subject: subject,
+                            mailboxIds: { [targetMailboxId]: true },
                             htmlBody: [{
                                 partId: 'body',
                                 type: 'text/html'
@@ -102,7 +114,8 @@ export async function sendFastmailEmail(
                     accountId,
                     create: {
                         'send': {
-                            emailId: '#draft'
+                            emailId: '#draft',
+                            identityId: senderIdentityId
                         }
                     },
                     onSuccessUpdateEmail: {
@@ -116,10 +129,13 @@ export async function sendFastmailEmail(
         })
     });
 
-    if (!sendRes.ok) {
-        const err = await sendRes.text();
-        throw new Error(`Failed to send email via JMAP: ${err}`);
+    const result = await sendRes.json();
+
+    // Check for method-level errors
+    const errors = result.methodResponses.filter((r: any) => r[0] === 'error');
+    if (errors.length > 0) {
+        throw new Error(`Fastmail JMAP error: ${errors[0][1].type}`);
     }
 
-    return await sendRes.json();
+    return result;
 }

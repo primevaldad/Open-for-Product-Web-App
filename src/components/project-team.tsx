@@ -11,9 +11,10 @@ import { getInitials, toDate } from '@/lib/utils';
 import { Loader2, UserPlus, Mail } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { getProjectInvitesAction } from '@/app/actions/invite';
+import { getProjectInvitesAction, acceptInviteAction } from '@/app/actions/invite';
 import type { ProjectInvite } from '@/lib/types';
 import { InviteMemberModal } from './InviteMemberModal';
+import { useRouter } from 'next/navigation';
 
 interface ProjectTeamProps {
     projectId: string;
@@ -40,16 +41,15 @@ export default function ProjectTeam({
     const [emailInvites, setEmailInvites] = useState<ProjectInvite[]>([]);
     const [loadingInvites, setLoadingInvites] = useState(false);
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
-        if (isLead) {
-            setLoadingInvites(true);
-            getProjectInvitesAction(projectId).then(res => {
-                if (res.success && res.data) {
-                    setEmailInvites(res.data);
-                }
-            }).finally(() => setLoadingInvites(false));
-        }
+        setLoadingInvites(true);
+        getProjectInvitesAction(projectId).then(res => {
+            if (res.success && res.data) {
+                setEmailInvites(res.data);
+            }
+        }).finally(() => setLoadingInvites(false));
     }, [projectId, isLead]);
 
     const { pendingMembers, approvedMembers } = useMemo(() => {
@@ -94,10 +94,54 @@ export default function ProjectTeam({
         await denyRoleApplication(userId);
     };
 
+    const handleAcceptInvite = async (token: string) => {
+        setLoading({ 'accept-invite': true });
+        try {
+            const res = await acceptInviteAction(token);
+            if (res.success) {
+                toast({ title: 'Success', description: 'You have joined the project team!' });
+                router.refresh(); // Refresh to show the user as a member
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } finally {
+            setLoading({ 'accept-invite': false });
+        }
+    };
+
+    const myInvite = useMemo(() => {
+        if (isCurrentUserMember) return null;
+        return emailInvites.find(i => i.email === currentUser.email && i.status === 'pending');
+    }, [emailInvites, currentUser.email, isCurrentUserMember]);
+
 
 
     return (
         <div className="space-y-6">
+            {myInvite && (
+                <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-900">
+                    <CardHeader>
+                        <CardTitle className="text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                            <Mail className="h-5 w-5" />
+                            Project Invitation
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-amber-700 dark:text-amber-300 mb-4">
+                            You have been invited to join this project as a <strong>{myInvite.role}</strong>.
+                        </p>
+                        <Button 
+                            onClick={() => handleAcceptInvite(myInvite.token)} 
+                            disabled={loading['accept-invite']}
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                            {loading['accept-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Accept Invitation
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             {!currentUserMember?.pendingRole && selectableRoles.length > 0 && (
                 <Card>
                     <CardHeader>

@@ -7,6 +7,7 @@ import { ServerActionResponse, EventType, ProjectInvite, Project } from '@/lib/t
 import { createAndDispatchEvent } from '@/lib/events.server';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import crypto from 'crypto';
+import { deepSerialize } from '@/lib/utils.server';
 
 function generateToken() {
     return crypto.randomBytes(32).toString('hex');
@@ -59,24 +60,22 @@ export async function sendProjectInviteAction(data: {
             }
         }
 
+        // Check if there is already a pending invite for this email
+        const existingInviteQuery = await adminDb.collection('projectInvites')
+            .where('projectId', '==', projectId)
+            .where('email', '==', recipientEmail)
+            .where('status', '==', 'pending')
+            .limit(1)
+            .get();
+
+        if (!existingInviteQuery.empty) {
+            return { success: false, error: 'An invitation is already pending for this email address.' };
+        }
+
         // Generate token and expiry (7 days)
         const token = generateToken();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7);
-
-        // Save invite to Firestore
-        const invite: Omit<ProjectInvite, 'id'> = {
-            projectId,
-            email: recipientEmail,
-            role,
-            invitedBy: currentUser.id,
-            status: 'pending',
-            token,
-            createdAt: FieldValue.serverTimestamp() as Timestamp,
-            expiresAt: Timestamp.fromDate(expiresAt),
-        };
-
-        await adminDb.collection('projectInvites').add(invite);
 
         // Prepare email content
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -84,7 +83,6 @@ export async function sendProjectInviteAction(data: {
         
         const subject = `You've been invited to join ${projectData.name}`;
         
-        // Note: using the authenticated user's name as the sender, with fallback
         const inviterName = currentUser.name || 'A member';
         const senderDisplayName = `${inviterName} via Open for Product`;
 
@@ -101,14 +99,28 @@ export async function sendProjectInviteAction(data: {
             </div>
         `;
 
-        // Send email via Fastmail
+        // Send email via Fastmail FIRST
         await sendFastmailEmail(recipientEmail, subject, htmlBody, senderDisplayName);
+
+        // ONLY IF EMAIL SUCCEEDS: Save invite to Firestore
+        const invite: Omit<ProjectInvite, 'id'> = {
+            projectId,
+            email: recipientEmail,
+            role,
+            invitedBy: currentUser.id,
+            status: 'pending',
+            token,
+            createdAt: FieldValue.serverTimestamp() as Timestamp,
+            expiresAt: Timestamp.fromDate(expiresAt),
+        };
+
+        await adminDb.collection('projectInvites').add(invite);
 
         // Log event
         await createAndDispatchEvent({
             type: EventType.USER_INVITED_TO_PROJECT,
             actorUserId: currentUser.id,
-            targetUserId: targetUserId,
+            targetUserId: targetUserId || null, // Use null instead of undefined
             projectId: projectId,
             payload: { email: recipientEmail, role }
         });
@@ -178,7 +190,7 @@ export async function acceptInviteAction(token: string): Promise<ServerActionRes
         const newMember = {
             userId: currentUser.id,
             role: inviteData.role,
-            createdAt: FieldValue.serverTimestamp()
+            createdAt: new Date().toISOString()
         };
 
         const batch = adminDb.batch();
@@ -211,21 +223,29 @@ export async function acceptInviteAction(token: string): Promise<ServerActionRes
 export async function getProjectInvitesAction(projectId: string): Promise<ServerActionResponse<ProjectInvite[]>> {
     try {
         const currentUser = await getAuthenticatedUser();
-        if (!currentUser) {
-            return { success: false, error: 'Unauthorized' };
+        if (!currentUser) return { success: false, error: 'Unauthorized' };
+
+        const projectDoc = await adminDb.collection('projects').doc(projectId).get();
+        if (!projectDoc.exists) return { success: false, error: 'Project not found' };
+
+        // If user is lead, they see all invites for project. 
+        // If not, they only see their own.
+        const projectData = projectDoc.data() as Project;
+        const isLead = projectData.ownerId === currentUser.id || projectData.team.some(m => m.userId === currentUser.id && m.role === 'lead');
+
+        let invitesQuery = adminDb.collection('projectInvites').where('projectId', '==', projectId);
+        
+        if (!isLead) {
+            invitesQuery = invitesQuery.where('email', '==', currentUser.email).where('status', '==', 'pending');
         }
 
-        const invitesQuery = await adminDb.collection('projectInvites')
-            .where('projectId', '==', projectId)
-            .get();
-
+        const snapshot = await invitesQuery.get();
         const invites: ProjectInvite[] = [];
         const now = new Date();
 
-        for (const doc of invitesQuery.docs) {
+        for (const doc of snapshot.docs) {
             const data = doc.data() as ProjectInvite;
             data.id = doc.id;
-
             if (data.status === 'pending') {
                 const expiresAt = (data.expiresAt as unknown as Timestamp)?.toDate?.() || new Date(data.expiresAt as string);
                 if (now > expiresAt) {
@@ -236,7 +256,7 @@ export async function getProjectInvitesAction(projectId: string): Promise<Server
             invites.push(data);
         }
 
-        return { success: true, data: invites };
+        return { success: true, data: deepSerialize(invites) };
     } catch (error: any) {
         console.error('Error fetching project invites:', error);
         return { success: false, error: error.message || 'An unexpected error occurred' };
