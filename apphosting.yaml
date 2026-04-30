@@ -26,3 +26,6 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
     value: "G-ZT8QHXENFE"
     availability: [BUILD, RUNTIME]
+  - variable: FASTMAIL_API_TOKEN
+    secret: FASTMAIL_API_TOKEN
+    availability: [RUNTIME]
