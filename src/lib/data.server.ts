@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
-import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember } from './types';
+import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember, ProjectCollection, HydratedCollection } from './types';
 import { serializeTimestamp } from './utils.server';
 
 // This file contains server-side data access functions.
@@ -547,4 +547,204 @@ export async function logOrphanedUser(user: User): Promise<void> {
     } catch (error) {
         console.error(`[AUTH_ACTION_TRACE] Failed to log orphaned user: ${user.id}`, error);
     }
+}
+
+// --- Collection Data Access ---
+
+/** Serialize a raw Firestore collection document into a typed ProjectCollection. */
+function serializeCollection(id: string, data: admin.firestore.DocumentData): ProjectCollection {
+    return {
+        id,
+        name: data.name,
+        slug: data.slug,
+        description: data.description ?? '',
+        coverImageUrl: data.coverImageUrl,
+        ownerId: data.ownerId,
+        visibility: data.visibility ?? 'public',
+        curationMode: data.curationMode ?? 'manual',
+        memberProjectIds: Array.isArray(data.memberProjectIds) ? data.memberProjectIds : [],
+        tagRule: data.tagRule,
+        semanticQuery: data.semanticQuery,
+        createdAt: serializeTimestamp(data.createdAt),
+        updatedAt: serializeTimestamp(data.updatedAt),
+    };
+}
+
+/** Hydrate a ProjectCollection by resolving owner + member projects. */
+async function hydrateCollection(collection: ProjectCollection): Promise<HydratedCollection> {
+    const [owner, projects] = await Promise.all([
+        findUserById(collection.ownerId),
+        collection.memberProjectIds.length > 0
+            ? _fetchProjectsByIds(collection.memberProjectIds)
+            : Promise.resolve([]),
+    ]);
+
+    const placeholderOwner: User = {
+        id: collection.ownerId,
+        name: 'Unknown User',
+        email: '',
+        onboardingCompleted: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    const { ownerId: _ownerId, ...rest } = collection;
+    return {
+        ...rest,
+        owner: owner ?? placeholderOwner,
+        projects,
+    };
+}
+
+/**
+ * Fetch and hydrate a specific list of project IDs.
+ * Projects that no longer exist are silently omitted.
+ */
+async function _fetchProjectsByIds(projectIds: string[]): Promise<HydratedProject[]> {
+    const unique = [...new Set(projectIds)].filter(Boolean);
+    if (unique.length === 0) return [];
+
+    // Firestore 'in' queries are limited to 30 items per call
+    const chunks: string[][] = [];
+    for (let i = 0; i < unique.length; i += 30) {
+        chunks.push(unique.slice(i, i + 30));
+    }
+
+    const [tagsSnapshot] = await Promise.all([adminDb.collection('tags').get()]);
+    const tagsData = tagsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GlobalTag));
+    const tagsMap = new Map(tagsData.map(tag => [tag.id, tag]));
+
+    const projects: HydratedProject[] = [];
+    for (const chunk of chunks) {
+        const snap = await adminDb
+            .collection('projects')
+            .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+            .get();
+
+        const hydrated = await Promise.all(
+            snap.docs.map(doc => {
+                const { embedding, ...data } = doc.data();
+                const project = {
+                    id: doc.id,
+                    ...data,
+                    createdAt: serializeTimestamp(data.createdAt),
+                    updatedAt: serializeTimestamp(data.updatedAt),
+                    startDate: serializeTimestamp(data.startDate),
+                    endDate: serializeTimestamp(data.endDate),
+                    tags: Array.isArray(data.tags)
+                        ? data.tags
+                              .map((pt: ProjectTag) => {
+                                  const full = tagsMap.get(pt.id);
+                                  if (!full) return null;
+                                  return { id: full.id, display: full.display, isCategory: full.isCategory };
+                              })
+                              .filter((t: ProjectTag | null): t is ProjectTag => !!t)
+                        : [],
+                } as Project;
+                return hydrateProject(project);
+            })
+        );
+        projects.push(...hydrated);
+    }
+
+    // Restore the caller's requested order
+    const projectMap = new Map(projects.map(p => [p.id, p]));
+    return unique.map(id => projectMap.get(id)).filter((p): p is HydratedProject => !!p);
+}
+
+export async function getAllPublicCollections(): Promise<ProjectCollection[]> {
+    const snap = await adminDb
+        .collection('collections')
+        .where('visibility', '==', 'public')
+        .orderBy('createdAt', 'desc')
+        .get();
+    return snap.docs.map(doc => serializeCollection(doc.id, doc.data()));
+}
+
+export async function findCollectionBySlug(
+    slug: string,
+    currentUserId?: string
+): Promise<ProjectCollection | undefined> {
+    const snap = await adminDb
+        .collection('collections')
+        .where('slug', '==', slug)
+        .limit(1)
+        .get();
+    if (snap.empty) return undefined;
+    const doc = snap.docs[0];
+    const collection = serializeCollection(doc.id, doc.data());
+
+    // Visibility gate
+    if (collection.visibility === 'private' && collection.ownerId !== currentUserId) {
+        return undefined;
+    }
+    return collection;
+}
+
+export async function findCollectionsByOwner(ownerId: string): Promise<ProjectCollection[]> {
+    const snap = await adminDb
+        .collection('collections')
+        .where('ownerId', '==', ownerId)
+        .orderBy('createdAt', 'desc')
+        .get();
+    return snap.docs.map(doc => serializeCollection(doc.id, doc.data()));
+}
+
+export async function hydrateCollectionData(collection: ProjectCollection): Promise<HydratedCollection> {
+    return hydrateCollection(collection);
+}
+
+export async function createCollection(
+    data: Omit<ProjectCollection, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<ProjectCollection> {
+    // Ensure slug uniqueness
+    const existing = await adminDb
+        .collection('collections')
+        .where('slug', '==', data.slug)
+        .limit(1)
+        .get();
+    if (!existing.empty) {
+        throw new Error(`A collection with slug "${data.slug}" already exists.`);
+    }
+
+    const ref = adminDb.collection('collections').doc();
+    const now = FieldValue.serverTimestamp();
+    await ref.set({ ...data, createdAt: now, updatedAt: now });
+
+    const created = await ref.get();
+    return serializeCollection(created.id, created.data()!);
+}
+
+export async function updateCollection(
+    collectionId: string,
+    updates: Partial<Omit<ProjectCollection, 'id' | 'ownerId' | 'createdAt'>>
+): Promise<void> {
+    const ref = adminDb.collection('collections').doc(collectionId);
+    await ref.update({ ...updates, updatedAt: FieldValue.serverTimestamp() });
+}
+
+export async function addProjectToCollection(
+    collectionId: string,
+    projectId: string
+): Promise<void> {
+    const ref = adminDb.collection('collections').doc(collectionId);
+    await ref.update({
+        memberProjectIds: FieldValue.arrayUnion(projectId),
+        updatedAt: FieldValue.serverTimestamp(),
+    });
+}
+
+export async function removeProjectFromCollection(
+    collectionId: string,
+    projectId: string
+): Promise<void> {
+    const ref = adminDb.collection('collections').doc(collectionId);
+    await ref.update({
+        memberProjectIds: FieldValue.arrayRemove(projectId),
+        updatedAt: FieldValue.serverTimestamp(),
+    });
+}
+
+export async function deleteCollection(collectionId: string): Promise<void> {
+    await adminDb.collection('collections').doc(collectionId).delete();
 }

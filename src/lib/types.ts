@@ -325,6 +325,11 @@ export enum EventType {
     PROJECT_VISIBILITY_UPDATED = 'project-visibility-updated',
     INVITE_ACCEPTED = 'invite-accepted',
     INVITE_REJECTED = 'invite-rejected',
+    // Collections
+    COLLECTION_CREATED = 'collection-created',
+    COLLECTION_UPDATED = 'collection-updated',
+    PROJECT_ADDED_TO_COLLECTION = 'project-added-to-collection',
+    PROJECT_REMOVED_FROM_COLLECTION = 'project-removed-from-collection',
 }
 
 export interface Event {
@@ -424,4 +429,65 @@ export interface SteemPost {
     total_payout_value: string;
     curator_payout_value: string;
     pending_payout_value: string;
+}
+
+// --- Project Collections ---
+
+/**
+ * How projects are selected for this collection.
+ * - 'manual'     — owner explicitly adds/removes project IDs
+ * - 'tag-rule'   — future: auto-populated by matching tags (tagRule field)
+ * - 'semantic'   — future: auto-populated by AI similarity (semanticQuery field)
+ */
+export type CollectionCurationMode = 'manual' | 'tag-rule' | 'semantic';
+
+export interface ProjectCollection {
+    id: string;
+
+    /** Human-readable name, e.g. "Open for Product Family" */
+    name: string;
+
+    /** URL-friendly identifier, e.g. "open-for-product-family" — must be unique */
+    slug: string;
+
+    description: string;
+    coverImageUrl?: string;
+
+    /** User who created and manages this collection */
+    ownerId: UserId;
+
+    /**
+     * - 'public'   — listed in /collections browse page
+     * - 'unlisted' — accessible via direct link only (not listed)
+     * - 'private'  — owner only
+     */
+    visibility: 'public' | 'unlisted' | 'private';
+
+    curationMode: CollectionCurationMode;
+
+    /**
+     * The canonical list of project IDs in this collection.
+     * For 'manual' mode: directly managed by the owner.
+     * For 'tag-rule' / 'semantic': materialized cache (refreshed on demand).
+     */
+    memberProjectIds: ProjectId[];
+
+    /** Used when curationMode = 'tag-rule' (future) */
+    tagRule?: {
+        tagIds: string[];
+        matchAll: boolean;
+    };
+
+    /** Used when curationMode = 'semantic' (future) */
+    semanticQuery?: string;
+
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+}
+
+/** ProjectCollection with the owner User hydrated */
+export interface HydratedCollection extends Omit<ProjectCollection, 'ownerId'> {
+    owner: User;
+    /** Resolved project objects — subset of memberProjectIds that could be found */
+    projects: HydratedProject[];
 }

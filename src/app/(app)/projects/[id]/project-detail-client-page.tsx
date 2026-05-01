@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
 import { toDate } from '@/lib/utils';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion } from '@/lib/types';
+import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
@@ -16,6 +16,7 @@ import ProjectTeam from '@/components/project-team';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import { useAuth } from '@/components/auth-provider';
+import { Layers, Plus, Check, ChevronDown, Loader2 } from 'lucide-react';
 
 import {
     joinProject as joinProjectAction,
@@ -30,6 +31,11 @@ import {
     approveRoleApplication as approveRoleApplicationAction, 
     denyRoleApplication as denyRoleApplicationAction 
 } from '@/app/actions/roles';
+import {
+    getMyCollections,
+    addProjectToCollectionAction,
+    removeProjectFromCollectionAction,
+} from '@/app/actions/collections';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
 
@@ -40,6 +46,124 @@ interface ProjectDetailClientPageProps {
     learningPaths: LearningPath[];
     users: User[];
     currentUser: User | null;
+}
+
+// ---------------------------------------------------------------------------
+// Add to Collection button
+// ---------------------------------------------------------------------------
+
+function AddToCollectionButton({
+    projectId,
+    isGuest,
+}: {
+    projectId: string;
+    isGuest: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const [collections, setCollections] = useState<ProjectCollection[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState<string | null>(null);
+    const [added, setAdded] = useState<Set<string>>(new Set());
+    const { toast } = useToast();
+
+    const loadCollections = useCallback(async () => {
+        setLoading(true);
+        const result = await getMyCollections();
+        if (result.success && result.data) {
+            setCollections(result.data);
+            // Pre-mark collections that already contain this project
+            const alreadyIn = new Set(
+                result.data
+                    .filter(c => c.memberProjectIds.includes(projectId))
+                    .map(c => c.id)
+            );
+            setAdded(alreadyIn);
+        }
+        setLoading(false);
+    }, [projectId]);
+
+    const toggle = async (collectionId: string) => {
+        setSaving(collectionId);
+        const isAdded = added.has(collectionId);
+        const action = isAdded
+            ? removeProjectFromCollectionAction(collectionId, projectId)
+            : addProjectToCollectionAction(collectionId, projectId);
+        const result = await action;
+        if (result.success) {
+            setAdded(prev => {
+                const next = new Set(prev);
+                isAdded ? next.delete(collectionId) : next.add(collectionId);
+                return next;
+            });
+            toast({ title: isAdded ? 'Removed from collection' : 'Added to collection' });
+        } else {
+            toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        }
+        setSaving(null);
+    };
+
+    if (isGuest) return null;
+
+    return (
+        <div className="relative">
+            <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                    if (!open) loadCollections();
+                    setOpen(o => !o);
+                }}
+            >
+                <Layers className="w-3.5 h-3.5" />
+                Add to Collection
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </Button>
+
+            {open && (
+                <div className="absolute right-0 mt-1 w-64 z-50 rounded-lg border bg-popover shadow-lg overflow-hidden">
+                    {loading ? (
+                        <div className="flex items-center justify-center p-4">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : collections.length === 0 ? (
+                        <div className="p-4 text-sm text-muted-foreground text-center">
+                            You don&apos;t have any collections yet.
+                        </div>
+                    ) : (
+                        <ul className="py-1">
+                            {collections.map(c => (
+                                <li key={c.id}>
+                                    <button
+                                        onClick={() => toggle(c.id)}
+                                        disabled={saving === c.id}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors"
+                                    >
+                                        {saving === c.id ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                                        ) : added.has(c.id) ? (
+                                            <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        ) : (
+                                            <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        )}
+                                        <span className="truncate">{c.name}</span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    <div className="border-t px-3 py-2">
+                        <a
+                            href="/collections/new"
+                            className="text-xs text-primary hover:underline"
+                        >
+                            + New Collection
+                        </a>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default function ProjectDetailClientPage({
@@ -257,7 +381,14 @@ export default function ProjectDetailClientPage({
     return (
         <div className="container mx-auto px-4 py-8">
             <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
-            
+
+            {/* Add to Collection — shown below the header for non-guests */}
+            {!isGuest && (
+                <div className="mt-3 flex justify-end">
+                    <AddToCollectionButton projectId={project.id} isGuest={isGuest} />
+                </div>
+            )}
+
             <div className="mt-8">
                 <Tabs selectedIndex={tabIndex} onSelect={index => setTabIndex(index)}>
                     <TabList>

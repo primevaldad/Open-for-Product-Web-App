@@ -7,6 +7,7 @@ import {
   FilePlus2,
   FolderKanban,
   Home,
+  Layers,
   Settings,
   Library,
 } from "lucide-react";
@@ -38,6 +39,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         { href: "/home", icon: <Home />, label: "Home" },
         { href: "/create", icon: <FilePlus2 />, label: "Create Project" },
         { href: "/drafts", icon: <FolderKanban />, label: "Drafts" },
+        { href: "/collections", icon: <Layers />, label: "Collections" },
         { href: "/learning", icon: <BookOpen />, label: "Learning Paths" },
         { href: "/resources", icon: <Library />, label: "Free Resources" },
         { href: "/activity", icon: <Activity />, label: "Activity" },
