@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, Link } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Check, Link as LinkIcon, Copy, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface ShareButtonProps {
-  /** URL to share. Defaults to `window.location.href` if omitted. */
   url?: string;
   label?: string;
   className?: string;
@@ -16,9 +15,9 @@ interface ShareButtonProps {
 }
 
 /**
- * A reusable share button that:
- * - Uses the native Web Share API when available (mobile)
- * - Falls back to copying the URL to the clipboard on desktop
+ * Share button that always shows a small popover with:
+ * - "Share" via Web Share API (when available — e.g. mobile)
+ * - "Copy link" via clipboard (always available)
  */
 export default function ShareButton({
   url,
@@ -27,47 +26,94 @@ export default function ShareButton({
   size = 'sm',
   variant = 'outline',
 }: ShareButtonProps) {
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const handleShare = async () => {
-    const shareUrl = url ?? window.location.href;
+  const shareUrl = () => url ?? (typeof window !== 'undefined' ? window.location.href : '');
 
-    // Use native share sheet on mobile if available
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ url: shareUrl, title: document.title });
-        return;
-      } catch (e) {
-        // User cancelled — don't fall through to clipboard
-        if ((e as DOMException).name === 'AbortError') return;
-        // Any other error: fall through to clipboard
+  const handleNativeShare = async () => {
+    setOpen(false);
+    try {
+      await navigator.share({ url: shareUrl(), title: document.title });
+    } catch (e) {
+      // AbortError = user cancelled — no toast needed
+      if ((e as DOMException).name !== 'AbortError') {
+        toast.error('Could not open share sheet. Try copying the link instead.');
       }
     }
+  };
 
+  const handleCopy = async () => {
+    setOpen(false);
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(shareUrl());
       setCopied(true);
       toast.success('Link copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Failed to copy link. Please copy the URL from your browser.');
+      // Fallback: select a temporary input
+      const input = document.createElement('input');
+      input.value = shareUrl();
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopied(true);
+      toast.success('Link copied!');
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
+  const canNativeShare =
+    typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
   return (
-    <Button
-      variant={variant}
-      size={size}
-      onClick={handleShare}
-      className={cn('gap-1.5', className)}
-      title="Share this view"
-    >
-      {copied ? (
-        <Check className="w-3.5 h-3.5" />
-      ) : (
-        <Link className="w-3.5 h-3.5" />
+    <div className="relative" ref={ref}>
+      <Button
+        variant={variant}
+        size={size}
+        onClick={() => setOpen((o) => !o)}
+        className={cn('gap-1.5', className)}
+        title="Share this view"
+      >
+        {copied ? (
+          <Check className="w-3.5 h-3.5" />
+        ) : (
+          <LinkIcon className="w-3.5 h-3.5" />
+        )}
+        {copied ? 'Copied!' : label}
+      </Button>
+
+      {open && (
+        <>
+          {/* Click-outside overlay */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
+          {/* Popover */}
+          <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border bg-popover shadow-lg overflow-hidden">
+            {canNativeShare && (
+              <button
+                onClick={handleNativeShare}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
+              >
+                <Share2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                Share…
+              </button>
+            )}
+            <button
+              onClick={handleCopy}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted transition-colors"
+            >
+              <Copy className="w-4 h-4 text-muted-foreground shrink-0" />
+              📋 Copy link
+            </button>
+          </div>
+        </>
       )}
-      {copied ? 'Copied!' : label}
-    </Button>
+    </div>
   );
 }

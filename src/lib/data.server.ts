@@ -656,9 +656,9 @@ export async function getAllPublicCollections(): Promise<ProjectCollection[]> {
     const snap = await adminDb
         .collection('collections')
         .where('visibility', '==', 'public')
-        .orderBy('createdAt', 'desc')
         .get();
-    return snap.docs.map(doc => serializeCollection(doc.id, doc.data()));
+    const collections = snap.docs.map(doc => serializeCollection(doc.id, doc.data()));
+    return collections.sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
 }
 
 export async function findCollectionBySlug(
@@ -685,9 +685,9 @@ export async function findCollectionsByOwner(ownerId: string): Promise<ProjectCo
     const snap = await adminDb
         .collection('collections')
         .where('ownerId', '==', ownerId)
-        .orderBy('createdAt', 'desc')
         .get();
-    return snap.docs.map(doc => serializeCollection(doc.id, doc.data()));
+    const collections = snap.docs.map(doc => serializeCollection(doc.id, doc.data()));
+    return collections.sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
 }
 
 export async function hydrateCollectionData(collection: ProjectCollection): Promise<HydratedCollection> {

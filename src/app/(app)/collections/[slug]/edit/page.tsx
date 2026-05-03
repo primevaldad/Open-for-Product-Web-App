@@ -1,12 +1,16 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Layers, Loader2, Trash2, Plus, X, Search } from 'lucide-react';
+import { Layers, Loader2, Trash2, Plus, X, Search, Image as ImageIcon, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import Image from 'next/image';
+import { useAuth } from '@/components/auth-provider';
+import { uploadProjectImage } from '@/app/actions/upload';
 import {
     Select,
     SelectContent,
@@ -41,33 +45,71 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [visibility, setVisibility] = useState<ProjectCollection['visibility']>('public');
+    const [coverImageUrl, setCoverImageUrl] = useState<string | undefined>(undefined);
+    const [uploading, setUploading] = useState(false);
+
+    const { currentUser, loading: authLoading } = useAuth();
 
     // Project search
     const [projectSearch, setProjectSearch] = useState('');
 
     useEffect(() => {
+        if (authLoading || !currentUser) return;
+
         getCollectionBySlug(slug).then((result) => {
             if (result.success && result.data) {
+                // Ownership check
+                if (result.data.ownerId !== currentUser.id) {
+                    toast.error('You do not have permission to edit this collection.');
+                    router.push(`/collections/${slug}`);
+                    return;
+                }
+
                 setCollection(result.data);
                 setName(result.data.name);
                 setDescription(result.data.description);
                 setVisibility(result.data.visibility);
+                setCoverImageUrl(result.data.coverImageUrl);
             } else {
                 toast.error('Collection not found or access denied.');
                 router.push('/collections');
             }
             setLoading(false);
         });
-    }, [slug, router]);
+    }, [slug, router, currentUser]);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'collections');
+
+        const result = await uploadProjectImage(formData);
+        if (result.success && result.url) {
+            setCoverImageUrl(result.url);
+            toast.success('Image uploaded!');
+        } else {
+            toast.error(result.error ?? 'Upload failed.');
+        }
+        setUploading(false);
+    };
 
     const handleSave = async () => {
         if (!collection) return;
         setSaving(true);
-        const result = await updateCollectionAction(collection.id, { name, description, visibility });
+        const result = await updateCollectionAction(collection.id, { 
+            name, 
+            description, 
+            visibility,
+            coverImageUrl 
+        });
         setSaving(false);
         if (result.success) {
             toast.success('Collection updated.');
-            setCollection(prev => prev ? { ...prev, name, description, visibility } : prev);
+            setCollection(prev => prev ? { ...prev, name, description, visibility, coverImageUrl } : prev);
         } else {
             toast.error(result.error ?? 'Failed to save.');
         }
@@ -168,6 +210,66 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
                             <SelectItem value="private">Private (only me)</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+
+                {/* Cover Image */}
+                <div className="space-y-4">
+                    <Label>Cover Image</Label>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                        <div className="relative h-32 w-full sm:w-56 overflow-hidden rounded-lg border bg-muted shrink-0">
+                            {coverImageUrl ? (
+                                <Image
+                                    src={coverImageUrl}
+                                    alt="Cover preview"
+                                    fill
+                                    className="object-cover"
+                                />
+                            ) : (
+                                <div className="flex h-full items-center justify-center">
+                                    <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                                </div>
+                            )}
+                            {uploading && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground">
+                                Recommended size: 1200x400 (3:1 aspect ratio). Max 5MB.
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="relative"
+                                    disabled={uploading}
+                                >
+                                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                                    {coverImageUrl ? 'Change Image' : 'Upload Image'}
+                                    <input
+                                        type="file"
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        accept="image/*"
+                                        onChange={handleImageUpload}
+                                        disabled={uploading}
+                                    />
+                                </Button>
+                                {coverImageUrl && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive"
+                                        onClick={() => setCoverImageUrl(undefined)}
+                                        disabled={uploading}
+                                    >
+                                        Remove
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex gap-3">

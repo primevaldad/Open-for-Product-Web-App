@@ -19,6 +19,8 @@ import type {
     CollectionCurationMode,
 } from '@/lib/types';
 import { deepSerialize } from '@/lib/utils.server';
+import { logActivity } from './logging';
+import { ActivityType } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -75,6 +77,39 @@ export async function getMyCollections(): Promise<ServerActionResponse<ProjectCo
     } catch (e: any) {
         console.error('[collections] getMyCollections error:', e);
         return { success: false, error: e.message ?? 'Failed to load your collections.' };
+    }
+}
+
+/** 
+ * Returns collections a user can add projects to:
+ * 1. ALL public collections (community curation)
+ * 2. OWN private/unlisted collections
+ */
+export async function getCollectionsForCuration(): Promise<ServerActionResponse<ProjectCollection[]>> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) return { success: false, error: 'You must be signed in.' };
+
+        const [publicCollections, myCollections] = await Promise.all([
+            getAllPublicCollections(),
+            findCollectionsByOwner(currentUser.id)
+        ]);
+
+        // Merge and deduplicate
+        const merged = [...publicCollections];
+        for (const c of myCollections) {
+            if (!merged.some(pc => pc.id === c.id)) {
+                merged.push(c);
+            }
+        }
+        
+        // Sort by name
+        merged.sort((a, b) => a.name.localeCompare(b.name));
+
+        return deepSerialize({ success: true, data: merged });
+    } catch (e: any) {
+        console.error('[collections] getCollectionsForCuration error:', e);
+        return { success: false, error: 'Failed to load available collections.' };
     }
 }
 
@@ -159,11 +194,28 @@ export async function addProjectToCollectionAction(
             .doc(collectionId)
             .get();
         if (!snap.exists) return { success: false, error: 'Collection not found.' };
-        if (snap.data()!.ownerId !== currentUser.id) {
-            return { success: false, error: 'You do not have permission to edit this collection.' };
+        
+        const data = snap.data()!;
+        const isOwner = data.ownerId === currentUser.id;
+        const isPublic = data.visibility === 'public';
+
+        if (!isOwner && !isPublic) {
+            return { success: false, error: 'You do not have permission to add to this collection.' };
         }
 
         await addProjectToCollectionInDb(collectionId, projectId);
+
+        // Log activity
+        await logActivity({
+            actorId: currentUser.id,
+            type: ActivityType.CollectionProjectAdded,
+            collectionId,
+            projectId,
+            context: {
+                collectionName: data.name,
+            }
+        });
+
         return { success: true };
     } catch (e: any) {
         console.error('[collections] addProject error:', e);
@@ -189,6 +241,18 @@ export async function removeProjectFromCollectionAction(
         }
 
         await removeProjectFromCollectionInDb(collectionId, projectId);
+
+        // Log activity
+        await logActivity({
+            actorId: currentUser.id,
+            type: ActivityType.CollectionProjectRemoved,
+            collectionId,
+            projectId,
+            context: {
+                collectionName: snap.data()!.name,
+            }
+        });
+
         return { success: true };
     } catch (e: any) {
         console.error('[collections] removeProject error:', e);

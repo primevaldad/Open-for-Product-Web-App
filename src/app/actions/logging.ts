@@ -6,6 +6,7 @@ import { getAuthenticatedUser } from '@/lib/session.server';
 
 interface LogActivityParams {
     projectId?: string;
+    collectionId?: string;
     actorId: string;
     type: ActivityType;
     context?: Record<string, any>;
@@ -52,6 +53,7 @@ export async function logActivity(params: LogActivityParams) {
             actorId,
             timestamp: new Date().toISOString(), // Use serializable ISO string
             projectId: projectId ?? undefined,
+            collectionId: params.collectionId ?? undefined,
             context: context ?? {},
         };
 

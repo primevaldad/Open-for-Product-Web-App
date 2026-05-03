@@ -107,16 +107,35 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
 
             {/* Projects grid */}
             {collection.projects.length === 0 ? (
-                <div className="text-center py-20 rounded-xl border-2 border-dashed bg-muted/20">
-                    <Layers className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
-                    <h2 className="text-xl font-semibold">No projects yet</h2>
-                    {isOwner && (
-                        <p className="text-muted-foreground mt-2">
-                            <Link href={`/collections/${slug}/edit`} className="underline underline-offset-2 hover:text-foreground">
-                                Add your first project →
-                            </Link>
-                        </p>
-                    )}
+                <div className="space-y-6">
+                    <div className="text-center py-12 rounded-xl border-2 border-dashed bg-muted/20">
+                        <Layers className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
+                        <h2 className="text-xl font-semibold">No projects yet</h2>
+                        {isOwner ? (
+                            <p className="text-muted-foreground mt-2">
+                                <Link href={`/collections/${slug}/edit`} className="underline underline-offset-2 hover:text-foreground">
+                                    Add your first project →
+                                </Link>
+                            </p>
+                        ) : (
+                            <p className="text-muted-foreground mt-2">
+                                The curator hasn't added any projects to this collection yet.
+                            </p>
+                        )}
+                    </div>
+                    
+                    {/* Ghost project boxes */}
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 opacity-30 grayscale pointer-events-none">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-48 rounded-xl border-2 border-dashed bg-muted/50 flex items-center justify-center">
+                                <div className="space-y-3 w-full px-8">
+                                    <div className="h-4 w-3/4 bg-muted-foreground/20 rounded" />
+                                    <div className="h-3 w-full bg-muted-foreground/10 rounded" />
+                                    <div className="h-3 w-2/3 bg-muted-foreground/10 rounded" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

@@ -366,6 +366,8 @@ export enum ActivityType {
     TaskStatusUpdated = 'task-status-updated',
     TaskAssigned = 'task-assigned',
     DiscussionPosted = 'discussion-posted',
+    CollectionProjectAdded = 'collection-project-added',
+    CollectionProjectRemoved = 'collection-project-removed',
 }
 
 // This defines the structure of the object returned by getUserActivity
@@ -376,6 +378,13 @@ export interface UserActivityPayload {
     notifications: Notification[];
 }
 
+export interface LogActivityParams {
+    projectId?: string;
+    collectionId?: string;
+    actorId: string;
+    type: ActivityType;
+    context?: Record<string, any>;
+}
 
 export interface Activity {
     id: string;
@@ -383,6 +392,7 @@ export interface Activity {
     actorId: UserId;
     timestamp: Timestamp | string;
     projectId?: ProjectId;
+    collectionId?: ProjectId;
     context: {
         // Common context
         projectName?: string;

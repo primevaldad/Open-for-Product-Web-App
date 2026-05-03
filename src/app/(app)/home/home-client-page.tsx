@@ -134,92 +134,96 @@ function HomeClientPageInner({
     const isGuest = !currentUser || currentUser.role === 'guest';
 
     // -------------------------------------------------------------------------
-    // URL → filter state (read)
+    // Local Filter State (initialized from URL)
     // -------------------------------------------------------------------------
 
-    /** The committed search query (from URL). Drives both keyword and semantic search. */
-    const searchQuery = searchParams.get('q') ?? '';
-
-    /**
-     * Resolve tag IDs from URL → ProjectTag[].
-     * Unknown IDs (not present in allTags) are silently ignored.
-     */
-    const selectedTags = useMemo<ProjectTag[]>(() => {
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
+    const [selectedTags, setSelectedTags] = useState<ProjectTag[]>(() => {
         const ids = (searchParams.get('tags') ?? '').split(',').filter(Boolean);
         return ids
             .map(id => allTags.find(t => t.id === id))
             .filter((t): t is GlobalTag => !!t)
             .map(projectTagFactory);
-    }, [searchParams, allTags]);
+    });
+    const [matchAllTags, setMatchAllTags] = useState(searchParams.get('match') === 'all');
+    const [sortBy, setSortBy] = useState(searchParams.get('sort') ?? 'latest');
+    const [showMine, setShowMine] = useState(!isGuest && searchParams.get('mine') === 'true');
+    const [currentPage, setCurrentPage] = useState(Math.max(1, parseInt(searchParams.get('page') ?? '1', 10)));
+    const [pageSize, setPageSize] = useState(10);
 
-    const matchAllTags = searchParams.get('match') === 'all';
-    const sortBy = searchParams.get('sort') ?? 'latest';
-    const showMine = !isGuest && searchParams.get('mine') === 'true';
-    const currentPage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
-    const [pageSize, setPageSize] = useState(10); // display preference — not shared in URL
+    // Sync state to URL purely for shareability (avoids Next.js server refetch lag)
+    useEffect(() => {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('q', searchQuery);
+        if (selectedTags.length > 0) params.set('tags', selectedTags.map(t => t.id).join(','));
+        if (matchAllTags) params.set('match', 'all');
+        if (sortBy !== 'latest') params.set('sort', sortBy);
+        if (showMine) params.set('mine', 'true');
+        if (currentPage > 1) params.set('page', currentPage.toString());
+
+        const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+        // replaceState does not trigger Next.js navigation, keeping UI instant
+        window.history.replaceState(null, '', newUrl);
+    }, [searchQuery, selectedTags, matchAllTags, sortBy, showMine, currentPage, pathname]);
+
+    // Listen to browser Back/Forward to update state
+    useEffect(() => {
+        const handlePopState = () => {
+            const params = new URLSearchParams(window.location.search);
+            setSearchQuery(params.get('q') ?? '');
+            const ids = (params.get('tags') ?? '').split(',').filter(Boolean);
+            setSelectedTags(
+                ids.map(id => allTags.find(t => t.id === id))
+                   .filter((t): t is GlobalTag => !!t)
+                   .map(projectTagFactory)
+            );
+            setMatchAllTags(params.get('match') === 'all');
+            setSortBy(params.get('sort') ?? 'latest');
+            setShowMine(!isGuest && params.get('mine') === 'true');
+            setCurrentPage(Math.max(1, parseInt(params.get('page') ?? '1', 10)));
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [isGuest, allTags]);
 
     // -------------------------------------------------------------------------
-    // Local UI state (not shareable)
+    // Local UI state
     // -------------------------------------------------------------------------
 
-    /** The live value of the text input — debounced before writing to URL. */
     const [inputValue, setInputValue] = useState(searchQuery);
     const [semanticResults, setSemanticResults] = useState<HydratedProject[] | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [suggestionsOpen, setSuggestionsOpen] = useState<string[]>(['suggestions']);
 
-    // Keep inputValue in sync if the URL changes externally (browser back/forward)
-    useEffect(() => {
-        setInputValue(searchParams.get('q') ?? '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams.get('q')]);
-
-    // -------------------------------------------------------------------------
-    // URL → filter state (write)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Update one or more URL params atomically.
-     * Pass `null` to delete a param.
-     * Automatically resets `page` unless `page` is explicitly included in `updates`.
-     */
-    const updateParams = useCallback(
-        (updates: Record<string, string | null>) => {
-            const params = new URLSearchParams(searchParams.toString());
-            Object.entries(updates).forEach(([key, value]) => {
-                if (value === null || value === '') {
-                    params.delete(key);
-                } else {
-                    params.set(key, value);
-                }
-            });
-            // Reset to page 1 on any filter change unless caller explicitly sets page
-            if (!('page' in updates)) {
-                params.delete('page');
-            }
-            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-        },
-        [searchParams, router, pathname]
-    );
-
-    // -------------------------------------------------------------------------
-    // Debounce text input → URL
-    // -------------------------------------------------------------------------
-
+    // Debounce text input -> search query
     useEffect(() => {
         const timer = setTimeout(() => {
-            updateParams({ q: inputValue.trim() || null });
+            const trimmed = inputValue.trim();
+            if (searchQuery !== trimmed) {
+                setSearchQuery(trimmed);
+                setCurrentPage(1); // Reset page on new search
+            }
         }, 500);
         return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [inputValue]);
+    }, [inputValue, searchQuery]);
 
     const clearSearch = useCallback(() => {
         setInputValue('');
+        setSearchQuery('');
         setSemanticResults(null);
         setSuggestionsOpen(['suggestions']);
-        updateParams({ q: null });
-    }, [updateParams]);
+        setCurrentPage(1);
+    }, []);
+
+    const clearAllFilters = useCallback(() => {
+        setInputValue('');
+        setSearchQuery('');
+        setSelectedTags([]);
+        setMatchAllTags(false);
+        setShowMine(false);
+        setSortBy('latest');
+        setCurrentPage(1);
+    }, []);
 
     // -------------------------------------------------------------------------
     // Semantic search (AI only) — driven by the committed URL param
@@ -342,7 +346,10 @@ function HomeClientPageInner({
                         <Label htmlFor="sort-by" className="text-sm shrink-0 font-medium">Sort by:</Label>
                         <Select
                             value={sortBy}
-                            onValueChange={(v) => updateParams({ sort: v === 'latest' ? null : v })}
+                            onValueChange={(v) => {
+                                setSortBy(v);
+                                setCurrentPage(1);
+                            }}
                         >
                             <SelectTrigger id="sort-by" className="w-[160px] h-9 bg-background">
                                 <SelectValue />
@@ -377,9 +384,16 @@ function HomeClientPageInner({
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && aiEnabled) {
-                                // Immediate semantic search on Enter
-                                updateParams({ q: inputValue.trim() || null });
+                            if (e.key === 'Enter') {
+                                // Immediate search on Enter
+                                const trimmed = inputValue.trim();
+                                if (searchQuery !== trimmed) {
+                                    setSearchQuery(trimmed);
+                                    setCurrentPage(1);
+                                }
+                                if (aiEnabled && trimmed) {
+                                    handleSemanticSearch(trimmed);
+                                }
                             } else if (e.key === 'Escape') {
                                 clearSearch();
                             }
@@ -407,11 +421,10 @@ function HomeClientPageInner({
                         <TagSelector
                             id="tag-selector"
                             value={selectedTags}
-                            onChange={(tags) =>
-                                updateParams({
-                                    tags: tags.length > 0 ? tags.map(t => t.id).join(',') : null,
-                                })
-                            }
+                            onChange={(tags) => {
+                                setSelectedTags(tags);
+                                setCurrentPage(1);
+                            }}
                             availableTags={allTags}
                             tagFactory={projectTagFactory}
                         />
@@ -425,9 +438,10 @@ function HomeClientPageInner({
                                 <Switch
                                     id="show-mine"
                                     checked={showMine}
-                                    onCheckedChange={(checked) =>
-                                        updateParams({ mine: checked ? 'true' : null })
-                                    }
+                                    onCheckedChange={(checked) => {
+                                        setShowMine(checked);
+                                        setCurrentPage(1);
+                                    }}
                                 />
                                 <Label htmlFor="show-mine">My Projects</Label>
                             </div>
@@ -437,7 +451,7 @@ function HomeClientPageInner({
                         <div className={cn('flex items-center space-x-2', !aiEnabled && 'opacity-50 cursor-not-allowed')}>
                             <Switch
                                 id="show-suggested"
-                                checked={aiEnabled && shouldShowSuggestions}
+                                checked={aiEnabled && shouldShowSuggestions && suggestionsOpen.includes('suggestions')}
                                 onCheckedChange={() => {
                                     // Collapse/expand the suggestions accordion
                                     setSuggestionsOpen(prev =>
@@ -459,9 +473,10 @@ function HomeClientPageInner({
                             <Switch
                                 id="match-all"
                                 checked={matchAllTags}
-                                onCheckedChange={(checked) =>
-                                    updateParams({ match: checked ? 'all' : null })
-                                }
+                                onCheckedChange={(checked) => {
+                                    setMatchAllTags(checked);
+                                    setCurrentPage(1);
+                                }}
                             />
                             <Label htmlFor="match-all">Match All Tags</Label>
                         </div>
@@ -475,7 +490,7 @@ function HomeClientPageInner({
                         {showMine && (
                             <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
                                 My Projects
-                                <button onClick={() => updateParams({ mine: null })} aria-label="Remove my projects filter">
+                                <button onClick={() => { setShowMine(false); setCurrentPage(1); }} aria-label="Remove my projects filter">
                                     <X className="w-3 h-3" />
                                 </button>
                             </span>
@@ -495,14 +510,10 @@ function HomeClientPageInner({
                             >
                                 {tag.display}
                                 <button
-                                    onClick={() =>
-                                        updateParams({
-                                            tags: selectedTags
-                                                .filter(t => t.id !== tag.id)
-                                                .map(t => t.id)
-                                                .join(',') || null,
-                                        })
-                                    }
+                                    onClick={() => {
+                                        setSelectedTags(selectedTags.filter(t => t.id !== tag.id));
+                                        setCurrentPage(1);
+                                    }}
                                     aria-label={`Remove tag ${tag.display}`}
                                 >
                                     <X className="w-3 h-3" />
@@ -511,9 +522,7 @@ function HomeClientPageInner({
                         ))}
                         <button
                             className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                            onClick={() =>
-                                updateParams({ q: null, tags: null, match: null, mine: null, page: null })
-                            }
+                            onClick={clearAllFilters}
                         >
                             Clear all
                         </button>
@@ -588,9 +597,7 @@ function HomeClientPageInner({
                             <p className="mt-2 text-muted-foreground">Try adjusting your filters or clearing your search.</p>
                             <button
                                 className="mt-4 text-sm text-primary underline underline-offset-2"
-                                onClick={() =>
-                                    updateParams({ q: null, tags: null, match: null, mine: null, page: null })
-                                }
+                                onClick={clearAllFilters}
                             >
                                 Clear all filters
                             </button>
@@ -614,7 +621,7 @@ function HomeClientPageInner({
                                         value={pageSize.toString()}
                                         onValueChange={(v) => {
                                             setPageSize(parseInt(v));
-                                            updateParams({ page: null }); // reset to page 1
+                                            setCurrentPage(1); // reset to page 1
                                         }}
                                     >
                                         <SelectTrigger id="page-size" className="w-[70px] h-9">
@@ -633,7 +640,7 @@ function HomeClientPageInner({
                                     <div className="flex items-center justify-center gap-2">
                                         <Button
                                             variant="outline" size="icon"
-                                            onClick={() => updateParams({ page: '1' })}
+                                            onClick={() => setCurrentPage(1)}
                                             disabled={currentPage === 1}
                                             title="First page"
                                         >
@@ -641,7 +648,7 @@ function HomeClientPageInner({
                                         </Button>
                                         <Button
                                             variant="outline" size="icon"
-                                            onClick={() => updateParams({ page: String(currentPage - 1) })}
+                                            onClick={() => setCurrentPage(currentPage - 1)}
                                             disabled={currentPage === 1}
                                             title="Previous page"
                                         >
@@ -652,7 +659,7 @@ function HomeClientPageInner({
                                         </span>
                                         <Button
                                             variant="outline" size="icon"
-                                            onClick={() => updateParams({ page: String(currentPage + 1) })}
+                                            onClick={() => setCurrentPage(currentPage + 1)}
                                             disabled={currentPage === totalPages}
                                             title="Next page"
                                         >
@@ -660,7 +667,7 @@ function HomeClientPageInner({
                                         </Button>
                                         <Button
                                             variant="outline" size="icon"
-                                            onClick={() => updateParams({ page: String(totalPages) })}
+                                            onClick={() => setCurrentPage(totalPages)}
                                             disabled={currentPage === totalPages}
                                             title="Last page"
                                         >

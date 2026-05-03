@@ -16,7 +16,9 @@ import ProjectTeam from '@/components/project-team';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import { useAuth } from '@/components/auth-provider';
-import { Layers, Plus, Check, ChevronDown, Loader2 } from 'lucide-react';
+import { Layers, Plus, Check, ChevronDown, Loader2, Search } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
     joinProject as joinProjectAction,
@@ -32,7 +34,7 @@ import {
     denyRoleApplication as denyRoleApplicationAction 
 } from '@/app/actions/roles';
 import {
-    getMyCollections,
+    getCollectionsForCuration,
     addProjectToCollectionAction,
     removeProjectFromCollectionAction,
 } from '@/app/actions/collections';
@@ -65,10 +67,12 @@ function AddToCollectionButton({
     const [saving, setSaving] = useState<string | null>(null);
     const [added, setAdded] = useState<Set<string>>(new Set());
     const { toast } = useToast();
+    const { currentUser } = useAuth();
+    const [searchQuery, setSearchQuery] = useState('');
 
     const loadCollections = useCallback(async () => {
         setLoading(true);
-        const result = await getMyCollections();
+        const result = await getCollectionsForCuration();
         if (result.success && result.data) {
             setCollections(result.data);
             // Pre-mark collections that already contain this project
@@ -105,64 +109,97 @@ function AddToCollectionButton({
     if (isGuest) return null;
 
     return (
-        <div className="relative">
-            <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                    if (!open) loadCollections();
-                    setOpen(o => !o);
-                }}
-            >
-                <Layers className="w-3.5 h-3.5" />
-                Add to Collection
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-            </Button>
+        <Popover open={open} onOpenChange={(val) => {
+            if (val) loadCollections();
+            setOpen(val);
+        }}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                >
+                    <Layers className="w-3.5 h-3.5" />
+                    Add to Collection
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+                </Button>
+            </PopoverTrigger>
 
-            {open && (
-                <div className="absolute right-0 mt-1 w-64 z-50 rounded-lg border bg-popover shadow-lg overflow-hidden">
-                    {loading ? (
-                        <div className="flex items-center justify-center p-4">
-                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : collections.length === 0 ? (
-                        <div className="p-4 text-sm text-muted-foreground text-center">
-                            You don&apos;t have any collections yet.
-                        </div>
-                    ) : (
-                        <ul className="py-1">
-                            {collections.map(c => (
-                                <li key={c.id}>
-                                    <button
-                                        onClick={() => toggle(c.id)}
-                                        disabled={saving === c.id}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors"
-                                    >
-                                        {saving === c.id ? (
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                                        ) : added.has(c.id) ? (
-                                            <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                                        ) : (
-                                            <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                        )}
-                                        <span className="truncate">{c.name}</span>
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    <div className="border-t px-3 py-2">
-                        <a
-                            href="/collections/new"
-                            className="text-xs text-primary hover:underline"
-                        >
-                            + New Collection
-                        </a>
+            <PopoverContent className="w-64 p-0" align="end">
+                {loading ? (
+                    <div className="flex items-center justify-center p-4">
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                     </div>
+                ) : collections.length === 0 ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                        You don&apos;t have any collections yet.
+                    </div>
+                ) : (
+                    <>
+                        <div className="px-3 pt-3 pb-2 border-b">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    placeholder="Search collections..."
+                                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <ScrollArea className="max-h-72">
+                            <ul className="py-1">
+                                {collections
+                                    .filter(c => {
+                                        const query = searchQuery.toLowerCase();
+                                        return (
+                                            c.name.toLowerCase().includes(query) ||
+                                            (c.description?.toLowerCase().includes(query) ?? false)
+                                        );
+                                    })
+                                    .map(c => (
+                                        <li key={c.id}>
+                                            <button
+                                                onClick={() => toggle(c.id)}
+                                                disabled={saving === c.id}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                                            >
+                                                {saving === c.id ? (
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                                                ) : added.has(c.id) ? (
+                                                    <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                ) : (
+                                                    <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                                )}
+                                                <span className="truncate flex-1">{c.name}</span>
+                                                {c.ownerId !== (currentUser?.id ?? '') && (
+                                                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full shrink-0">
+                                                        Community
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </li>
+                                    ))}
+                            </ul>
+                        </ScrollArea>
+                    </>
+                )}
+                <div className="border-t px-3 py-2 bg-muted/30 flex items-center justify-between">
+                    <a
+                        href="/collections/new"
+                        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    >
+                        <Plus className="w-3 h-3" />
+                        New Collection
+                    </a>
+                    <span className="text-[10px] text-muted-foreground italic">
+                        Anyone can add to Public
+                    </span>
                 </div>
-            )}
-        </div>
+            </PopoverContent>
+        </Popover>
     );
 }
 

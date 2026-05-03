@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Loader2, Layers, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { getPublicCollections } from '@/app/actions/collections';
+import { getPublicCollections, getMyCollections } from '@/app/actions/collections';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import CollectionCard from '@/components/collection-card';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,20 @@ export const metadata = {
 };
 
 export default async function CollectionsPage() {
-    const [collectionsResult, currentUser] = await Promise.all([
+    const [collectionsResult, myCollectionsResult, currentUser] = await Promise.all([
         getPublicCollections(),
+        getMyCollections(),
         getAuthenticatedUser(),
     ]);
+    
+    const publicCollections = collectionsResult.success ? collectionsResult.data ?? [] : [];
+    const myCollections = myCollectionsResult.success ? myCollectionsResult.data ?? [] : [];
+    
+    // Filter out duplicates (my public collections that are already in publicCollections)
+    const otherPublicCollections = publicCollections.filter(pc => 
+        !myCollections.some(mc => mc.id === pc.id)
+    );
 
-    const collections = collectionsResult.success ? collectionsResult.data ?? [] : [];
     const isGuest = !currentUser || currentUser.role === 'guest';
 
     return (
@@ -46,7 +54,7 @@ export default async function CollectionsPage() {
             </div>
 
             {/* Grid */}
-            {collections.length === 0 ? (
+            {myCollections.length === 0 && otherPublicCollections.length === 0 ? (
                 <div className="text-center py-20 rounded-xl border-2 border-dashed bg-muted/20">
                     <Layers className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
                     <h2 className="text-xl font-semibold">No collections yet</h2>
@@ -60,10 +68,37 @@ export default async function CollectionsPage() {
                     )}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {collections.map((c) => (
-                        <CollectionCard key={c.id} collection={c} />
-                    ))}
+                <div className="space-y-12">
+                    {/* My Collections Section */}
+                    {myCollections.length > 0 && (
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <h2 className="text-xl font-semibold">My Collections</h2>
+                                <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                    {myCollections.length}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {myCollections.map((c) => (
+                                    <CollectionCard key={c.id} collection={c} />
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Explore / Public Collections Section */}
+                    {otherPublicCollections.length > 0 && (
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <h2 className="text-xl font-semibold">Explore Collections</h2>
+                            </div>
+                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {otherPublicCollections.map((c) => (
+                                    <CollectionCard key={c.id} collection={c} />
+                                ))}
+                            </div>
+                        </section>
+                    )}
                 </div>
             )}
         </div>
