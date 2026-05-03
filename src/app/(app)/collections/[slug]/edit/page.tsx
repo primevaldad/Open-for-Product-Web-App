@@ -59,7 +59,7 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
         getCollectionBySlug(slug).then((result) => {
             if (result.success && result.data) {
                 // Ownership check
-                if (result.data.ownerId !== currentUser.id) {
+                if (result.data.owner.id !== currentUser.id) {
                     toast.error('You do not have permission to edit this collection.');
                     router.push(`/collections/${slug}`);
                     return;
