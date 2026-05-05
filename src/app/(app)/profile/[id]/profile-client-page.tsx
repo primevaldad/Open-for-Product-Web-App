@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Award, Lock, Pencil, Rocket, Link2 } from 'lucide-react';
+import { Award, Lock, Pencil, Rocket, Link2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,6 +30,17 @@ interface UserProfileClientPageProps {
   allProjectPathLinks: ProjectPathLink[];
   currentUser: User;
 }
+
+const SteemLogo = ({ className }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    className={cn("h-4 w-4", className)}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M16.142 2l-2.072 2.646c1.32.42 2.454 1.253 3.242 2.373l2.046-2.613c-1.026-1.15-2.062-2.146-3.216-2.406zm-6.68 1.455l-2.071 2.646c.866.425 1.62.993 2.222 1.666l2.046-2.613c-.643-.593-1.4-.95-2.197-1.699zm10.538 4.545l-2.071 2.646c.15.534.227 1.1.227 1.682l2.046-2.613c.134-.787.05-1.464-.202-1.715zm-16.002 1l-2.07 2.646c-.15.534-.227 1.1-.227 1.682l2.045-2.613c-.133-.787-.049-1.464.202-1.715zm12.756 1.455l-2.071 2.646c.42 1.32 1.253 2.454 2.373 3.242l2.613-2.046c-1.15-1.026-2.146-2.062-2.915-3.842zm-6.68 1.455l-2.071 2.646c.425.866.993 1.62 1.666 2.222l2.613-2.046c-.593-.643-.95-1.4-1.699-2.197zm1.455 6.68l-2.646 2.071c.425.866.993 1.62 1.666 2.222l2.613-2.046c-.593-.643-.95-1.4-1.633-2.247zm-5.455-2.545l-2.646 2.071c1.32.42 2.454 1.253 3.242 2.373l2.613-2.046c-1.15-1.026-2.146-2.062-3.209-2.398z"/>
+  </svg>
+);
 
 export default function UserProfilePageClient({ 
   user, 
@@ -126,25 +137,39 @@ export default function UserProfilePageClient({
       <main className='flex-1 overflow-auto'>
         <div className='relative h-48 w-full bg-primary/10'>
           <div className='absolute -bottom-16 left-6'>
-            <Avatar className='h-32 w-32 rounded-full border-4 border-background'>
-              <AvatarImage
-                src={user.avatarUrl}
-                alt={user.name}
-                data-ai-hint='person portrait'
-              />
-              <AvatarFallback className='text-4xl'>
-                {user.name
-                  ?.split(' ')
-                  .map(n => n[0])
-                  .join('')}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className='h-32 w-32 rounded-full border-4 border-background'>
+                <AvatarImage
+                  src={user.avatarUrl}
+                  alt={user.name}
+                  data-ai-hint='person portrait'
+                />
+                <AvatarFallback className='text-4xl'>
+                  {user.name
+                    ?.split(' ')
+                    .map(n => n[0])
+                    .join('')}
+                </AvatarFallback>
+              </Avatar>
+              {user.steemIconOverlay && (
+                <div className="absolute -bottom-1 -right-1 bg-[#3c4fe0] rounded-full p-1.5 border-2 border-background shadow-sm">
+                  <SteemLogo className="h-4 w-4 text-white" />
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className='p-6 pt-20 flex justify-between items-start'>
           <div>
-            <h1 className='text-3xl font-bold'>{user.name}</h1>
-            <div className="prose dark:prose-invert max-w-none">
+            <div className="flex items-center gap-3">
+                <h1 className='text-3xl font-bold'>{user.name}</h1>
+                {user.steemVerified && (
+                    <Badge variant="outline" className="text-green-500 bg-green-500/10 border-green-500/20 gap-1 px-2 py-1">
+                        <ShieldCheck className="h-4 w-4" /> Verified
+                    </Badge>
+                )}
+            </div>
+            <div className='mt-2'>
                 <Markdown content={user.bio || ''} />
             </div>
             <div className='mt-4 flex flex-wrap gap-2'>
@@ -263,17 +288,24 @@ export default function UserProfilePageClient({
                               <AvatarFallback>{steemUser.name[0].toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <a
-                                href={`https://steemit.com/@${steemUser.name}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xl font-bold text-primary hover:underline"
-                              >
-                                @{steemUser.name}
-                                <span className="text-lg font-normal text-muted-foreground ml-2">
-                                  {formatReputation(steemUser.reputation)}
-                                </span>
-                              </a>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={`https://steemit.com/@${steemUser.name}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xl font-bold text-primary hover:underline"
+                                >
+                                  @{steemUser.name}
+                                  <span className="text-lg font-normal text-muted-foreground ml-2">
+                                    {formatReputation(steemUser.reputation)}
+                                  </span>
+                                </a>
+                                {user.steemVerified && (
+                                  <Badge variant="outline" className="text-green-500 bg-green-500/10 border-green-500/20 gap-1 px-1.5 py-0 h-5">
+                                    <ShieldCheck className="h-3 w-3" /> Verified
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="text-muted-foreground">{steemUser.post_count} posts</p>
                             </div>
                           </div>

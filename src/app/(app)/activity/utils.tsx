@@ -132,7 +132,23 @@ export function renderActivityMessage(item: HydratedActivityItem) {
         case 'discussion-posted':
             return <>posted a new discussion in {projectLink}</>;
 
+        case 'steem-community-post':
+            return (
+                <>
+                    published a post in <span className="font-semibold text-[#3c4fe0]">{item.context.steemCommunity}</span>: 
+                    <a 
+                        href={`https://steemit.com${item.context.steemUrl}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="ml-1 font-semibold text-blue-600 hover:underline"
+                    >
+                        "{item.context.steemTitle}"
+                    </a>
+                </>
+            );
+
         default:
             return <>performed an unknown action on {projectLink}</>;
+
     }
 }

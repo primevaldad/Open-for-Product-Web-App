@@ -40,6 +40,8 @@ import {
 } from '@/app/actions/collections';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
+import { PostToSteemDialog } from '@/components/steem/post-to-steem-dialog';
+
 
 interface ProjectDetailClientPageProps {
     project: HydratedProject;
@@ -419,9 +421,12 @@ export default function ProjectDetailClientPage({
         <div className="container mx-auto px-4 py-8">
             <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
 
-            {/* Add to Collection — shown below the header for non-guests */}
+            {/* Add to Collection & Steem — shown below the header for non-guests */}
             {!isGuest && (
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex justify-end gap-2">
+                    {isLead && currentUser && (
+                        <PostToSteemDialog project={project} currentUser={currentUser} />
+                    )}
                     <AddToCollectionButton projectId={project.id} isGuest={isGuest} />
                 </div>
             )}

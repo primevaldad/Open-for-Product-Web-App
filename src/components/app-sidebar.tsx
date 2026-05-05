@@ -15,7 +15,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { User } from "@/lib/types";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +25,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Logo } from "./logo";
+import { UserAvatar } from "./user-avatar";
 
 interface AppSidebarProps {
     user: User;
@@ -68,12 +68,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     <SidebarMenuItem>
                         <Link href={`/profile/${user.id}`} onClick={() => setOpenMobile(false)}>
                             <SidebarMenuButton isActive={pathname.startsWith('/profile')}>
-                                <Avatar className="size-5">
-                                    <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                    <AvatarFallback>
-                                        {user.name.charAt(0)}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <UserAvatar user={user} className="size-5" badgeSize="sm" />
                                 Profile
                             </SidebarMenuButton>
                         </Link>

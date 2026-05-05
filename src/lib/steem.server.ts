@@ -92,14 +92,15 @@ export async function getSteemAccount(username: string): Promise<{ account: Stee
 }
 
 /**
- * Fetches the latest blog posts for a Steem user directly from the API.
+ * Fetches ranked posts (trending, created, etc.) for a specific tag or community.
+ * Uses the Hivemind bridge API which is more robust for community queries.
  */
-export async function getSteemUserPosts(username: string, limit: number = 10): Promise<{ posts: SteemPost[] | null; error: string | null; }> {
-    // ... (implementation remains the same as before)
-    if (!username) {
-        return { posts: null, error: 'No username provided.' };
-    }
-
+export async function getRankedPosts(
+    sort: 'created' | 'trending' | 'hot' = 'created',
+    tag: string = 'hive-111745',
+    limit: number = 10,
+    observer: string = ''
+): Promise<{ posts: SteemPost[] | null; error: string | null; }> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -109,8 +110,8 @@ export async function getSteemUserPosts(username: string, limit: number = 10): P
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 jsonrpc: '2.0',
-                method: 'condenser_api.get_discussions_by_blog',
-                params: [{ tag: username, limit: limit }],
+                method: 'bridge.get_ranked_posts',
+                params: { sort, tag, limit, observer },
                 id: 1,
             }),
             signal: controller.signal,
@@ -125,7 +126,56 @@ export async function getSteemUserPosts(username: string, limit: number = 10): P
         const json = await response.json();
 
         if (json.error) {
-            throw new Error(json.error.message || 'Steem API returned an unspecified error for posts');
+            throw new Error(json.error.message || 'Steem API returned an unspecified error');
+        }
+
+        return { posts: json.result || [], error: null };
+
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            return { posts: null, error: 'Request to Steem API timed out.' };
+        }
+        console.error(`Critical error in getRankedPosts for ${tag}:`, error);
+        return { posts: null, error: error.message || 'An unknown server error occurred.' };
+    }
+}
+
+/**
+ * Fetches the latest blog posts for a Steem user.
+ */
+export async function getSteemUserPosts(username: string, limit: number = 10): Promise<{ posts: SteemPost[] | null; error: string | null; }> {
+    if (!username) {
+        return { posts: null, error: 'No username provided.' };
+    }
+
+    // For blog posts, we still use the condenser_api or bridge.get_account_posts
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch(STEEM_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'bridge.get_account_posts',
+                params: { sort: 'blog', account: username, limit: limit },
+                id: 1,
+            }),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`Steem API returned an HTTP error: ${response.status}`);
+        }
+
+        const json = await response.json();
+
+        if (json.error) {
+            throw new Error(json.error.message || 'Steem API returned an unspecified error for blog posts');
         }
 
         return { posts: json.result || [], error: null };
@@ -137,6 +187,32 @@ export async function getSteemUserPosts(username: string, limit: number = 10): P
         }
         console.error(`Critical error in getSteemUserPosts for ${username}:`, error);
         return { posts: null, error: error.message || 'An unknown server error occurred.' };
+    }
+}
+
+/**
+ * Verifies if a post exists on the blockchain.
+ */
+export async function verifySteemPost(author: string, permlink: string): Promise<boolean> {
+    try {
+        const response = await fetch(STEEM_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'condenser_api.get_content',
+                params: [author, permlink],
+                id: 1,
+            }),
+        });
+
+        if (!response.ok) return false;
+        const json = await response.json();
+        
+        // If author matches and it's not a dummy response
+        return json.result && json.result.author === author && json.result.permlink === permlink;
+    } catch (e) {
+        return false;
     }
 }
 

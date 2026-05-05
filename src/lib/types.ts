@@ -30,6 +30,11 @@ export interface User {
     location?: string;
     website?: string;
     steemUsername?: string;
+    steemVerified?: boolean;
+    steemVerificationCode?: string;
+    steemFeedPreference?: 'all' | 'blog' | 'none';
+    steemTestnetEnabled?: boolean;
+    steemIconOverlay?: boolean;
     bypassOnboarding?: boolean;
 }
 
@@ -368,6 +373,8 @@ export enum ActivityType {
     DiscussionPosted = 'discussion-posted',
     CollectionProjectAdded = 'collection-project-added',
     CollectionProjectRemoved = 'collection-project-removed',
+    SteemCommunityPost = 'steem-community-post',
+    SteemBlogSync = 'steem-blog-sync',
 }
 
 // This defines the structure of the object returned by getUserActivity

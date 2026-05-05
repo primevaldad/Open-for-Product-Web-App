@@ -21,6 +21,9 @@ const UserSettingsSchema = z.object({
   location: z.string().optional(),
   website: z.string().optional(),
   steemUsername: z.string().optional(),
+  steemFeedPreference: z.enum(['all', 'blog', 'none']).optional(),
+  steemTestnetEnabled: z.boolean().optional(),
+  steemIconOverlay: z.boolean().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
 });
 

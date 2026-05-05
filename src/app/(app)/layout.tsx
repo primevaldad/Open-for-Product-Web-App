@@ -13,6 +13,7 @@ import { Logo } from '@/components/logo';
 import { NotificationBell } from '@/components/NotificationBell';
 import { OnboardingGuard } from '@/components/onboarding-guard';
 import { ResponsiveLayout } from '@/components/responsive-layout';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 export default async function AppLayout({
   children,
@@ -29,11 +30,13 @@ export default async function AppLayout({
         disableTransitionOnChange
     >
         <AuthProvider serverUser={currentUser}>
-            <OnboardingGuard user={currentUser}>
-                <ResponsiveLayout serverUser={currentUser} notifications={<NotificationBell />}>
-                    {children}
-                </ResponsiveLayout>
-            </OnboardingGuard>
+            <TooltipProvider>
+                <OnboardingGuard user={currentUser}>
+                    <ResponsiveLayout serverUser={currentUser} notifications={<NotificationBell />}>
+                        {children}
+                    </ResponsiveLayout>
+                </OnboardingGuard>
+            </TooltipProvider>
         </AuthProvider>
     </ThemeProvider>
   );
