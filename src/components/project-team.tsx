@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from './user-avatar';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -482,10 +483,13 @@ export default function ProjectTeam({
                         {pendingMembers.map(member => (
                             <div key={member.userId} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                 <div className="flex items-center space-x-4">
-                                    <Avatar>
-                                        <AvatarImage src={member.user?.avatarUrl} alt={member.user?.name || 'User avatar'} />
-                                        <AvatarFallback>{getInitials(member.user?.name)}</AvatarFallback>
-                                    </Avatar>
+                                    {member.user ? (
+                                        <UserAvatar user={member.user} className="h-10 w-10" />
+                                    ) : (
+                                        <Avatar>
+                                            <AvatarFallback>{getInitials(member.user?.name)}</AvatarFallback>
+                                        </Avatar>
+                                    )}
                                     <div>
                                         <p className="font-semibold">{member.user?.name || 'Unknown User'}</p>
                                         <p className="text-sm text-gray-500">Applied for: <strong>{member.pendingRole}</strong></p>
@@ -526,10 +530,13 @@ export default function ProjectTeam({
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {approvedMembers.map(member => (
                                 <div key={member.userId} className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                    <Avatar>
-                                        <AvatarImage src={member.user?.avatarUrl} alt={member.user?.name || 'User avatar'} />
-                                        <AvatarFallback>{getInitials(member.user?.name)}</AvatarFallback>
-                                    </Avatar>
+                                    {member.user ? (
+                                        <UserAvatar user={member.user} className="h-10 w-10" />
+                                    ) : (
+                                        <Avatar>
+                                            <AvatarFallback>{getInitials(member.user?.name)}</AvatarFallback>
+                                        </Avatar>
+                                    )}
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold">{member.user?.name || 'Unknown User'}</p>
