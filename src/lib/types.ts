@@ -35,6 +35,8 @@ export interface User {
     steemFeedPreference?: 'all' | 'blog' | 'none';
     steemTestnetEnabled?: boolean;
     steemIconOverlay?: boolean;
+    followedProjectIds?: string[];
+    lastCommunityFeedSeenAt?: string;
     bypassOnboarding?: boolean;
 }
 
@@ -63,6 +65,20 @@ export interface Project {
     };
     progress?: number;
     embedding?: any; // VectorValue
+}
+
+export interface Post {
+    id: string;
+    projectId: string;
+    userId: string;
+    title: string;
+    content: string; // OfP-optimized markdown
+    tags: string[];
+    steemStatus: 'none' | 'pending' | 'confirmed' | 'failed';
+    steemPermlink?: string;
+    steemAuthor?: string;
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
 }
 
 // This represents a tag that is associated with a project.

@@ -406,6 +406,22 @@ export async function getDiscussionsForProject(projectId: string): Promise<Discu
     });
 }
 
+export async function getDiscussionsByProjects(projectIds: string[]): Promise<Discussion[]> {
+    if (!projectIds || projectIds.length === 0) return [];
+    
+    // Firestore does not support collection group queries with 'in' filter on parent document IDs directly in a simple way if they are subcollections.
+    // However, we can iterate through projects and collect discussions, or use a flatter structure.
+    // Given the current structure, we'll fetch them per project (up to 30 projects for MVP performance).
+    
+    const limitedIds = projectIds.slice(0, 30);
+    const discussionPromises = limitedIds.map(id => getDiscussionsForProject(id));
+    const allDiscussions = await Promise.all(discussionPromises);
+    
+    return allDiscussions.flat().sort((a, b) => 
+        new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()
+    ).slice(0, 100);
+}
+
 export async function addDiscussionCommentToDb(projectId: string, comment: Omit<Discussion, 'id'>): Promise<string> {
     const commentRef = await adminDb.collection('projects').doc(projectId).collection('discussions').add(comment);
     return commentRef.id;
@@ -747,4 +763,126 @@ export async function removeProjectFromCollection(
 
 export async function deleteCollection(collectionId: string): Promise<void> {
     await adminDb.collection('collections').doc(collectionId).delete();
+}
+
+// --- Post Data Access ---
+
+export async function createPost(postData: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    const postRef = adminDb.collection('posts').doc();
+    const now = FieldValue.serverTimestamp();
+    await postRef.set({
+        ...postData,
+        createdAt: now,
+        updatedAt: now,
+    });
+    return postRef.id;
+}
+
+export async function updatePost(postId: string, updates: Partial<Post>): Promise<void> {
+    const postRef = adminDb.collection('posts').doc(postId);
+    const dataToUpdate = { ...updates, updatedAt: FieldValue.serverTimestamp() };
+    delete (dataToUpdate as any).id;
+    delete (dataToUpdate as any).createdAt;
+    await postRef.update(dataToUpdate);
+}
+
+export async function getPostsByProject(projectId: string): Promise<Post[]> {
+    const snapshot = await adminDb.collection('posts')
+        .where('projectId', '==', projectId)
+        .orderBy('createdAt', 'desc')
+        .get();
+    
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt)
+        } as Post;
+    });
+}
+
+export async function getFeedPosts(projectIds: string[]): Promise<Post[]> {
+    if (!projectIds || projectIds.length === 0) return [];
+    
+    // Firestore 'in' queries are limited to 30 items
+    const chunks: string[][] = [];
+    for (let i = 0; i < projectIds.length; i += 30) {
+        chunks.push(projectIds.slice(i, i + 30));
+    }
+    
+    const allPosts: Post[] = [];
+    for (const chunk of chunks) {
+        const snapshot = await adminDb.collection('posts')
+            .where('projectId', 'in', chunk)
+            .orderBy('createdAt', 'desc')
+            .limit(50)
+            .get();
+        
+        const posts = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: serializeTimestamp(data.createdAt),
+                updatedAt: serializeTimestamp(data.updatedAt)
+            } as Post;
+        });
+        allPosts.push(...posts);
+    }
+    
+    return allPosts.sort((a, b) => 
+        new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()
+    ).slice(0, 100);
+}
+
+// --- Following Data Access ---
+
+export async function toggleFollowProject(userId: string, projectId: string): Promise<{ isFollowing: boolean }> {
+    const userRef = adminDb.collection('users').doc(userId);
+    
+    return await adminDb.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) throw new Error('User not found');
+        
+        const userData = userDoc.data() as User;
+        const followedIds = userData.followedProjectIds || [];
+        const isFollowing = followedIds.includes(projectId);
+        
+        if (isFollowing) {
+            transaction.update(userRef, {
+                followedProjectIds: FieldValue.arrayRemove(projectId),
+                updatedAt: FieldValue.serverTimestamp()
+            });
+            return { isFollowing: false };
+        } else {
+            transaction.update(userRef, {
+                followedProjectIds: FieldValue.arrayUnion(projectId),
+                updatedAt: FieldValue.serverTimestamp()
+            });
+            return { isFollowing: true };
+        }
+    });
+}
+export async function hasNewCommunityContent(userId: string, followedProjectIds: string[], lastSeenAt?: string): Promise<boolean> {
+    if (!followedProjectIds || followedProjectIds.length === 0) return false;
+    
+    const lastSeenDate = lastSeenAt ? new Date(lastSeenAt) : new Date(0);
+    
+    // Check for posts in followed projects
+    // We only need to know if AT LEAST ONE post exists since lastSeenDate
+    const postsQuery = adminDb.collection('posts')
+        .where('projectId', 'in', followedProjectIds.slice(0, 10)) // Limit to 10 for performance in sidebar check
+        .where('createdAt', '>', lastSeenDate)
+        .limit(1);
+    
+    const postsSnapshot = await postsQuery.get();
+    if (!postsSnapshot.empty) return true;
+    
+    // Check for discussions in followed projects
+    // Since discussions are subcollections, we'd need to iterate or use a collection group query if enabled
+    // For now, let's just check posts as the primary indicator for "Community Feed" updates
+    
+    return false;
 }

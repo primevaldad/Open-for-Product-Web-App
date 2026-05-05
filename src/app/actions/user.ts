@@ -133,3 +133,16 @@ export async function updateUser(userId: string, userData: Partial<User>): Promi
     return { success: false, error: message };
   }
 }
+
+export async function markCommunityFeedAsSeenAction(userId: string): Promise<ServerActionResponse> {
+  try {
+    const userRef = adminDb.collection('users').doc(userId);
+    await userRef.update({
+      lastCommunityFeedSeenAt: new Date().toISOString()
+    });
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}

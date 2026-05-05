@@ -2,7 +2,6 @@
 'use client';
 
 import {
-  Activity,
   BookOpen,
   FilePlus2,
   FolderKanban,
@@ -10,6 +9,7 @@ import {
   Layers,
   Settings,
   Library,
+  Rss,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,9 +29,10 @@ import { UserAvatar } from "./user-avatar";
 
 interface AppSidebarProps {
     user: User;
+    hasNewCommunityContent?: boolean;
 }
 
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
     const pathname = usePathname();
     const { setOpenMobile } = useSidebar();
 
@@ -42,7 +43,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
         { href: "/collections", icon: <Layers />, label: "Collections" },
         { href: "/learning", icon: <BookOpen />, label: "Learning Paths" },
         { href: "/resources", icon: <Library />, label: "Free Resources" },
-        { href: "/activity", icon: <Activity />, label: "Activity" },
+        { 
+            href: "/feed", 
+            icon: <Rss />, 
+            label: "Feed",
+            showIndicator: hasNewCommunityContent 
+        },
     ];
 
     return (
@@ -50,17 +56,20 @@ export function AppSidebar({ user }: AppSidebarProps) {
             <SidebarHeader className="px-4 py-2">
                 <Link href="/home" className="flex items-center gap-3">
                     <Logo />
-                    <span className="text-lg font-semibold text-sidebar-foreground">Open for Product</span>
+                    <span className="text-lg font-semibold text-sidebar-foreground text-nowrap">Open for Product</span>
                 </Link>
             </SidebarHeader>
             <SidebarContent className="p-4 pt-0">
                 <SidebarMenu>
-                    {menuItems.map((item) => (
+                    {menuItems.map((item: any) => (
                         <SidebarMenuItem key={item.href}>
                             <Link href={item.href} onClick={() => setOpenMobile(false)}>
-                                <SidebarMenuButton isActive={pathname === item.href}>
+                                <SidebarMenuButton isActive={pathname === item.href} className="relative">
                                     {item.icon}
                                     {item.label}
+                                    {item.showIndicator && (
+                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-blue-500" title="New community updates" />
+                                    )}
                                 </SidebarMenuButton>
                             </Link>
                         </SidebarMenuItem>

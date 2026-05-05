@@ -38,6 +38,7 @@ import {
   getAllProjects,
   getAllLearningPaths,
   getAllProjectPathLinks,
+  toggleFollowProject,
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import {
@@ -658,3 +659,19 @@ export async function getDraftsPageData(currentUser: User | null): Promise<Draft
     };
   }
 }
+
+export async function toggleFollowProjectAction(projectId: string): Promise<ServerActionResponse<{ isFollowing: boolean }>> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required.' };
+
+  try {
+    const result = await toggleFollowProject(currentUser.id, projectId);
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/feed');
+    return { success: true, data: result };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+

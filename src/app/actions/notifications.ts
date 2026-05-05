@@ -64,10 +64,22 @@ export async function getHydratedNotifications(): Promise<{ success: boolean, no
 
     const notifications = notificationsSnapshot.docs.map(doc => {
         const data = doc.data();
+        let createdAtStr: string;
+        
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            createdAtStr = data.createdAt.toDate().toISOString();
+        } else if (data.createdAt && !isNaN(new Date(data.createdAt).getTime())) {
+            createdAtStr = new Date(data.createdAt).toISOString();
+        } else if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+            createdAtStr = data.timestamp.toDate().toISOString();
+        } else {
+            createdAtStr = new Date().toISOString();
+        }
+
         return {
             id: doc.id,
             ...data,
-            createdAt: new Date(data.createdAt.toDate()).toISOString(),
+            createdAt: createdAtStr,
         } as Notification;
     });
 
@@ -77,8 +89,16 @@ export async function getHydratedNotifications(): Promise<{ success: boolean, no
 
     // 2. Create Lookup Maps
     const eventIds = [...new Set(notifications.map(n => n.eventId))];
-    const eventDocs = await adminDb.collection('events').where(admin.firestore.FieldPath.documentId(), 'in', eventIds).get();
-    const eventsMap = new Map<string, Event>(eventDocs.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Event]));
+    const eventDocs: admin.firestore.QueryDocumentSnapshot[] = [];
+    
+    // Firestore 'in' queries are limited to 30 items
+    for (let i = 0; i < eventIds.length; i += 30) {
+        const chunk = eventIds.slice(i, i + 30);
+        const snapshot = await adminDb.collection('events').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+        eventDocs.push(...snapshot.docs);
+    }
+    
+    const eventsMap = new Map<string, Event>(eventDocs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Event]));
 
     const actorUserIds = [...new Set(Array.from(eventsMap.values()).map(e => e.actorUserId))];
     const targetUserIds = [...new Set(Array.from(eventsMap.values()).map(e => e.targetUserId).filter(Boolean) as string[])];

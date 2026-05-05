@@ -5,7 +5,8 @@ import {
     getDiscussionsForProject, 
     findTasksByProjectId, 
     getAllUsers, 
-    getRecommendedLearningPathsForProject 
+    getRecommendedLearningPathsForProject,
+    getPostsByProject
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import ProjectDetailClientPage from './project-detail-client-page';
@@ -14,7 +15,8 @@ import type {
     Discussion,
     HydratedProject,
     Task,
-    LearningPath
+    LearningPath,
+    Post
 } from '@/lib/types';
 import { deepSerialize } from '@/lib/utils.server';
 
@@ -22,6 +24,7 @@ interface ProjectPageData {
     project: HydratedProject | null;
     discussions: (Discussion & { user?: User })[];
     tasks: Task[];
+    posts: Post[];
     users: User[];
     currentUser: User | null;
     learningPaths: LearningPath[];
@@ -29,15 +32,16 @@ interface ProjectPageData {
 
 async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
     const currentUser = await getAuthenticatedUser();
-    const [project, discussions, tasks, users] = await Promise.all([
+    const [project, discussions, tasks, posts, users] = await Promise.all([
         findProjectById(projectId, currentUser),
         getDiscussionsForProject(projectId),
         findTasksByProjectId(projectId),
+        getPostsByProject(projectId),
         getAllUsers(),
     ]);
 
     if (!project) {
-        return { project: null, discussions: [], tasks: [], users: [], currentUser: null, learningPaths: [] };
+        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [] };
     }
 
     const learningPaths = await getRecommendedLearningPathsForProject(project);
@@ -52,6 +56,7 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
         project,
         discussions: hydratedDiscussions as (Discussion & { user: User })[],
         tasks,
+        posts,
         users,
         currentUser: currentUser ?? null,
         learningPaths,
@@ -69,6 +74,7 @@ export default async function ProjectPage({ params }: { params: { id: string } }
         project, 
         discussions, 
         tasks, 
+        posts,
         users, 
         currentUser, 
         learningPaths 
@@ -79,6 +85,7 @@ export default async function ProjectPage({ params }: { params: { id: string } }
             project={deepSerialize(project)}
             discussions={deepSerialize(discussions)}
             tasks={deepSerialize(tasks)}
+            posts={deepSerialize(posts)}
             users={deepSerialize(users)}
             currentUser={deepSerialize(currentUser)}
             learningPaths={deepSerialize(learningPaths)}

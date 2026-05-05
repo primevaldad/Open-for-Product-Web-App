@@ -15,9 +15,10 @@ interface ResponsiveLayoutProps {
   serverUser: User | null;
   children: ReactNode;
   notifications: ReactNode;
+  hasNewFeedItems?: boolean;
 }
 
-export function ResponsiveLayout({ serverUser, children, notifications }: ResponsiveLayoutProps) {
+export function ResponsiveLayout({ serverUser, children, notifications, hasNewFeedItems }: ResponsiveLayoutProps) {
   const { currentUser: clientUser } = useAuth();
   
   // A user is considered authenticated if either the server-side check 
@@ -29,7 +30,7 @@ export function ResponsiveLayout({ serverUser, children, notifications }: Respon
     return (
       <SidebarProvider>
         <div className="flex h-full min-h-screen w-full bg-background">
-          <AppSidebar user={user} />
+          <AppSidebar user={user} hasNewCommunityContent={hasNewFeedItems} />
           <SidebarInset className="flex flex-col flex-1 rounded-tl-xl">
             <header className="sticky top-0 z-10 flex items-center justify-between gap-4 bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm md:px-6">
               <div className="flex items-center gap-4">

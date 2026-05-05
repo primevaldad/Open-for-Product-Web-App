@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 
 interface NotificationCardProps {
     notification: HydratedNotification;
+    onClick?: () => void;
 }
 
 function renderNotificationMessage(notification: HydratedNotification): React.ReactNode {
@@ -89,11 +90,12 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
     }
 }
 
-export function NotificationCard({ notification }: NotificationCardProps) {
+export function NotificationCard({ notification, onClick }: NotificationCardProps) {
     const router = useRouter();
     const [isRead, setIsRead] = useState(notification.isRead);
 
     const handleClick = async () => {
+        onClick?.();
         if (!isRead) {
             await markNotificationAsRead(notification.id);
             setIsRead(true);

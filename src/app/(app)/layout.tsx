@@ -14,6 +14,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { OnboardingGuard } from '@/components/onboarding-guard';
 import { ResponsiveLayout } from '@/components/responsive-layout';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { hasNewCommunityContent } from '@/lib/data.server';
 
 export default async function AppLayout({
   children,
@@ -21,6 +22,11 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const currentUser = await getAuthenticatedUser();
+  const hasNewFeedItems = currentUser ? await hasNewCommunityContent(
+      currentUser.id, 
+      currentUser.followedProjectIds || [], 
+      currentUser.lastCommunityFeedSeenAt
+  ) : false;
 
   return (
     <ThemeProvider
@@ -32,7 +38,11 @@ export default async function AppLayout({
         <AuthProvider serverUser={currentUser}>
             <TooltipProvider>
                 <OnboardingGuard user={currentUser}>
-                    <ResponsiveLayout serverUser={currentUser} notifications={<NotificationBell />}>
+                    <ResponsiveLayout 
+                        serverUser={currentUser} 
+                        notifications={<NotificationBell />}
+                        hasNewFeedItems={hasNewFeedItems}
+                    >
                         {children}
                     </ResponsiveLayout>
                 </OnboardingGuard>

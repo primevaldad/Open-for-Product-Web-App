@@ -29,8 +29,11 @@ export function NotificationBellContent({ notifications }: NotificationBellConte
                     <span className="sr-only">View notifications</span>
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-full md:w-96 p-0" align="end">
-                <NotificationList notifications={notifications} />
+            <PopoverContent className="w-[calc(100vw-2rem)] md:w-96 p-0" align="end" sideOffset={8}>
+                <NotificationList 
+                    notifications={notifications} 
+                    onItemClick={() => setIsOpen(false)} 
+                />
             </PopoverContent>
         </Popover>
     );

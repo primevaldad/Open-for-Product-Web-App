@@ -7,12 +7,14 @@ import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
 import { toDate } from '@/lib/utils';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection } from '@/lib/types';
+import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
 import DiscussionForum from '@/components/discussion-forum';
 import ProjectTeam from '@/components/project-team';
+import { CreatePostDialog } from '@/components/projects/create-post-dialog';
+import { ProjectPostsTab } from '@/components/projects/project-posts-tab';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import { useAuth } from '@/components/auth-provider';
@@ -40,13 +42,13 @@ import {
 } from '@/app/actions/collections';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
-import { PostToSteemDialog } from '@/components/steem/post-to-steem-dialog';
 
 
 interface ProjectDetailClientPageProps {
     project: HydratedProject;
     tasks: Task[];
     discussions: Discussion[];
+    posts: Post[];
     learningPaths: LearningPath[];
     users: User[];
     currentUser: User | null;
@@ -209,6 +211,7 @@ export default function ProjectDetailClientPage({
     project: initialProject,
     tasks: initialTasks,
     discussions: initialDiscussions,
+    posts: initialPosts,
     learningPaths: initialLearningPaths,
     users: allUsers,
     currentUser: serverUser,
@@ -218,6 +221,7 @@ export default function ProjectDetailClientPage({
     const [project, setProject] = useState(initialProject);
     const [tasks, setTasks] = useState(initialTasks);
     const [discussions, setDiscussions] = useState(initialDiscussions);
+    const [posts, setPosts] = useState(initialPosts);
     const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
     const [users, setUsers] = useState(allUsers);
     const [tabIndex, setTabIndex] = useState(0);
@@ -424,8 +428,8 @@ export default function ProjectDetailClientPage({
             {/* Add to Collection & Steem — shown below the header for non-guests */}
             {!isGuest && (
                 <div className="mt-3 flex justify-end gap-2">
-                    {isLead && currentUser && (
-                        <PostToSteemDialog project={project} currentUser={currentUser} />
+                    {isMember && currentUser && (
+                        <CreatePostDialog project={project} currentUser={currentUser} />
                     )}
                     <AddToCollectionButton projectId={project.id} isGuest={isGuest} />
                 </div>
@@ -435,6 +439,7 @@ export default function ProjectDetailClientPage({
                 <Tabs selectedIndex={tabIndex} onSelect={index => setTabIndex(index)}>
                     <TabList>
                         <Tab>About</Tab>
+                        <Tab>Posts</Tab>
                         <Tab>Tasks</Tab>
                         <Tab>Discussion</Tab>
                         <Tab>Team</Tab>
@@ -453,6 +458,18 @@ export default function ProjectDetailClientPage({
                                 </div>
                             )}
                         </div>
+                    </TabPanel>
+                    <TabPanel>
+                        {!isGuest ? (
+                            <ProjectPostsTab posts={posts} users={users} />
+                        ) : (
+                            <div className="relative py-12 flex justify-center">
+                                <div className="absolute inset-0 blur-md pointer-events-none opacity-50">
+                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} />
+                                </div>
+                                <GuestOverlay />
+                            </div>
+                        )}
                     </TabPanel>
                     <TabPanel>
                         {!isGuest ? (

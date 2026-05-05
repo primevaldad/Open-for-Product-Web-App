@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { HydratedNotification } from '@/lib/types';
 import { NotificationCard } from './NotificationCard';
 import { Button } from '@/components/ui/button';
@@ -9,9 +11,13 @@ import { useState } from 'react';
 
 interface NotificationListProps {
     notifications: HydratedNotification[];
+    onItemClick?: () => void;
 }
 
-export function NotificationList({ notifications: initialNotifications }: NotificationListProps) {
+export function NotificationList({ 
+    notifications: initialNotifications,
+    onItemClick 
+}: NotificationListProps) {
     const [notifications, setNotifications] = useState(initialNotifications);
 
     const handleMarkAllAsRead = async () => {
@@ -22,16 +28,20 @@ export function NotificationList({ notifications: initialNotifications }: Notifi
     };
 
     return (
-        <div className="w-full md:w-96 bg-white rounded-lg shadow-lg">
+        <div className="bg-white dark:bg-gray-800">
             <div className="p-4 border-b flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Notifications</h3>
                 <Button variant="link" size="sm" onClick={handleMarkAllAsRead}>Mark all as read</Button>
             </div>
             <ScrollArea className="h-[400px]">
                 {notifications.length > 0 ? (
-                    <div>
+                    <div className="divide-y">
                         {notifications.map(notification => (
-                            <NotificationCard key={notification.id} notification={notification} />
+                            <NotificationCard 
+                                key={notification.id} 
+                                notification={notification} 
+                                onClick={() => onItemClick?.()}
+                            />
                         ))}
                     </div>
                 ) : (
@@ -40,6 +50,15 @@ export function NotificationList({ notifications: initialNotifications }: Notifi
                     </div>
                 )}
             </ScrollArea>
+            <div className="p-2 border-t text-center">
+                <Link 
+                    href="/feed" 
+                    className="text-sm text-blue-600 hover:underline"
+                    onClick={() => onItemClick?.()}
+                >
+                    See all activity
+                </Link>
+            </div>
         </div>
     );
 }
