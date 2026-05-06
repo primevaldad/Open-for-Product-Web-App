@@ -108,6 +108,16 @@ const SidebarProvider = React.forwardRef<
           event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
           (event.metaKey || event.ctrlKey)
         ) {
+          // If the focus is on an input, textarea or contenteditable, skip the toggle
+          const target = event.target as HTMLElement
+          if (
+            target.closest("input") ||
+            target.closest("textarea") ||
+            target.isContentEditable
+          ) {
+            return
+          }
+
           event.preventDefault()
           toggleSidebar()
         }
