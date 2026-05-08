@@ -32,7 +32,7 @@ const OnboardingSchema = z.object({
     id: z.string(),
     display: z.string(),
     isCategory: z.boolean(),
-  })).min(1, 'Please select at least one interest.'),
+  })).optional(),
 });
 
 type OnboardingFormValues = z.infer<typeof OnboardingSchema>;
@@ -41,6 +41,9 @@ interface OnboardingFormProps {
   user: User;
   allTags: GlobalTag[];
 }
+
+import { slugify } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   const router = useRouter();
@@ -55,11 +58,13 @@ export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
     };
   }) : [];
 
+  const defaultUsername = user.username || (user.name ? slugify(user.name) : '');
+
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(OnboardingSchema),
     defaultValues: {
       name: user.name || '',
-      username: user.username || '',
+      username: defaultUsername,
       bio: user.bio || '',
       interests: userInterestTags,
     },
@@ -68,7 +73,7 @@ export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   async function onSubmit(values: OnboardingFormValues) {
     const dataToUpdate = {
       ...values,
-      interests: values.interests.map(tag => ({ id: tag.id, display: tag.display })),
+      interests: (values.interests || []).map(tag => ({ id: tag.id, display: tag.display })),
       onboardingCompleted: true,
     };
 
@@ -83,75 +88,98 @@ export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold">Welcome! Let's get you set up.</h1>
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="john_doe" {...field} />
-              </FormControl>
-               <FormDescription>
-                This is your unique handle on the platform.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="bio"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Tell us a little bit about yourself"
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="interests"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tags</FormLabel>
-              <AdvancedTagSelector
-                availableTags={allTags}
-                value={field.value as ProjectTag[]}
-                onChange={field.onChange}
+    <div className="w-full max-w-2xl mx-auto space-y-8 bg-card p-8 rounded-xl border shadow-sm">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Quick Setup</h1>
+        <p className="text-muted-foreground">Welcome to Open for Product. Just the essentials to get you started.</p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              <FormDescription>
-                Select tags that represent your interests. This will help us recommend relevant projects to you.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit">Complete Profile</Button>
-      </form>
-    </Form>
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="john_doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Optional Details</h2>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Skip for now</span>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="bio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bio</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="What are you building or looking for?"
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="interests"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Your Interests</FormLabel>
+                  <AdvancedTagSelector
+                    availableTags={allTags}
+                    value={(field.value || []) as ProjectTag[]}
+                    onChange={field.onChange}
+                  />
+                  <FormDescription>
+                    We'll use these to recommend relevant projects.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="pt-4">
+            <Button type="submit" size="lg" className="w-full md:w-auto px-12">
+              Get Started
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }
