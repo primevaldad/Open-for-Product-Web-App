@@ -26,7 +26,7 @@ const OnboardingSchema = z.object({
   username: z
     .string()
     .min(3, { message: 'Username must be at least 3 characters.' })
-    .regex(/^[a-z0-9_]+$/, 'Username can only contain lowercase letters, numbers, and underscores.'),
+    .regex(/^[a-zA-Z0-9 ]+$/, 'Username can only contain letters, numbers, and spaces.'),
   bio: z.string().max(160).optional(),
   interests: z.array(z.object({
     id: z.string(),

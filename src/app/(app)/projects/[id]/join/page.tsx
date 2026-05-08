@@ -20,17 +20,10 @@ export default async function JoinPage({
         return <div className="p-8 text-center text-red-500 font-semibold">Invalid invitation link.</div>;
     }
 
-    const currentUser = await getAuthenticatedUser();
-
-    if (!currentUser) {
-        const returnUrl = `/projects/${id}/join?token=${token}`;
-        redirect(`/login?redirectTo=${encodeURIComponent(returnUrl)}`);
-    }
-
     // Verify token exists and is valid
     const inviteQuery = await adminDb.collection('projectInvites').where('token', '==', token).limit(1).get();
     if (inviteQuery.empty) {
-        return <div className="p-8 text-center text-red-500 font-semibold">Invalid or missing invitation token.</div>;
+        return <div className="p-8 text-center text-red-500 font-semibold mt-10">Invalid or missing invitation token.</div>;
     }
 
     const inviteData = inviteQuery.docs[0].data() as ProjectInvite;
@@ -55,9 +48,11 @@ export default async function JoinPage({
         return <div className="p-8 text-center text-red-500 font-semibold mt-10">This invitation was declined.</div>;
     }
 
-    // If emails don't match
-    if (currentUser.email !== inviteData.email) {
-        return <div className="p-8 text-center text-red-500 font-semibold mt-10">This invitation is for a different email address.</div>;
+    const currentUser = await getAuthenticatedUser();
+
+    // If logged in but emails don't match
+    if (currentUser && currentUser.email !== inviteData.email) {
+        return <div className="p-8 text-center text-red-500 font-semibold mt-10">This invitation is for a different email address ({inviteData.email}). Please log in with the correct account.</div>;
     }
 
     const project = await findProjectById(id, currentUser);
@@ -67,7 +62,7 @@ export default async function JoinPage({
 
     return (
         <div className="container max-w-lg mx-auto py-16">
-            <JoinClient project={deepSerialize(project)} token={token} role={inviteData.role} />
+            <JoinClient project={deepSerialize(project)} token={token} role={inviteData.role} isLoggedIn={!!currentUser} />
         </div>
     );
 }

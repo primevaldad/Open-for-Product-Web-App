@@ -9,12 +9,18 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
-export default function JoinClient({ project, token, role }: { project: HydratedProject, token: string, role: string }) {
+export default function JoinClient({ project, token, role, isLoggedIn }: { project: HydratedProject, token: string, role: string, isLoggedIn?: boolean }) {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
 
     const handleAccept = async () => {
+        if (!isLoggedIn) {
+            const returnUrl = `/projects/${project.id}/join?token=${token}`;
+            router.push(`/login?redirectTo=${encodeURIComponent(returnUrl)}`);
+            return;
+        }
+
         setLoading(true);
         try {
             const res = await acceptInviteAction(token);
