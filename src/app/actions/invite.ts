@@ -25,11 +25,16 @@ export async function sendProjectInviteAction(data: {
             return { success: false, error: 'Unauthorized' };
         }
 
-        const { projectId, recipientEmail, role, customMessage } = data;
+        const { projectId, role, customMessage } = data;
+        const recipientEmail = data.recipientEmail?.trim().toLowerCase();
+
+        if (!recipientEmail) {
+            return { success: false, error: 'Email address is required' };
+        }
 
         // Basic email validation
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
-            return { success: false, error: 'Invalid email address' };
+            return { success: false, error: 'Invalid email address format' };
         }
 
         // Get project and verify permissions
@@ -183,7 +188,19 @@ export async function acceptInviteAction(token: string): Promise<ServerActionRes
         const projectData = projectDoc.data() as Project;
         
         // Check if user is already a member
-        if (projectData.team.some(m => m.userId === currentUser.id)) {
+        const memberIndex = projectData.team.findIndex(m => m.userId === currentUser.id);
+        if (memberIndex !== -1) {
+            const currentRole = projectData.team[memberIndex].role;
+            if (currentRole !== inviteData.role) {
+                // Update their role
+                const updatedTeam = [...projectData.team];
+                updatedTeam[memberIndex] = {
+                    ...updatedTeam[memberIndex],
+                    role: inviteData.role,
+                    updatedAt: new Date().toISOString()
+                };
+                await projectDoc.ref.update({ team: updatedTeam });
+            }
             await inviteDoc.ref.update({ status: 'accepted' });
             return { success: true, data: { projectId } };
         }
@@ -238,7 +255,7 @@ export async function getProjectInvitesAction(projectId: string): Promise<Server
         let invitesQuery = adminDb.collection('projectInvites').where('projectId', '==', projectId);
         
         if (!isLead) {
-            invitesQuery = invitesQuery.where('email', '==', currentUser.email).where('status', '==', 'pending');
+            invitesQuery = invitesQuery.where('email', '==', currentUser.email.trim().toLowerCase()).where('status', '==', 'pending');
         }
 
         const snapshot = await invitesQuery.get();

@@ -7,7 +7,7 @@ import { NotificationCard } from './NotificationCard';
 import { Button } from '@/components/ui/button';
 import { markAllNotificationsAsRead } from '@/app/actions/notifications';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface NotificationListProps {
     notifications: HydratedNotification[];
@@ -19,6 +19,11 @@ export function NotificationList({
     onItemClick 
 }: NotificationListProps) {
     const [notifications, setNotifications] = useState(initialNotifications);
+    
+    // Sync state if props change (e.g. new notifications arrive)
+    useEffect(() => {
+        setNotifications(initialNotifications);
+    }, [initialNotifications]);
 
     const handleMarkAllAsRead = async () => {
         const { success } = await markAllNotificationsAsRead();

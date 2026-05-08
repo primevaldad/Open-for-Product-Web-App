@@ -33,10 +33,11 @@ export async function inviteMember(data: { projectId: string; email: string; rol
             }
 
             // Add them as a pending member directly
+            const isLeadInvite = role === 'lead';
             const newMember: ProjectMember = {
                 userId: targetUser.id,
-                role: 'participant', // Default role for applications
-                pendingRole: role,     // The role the lead is inviting them to
+                role: isLeadInvite ? 'lead' : 'participant', 
+                pendingRole: isLeadInvite ? undefined : role, 
                 createdAt: new Date().toISOString()
             };
 

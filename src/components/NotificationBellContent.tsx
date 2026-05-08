@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { HydratedNotification } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,6 +14,12 @@ interface NotificationBellContentProps {
 
 export function NotificationBellContent({ notifications }: NotificationBellContentProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const pathname = usePathname();
+
+    // Close the popover whenever the route changes
+    useEffect(() => {
+        setIsOpen(false);
+    }, [pathname]);
 
     const unreadCount = useMemo(() => {
         return notifications.filter(n => !n.isRead).length;

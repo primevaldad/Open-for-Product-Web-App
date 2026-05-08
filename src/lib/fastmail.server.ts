@@ -56,8 +56,17 @@ export async function sendFastmailEmail(
     });
 
     const identityData = await identityRes.json();
-    const identities = identityData.methodResponses[0][1].list;
-    const mailboxes = identityData.methodResponses[1][1].list;
+    
+    if (!identityData.methodResponses || !identityData.methodResponses[0] || !identityData.methodResponses[1]) {
+        throw new Error('Malformed response from Fastmail JMAP API');
+    }
+
+    const identities = identityData.methodResponses[0][1].list || [];
+    const mailboxes = identityData.methodResponses[1][1].list || [];
+
+    if (identities.length === 0) {
+        throw new Error('No identities found for this Fastmail account');
+    }
 
     // Find a suitable mailbox (Drafts or Sent)
     const draftsMailbox = mailboxes.find((m: any) => m.role === 'drafts' || m.name.toLowerCase() === 'drafts');
@@ -134,7 +143,26 @@ export async function sendFastmailEmail(
     // Check for method-level errors
     const errors = result.methodResponses.filter((r: any) => r[0] === 'error');
     if (errors.length > 0) {
-        throw new Error(`Fastmail JMAP error: ${errors[0][1].type}`);
+        const errorDetail = JSON.stringify(errors[0][1]);
+        console.error('[FASTMAIL_ERROR]', errorDetail);
+        throw new Error(`Fastmail JMAP error: ${errors[0][1].type} - ${errorDetail}`);
+    }
+
+    // Check for specific creation errors in method responses
+    // methodResponses[0] is Email/set, methodResponses[1] is EmailSubmission/set
+    const emailSetResponse = result.methodResponses.find((r: any) => r[2] === 'a');
+    const submissionSetResponse = result.methodResponses.find((r: any) => r[2] === 'b');
+
+    if (emailSetResponse && emailSetResponse[1].notCreated && Object.keys(emailSetResponse[1].notCreated).length > 0) {
+        const error = JSON.stringify(emailSetResponse[1].notCreated);
+        console.error('[FASTMAIL_EMAIL_CREATE_FAILED]', error);
+        throw new Error(`Failed to create email draft: ${error}`);
+    }
+
+    if (submissionSetResponse && submissionSetResponse[1].notCreated && Object.keys(submissionSetResponse[1].notCreated).length > 0) {
+        const error = JSON.stringify(submissionSetResponse[1].notCreated);
+        console.error('[FASTMAIL_SUBMISSION_FAILED]', error);
+        throw new Error(`Failed to submit email for sending: ${error}`);
     }
 
     return result;

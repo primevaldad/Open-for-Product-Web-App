@@ -139,7 +139,7 @@ export default function ProjectTeam({
         try {
             const res = await sendProjectInviteAction({
                 projectId,
-                recipientEmail: inviteEmail,
+                recipientEmail: inviteEmail.trim(),
                 role: inviteRole,
                 customMessage
             });
