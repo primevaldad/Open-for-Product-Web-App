@@ -63,7 +63,7 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
     };
 }
 
-export default async function ProjectPage({ params }: { params: { id: string } }) {
+export default async function ProjectPage({ params, searchParams }: { params: { id: string }, searchParams: { inviteToken?: string, tab?: string } }) {
     const data = await getProjectPageData(params.id);
 
     if (!data.project) {
@@ -89,6 +89,8 @@ export default async function ProjectPage({ params }: { params: { id: string } }
             users={deepSerialize(users)}
             currentUser={deepSerialize(currentUser)}
             learningPaths={deepSerialize(learningPaths)}
+            inviteToken={searchParams.inviteToken}
+            initialTab={searchParams.tab}
         />
     );
 }

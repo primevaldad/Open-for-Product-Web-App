@@ -1,17 +1,19 @@
 'use client';
 
 import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { User } from '@/lib/types';
 
 interface OnboardingGuardProps {
     user: User | null;
+    memberProjectIds?: string[];
     children: React.ReactNode;
 }
 
-export function OnboardingGuard({ user, children }: OnboardingGuardProps) {
+export function OnboardingGuard({ user, memberProjectIds = [], children }: OnboardingGuardProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         if (!user) return;
@@ -19,20 +21,27 @@ export function OnboardingGuard({ user, children }: OnboardingGuardProps) {
         // Skip check for guest users
         if (user.role === 'guest') return;
 
-        // Skip check if already completed or explicitly bypassed
-        if (user.onboardingCompleted || user.bypassOnboarding) return;
+        // Skip check if already completed
+        if (user.onboardingCompleted) return;
+
+        const isProjectRoute = pathname.startsWith('/projects/') && pathname.split('/').length >= 3;
+        const projectIdFromUrl = isProjectRoute ? pathname.split('/')[2] : null;
+        const hasInviteToken = !!searchParams.get('inviteToken');
 
         // Define exempt routes that SHOULD NOT trigger a redirect to /onboarding
-        // We want users to be able to see projects they were invited to.
-        const isExempt = 
-            pathname.startsWith('/projects/') || 
-            pathname.startsWith('/onboarding') ||
-            pathname.startsWith('/api/');
+        let isExempt = pathname.startsWith('/onboarding') || pathname.startsWith('/api/');
+
+        // If visiting a project, allow bypass ONLY IF they are a member OR have an invite token
+        if (isProjectRoute && projectIdFromUrl) {
+            if (hasInviteToken || memberProjectIds.includes(projectIdFromUrl)) {
+                isExempt = true;
+            }
+        }
 
         if (!isExempt) {
             router.push('/onboarding');
         }
-    }, [user, pathname, router]);
+    }, [user, pathname, router, memberProjectIds, searchParams]);
 
     return <>{children}</>;
 }

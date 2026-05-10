@@ -85,7 +85,7 @@ export async function sendProjectInviteAction(data: {
 
         // Prepare email content
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-        const inviteLink = `${baseUrl}/projects/${projectId}/join?token=${token}`;
+        const inviteLink = `${baseUrl}/projects/${projectId}?tab=team&inviteToken=${token}`;
         
         const subject = `You've been invited to join ${projectData.name}`;
         

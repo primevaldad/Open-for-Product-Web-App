@@ -16,6 +16,8 @@ import { ResponsiveLayout } from '@/components/responsive-layout';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { hasNewCommunityContent } from '@/lib/data.server';
 
+import { getProjectsByUserId } from '@/lib/data.server';
+
 export default async function AppLayout({
   children,
 }: Readonly<{
@@ -28,6 +30,12 @@ export default async function AppLayout({
       currentUser.lastCommunityFeedSeenAt
   ) : false;
 
+  let memberProjectIds: string[] = [];
+  if (currentUser) {
+      const userProjects = await getProjectsByUserId(currentUser.id);
+      memberProjectIds = userProjects.map(p => p.id);
+  }
+
   return (
     <ThemeProvider
         attribute="class"
@@ -37,7 +45,7 @@ export default async function AppLayout({
     >
         <AuthProvider serverUser={currentUser}>
             <TooltipProvider>
-                <OnboardingGuard user={currentUser}>
+                <OnboardingGuard user={currentUser} memberProjectIds={memberProjectIds}>
                     <ResponsiveLayout 
                         serverUser={currentUser} 
                         notifications={<NotificationBell />}

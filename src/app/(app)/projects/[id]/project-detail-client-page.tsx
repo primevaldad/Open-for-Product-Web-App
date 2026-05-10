@@ -52,6 +52,8 @@ interface ProjectDetailClientPageProps {
     learningPaths: LearningPath[];
     users: User[];
     currentUser: User | null;
+    inviteToken?: string;
+    initialTab?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +217,8 @@ export default function ProjectDetailClientPage({
     learningPaths: initialLearningPaths,
     users: allUsers,
     currentUser: serverUser,
+    inviteToken,
+    initialTab,
 }: ProjectDetailClientPageProps) {
     const { currentUser: clientUser } = useAuth();
     const currentUser = clientUser || serverUser;
@@ -224,10 +228,19 @@ export default function ProjectDetailClientPage({
     const [posts, setPosts] = useState(initialPosts);
     const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
     const [users, setUsers] = useState(allUsers);
-    const [tabIndex, setTabIndex] = useState(0);
+    
+    // Map initialTab string to tab index
+    const initialTabIndex = useMemo(() => {
+        if (!initialTab) return 0;
+        const map: Record<string, number> = { about: 0, posts: 1, tasks: 2, discussion: 3, team: 4, learning: 5, governance: 6 };
+        return map[initialTab.toLowerCase()] ?? 0;
+    }, [initialTab]);
+
+    const [tabIndex, setTabIndex] = useState(initialTabIndex);
 
     const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
+    const [acceptingInvite, setAcceptingInvite] = useState(false);
 
     const router = useRouter();
     const { toast } = useToast();
@@ -285,6 +298,7 @@ export default function ProjectDetailClientPage({
     );
 
     const isGuest = !currentUser || currentUser.role === 'guest';
+    const hasReadAccess = !isGuest || !!inviteToken;
 
     const handleServerResponse = (
         result: { success: boolean, [key: string]: any }, 
@@ -324,6 +338,26 @@ export default function ProjectDetailClientPage({
         if (!window.confirm('Are you sure you want to leave this project?')) return;
         const result = await leaveProjectAction(project.id);
         handleServerResponse(result, 'Successfully left the project.', 'Failed to leave the project.');
+    };
+
+    const handleAcceptInvite = async () => {
+        if (!inviteToken) return;
+        setAcceptingInvite(true);
+        try {
+            // Import dynamically or ensure it's available. We'll need to import acceptInviteAction
+            const { acceptInviteAction } = await import('@/app/actions/invite');
+            const res = await acceptInviteAction(inviteToken);
+            if (res.success) {
+                toast({ title: 'Success', description: 'You have joined the project!' });
+                // We should remove the invite token from the URL to dismiss the banner
+                router.replace(`/projects/${project.id}?tab=team`);
+                router.refresh();
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } finally {
+            setAcceptingInvite(false);
+        }
     };
 
     const handleApplyForRole = async (userId: string, role: 'lead' | 'contributor' | 'participant') => {
@@ -421,9 +455,40 @@ export default function ProjectDetailClientPage({
         );
     };
 
+    const renderInviteBanner = () => {
+        if (!inviteToken) return null;
+        
+        return (
+            <div className="sticky top-0 z-50 w-full bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800 p-4 shadow-sm backdrop-blur-sm">
+                <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-sm sm:text-base text-blue-900 dark:text-blue-100">
+                        <strong>You&apos;ve been invited!</strong> Join {project.name} to collaborate with the team.
+                    </div>
+                    <div>
+                        {!currentUser ? (
+                            <Button 
+                                size="sm" 
+                                onClick={() => router.push(`/login?redirectTo=${encodeURIComponent(`/projects/${project.id}?tab=team&inviteToken=${inviteToken}`)}`)}
+                            >
+                                Sign up to Accept
+                            </Button>
+                        ) : (
+                            <Button size="sm" onClick={handleAcceptInvite} disabled={acceptingInvite}>
+                                {acceptingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Accept Invitation
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div className="container mx-auto px-4 py-8">
-            <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
+        <>
+            {renderInviteBanner()}
+            <div className="container mx-auto px-4 py-8">
+                <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
 
             {/* Add to Collection & Steem — shown below the header for non-guests */}
             {!isGuest && (
@@ -449,10 +514,10 @@ export default function ProjectDetailClientPage({
 
                     <TabPanel>
                         <div className="prose dark:prose-invert max-w-none p-4 relative">
-                            <div className={isGuest ? "blur-md pointer-events-none select-none" : ""}>
+                            <div className={!hasReadAccess ? "blur-md pointer-events-none select-none" : ""}>
                                 <Markdown content={project.description} />
                             </div>
-                            {isGuest && (
+                            {!hasReadAccess && (
                                 <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/30 dark:bg-black/30">
                                     <GuestOverlay />
                                 </div>
@@ -460,7 +525,7 @@ export default function ProjectDetailClientPage({
                         </div>
                     </TabPanel>
                     <TabPanel>
-                        {!isGuest ? (
+                        {hasReadAccess ? (
                             <ProjectPostsTab posts={posts} users={users} />
                         ) : (
                             <div className="relative py-12 flex justify-center">
@@ -472,7 +537,7 @@ export default function ProjectDetailClientPage({
                         )}
                     </TabPanel>
                     <TabPanel>
-                        {!isGuest ? (
+                        {hasReadAccess ? (
                             <>
                                 <div className="flex justify-end mb-4">
                                     {isMember && (
@@ -493,7 +558,7 @@ export default function ProjectDetailClientPage({
                         )}
                     </TabPanel>
                     <TabPanel>
-                         {!isGuest ? (
+                         {hasReadAccess ? (
                             <DiscussionForum 
                                 discussions={hydratedDiscussions}
                                 onAddComment={handleAddComment}
@@ -515,7 +580,7 @@ export default function ProjectDetailClientPage({
                          )}
                     </TabPanel>
                     <TabPanel>
-                        {currentUser ? (
+                        {hasReadAccess ? (
                             <ProjectTeam 
                                 projectId={project.id}
                                 team={project.team}
@@ -527,7 +592,11 @@ export default function ProjectDetailClientPage({
                                 approveRoleApplication={handleApproveRoleApplication}
                                 denyRoleApplication={handleDenyRoleApplication}
                             />
-                            ) : <p className="py-4">Login to see the project team</p>}
+                            ) : (
+                                <div className="relative py-12 flex justify-center">
+                                    <GuestOverlay />
+                                </div>
+                            )}
                     </TabPanel>
                     <TabPanel>
                         <div className="p-4">
@@ -563,5 +632,6 @@ export default function ProjectDetailClientPage({
                 />
             )}
         </div>
+        </>
     );
 }

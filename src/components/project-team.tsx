@@ -25,7 +25,7 @@ interface ProjectTeamProps {
     projectId: string;
     team: HydratedProjectMember[];
     users: User[];
-    currentUser: User;
+    currentUser: User | null;
     addTeamMember: (userId: string) => void;
     isLead: boolean;
     applyForRole: (userId: string, role: 'lead' | 'contributor' | 'participant') => Promise<void>;
@@ -82,8 +82,8 @@ export default function ProjectTeam({
     }, [team]);
 
     const userMap = useMemo(() => new Map(team.map(member => [member.userId, member])), [team]);
-    const isCurrentUserMember = userMap.has(currentUser.id);
-    const currentUserMember = userMap.get(currentUser.id);
+    const isCurrentUserMember = currentUser ? userMap.has(currentUser.id) : false;
+    const currentUserMember = currentUser ? userMap.get(currentUser.id) : undefined;
 
     const availableRoles: Array<'participant' | 'contributor' | 'lead'> = ['participant', 'contributor', 'lead'];
 
@@ -103,6 +103,7 @@ export default function ProjectTeam({
     }, [selectableRoles, selectedRole]);
 
     const handleApply = async () => {
+        if (!currentUser) return;
         setLoading({ [currentUser.id]: true });
         await applyForRole(currentUser.id, selectedRole);
     };
@@ -183,9 +184,10 @@ export default function ProjectTeam({
     };
 
     const myInvite = useMemo(() => {
+        if (!currentUser) return null;
         if (isCurrentUserMember) return null;
         return emailInvites.find(i => i.email === currentUser.email && i.status === 'pending');
-    }, [emailInvites, currentUser.email, isCurrentUserMember]);
+    }, [emailInvites, currentUser, isCurrentUserMember]);
 
     const filteredCollaborators = useMemo(() => {
         if (!inviteEmail) return [];
@@ -234,7 +236,7 @@ export default function ProjectTeam({
                 </Card>
             )}
 
-            {!currentUserMember?.pendingRole && selectableRoles.length > 0 && (
+            {!currentUserMember?.pendingRole && selectableRoles.length > 0 && currentUser && (
                 <Card>
                     <CardHeader>
                         <CardTitle>{isCurrentUserMember ? 'Apply for a New Role' : 'Join the Project'}</CardTitle>
