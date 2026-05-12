@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/data.server';
 import { generateProjectEmbedding } from '@/lib/ai.server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { HydratedProject, ServerActionResponse } from '@/lib/types';
-import { toHydratedProject, serializeTimestamp } from '@/lib/utils.server';
+import { toHydratedProject, serializeTimestamp, deepSerialize } from '@/lib/utils.server';
 import { getAllUsers } from '@/lib/data.server';
 
 export async function searchProjectsSemantic(query: string): Promise<ServerActionResponse<HydratedProject[]>> {
@@ -39,9 +39,13 @@ export async function searchProjectsSemantic(query: string): Promise<ServerActio
     const usersMap = new Map(usersData.map((user) => [user.id, user]));
 
     const projects = searchResult.docs.map((doc) => {
-      const { embedding, ...data } = doc.data(); // Strip embedding
+      const data = doc.data();
+      // Embedding is already handled by doc.data() destructuring or similar if we wanted, 
+      // but let's be explicit.
+      const { embedding, ...rest } = data;
+      
       return toHydratedProject({
-        ...data,
+        ...rest,
         id: doc.id,
         createdAt: serializeTimestamp(data.createdAt),
         updatedAt: serializeTimestamp(data.updatedAt),
@@ -50,7 +54,7 @@ export async function searchProjectsSemantic(query: string): Promise<ServerActio
       } as any, usersMap);
     });
 
-    return { success: true, data: projects };
+    return deepSerialize({ success: true, data: projects });
   } catch (error) {
     console.error('Semantic search failed:', error);
     return { success: false, error: 'An unexpected error occurred during semantic search.' };
