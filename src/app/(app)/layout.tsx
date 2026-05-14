@@ -16,7 +16,7 @@ import { ResponsiveLayout } from '@/components/responsive-layout';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { hasNewCommunityContent } from '@/lib/data.server';
 
-import { getProjectsByUserId } from '@/lib/data.server';
+import { getProjectIdsForUser } from '@/lib/data.server';
 
 export default async function AppLayout({
   children,
@@ -32,10 +32,8 @@ export default async function AppLayout({
 
   let memberProjectIds: string[] = [];
   if (currentUser) {
-      const userProjects = await getProjectsByUserId(currentUser.id);
-      memberProjectIds = userProjects.map(p => p.id);
+    memberProjectIds = await getProjectIdsForUser(currentUser.id);
   }
-
   return (
     <ThemeProvider
         attribute="class"

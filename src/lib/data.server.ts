@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
-import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember, ProjectCollection, HydratedCollection } from './types';
+import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember, ProjectCollection, HydratedCollection, Post } from './types';
 import { serializeTimestamp } from './utils.server';
 
 // This file contains server-side data access functions.
@@ -551,7 +551,39 @@ export async function getAiSuggestedProjects(currentUser: User, allProjects: Hyd
     return sortedProjects.slice(0, 3);
 }
 
-// This function is new and needs to be implemented
+
+
+/**
+ * Efficiently fetch project IDs for a given user without hydrating full projects.
+ * Assumes each project document has a `memberIds` array field containing all user IDs
+ * that are members of the project (including the owner).
+ */
+export async function getProjectIdsForUser(userId: string): Promise<string[]> {
+  if (!userId) return [];
+  try {
+    // Query projects where the user is the owner
+    const ownedSnap = await adminDb.collection('projects')
+      .where('ownerId', '==', userId)
+      .select('__name__') // only fetch doc IDs
+      .get();
+    const ownedIds = ownedSnap.docs.map(d => d.id);
+
+    // Query projects where the user is listed in memberIds array
+    const memberSnap = await adminDb.collection('projects')
+      .where('memberIds', 'array-contains', userId)
+      .select('__name__')
+      .get();
+    const memberIds = memberSnap.docs.map(d => d.id);
+
+    // Combine and dedupe
+    const allIds = Array.from(new Set([...ownedIds, ...memberIds]));
+    return allIds;
+  } catch (e) {
+    console.error('Failed to fetch project IDs for user', e);
+    return [];
+  }
+}
+
 export async function logOrphanedUser(user: User): Promise<void> {
     try {
         const orphanedUsersRef = adminDb.collection('orphanedUsers').doc(user.id);
