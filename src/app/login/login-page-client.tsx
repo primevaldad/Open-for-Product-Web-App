@@ -60,6 +60,37 @@ function LoginForm() {
     },
   });
 
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetPassword = async () => {
+    const email = form.getValues('email');
+    if (!email) {
+      form.setError('email', { type: 'manual', message: 'Please enter your email address first to reset your password.' });
+      // Use setTimeout to ensure the error message is visible if we want to focus, or just return
+      return;
+    }
+
+    setIsResetting(true);
+    setError(null);
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      await sendPasswordResetEmail(auth, email);
+      toast({
+        title: "Password reset email sent",
+        description: "Check your inbox for a link to reset your password.",
+      });
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      if (error.code === 'auth/user-not-found') {
+         setError("No user found with this email address.");
+      } else {
+         setError(error.message || "Failed to send password reset email. Please try again.");
+      }
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   async function onSubmit(values: FormValues) {
     setError(null);
     
@@ -135,7 +166,7 @@ function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="your@email.com" {...field} disabled={isPending}/>
+                    <Input placeholder="your@email.com" {...field} disabled={isPending || isResetting}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -146,15 +177,25 @@ function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Password</FormLabel>
+                    <button 
+                      type="button" 
+                      onClick={handleResetPassword} 
+                      disabled={isPending || isResetting}
+                      className="text-sm text-primary hover:underline disabled:opacity-50"
+                    >
+                      {isResetting ? "Sending..." : "Forgot password?"}
+                    </button>
+                  </div>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} disabled={isPending}/>
+                    <Input type="password" placeholder="••••••••" {...field} disabled={isPending || isResetting}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isPending}>
+            <Button type="submit" className="w-full" disabled={isPending || isResetting}>
               {isPending ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
