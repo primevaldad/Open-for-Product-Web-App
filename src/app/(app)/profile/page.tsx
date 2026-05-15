@@ -1,3 +1,8 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'My Profile | Open for Product',
+};
 
 import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/session.server'; // Corrected import

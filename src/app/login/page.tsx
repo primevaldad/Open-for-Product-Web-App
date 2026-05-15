@@ -1,3 +1,8 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Sign In | Open for Product',
+};
 
 import LoginPageClient from './login-page-client';
 import { getAuthenticatedUser } from '@/lib/session.server';

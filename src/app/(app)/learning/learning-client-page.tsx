@@ -1,137 +1,74 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { CheckCircle, Lock, FlaskConical, Link2 } from 'lucide-react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useEffect, useState } from 'react';
+import { getLearningPathsAction, LearningPathsActionResponse } from '@/app/actions/learning';
+import LearningPathCard from '@/components/learning-path-card';
+import type { LearningPath } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { projectCategories, iconMap } from '@/lib/static-data';
-import { cn } from '@/lib/utils';
-import type { LearningPath, UserLearningProgress, Project, ProjectPathLink } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
-interface LearningClientPageProps {
-    learningPaths: LearningPath[];
-    userProgress: UserLearningProgress[];
-    projects: Project[];
-    allProjectPathLinks: ProjectPathLink[];
-}
+export default function LearningPathsPage() {
+    const [paths, setPaths] = useState<LearningPath[]>([]);
+    const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasMore, setHasMore] = useState(true);
 
-export default function LearningClientPage({ learningPaths, userProgress, projects, allProjectPathLinks }: LearningClientPageProps) {
-    const [selectedCategories, setSelectedCategories] = useState<string[]>([]); // Changed to string[] as ProjectCategory type was removed from import
-    const [showMyPaths, setShowMyPaths] = useState(false);
+    async function fetchLearningPaths(startAfter: QueryDocumentSnapshot<DocumentData> | null = null) {
+        setIsLoading(true);
+        try {
+            const response = await getLearningPathsAction(10, startAfter);
 
-    const toggleCategory = (category: string) => { // Changed type to string
-        setSelectedCategories(prev =>
-            prev.includes(category)
-                ? prev.filter(c => c !== category)
-                : [...prev, category]
-        );
+            if (!response.success) {
+                console.error("Failed to fetch learning paths:", (response as { success: false; error: string }).error);
+                setHasMore(false);
+                setIsLoading(false);
+                return;
+            }
+
+            setPaths(prevPaths => {
+                const allPaths = [...prevPaths, ...response.paths];
+                const uniquePathsMap = new Map();
+                allPaths.forEach(path => uniquePathsMap.set(path.pathId, path));
+                return Array.from(uniquePathsMap.values());
+            });
+            setLastVisible(response.lastVisible as QueryDocumentSnapshot<DocumentData>);
+            setHasMore(response.paths.length === 10);
+
+        } catch (error) {
+            console.error("Failed to fetch learning paths:", error);
+            setHasMore(false);
+        }
+        setIsLoading(false);
+    }
+
+    useEffect(() => {
+        fetchLearningPaths();
+    }, []);
+
+    const handleLoadMore = () => {
+        if (lastVisible) {
+            fetchLearningPaths(lastVisible);
+        }
     };
-    
-    const startedPathIds = userProgress.map(p => p.pathId);
-
-    const filteredPaths = learningPaths.filter(path => {
-        const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(path.category as string); // Added type assertion
-        const myPathsMatch = !showMyPaths || startedPathIds.includes(path.pathId);
-        return categoryMatch && myPathsMatch;
-    });
 
     return (
-        <>
-            <div className="mb-6">
-                <h2 className="text-2xl font-bold tracking-tight">Unlock Your Potential</h2>
-                <p className="text-muted-foreground">Gain new skills by contributing to real projects. As you reach milestones, new paths unlock.</p>
+        <div className="container mx-auto p-4">
+            <header className="text-center mb-8">
+                <h1 className="text-4xl font-bold text-primary">Learning Paths</h1>
+                <p className="text-lg text-muted-foreground mt-2">Follow these structured paths to master new skills and technologies.</p>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paths.map(path => (
+                    <LearningPathCard key={path.pathId} path={path} />
+                ))}
+                {isLoading && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full" />)}
             </div>
-            
-            <div className="mb-6 flex flex-col gap-4">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                    <div className="flex flex-wrap items-center gap-2">
-                        {projectCategories.map(({ name, icon: Icon }) => (
-                            <Button
-                                key={name}
-                                variant={selectedCategories.includes(name) ? "default" : "outline"}
-                                className="gap-2"
-                                onClick={() => toggleCategory(name)}
-                            >
-                                <Icon className="h-4 w-4" />
-                                {name}
-                            </Button>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-4 md:ml-auto">
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id="my-paths" checked={showMyPaths} onCheckedChange={(checked) => setShowMyPaths(!!checked)} />
-                            <Label htmlFor="my-paths">My Paths</Label>
-                        </div>
-                    </div>
+            {hasMore && !isLoading && (
+                <div className="text-center mt-8">
+                    <Button onClick={handleLoadMore}>Load More</Button>
                 </div>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredPaths.map((path) => {
-                    const progress = userProgress.find(p => p.pathId === path.pathId);
-                    const isCompleted = progress && path.modules.length > 0 && progress.completedModules.length === path.modules.length;
-                    const Icon = iconMap[path.category as keyof typeof iconMap] || FlaskConical;
-
-                    const recommendingProjectLinks = allProjectPathLinks.filter(link => link.learningPathId === path.pathId);
-                    const recommendingProjects = recommendingProjectLinks
-                        .map(link => projects.find(p => p.id === link.projectId))
-                        .filter((p): p is Project => !!p);
-
-                    return (
-                        <Link key={path.pathId} href={path.isLocked ? '#' : `/learning/${path.pathId}`} className={cn("flex flex-col", path.isLocked && "pointer-events-none")}>
-                            <Card className={cn("flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1", path.isLocked && "bg-muted/50", isCompleted && "border-primary/50")}>
-                                <CardHeader>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                                            <Icon className="h-6 w-6 text-primary" />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            {isCompleted && <Badge variant="secondary" className="border-green-500/50 bg-green-500/10 text-green-700"> <CheckCircle className="mr-1 h-3 w-3" /> Completed</Badge>}
-                                            {path.isLocked && <Badge variant="secondary"> <Lock className="mr-1 h-3 w-3" /> Locked</Badge>}
-                                        </div>
-                                    </div>
-                                    <CardTitle className="pt-4">{path.title}</CardTitle>
-                                    <div className="flex items-center gap-2 pt-2">
-                                        <Badge variant="outline" className="w-fit">{path.category}</Badge>
-                                        {recommendingProjects.length > 0 && (
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger>
-                                                        <Badge variant="secondary" className="gap-1.5">
-                                                            <Link2 className="h-3 w-3" />
-                                                            {recommendingProjects.length} Project{recommendingProjects.length > 1 ? 's' : ''}
-                                                        </Badge>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p className="font-semibold mb-1">Recommended by:</p>
-                                                        <ul className="list-disc list-inside">
-                                                            {recommendingProjects.map(p => <li key={p.id}>{p.name}</li>)}
-                                                        </ul>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        )}
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="flex-grow pt-0">
-                                    <p className="text-muted-foreground">{path.description}</p>
-                                </CardContent>
-                                <CardFooter className="flex justify-between">
-                                    <span className="text-sm font-medium text-muted-foreground">{path.duration}</span>
-                                    <Button asChild disabled={path.isLocked}>
-                                        <span>{isCompleted ? "Review Path" : "Start Path"}</span>
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        </Link>
-                    )
-                })}
-            </div>
-        </>
+            )}
+        </div>
     );
 }

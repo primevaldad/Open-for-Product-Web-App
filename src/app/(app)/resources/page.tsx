@@ -1,4 +1,10 @@
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Resources | Open for Product',
+};
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const resources = [

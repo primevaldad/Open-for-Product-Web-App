@@ -1,3 +1,9 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Activity | Open for Product',
+};
+
 import { redirect } from 'next/navigation';
 import { getActivityPageData } from "@/app/actions/activity";
 import ActivityClientPage from "./activity-client-page";

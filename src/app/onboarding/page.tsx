@@ -1,3 +1,9 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Onboarding | Open for Product',
+};
+
 import { OnboardingForm } from "./onboarding-form";
 import { getAuthenticatedUser } from "@/lib/session.server";
 import { redirect } from "next/navigation";

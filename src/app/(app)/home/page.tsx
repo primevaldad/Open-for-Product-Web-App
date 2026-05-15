@@ -1,3 +1,8 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Home | Open for Product',
+};
 
 import { getHomePageData } from '@/app/actions/home';
 import { HomePageDataResponse } from '@/lib/types';

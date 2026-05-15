@@ -1,8 +1,18 @@
 
+import { Metadata } from 'next';
 import { findLearningPathsByIds } from '@/lib/data.server';
 import ModuleAccordion from '@/components/module-accordion';
 import { deepSerialize } from '@/lib/utils.server';
 import type { LearningPath } from '@/lib/types';
+
+export async function generateMetadata({ params }: { params: { pathId: string } }): Promise<Metadata> {
+    const paths = await findLearningPathsByIds([params.pathId]);
+    if (paths.length === 0) return { title: 'Learning Path Not Found | Open for Product' };
+    return {
+        title: `Learning Path - ${paths[0].title} | Open for Product`,
+        description: paths[0].description,
+    };
+}
 
 // This is a server component
 async function getLearningPathDetails(pathId: string): Promise<{ path: LearningPath | null }> {

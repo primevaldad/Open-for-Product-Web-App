@@ -1,4 +1,5 @@
 
+import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { 
     findProjectById, 
@@ -19,6 +20,15 @@ import type {
     Post
 } from '@/lib/types';
 import { deepSerialize } from '@/lib/utils.server';
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+    const project = await findProjectById(params.id, null);
+    if (!project) return { title: 'Project Not Found | Open for Product' };
+    return {
+        title: `Project - ${project.name} | Open for Product`,
+        description: project.description,
+    };
+}
 
 interface ProjectPageData {
     project: HydratedProject | null;
