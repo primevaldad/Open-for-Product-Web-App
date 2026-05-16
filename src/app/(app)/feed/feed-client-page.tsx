@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import type { Post, Discussion, User, Project } from '@/lib/types';
 import { ProjectPostsTab } from '@/components/projects/project-posts-tab';
 import { FeedDiscussionItem } from '@/components/projects/feed-discussion-item';
 import { HydratedActivityItem, renderActivityMessage, toSafeDate } from './utils';
