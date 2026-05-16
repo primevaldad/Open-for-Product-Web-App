@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import 'react-tabs/style/react-tabs.css';
-import type { Post, Discussion, User, Project } from '@/lib/types';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ProjectPostsTab } from '@/components/projects/project-posts-tab';
 import { FeedDiscussionItem } from '@/components/projects/feed-discussion-item';
 import { HydratedActivityItem, renderActivityMessage, toSafeDate } from './utils';
 import { UserAvatar } from '@/components/user-avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { markCommunityFeedAsSeenAction } from '@/app/actions/user';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface FeedClientPageProps {
   memberPosts: Post[];
@@ -32,46 +31,61 @@ export function FeedClientPage({
   projects,
   currentUser
 }: FeedClientPageProps) {
-  const [mainTab, setMainTab] = useState(0);
+  const [activeMainTab, setActiveMainTab] = useState('my');
 
-  React.useEffect(() => {
-    if (mainTab === 1) {
+  const handleTabChange = (value: string) => {
+    setActiveMainTab(value);
+    if (value === 'community') {
       markCommunityFeedAsSeenAction(currentUser.id);
     }
-  }, [mainTab, currentUser.id]);
+  };
 
   const projectMap = new Map(projects.map(p => [p.id, p]));
   const userMap = new Map(users.map(u => [u.id, u]));
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <h1 className="text-3xl font-bold mb-8">Feed</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Feed</h1>
+      </div>
 
-      <Tabs selectedIndex={mainTab} onSelect={setMainTab}>
-        <TabList className="mb-6 border-b border-gray-200 dark:border-gray-700">
-          <Tab className="pb-2 px-4 cursor-pointer hover:text-blue-600 transition-colors ui-selected:border-b-2 ui-selected:border-blue-600 ui-selected:text-blue-600 outline-none">
-            My Feed
-          </Tab>
-          <Tab className="pb-2 px-4 cursor-pointer hover:text-blue-600 transition-colors ui-selected:border-b-2 ui-selected:border-blue-600 ui-selected:text-blue-600 outline-none">
-            Community Feed
-          </Tab>
-        </TabList>
+      <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-8">
+          <TabsTrigger value="my">My Feed</TabsTrigger>
+          <TabsTrigger value="community">Community Feed</TabsTrigger>
+        </TabsList>
 
-        <TabPanel>
-          <Tabs>
-            <TabList className="mb-4 text-sm">
-              <Tab>Project Posts</Tab>
-              <Tab>Discussions</Tab>
-              <Tab>My Activity</Tab>
-            </TabList>
+        <TabsContent value="my" className="space-y-6">
+          <Tabs defaultValue="posts" className="w-full">
+            <TabsList className="bg-transparent border-b rounded-none h-auto p-0 mb-6 w-full justify-start gap-6">
+              <TabsTrigger 
+                value="posts" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2"
+              >
+                Project Posts
+              </TabsTrigger>
+              <TabsTrigger 
+                value="discussions" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2"
+              >
+                Discussions
+              </TabsTrigger>
+              <TabsTrigger 
+                value="activity" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2"
+              >
+                My Activity
+              </TabsTrigger>
+            </TabsList>
 
-            <TabPanel>
+            <TabsContent value="posts">
               <ProjectPostsTab posts={memberPosts} users={users} />
-            </TabPanel>
-            <TabPanel>
+            </TabsContent>
+            
+            <TabsContent value="discussions">
               <div className="space-y-4">
                 {memberDiscussions.length === 0 ? (
-                  <p className="text-center py-12 text-muted-foreground">No recent discussions in your projects.</p>
+                  <EmptyState message="No recent discussions in your projects." />
                 ) : (
                   memberDiscussions.map(d => {
                     const author = userMap.get(d.userId);
@@ -81,21 +95,22 @@ export function FeedClientPage({
                   })
                 )}
               </div>
-            </TabPanel>
-            <TabPanel>
+            </TabsContent>
+            
+            <TabsContent value="activity">
               <div className="space-y-4">
                 {notifications.length === 0 ? (
-                  <p className="text-center py-12 text-muted-foreground">No recent activity.</p>
+                  <EmptyState message="No recent activity found." />
                 ) : (
                   notifications.map(item => (
-                    <div key={item.id} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-800 flex items-start gap-4">
+                    <div key={item.id} className="p-4 border rounded-lg shadow-sm bg-card flex items-start gap-4 hover:bg-muted/50 transition-all cursor-default">
                       <UserAvatar user={item.actor} className="h-10 w-10 shrink-0" />
                       <div className="flex-1">
-                        <p className="text-sm">
+                        <div className="text-sm">
                           <span className="font-semibold">{item.actor.name}</span>
                           {' '}
                           {renderActivityMessage(item)}
-                        </p>
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           {formatDistanceToNow(toSafeDate(item.timestamp), { addSuffix: true })}
                         </p>
@@ -104,24 +119,35 @@ export function FeedClientPage({
                   ))
                 )}
               </div>
-            </TabPanel>
+            </TabsContent>
           </Tabs>
-        </TabPanel>
+        </TabsContent>
 
-        <TabPanel>
-          <Tabs>
-            <TabList className="mb-4 text-sm">
-              <Tab>Posts</Tab>
-              <Tab>Discussions</Tab>
-            </TabList>
+        <TabsContent value="community" className="space-y-6">
+          <Tabs defaultValue="posts" className="w-full">
+            <TabsList className="bg-transparent border-b rounded-none h-auto p-0 mb-6 w-full justify-start gap-6">
+              <TabsTrigger 
+                value="posts" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2"
+              >
+                Recent Posts
+              </TabsTrigger>
+              <TabsTrigger 
+                value="discussions" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2"
+              >
+                Active Discussions
+              </TabsTrigger>
+            </TabsList>
 
-            <TabPanel>
+            <TabsContent value="posts">
               <ProjectPostsTab posts={followedPosts} users={users} />
-            </TabPanel>
-            <TabPanel>
+            </TabsContent>
+            
+            <TabsContent value="discussions">
               <div className="space-y-4">
                 {followedDiscussions.length === 0 ? (
-                  <p className="text-center py-12 text-muted-foreground">No recent discussions in projects you follow.</p>
+                  <EmptyState message="No recent discussions in projects you follow." />
                 ) : (
                   followedDiscussions.map(d => {
                     const author = userMap.get(d.userId);
@@ -131,9 +157,9 @@ export function FeedClientPage({
                   })
                 )}
               </div>
-            </TabPanel>
+            </TabsContent>
           </Tabs>
-        </TabPanel>
+        </TabsContent>
       </Tabs>
     </div>
   );

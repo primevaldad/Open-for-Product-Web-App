@@ -10,6 +10,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { SteemLogo } from '@/components/steem-logo';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface ProjectPostsTabProps {
   posts: Post[];
@@ -20,11 +21,7 @@ export function ProjectPostsTab({ posts, users }: ProjectPostsTabProps) {
   const userMap = new Map(users.map(u => [u.id, u]));
 
   if (posts.length === 0) {
-    return (
-      <div className="py-12 text-center text-muted-foreground">
-        <p>No posts yet for this project.</p>
-      </div>
-    );
+    return <EmptyState message="No posts yet for this project." />;
   }
 
   return (
@@ -34,7 +31,7 @@ export function ProjectPostsTab({ posts, users }: ProjectPostsTabProps) {
         const date = toSafeDate(post.createdAt);
 
         return (
-          <Card key={post.id} className="overflow-hidden">
+          <Card key={post.id} className="overflow-hidden hover:bg-muted/50 transition-all">
             <CardHeader className="flex flex-row items-center gap-4 pb-2">
               {author && <UserAvatar user={author} className="h-10 w-10" />}
               <div className="flex-1">

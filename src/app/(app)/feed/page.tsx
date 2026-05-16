@@ -34,7 +34,7 @@ export default async function FeedPage() {
 
     // 2. Identify relevant projects
     const memberProjectIds = allProjects
-        .filter(p => p.team.some(m => m.userId === currentUser.id) || p.ownerId === currentUser.id)
+        .filter(p => p.team.some(m => m.userId === currentUser.id) || p.owner?.id === currentUser.id)
         .map(p => p.id);
     
     const followedProjectIds = currentUser.followedProjectIds || [];
@@ -67,7 +67,7 @@ export default async function FeedPage() {
             project,
             context: item.context
         };
-    }).filter(Boolean);
+    }).filter(Boolean) as any[];
 
     return (
         <FeedClientPage

@@ -19,7 +19,7 @@ export function FeedDiscussionItem({ discussion, author, project }: FeedDiscussi
   const date = toSafeDate(discussion.createdAt);
 
   return (
-    <Card className="hover:bg-accent/5 transition-colors">
+    <Card className="hover:bg-muted/50 transition-all">
       <CardContent className="p-4">
         <div className="flex gap-4">
           <UserAvatar user={author} className="h-10 w-10 shrink-0" />

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,13 +21,13 @@ import type { HydratedProject, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const SteemLogo = ({ className }: { className?: string }) => (
-  <svg 
-    viewBox="0 0 24 24" 
-    fill="currentColor" 
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
     className={cn("h-4 w-4", className)}
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M16.142 2l-2.072 2.646c1.32.42 2.454 1.253 3.242 2.373l2.046-2.613c-1.026-1.15-2.062-2.146-3.216-2.406zm-6.68 1.455l-2.071 2.646c.866.425 1.62.993 2.222 1.666l2.046-2.613c-.643-.593-1.4-.95-2.197-1.699zm10.538 4.545l-2.071 2.646c.15.534.227 1.1.227 1.682l2.046-2.613c.134-.787.05-1.464-.202-1.715zm-16.002 1l-2.07 2.646c-.15.534-.227 1.1-.227 1.682l2.045-2.613c-.133-.787-.049-1.464.202-1.715zm12.756 1.455l-2.071 2.646c.42 1.32 1.253 2.454 2.373 3.242l2.613-2.046c-1.15-1.026-2.146-2.062-2.915-3.842zm-6.68 1.455l-2.071 2.646c.425.866.993 1.62 1.666 2.222l2.613-2.046c-.593-.643-.95-1.4-1.699-2.197zm1.455 6.68l-2.646 2.071c.425.866.993 1.62 1.666 2.222l2.613-2.046c-.593-.643-.95-1.4-1.633-2.247zm-5.455-2.545l-2.646 2.071c1.32.42 2.454 1.253 3.242 2.373l2.613-2.046c-1.15-1.026-2.146-2.062-3.209-2.398z"/>
+    <path d="M16.142 2l-2.072 2.646c1.32.42 2.454 1.253 3.242 2.373l2.046-2.613c-1.026-1.15-2.062-2.146-3.216-2.406zm-6.68 1.455l-2.071 2.646c.866.425 1.62.993 2.222 1.666l2.046-2.613c-.643-.593-1.4-.95-2.197-1.699zm10.538 4.545l-2.071 2.646c.15.534.227 1.1.227 1.682l2.046-2.613c.134-.787.05-1.464-.202-1.715zm-16.002 1l-2.07 2.646c-.15.534-.227 1.1-.227 1.682l2.045-2.613c-.133-.787-.049-1.464.202-1.715zm12.756 1.455l-2.071 2.646c.42 1.32 1.253 2.454 2.373 3.242l2.613-2.046c-1.15-1.026-2.146-2.062-2.915-3.842zm-6.68 1.455l-2.071 2.646c.425.866.993 1.62 1.666 2.222l2.613-2.046c-.593-.643-.95-1.4-1.699-2.197zm1.455 6.68l-2.646 2.071c.425.866.993 1.62 1.666 2.222l2.613-2.046c-.593-.643-.95-1.4-1.633-2.247zm-5.455-2.545l-2.646 2.071c1.32.42 2.454 1.253 3.242 2.373l2.613-2.046c-1.15-1.026-2.146-2.062-3.209-2.398z" />
   </svg>
 );
 
@@ -41,7 +41,7 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
   const [open, setOpen] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [title, setTitle] = useState(`Project Update: ${project.name}`);
-  const [body, setBody] = useState(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.tagline}`);
+  const [body, setBody] = useState(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n\n\n\n\n${project.tagline}`);
   const [tags, setTags] = useState('openforproduct development');
 
   const handlePost = async () => {
@@ -72,7 +72,7 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
         .filter(t => t.length > 0);
 
       const permlink = `${project.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-update-${Date.now().toString(36)}`;
-      
+
       const jsonMetadata = JSON.stringify({
         tags: ['hive-111745', ...cleanTags],
         app: 'openforproduct/1.0',
@@ -133,23 +133,23 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
             Your post will be published to the <strong>Open for Product</strong> community (hive-111745).
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
           <div className="space-y-2">
             <Label htmlFor="title">Post Title</Label>
-            <Input 
-              id="title" 
-              value={title} 
-              onChange={(e) => setTitle(e.target.value)} 
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter a catchy title"
             />
           </div>
 
           <div className="space-y-2">
             <Label>Content (Markdown)</Label>
-            <MarkdownEditor 
-              value={body} 
-              onChange={setBody} 
+            <MarkdownEditor
+              value={body}
+              onChange={setBody}
               sideBySide={true}
               steemFlavor={true}
               className="min-h-[300px]"
@@ -158,10 +158,10 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
 
           <div className="space-y-2">
             <Label htmlFor="tags">Tags (space separated)</Label>
-            <Input 
-              id="tags" 
-              value={tags} 
-              onChange={(e) => setTags(e.target.value.toLowerCase().replace(/[^a-z\s]/g, ''))} 
+            <Input
+              id="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value.toLowerCase().replace(/[^a-z\s]/g, ''))}
               placeholder="e.g. development product community"
             />
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
@@ -172,8 +172,8 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
 
         <DialogFooter className="border-t pt-4">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={handlePost} 
+          <Button
+            onClick={handlePost}
             disabled={isPosting || !title || !body}
             className="gap-2"
           >

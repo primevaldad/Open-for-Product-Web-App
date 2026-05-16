@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,7 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
   const [open, setOpen] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [title, setTitle] = useState(`Update: ${project.name}`);
-  const [body, setBody] = useState(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.tagline}`);
+  const [body, setBody] = useState(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n${project.tagline}`);
   const [tags, setTags] = useState('openforproduct development');
   const [broadcastToSteem, setBroadcastToSteem] = useState(!!currentUser.steemVerified);
 
@@ -47,7 +47,7 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
         .split(/\s+/)
         .filter(t => t.length > 0);
 
-      const permlink = broadcastToSteem 
+      const permlink = broadcastToSteem
         ? `${project.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-update-${Date.now().toString(36)}`
         : undefined;
 
@@ -66,7 +66,7 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
       // 2. Optional Steem Broadcast
       if (broadcastToSteem && permlink) {
         if (!currentUser.steemUsername) {
-            throw new Error('Steem username not linked');
+          throw new Error('Steem username not linked');
         }
 
         const jsonMetadata = JSON.stringify({
@@ -95,10 +95,10 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
             await confirmSteemBroadcastAction(result.postId!, permlink);
             toast({ title: 'Published to Steem!' });
           } else {
-            toast({ 
-                variant: 'destructive', 
-                title: 'Steem Broadcast Failed', 
-                description: 'Post saved to OfP, but Steem broadcast failed.' 
+            toast({
+              variant: 'destructive',
+              title: 'Steem Broadcast Failed',
+              description: 'Post saved to OfP, but Steem broadcast failed.'
             });
           }
         }
@@ -110,7 +110,7 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
       });
       setOpen(false);
       setTitle(`Update: ${project.name}`);
-      setBody(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.tagline}`);
+      setBody(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n${project.tagline}`);
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -139,23 +139,23 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
             Share progress, news, or questions about <strong>{project.name}</strong>.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
           <div className="space-y-2">
             <Label htmlFor="title">Post Title</Label>
-            <Input 
-              id="title" 
-              value={title} 
-              onChange={(e) => setTitle(e.target.value)} 
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter a catchy title"
             />
           </div>
 
           <div className="space-y-2">
             <Label>Content (Markdown)</Label>
-            <MarkdownEditor 
-              value={body} 
-              onChange={setBody} 
+            <MarkdownEditor
+              value={body}
+              onChange={setBody}
               sideBySide={true}
               steemFlavor={broadcastToSteem}
               className="min-h-[300px]"
@@ -164,19 +164,19 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
 
           <div className="space-y-2">
             <Label htmlFor="tags">Tags (space separated)</Label>
-            <Input 
-              id="tags" 
-              value={tags} 
-              onChange={(e) => setTags(e.target.value.toLowerCase().replace(/[^a-z\s]/g, ''))} 
+            <Input
+              id="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value.toLowerCase().replace(/[^a-z\s]/g, ''))}
               placeholder="e.g. development product community"
             />
           </div>
 
           {currentUser.steemVerified && (
             <div className="flex items-center space-x-2 pt-2 border-t">
-              <Checkbox 
-                id="steem-broadcast" 
-                checked={broadcastToSteem} 
+              <Checkbox
+                id="steem-broadcast"
+                checked={broadcastToSteem}
                 onCheckedChange={(checked) => setBroadcastToSteem(!!checked)}
               />
               <Label htmlFor="steem-broadcast" className="flex items-center gap-2 cursor-pointer">
@@ -189,8 +189,8 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
 
         <DialogFooter className="border-t pt-4">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={handlePost} 
+          <Button
+            onClick={handlePost}
             disabled={isPosting || !title || !body}
             className="gap-2"
           >
