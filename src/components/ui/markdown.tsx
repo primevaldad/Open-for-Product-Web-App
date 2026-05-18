@@ -17,10 +17,16 @@ export default function Markdown({ content, steemFlavor = false }: MarkdownProps
             rehypePlugins={steemFlavor ? [rehypeRaw] : []}
             components={{
                 a: ({node, ...props}) => {
-                    if (props.href && (props.href.startsWith('http') || props.href.startsWith('https'))) {
-                        return <a {...props} target="_blank" rel="noopener noreferrer" />
+                    let href = props.href;
+                    // If href doesn't have a protocol, isn't a relative path, hash, or mailto, assume it's an external link
+                    if (href && !/^https?:\/\//i.test(href) && !href.startsWith('/') && !href.startsWith('#') && !href.startsWith('mailto:')) {
+                        href = `https://${href}`;
                     }
-                    return <a {...props} />
+                    
+                    if (href && (href.startsWith('http') || href.startsWith('https'))) {
+                        return <a {...props} href={href} target="_blank" rel="noopener noreferrer" />
+                    }
+                    return <a {...props} href={href} />
                 }
             }}
         >

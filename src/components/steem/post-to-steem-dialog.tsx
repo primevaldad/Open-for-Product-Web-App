@@ -150,7 +150,6 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
             <MarkdownEditor
               value={body}
               onChange={setBody}
-              sideBySide={true}
               steemFlavor={true}
               className="min-h-[300px]"
             />

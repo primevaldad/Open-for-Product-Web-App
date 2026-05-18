@@ -93,7 +93,6 @@ interface MarkdownEditorProps {
   placeholder?: string;
   className?: string;
   users?: User[];
-  sideBySide?: boolean;
   steemFlavor?: boolean;
 }
 
@@ -103,13 +102,9 @@ export function MarkdownEditor({
   placeholder, 
   className, 
   users = [],
-  sideBySide = false,
   steemFlavor = false
 }: MarkdownEditorProps) {
   const isUpdatingFromEditor = useRef(false);
-  const editorScrollRef = useRef<HTMLDivElement>(null);
-  const previewScrollRef = useRef<HTMLDivElement>(null);
-  const [syncScroll, setSyncScroll] = useState(true);
 
   const extensions = useMemo(() => [
     StarterKit.configure({
@@ -208,22 +203,20 @@ export function MarkdownEditor({
     immediatelyRender: false,
   });
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!syncScroll || !editorScrollRef.current || !previewScrollRef.current) return;
-    
-    const source = e.currentTarget;
-    const target = source === editorScrollRef.current ? previewScrollRef.current : editorScrollRef.current;
-    
-    const percentage = source.scrollTop / (source.scrollHeight - source.clientHeight);
-    target.scrollTop = percentage * (target.scrollHeight - target.clientHeight);
-  };
-
   const formattingTools = [
     { name: 'bold', action: () => editor?.chain().focus().toggleBold().run(), icon: Bold, tooltip: 'Bold', shortcut: 'Mod+B' },
     { name: 'italic', action: () => editor?.chain().focus().toggleItalic().run(), icon: Italic, tooltip: 'Italic', shortcut: 'Mod+I' },
     { name: 'code', action: () => editor?.chain().focus().toggleCode().run(), icon: Code, tooltip: 'Code Snippet', shortcut: 'Mod+E' },
     { name: 'blockquote', action: () => editor?.chain().focus().toggleBlockquote().run(), icon: Quote, tooltip: 'Quote', shortcut: 'Mod+Shift+B' },
-    { name: 'link', action: () => { const url = window.prompt('URL'); if (url) editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run(); }, icon: LinkIcon, tooltip: 'Link', shortcut: 'Mod+K' },
+    { name: 'link', action: () => { 
+      let url = window.prompt('URL'); 
+      if (url) {
+        if (!/^https?:\/\//i.test(url) && !url.startsWith('/') && !url.startsWith('#') && !url.startsWith('mailto:')) {
+          url = `https://${url}`;
+        }
+        editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run(); 
+      }
+    }, icon: LinkIcon, tooltip: 'Link', shortcut: 'Mod+K' },
     { name: 'bulletList', action: () => editor?.chain().focus().toggleBulletList().run(), icon: List, tooltip: 'Bullet List', shortcut: 'Mod+Shift+8' },
     { name: 'orderedList', action: () => editor?.chain().focus().toggleOrderedList().run(), icon: ListOrdered, tooltip: 'Numbered List', shortcut: 'Mod+Shift+7' },
   ] as const;
@@ -236,9 +229,21 @@ export function MarkdownEditor({
       return;
     }
     if (editor) {
+      // Retain the current selection if possible when updating externally
+      const { from, to } = editor.state.selection;
       editor.commands.setContent(value, { emitUpdate: false });
+      try {
+        editor.commands.setTextSelection({ from, to });
+      } catch (e) {
+        // Ignore selection restoration errors
+      }
     }
   }, [value, editor]);
+
+  const handleRawChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // We don't set isUpdatingFromEditor because we *want* the editor to sync from this value
+    onChange(e.target.value);
+  };
 
   const Toolbar = () => (
     <div className="flex items-center justify-between border-b p-1 bg-muted/20 sticky top-0 z-10">
@@ -290,73 +295,36 @@ export function MarkdownEditor({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
-      {sideBySide && (
-        <div className="flex items-center gap-2 px-2 border-l ml-1">
-          <Checkbox id="sync-scroll" checked={syncScroll} onCheckedChange={(val) => setSyncScroll(!!val)} />
-          <Label htmlFor="sync-scroll" className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground whitespace-nowrap cursor-pointer">Sync</Label>
-        </div>
-      )}
     </div>
   );
 
-  if (sideBySide) {
-    return (
-      <div className="rounded-md border border-input bg-background flex flex-col h-full min-h-[400px]">
-        <Toolbar />
-        <div className="grid grid-cols-2 divide-x h-full flex-1 overflow-hidden">
-          <div 
-            ref={editorScrollRef}
-            onScroll={handleScroll}
-            className="overflow-y-auto max-h-[600px] h-full scroll-smooth"
-          >
+  return (
+    <div className="flex flex-col w-full border rounded-md overflow-hidden bg-background">
+      <Tabs defaultValue="write" className="flex-1 flex flex-col">
+        <div className="flex items-center justify-between bg-muted/10 pr-1">
+          <TabsList className="bg-transparent h-10">
+            <TabsTrigger value="write" className="data-[state=active]:bg-background">Write</TabsTrigger>
+            <TabsTrigger value="markup" className="data-[state=active]:bg-background">Markup</TabsTrigger>
+          </TabsList>
+        </div>
+        
+        <TabsContent value="write" className="m-0 flex-1 data-[state=active]:flex flex-col min-h-[300px] outline-none">
+          <Toolbar />
+          <div className="flex-1 overflow-y-auto max-h-[500px]">
             <EditorContent editor={editor} />
           </div>
-          <div 
-            ref={previewScrollRef}
-            onScroll={handleScroll}
-            className="overflow-y-auto max-h-[600px] h-full p-4 prose dark:prose-invert max-w-none scroll-smooth"
-          >
-            <ReactMarkdown 
-              remarkPlugins={[remarkGfm]} 
-              rehypePlugins={steemFlavor ? [rehypeRaw, rehypeHighlight] : [rehypeHighlight]}
-            >
-              {value || "_Nothing to preview._"}
-            </ReactMarkdown>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col w-full border rounded-md">
-      <div className="flex items-center justify-between bg-muted/10">
-        <Tabs defaultValue="write" className="flex-1">
-          <div className="flex items-center justify-between pr-1">
-            <TabsList className="bg-transparent h-10">
-              <TabsTrigger value="write" className="data-[state=active]:bg-background">Write</TabsTrigger>
-              <TabsTrigger value="preview" className="data-[state=active]:bg-background">Preview</TabsTrigger>
-            </TabsList>
-            <div className="flex-1 flex justify-end">
-                <Toolbar />
-            </div>
-          </div>
-          <TabsContent value="write" className="m-0 border-t">
-            <div className="max-h-[500px] overflow-y-auto">
-              <EditorContent editor={editor} />
-            </div>
-          </TabsContent>
-          <TabsContent value="preview" className="m-0 border-t p-4 min-h-[300px] max-h-[500px] overflow-y-auto prose dark:prose-invert max-w-none">
-            <ReactMarkdown 
-              remarkPlugins={[remarkGfm]} 
-              rehypePlugins={steemFlavor ? [rehypeRaw, rehypeHighlight] : [rehypeHighlight]}
-            >
-              {value || "_Nothing to preview._"}
-            </ReactMarkdown>
-          </TabsContent>
-        </Tabs>
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="markup" className="m-0 flex-1 data-[state=active]:flex flex-col min-h-[300px] outline-none">
+          <textarea
+            value={value}
+            onChange={handleRawChange}
+            placeholder={placeholder || "Enter markdown here..."}
+            className="flex-1 w-full p-4 bg-background text-foreground font-mono text-sm resize-none focus:outline-none"
+            spellCheck={false}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

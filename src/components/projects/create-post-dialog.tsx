@@ -156,7 +156,6 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
             <MarkdownEditor
               value={body}
               onChange={setBody}
-              sideBySide={true}
               steemFlavor={broadcastToSteem}
               className="min-h-[300px]"
             />
