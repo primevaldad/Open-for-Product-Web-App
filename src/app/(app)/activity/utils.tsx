@@ -53,7 +53,8 @@ export function toSafeDate(timestamp: any): Date {
 export const hydrateActivityItem = (
     item: Activity,
     usersMap: Map<string, User>,
-    projectsMap: Map<string, Project>
+    projectsMap: Map<string, Project>,
+    accessibleCollectionsMap?: Map<string, any>
 ): HydratedActivityItem | null => {
     const actorId = item.actorId;
     if (!actorId) {
@@ -63,6 +64,21 @@ export const hydrateActivityItem = (
     const actor = usersMap.get(actorId);
     if (!actor) {
         return null;
+    }
+
+    // Security filter: if the activity is associated with a project but that project is not in projectsMap, filter it out.
+    if (item.projectId && !projectsMap.has(item.projectId)) {
+        return null;
+    }
+
+    // Security filter: if the activity is a collection activity, check accessibility.
+    if (item.type.startsWith('collection-') && item.context?.collectionId) {
+        const collId = item.context.collectionId;
+        if (item.context.isProjectCollection) {
+            if (!projectsMap.has(collId)) return null;
+        } else {
+            if (accessibleCollectionsMap && !accessibleCollectionsMap.has(collId)) return null;
+        }
     }
 
     const project = item.projectId ? projectsMap.get(item.projectId) : undefined;
@@ -147,8 +163,43 @@ export function renderActivityMessage(item: HydratedActivityItem) {
                 </>
             );
 
+        case 'collection-created':
+            return <>created the collection <span className="font-semibold text-blue-600">{item.context.collectionName}</span></>;
+
+        case 'collection-updated':
+            return <>updated the collection <span className="font-semibold text-blue-600">{item.context.collectionName}</span></>;
+
+        case 'collection-deleted':
+            return <>deleted the collection <span className="font-semibold text-blue-600">{item.context.collectionName}</span></>;
+
+        case 'collection-project-added': {
+            const collectionLink = item.context.isProjectCollection ? (
+                <Link href={`/projects/${item.context.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {item.context.collectionName}
+                </Link>
+            ) : (
+                <Link href={`/collections/${item.context.collectionSlug || item.context.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {item.context.collectionName}
+                </Link>
+            );
+            return <>collected {projectLink} into {collectionLink}</>;
+        }
+
+        case 'collection-project-removed': {
+            const collectionLink = item.context.isProjectCollection ? (
+                <Link href={`/projects/${item.context.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {item.context.collectionName}
+                </Link>
+            ) : (
+                <Link href={`/collections/${item.context.collectionSlug || item.context.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {item.context.collectionName}
+                </Link>
+            );
+            return <>removed {projectLink} from {collectionLink}</>;
+        }
+
         default:
-            return <>performed an unknown action on {projectLink}</>;
+            return <>performed an action on {projectLink}</>;
 
     }
 }

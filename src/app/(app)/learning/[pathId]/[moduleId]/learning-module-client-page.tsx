@@ -12,6 +12,7 @@ import { useTransition, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { User, UserLearningProgress, Module } from '@/lib/types';
 import type { completeModule } from '@/app/actions/learning';
+import { buildHybridUrl } from '@/lib/slug';
 
 interface LearningModuleClientPageProps {
     pathId: string;
@@ -25,16 +26,19 @@ interface LearningModuleClientPageProps {
 }
 
 function ModuleHeader({ pathId, pathTitle, module, prevModule, nextModule, onNextModule }: { pathId: string, pathTitle: string, module: Module, prevModule: Module | null, nextModule: Module | null, onNextModule: () => void }) {
+    const pathUrl = buildHybridUrl('/learning', pathId, pathTitle);
+    const prevModuleUrl = prevModule ? buildHybridUrl(pathUrl, prevModule.moduleId, prevModule.title) : '';
+
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
             <div className='flex items-center gap-4'>
-                <Link href={`/learning/${pathId}`}>
+                <Link href={pathUrl}>
                     <Button variant="outline" size="icon">
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                 </Link>
                 <div>
-                    <Link href={`/learning/${pathId}`} className="text-sm text-primary hover:underline">{pathTitle}</Link>
+                    <Link href={pathUrl} className="text-sm text-primary hover:underline">{pathTitle}</Link>
                     <h1 className="text-lg font-semibold md:text-xl">
                         {module.title}
                     </h1>
@@ -42,7 +46,7 @@ function ModuleHeader({ pathId, pathTitle, module, prevModule, nextModule, onNex
             </div>
             <div className="flex items-center gap-2">
                 {prevModule && (
-                    <Link href={`/learning/${pathId}/${prevModule.moduleId}`}>
+                    <Link href={prevModuleUrl}>
                         <Button variant="outline">Previous</Button>
                     </Link>
                 )}
@@ -114,7 +118,8 @@ export default function LearningModuleClientPage({
         handleCompletionToggle(true);
     }
     if (nextModule) {
-        router.push(`/learning/${pathId}/${nextModule.moduleId}`);
+        const pathUrl = buildHybridUrl('/learning', pathId, pathTitle);
+        router.push(buildHybridUrl(pathUrl, nextModule.moduleId, nextModule.title));
     }
   };
 

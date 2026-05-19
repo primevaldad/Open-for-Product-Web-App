@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { HydratedProject, HydratedProjectMember, User, ProjectTag, ProjectPathLink, LearningPath } from '@/lib/types';
 import { cn, getInitials, getDeterministicPlaceholder } from '@/lib/utils';
+import { buildHybridUrl } from '@/lib/slug';
 
 interface ProjectCardProps {
   project: HydratedProject;
@@ -106,7 +107,7 @@ export default function ProjectCard({
             isLead && 'border-2 border-yellow-500',
             className
         )}
-        onClick={() => router.push(`/projects/${project.id}`)}
+        onClick={() => router.push(buildHybridUrl('/projects', project.id, project.name))}
       >
           <CardHeader className='relative p-0 h-48'>
               <Image

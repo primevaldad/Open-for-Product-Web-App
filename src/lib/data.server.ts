@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
 import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember, ProjectCollection, HydratedCollection, Post } from './types';
 import { serializeTimestamp } from './utils.server';
+import { extractId } from './slug';
 
 // This file contains server-side data access functions.
 
@@ -240,7 +241,8 @@ export async function getAllPublishedProjects(): Promise<HydratedProject[]> {
 
 export async function findProjectById(projectId: string, currentUser: User | null): Promise<HydratedProject | undefined> {
     if (!projectId) return undefined;
-    const projectSnap = await adminDb.collection('projects').doc(projectId).get();
+    const cleanId = extractId(projectId);
+    const projectSnap = await adminDb.collection('projects').doc(cleanId).get();
     if (!projectSnap.exists) {
         return undefined;
     }
@@ -286,6 +288,26 @@ export async function getProjectsByUserId(userId: string): Promise<HydratedProje
         return false;
     });
     return userProjects;
+}
+
+export async function getChildProjects(projectId: string): Promise<HydratedProject[]> {
+    const snap = await adminDb.collection('projects')
+        .where('parentProjectId', '==', projectId)
+        .get();
+    
+    if (snap.empty) return [];
+    
+    // We can reuse the hydration logic but since we need full tag hydration, 
+    // we'd normally just fetch them. To keep it simple, we can call findProjectById for each 
+    // or just manually hydrate. For simplicity, we can just do manual hydration.
+    // However, findProjectById is already available and does exactly this.
+    // Let's use Promise.all(snap.docs.map(doc => findProjectById(doc.id, null)))
+    
+    const projects = await Promise.all(
+        snap.docs.map(doc => findProjectById(doc.id, null))
+    );
+    
+    return projects.filter((p): p is HydratedProject => p !== undefined);
 }
 
 export async function updateProjectInDb(projectId: string, project: Partial<Project>): Promise<void> {
@@ -464,7 +486,7 @@ export async function getAllLearningPaths(limitNum: number = 10, startAfterDoc?:
 }
 
 export async function findLearningPathsByIds(pathIds: string[]): Promise<LearningPath[]> {
-    const validPathIds = pathIds.filter(id => id);
+    const validPathIds = pathIds.filter(id => id).map(id => extractId(id));
     if (validPathIds.length === 0) return [];
     const uniqueIds = [...new Set(validPathIds)];
     const paths: LearningPath[] = [];
@@ -721,6 +743,26 @@ export async function findCollectionBySlug(
     if (snap.empty) return undefined;
     const doc = snap.docs[0];
     const collection = serializeCollection(doc.id, doc.data());
+
+    // Visibility gate
+    if (collection.visibility === 'private' && collection.ownerId !== currentUserId) {
+        return undefined;
+    }
+    return collection;
+}
+
+export async function findCollectionById(
+    id: string,
+    currentUserId?: string
+): Promise<ProjectCollection | undefined> {
+    if (!id) return undefined;
+    const cleanId = extractId(id);
+    const snap = await adminDb
+        .collection('collections')
+        .doc(cleanId)
+        .get();
+    if (!snap.exists) return undefined;
+    const collection = serializeCollection(snap.id, snap.data()!);
 
     // Visibility gate
     if (collection.visibility === 'private' && collection.ownerId !== currentUserId) {

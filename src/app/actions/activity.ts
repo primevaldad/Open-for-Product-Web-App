@@ -1,7 +1,7 @@
 'use server';
 
 import { getAuthenticatedUser } from "@/lib/session.server";
-import { getGlobalActivityFeed, getAllProjects, getAllUsers } from "@/lib/data.server";
+import { getGlobalActivityFeed, getAllProjects, getAllUsers, getAllPublicCollections, findCollectionsByOwner } from "@/lib/data.server";
 import { hydrateActivityItem, HydratedActivityItem } from "@/app/(app)/activity/utils";
 import { deepSerialize } from "@/lib/utils.server";
 import { getRankedPosts } from "@/lib/steem.server";
@@ -17,20 +17,27 @@ export async function getActivityPageData() {
             });
         }
 
-        const [activity, projects, users, steemResult] = await Promise.all([
+        const [activity, projects, users, steemResult, publicCollections, ownedCollections] = await Promise.all([
             getGlobalActivityFeed(),
             getAllProjects(currentUser),
             getAllUsers(),
-            getRankedPosts('created', 'hive-111745', 10)
+            getRankedPosts('created', 'hive-111745', 10),
+            getAllPublicCollections(),
+            findCollectionsByOwner(currentUser.id)
         ]);
 
         const projectsMap = new Map(projects.map(p => [p.id, p]));
         const usersMap = new Map(users.map(u => [u.id, u]));
         const steemUsersMap = new Map(users.filter(u => u.steemUsername).map(u => [u.steemUsername!.toLowerCase(), u]));
 
+        // Create map of accessible collections (public + owned)
+        const accessibleCollectionsMap = new Map();
+        publicCollections.forEach(c => accessibleCollectionsMap.set(c.id, c));
+        ownedCollections.forEach(c => accessibleCollectionsMap.set(c.id, c));
+
         // 1. Hydrate internal activity
         const hydratedActivity = activity
-            .map(item => hydrateActivityItem(item, usersMap, projectsMap))
+            .map(item => hydrateActivityItem(item, usersMap, projectsMap, accessibleCollectionsMap))
             .filter((item): item is HydratedActivityItem => !!item);
 
         // 2. Map Steem posts to activity items

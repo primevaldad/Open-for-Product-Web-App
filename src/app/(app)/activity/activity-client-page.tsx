@@ -20,11 +20,27 @@ export default function ActivityClientPage({ activity, currentUser, projects, us
     return <div className="flex h-screen items-center justify-center"><p>Loading user data...</p></div>;
   }
 
-  const myActivity = activity.filter(a => a.actor.id === currentUser.id);
   // Filter for the user's projects, ensuring the team property is an array before checking its contents.
   const myProjects = projects.filter(p => p.owner?.id === currentUser.id || (Array.isArray(p.team) && p.team.some(tm => tm.userId === currentUser.id)));
   const myProjectIds = myProjects.map(p => p.id);
-  const myProjectsActivity = activity.filter(a => a.project && myProjectIds.includes(a.project.id));
+
+  const myActivity = activity.filter(a => {
+    if (a.actor.id === currentUser.id) return true;
+    if (a.type.startsWith('collection-') && a.context?.collectionId) {
+      const collId = a.context.collectionId;
+      if (a.context.isProjectCollection && myProjectIds.includes(collId)) return true;
+    }
+    return false;
+  });
+
+  const myProjectsActivity = activity.filter(a => {
+    if (a.project && myProjectIds.includes(a.project.id)) return true;
+    if (a.type.startsWith('collection-') && a.context?.collectionId) {
+      const collId = a.context.collectionId;
+      if (a.context.isProjectCollection && myProjectIds.includes(collId)) return true;
+    }
+    return false;
+  });
 
   return (
     <div className="container mx-auto p-4">

@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import type { LearningPath } from '@/lib/types';
 import { FileText } from 'lucide-react';
+import { buildHybridUrl } from '@/lib/slug';
 
 type LearningPathCardProps = {
     path: LearningPath;
@@ -17,7 +18,7 @@ export default function LearningPathCard({ path }: LearningPathCardProps) {
     // const IconComponent = iconMap[path.Icon] || FileText;
 
     return (
-        <Link href={`/learning/${path.pathId}`} className="block p-6 bg-white rounded-lg border border-gray-200 shadow-md hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+        <Link href={buildHybridUrl('/learning', path.pathId, path.title)} className="block p-6 bg-white rounded-lg border border-gray-200 shadow-md hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
             <div className="flex items-center mb-4">
                 {/* <IconComponent className="w-8 h-8 text-gray-500 dark:text-gray-400 mr-4" /> */}
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{path.title}</h2>

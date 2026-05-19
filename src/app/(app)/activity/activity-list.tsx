@@ -4,6 +4,8 @@ import { HydratedActivity } from "./page";
 import { renderActivityMessage, toSafeDate } from "./utils";
 import { timeAgo } from "@/lib/utils";
 
+import { UserAvatar } from "@/components/user-avatar";
+
 interface ActivityListProps {
     items: HydratedActivity[];
 }
@@ -18,11 +20,10 @@ export default function ActivityList({ items }: ActivityListProps) {
           {items.map(item => (
             <li key={item.id} className="p-4 border rounded-lg shadow-sm">
               <div className="flex items-center space-x-4">
-                {/* Use null instead of '' for the src attribute to avoid unnecessary network requests */}
-                <img src={item.actor.avatarUrl || undefined} alt={item.actor.name} className="w-10 h-10 rounded-full" />
+                <UserAvatar user={item.actor} className="w-10 h-10 shrink-0" />
                 <div className="flex-1">
                   <p>
-                    <strong>{item.actor.name}</strong>
+                    <strong>{item.actor.name || item.actor.username || 'User'}</strong>
                     {' '}
                     {renderActivityMessage(item)}
                   </p>

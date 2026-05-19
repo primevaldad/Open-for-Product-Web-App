@@ -65,6 +65,8 @@ export interface Project {
     };
     progress?: number;
     embedding?: any; // VectorValue
+    parentProjectId?: string; // For nested projects
+    isCollection?: boolean; // Whether this project acts as a collection (has children)
 }
 
 export interface Post {
@@ -140,6 +142,8 @@ export interface HydratedProject {
     };
     progress?: number;
     embedding?: any; // VectorValue
+    parentProjectId?: string; // For nested projects
+    isCollection?: boolean; // Whether this project acts as a collection (has children)
 }
 
 export interface HydratedProjectMember {
@@ -349,6 +353,7 @@ export enum EventType {
     // Collections
     COLLECTION_CREATED = 'collection-created',
     COLLECTION_UPDATED = 'collection-updated',
+    COLLECTION_DELETED = 'collection-deleted',
     PROJECT_ADDED_TO_COLLECTION = 'project-added-to-collection',
     PROJECT_REMOVED_FROM_COLLECTION = 'project-removed-from-collection',
 }
@@ -387,6 +392,9 @@ export enum ActivityType {
     TaskStatusUpdated = 'task-status-updated',
     TaskAssigned = 'task-assigned',
     DiscussionPosted = 'discussion-posted',
+    CollectionCreated = 'collection-created',
+    CollectionUpdated = 'collection-updated',
+    CollectionDeleted = 'collection-deleted',
     CollectionProjectAdded = 'collection-project-added',
     CollectionProjectRemoved = 'collection-project-removed',
     SteemCommunityPost = 'steem-community-post',

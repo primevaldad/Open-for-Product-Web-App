@@ -25,8 +25,8 @@ export function UserAvatar({ user, className, badgeSize = "sm" }: UserAvatarProp
   return (
     <div className={cn("relative inline-block", className)}>
       <Avatar className={cn("h-full w-full", className)}>
-        {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
-        <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+        {(user.photoUrl || user.avatarUrl) && <AvatarImage src={user.photoUrl || user.avatarUrl} alt={user.name || user.username || 'User'} />}
+        <AvatarFallback>{getInitials(user.name || user.username || 'U')}</AvatarFallback>
       </Avatar>
       
       {user.steemIconOverlay && (

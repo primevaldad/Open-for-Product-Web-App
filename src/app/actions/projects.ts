@@ -660,6 +660,50 @@ export async function getDraftsPageData(currentUser: User | null): Promise<Draft
   }
 }
 
+export async function setProjectChildrenAction(parentId: string, childIds: string[]): Promise<ServerActionResponse<void>> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required.' };
+
+  try {
+    const parentProjectSnap = await adminDb.collection('projects').doc(parentId).get();
+    if (!parentProjectSnap.exists) return { success: false, error: 'Parent project not found.' };
+    
+    const parentData = parentProjectSnap.data() as Project;
+    const isLead = parentData.team.some(m => m.userId === currentUser.id && m.role === 'lead');
+    if (!isLead) return { success: false, error: 'You must be a lead of the parent project.' };
+
+    const batch = adminDb.batch();
+    for (const childId of childIds) {
+      batch.update(adminDb.collection('projects').doc(childId), {
+        parentProjectId: parentId
+      });
+    }
+    // Set isCollection = true on parent project
+    batch.update(adminDb.collection('projects').doc(parentId), {
+      isCollection: true
+    });
+    await batch.commit();
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getUserLeadProjectsAction(): Promise<ServerActionResponse<HydratedProject[]>> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required.' };
+
+  try {
+    const { getProjectsByUserId } = await import('@/lib/data.server');
+    const userProjects = await getProjectsByUserId(currentUser.id);
+    const leadProjects = userProjects.filter(p => p.team.some(m => m.userId === currentUser.id && m.role === 'lead'));
+    return deepSerialize({ success: true, data: leadProjects });
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function toggleFollowProjectAction(projectId: string): Promise<ServerActionResponse<{ isFollowing: boolean }>> {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
@@ -675,3 +719,109 @@ export async function toggleFollowProjectAction(projectId: string): Promise<Serv
   }
 }
 
+export async function addProjectToProjectAction(parentId: string, childId: string): Promise<ServerActionResponse<void>> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required.' };
+
+  try {
+    const parentProjectSnap = await adminDb.collection('projects').doc(parentId).get();
+    if (!parentProjectSnap.exists) return { success: false, error: 'Parent project not found.' };
+    
+    const parentData = parentProjectSnap.data() as Project;
+    const isLead = parentData.team.some(m => m.userId === currentUser.id && m.role === 'lead');
+    if (!isLead) return { success: false, error: 'You must be a lead of the parent project.' };
+
+    await updateProjectInDb(childId, { parentProjectId: parentId });
+    // Update parent's isCollection flag to true
+    await updateProjectInDb(parentId, { isCollection: true });
+
+    // Log activity
+    await logActivity({
+        actorId: currentUser.id,
+        type: ActivityType.CollectionProjectAdded,
+        collectionId: parentId,
+        projectId: childId,
+        context: {
+            collectionName: parentData.name,
+            collectionId: parentId,
+            isProjectCollection: true,
+        }
+    });
+
+    // Dispatch event & notification
+    const { createAndDispatchEvent } = await import('@/lib/events.server');
+    await createAndDispatchEvent({
+        type: EventType.PROJECT_ADDED_TO_COLLECTION,
+        actorUserId: currentUser.id,
+        projectId: childId,
+        payload: {
+            collectionId: parentId,
+            collectionName: parentData.name,
+            isProjectCollection: true,
+            collectionOwnerId: parentData.ownerId || (parentData.team.find(m => m.role === 'lead')?.userId),
+        }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function removeProjectFromProjectAction(parentId: string, childId: string): Promise<ServerActionResponse<void>> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required.' };
+
+  try {
+    const parentProjectSnap = await adminDb.collection('projects').doc(parentId).get();
+    if (!parentProjectSnap.exists) return { success: false, error: 'Parent project not found.' };
+    
+    const parentData = parentProjectSnap.data() as Project;
+    const isLead = parentData.team.some(m => m.userId === currentUser.id && m.role === 'lead');
+    if (!isLead) return { success: false, error: 'You must be a lead of the parent project.' };
+
+    await adminDb.collection('projects').doc(childId).update({
+      parentProjectId: FieldValue.delete()
+    });
+
+    // Check if parent still has remaining children
+    const childSnap = await adminDb.collection('projects')
+      .where('parentProjectId', '==', parentId)
+      .get();
+      
+    if (childSnap.empty) {
+      await updateProjectInDb(parentId, { isCollection: false });
+    }
+
+    // Log activity
+    await logActivity({
+        actorId: currentUser.id,
+        type: ActivityType.CollectionProjectRemoved,
+        collectionId: parentId,
+        projectId: childId,
+        context: {
+            collectionName: parentData.name,
+            collectionId: parentId,
+            isProjectCollection: true,
+        }
+    });
+
+    // Dispatch event & notification
+    const { createAndDispatchEvent } = await import('@/lib/events.server');
+    await createAndDispatchEvent({
+        type: EventType.PROJECT_REMOVED_FROM_COLLECTION,
+        actorUserId: currentUser.id,
+        projectId: childId,
+        payload: {
+            collectionId: parentId,
+            collectionName: parentData.name,
+            isProjectCollection: true,
+            collectionOwnerId: parentData.ownerId || (parentData.team.find(m => m.role === 'lead')?.userId),
+        }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

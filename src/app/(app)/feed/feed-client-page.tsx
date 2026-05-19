@@ -44,6 +44,28 @@ export function FeedClientPage({
   const projectMap = new Map(projects.map(p => [p.id, p]));
   const userMap = new Map(users.map(u => [u.id, u]));
 
+  // Identify relevant projects for the current user
+  const myProjects = projects.filter(p => 
+    p.ownerId === currentUser.id || 
+    p.owner?.id === currentUser.id ||
+    (Array.isArray(p.team) && p.team.some(tm => tm.userId === currentUser.id)) ||
+    (currentUser.followedProjectIds || []).includes(p.id)
+  );
+  const myProjectIds = new Set(myProjects.map(p => p.id));
+
+  // Filter global feed items to show only current user's activity, activity on their projects, or their collections
+  const myActivity = notifications.filter(item => {
+    if (item.actor.id === currentUser.id) return true;
+    if (item.project && myProjectIds.has(item.project.id)) return true;
+    if (item.type.startsWith('collection-') && item.context?.collectionId) {
+      const collId = item.context.collectionId;
+      if (item.context.isProjectCollection && myProjectIds.has(collId)) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex items-center justify-between mb-8">
@@ -100,15 +122,15 @@ export function FeedClientPage({
             
             <TabsContent value="activity">
               <div className="space-y-4">
-                {notifications.length === 0 ? (
+                {myActivity.length === 0 ? (
                   <EmptyState message="No recent activity found." />
                 ) : (
-                  notifications.map(item => (
+                  myActivity.map(item => (
                     <div key={item.id} className="p-4 border rounded-lg shadow-sm bg-card flex items-start gap-4 hover:bg-muted/50 transition-all cursor-default">
                       <UserAvatar user={item.actor} className="h-10 w-10 shrink-0" />
                       <div className="flex-1">
                         <div className="text-sm">
-                          <span className="font-semibold">{item.actor.name}</span>
+                          <span className="font-semibold">{item.actor.name || item.actor.username || 'User'}</span>
                           {' '}
                           {renderActivityMessage(item)}
                         </div>

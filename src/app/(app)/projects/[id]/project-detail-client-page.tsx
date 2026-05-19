@@ -18,7 +18,7 @@ import { ProjectPostsTab } from '@/components/projects/project-posts-tab';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import { useAuth } from '@/components/auth-provider';
-import { Layers, Plus, Check, ChevronDown, Loader2, Search } from 'lucide-react';
+import { Layers, Plus, Check, ChevronDown, Loader2, Search, Minus, FolderOpen } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -39,9 +39,11 @@ import {
     getCollectionsForCuration,
     addProjectToCollectionAction,
     removeProjectFromCollectionAction,
+    getCollectionsContainingProject,
 } from '@/app/actions/collections';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
+import { buildHybridUrl } from '@/lib/slug';
 
 
 interface ProjectDetailClientPageProps {
@@ -52,23 +54,164 @@ interface ProjectDetailClientPageProps {
     learningPaths: LearningPath[];
     users: User[];
     currentUser: User | null;
+    childProjects?: HydratedProject[];
     inviteToken?: string;
     initialTab?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Member of Collections indicator
+// ---------------------------------------------------------------------------
+
+function MemberOfIndicator({ 
+    projectId, 
+    currentUserId,
+    onMembershipChanged,
+}: { 
+    projectId: string; 
+    currentUserId: string | null;
+    onMembershipChanged?: (targetId: string, type: 'collection' | 'project', isAdded: boolean) => void;
+}) {
+    const [collections, setCollections] = useState<Array<{ id: string; name: string; slug: string; ownerId: string }>>([]);
+    const [parentProject, setParentProject] = useState<{ id: string; name: string } | null>(null);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [removing, setRemoving] = useState<string | null>(null);
+    const { toast } = useToast();
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        const result = await getCollectionsContainingProject(projectId);
+        if (result.success && result.data) {
+            setCollections(result.data.collections);
+            setParentProject(result.data.parentProject ?? null);
+        }
+        setLoading(false);
+    }, [projectId]);
+
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const handleRemoveFromCollection = async (collectionId: string) => {
+        setRemoving(collectionId);
+        const result = await removeProjectFromCollectionAction(collectionId, projectId);
+        if (result.success) {
+            setCollections(prev => prev.filter(c => c.id !== collectionId));
+            toast({ title: 'Removed from collection' });
+            onMembershipChanged?.(collectionId, 'collection', false);
+        } else {
+            toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        }
+        setRemoving(null);
+    };
+
+    const handleRemoveFromParent = async () => {
+        if (!parentProject) return;
+        setRemoving('parent');
+        const { removeProjectFromProjectAction } = await import('@/app/actions/projects');
+        const result = await removeProjectFromProjectAction(parentProject.id, projectId);
+        if (result.success) {
+            const oldParentId = parentProject.id;
+            setParentProject(null);
+            toast({ title: 'Removed from parent project' });
+            onMembershipChanged?.(oldParentId, 'project', false);
+        } else {
+            toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        }
+        setRemoving(null);
+    };
+
+    const totalMemberships = collections.length + (parentProject ? 1 : 0);
+    if (totalMemberships === 0 && !loading) return null;
+
+    return (
+        <Popover open={open} onOpenChange={val => { if (val) load(); setOpen(val); }}>
+            <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <Layers className="w-3.5 h-3.5" />
+                    {loading ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                        <span>
+                            Member of{' '}
+                            <span className="font-medium text-foreground">{totalMemberships}</span>{' '}
+                            {totalMemberships === 1 ? 'collection' : 'collections'}
+                        </span>
+                    )}
+                    <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-0" align="start">
+                <div className="px-3 py-2 border-b">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Member of</p>
+                </div>
+                <ul className="py-1">
+                    {parentProject && (
+                        <li className="flex items-center gap-2 px-3 py-2 text-sm">
+                            <FolderOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <a href={buildHybridUrl('/projects', parentProject.id, parentProject.name)} className="flex-1 truncate hover:underline">
+                                {parentProject.name}
+                            </a>
+                            <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-full shrink-0">Project</span>
+                            {currentUserId && (
+                                <button
+                                    onClick={handleRemoveFromParent}
+                                    disabled={removing === 'parent'}
+                                    className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                                    title="Remove from parent project"
+                                >
+                                    {removing === 'parent' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Minus className="w-3.5 h-3.5" />}
+                                </button>
+                            )}
+                        </li>
+                    )}
+                    {collections.map(c => (
+                        <li key={c.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                            <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <a href={buildHybridUrl('/collections', c.id, c.name)} className="flex-1 truncate hover:underline">{c.name}</a>
+                            <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-full shrink-0">Collection</span>
+                            {currentUserId && c.ownerId === currentUserId && (
+                                <button
+                                    onClick={() => handleRemoveFromCollection(c.id)}
+                                    disabled={removing === c.id}
+                                    className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                                    title="Remove from collection"
+                                >
+                                    {removing === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Minus className="w-3.5 h-3.5" />}
+                                </button>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 // ---------------------------------------------------------------------------
 // Add to Collection button
 // ---------------------------------------------------------------------------
 
+import { addProjectToProjectAction, removeProjectFromProjectAction, getUserLeadProjectsAction } from '@/app/actions/projects';
+
+type CurationTarget = 
+    | { type: 'collection'; id: string; name: string; description?: string; ownerId: string }
+    | { type: 'project'; id: string; name: string; description?: string; ownerId: string };
+
 function AddToCollectionButton({
     projectId,
     isGuest,
+    initialParentProjectId,
+    onMembershipChanged,
 }: {
     projectId: string;
     isGuest: boolean;
+    initialParentProjectId?: string | null;
+    onMembershipChanged?: (targetId: string, type: 'collection' | 'project', isAdded: boolean) => void;
 }) {
     const [open, setOpen] = useState(false);
-    const [collections, setCollections] = useState<ProjectCollection[]>([]);
+    const [targets, setTargets] = useState<CurationTarget[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState<string | null>(null);
     const [added, setAdded] = useState<Set<string>>(new Set());
@@ -76,36 +219,78 @@ function AddToCollectionButton({
     const { currentUser } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
 
-    const loadCollections = useCallback(async () => {
+    const loadTargets = useCallback(async () => {
         setLoading(true);
-        const result = await getCollectionsForCuration();
-        if (result.success && result.data) {
-            setCollections(result.data);
-            // Pre-mark collections that already contain this project
-            const alreadyIn = new Set(
-                result.data
-                    .filter(c => c.memberProjectIds.includes(projectId))
-                    .map(c => c.id)
-            );
-            setAdded(alreadyIn);
-        }
-        setLoading(false);
-    }, [projectId]);
+        const [colResult, projResult] = await Promise.all([
+            getCollectionsForCuration(),
+            getUserLeadProjectsAction()
+        ]);
+        
+        const newTargets: CurationTarget[] = [];
+        const newAdded = new Set<string>();
 
-    const toggle = async (collectionId: string) => {
-        setSaving(collectionId);
-        const isAdded = added.has(collectionId);
-        const action = isAdded
-            ? removeProjectFromCollectionAction(collectionId, projectId)
-            : addProjectToCollectionAction(collectionId, projectId);
+        if (colResult.success && colResult.data) {
+            colResult.data.forEach(c => {
+                newTargets.push({ type: 'collection', id: c.id, name: c.name, description: c.description, ownerId: c.ownerId });
+                if (c.memberProjectIds.includes(projectId)) {
+                    newAdded.add(c.id);
+                }
+            });
+        }
+
+        if (projResult.success && projResult.data) {
+            projResult.data.forEach(p => {
+                // Don't show the current project itself
+                if (p.id === projectId) return;
+                
+                newTargets.push({ type: 'project', id: p.id, name: p.name, description: p.description, ownerId: p.owner?.id || '' });
+                if (p.id === initialParentProjectId) {
+                    newAdded.add(p.id);
+                }
+            });
+        }
+        
+        setTargets(newTargets);
+        setAdded(newAdded);
+        setLoading(false);
+    }, [projectId, initialParentProjectId]);
+
+    const toggle = async (target: CurationTarget) => {
+        setSaving(target.id);
+        const isAdded = added.has(target.id);
+        
+        let action;
+        if (target.type === 'collection') {
+            action = isAdded
+                ? removeProjectFromCollectionAction(target.id, projectId)
+                : addProjectToCollectionAction(target.id, projectId);
+        } else {
+            action = isAdded
+                ? removeProjectFromProjectAction(target.id, projectId)
+                : addProjectToProjectAction(target.id, projectId);
+        }
+
         const result = await action;
         if (result.success) {
             setAdded(prev => {
                 const next = new Set(prev);
-                isAdded ? next.delete(collectionId) : next.add(collectionId);
+                if (isAdded) {
+                    next.delete(target.id);
+                } else {
+                    if (target.type === 'project') {
+                        // Remove any other projects from added set
+                        targets.forEach(t => {
+                            if (t.type === 'project' && t.id !== target.id) {
+                                next.delete(t.id);
+                            }
+                        });
+                    }
+                    next.add(target.id);
+                }
                 return next;
             });
-            toast({ title: isAdded ? 'Removed from collection' : 'Added to collection' });
+            toast({ title: isAdded ? `Removed from ${target.type}` : `Added to ${target.type}` });
+            onMembershipChanged?.(target.id, target.type, !isAdded);
         } else {
             toast({ title: 'Error', description: result.error, variant: 'destructive' });
         }
@@ -116,7 +301,7 @@ function AddToCollectionButton({
 
     return (
         <Popover open={open} onOpenChange={(val) => {
-            if (val) loadCollections();
+            if (val) loadTargets();
             setOpen(val);
         }}>
             <PopoverTrigger asChild>
@@ -136,9 +321,9 @@ function AddToCollectionButton({
                     <div className="flex items-center justify-center p-4">
                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                     </div>
-                ) : collections.length === 0 ? (
+                ) : targets.length === 0 ? (
                     <div className="p-4 text-sm text-muted-foreground text-center">
-                        You don&apos;t have any collections yet.
+                        You don&apos;t have any collections or projects yet.
                     </div>
                 ) : (
                     <>
@@ -147,7 +332,7 @@ function AddToCollectionButton({
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                                 <input
                                     type="text"
-                                    placeholder="Search collections..."
+                                    placeholder="Search collections & projects..."
                                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -157,34 +342,32 @@ function AddToCollectionButton({
                         </div>
                         <ScrollArea className="max-h-72">
                             <ul className="py-1">
-                                {collections
-                                    .filter(c => {
+                                {targets
+                                    .filter(t => {
                                         const query = searchQuery.toLowerCase();
                                         return (
-                                            c.name.toLowerCase().includes(query) ||
-                                            (c.description?.toLowerCase().includes(query) ?? false)
+                                            t.name.toLowerCase().includes(query) ||
+                                            (t.description?.toLowerCase().includes(query) ?? false)
                                         );
                                     })
-                                    .map(c => (
-                                        <li key={c.id}>
+                                    .map(t => (
+                                        <li key={t.id}>
                                             <button
-                                                onClick={() => toggle(c.id)}
-                                                disabled={saving === c.id}
+                                                onClick={() => toggle(t)}
+                                                disabled={saving === t.id}
                                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
                                             >
-                                                {saving === c.id ? (
+                                                {saving === t.id ? (
                                                     <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                                                ) : added.has(c.id) ? (
+                                                ) : added.has(t.id) ? (
                                                     <Check className="w-3.5 h-3.5 text-primary shrink-0" />
                                                 ) : (
                                                     <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                                                 )}
-                                                <span className="truncate flex-1">{c.name}</span>
-                                                {c.ownerId !== (currentUser?.id ?? '') && (
-                                                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full shrink-0">
-                                                        Community
-                                                    </span>
-                                                )}
+                                                <span className="truncate flex-1">{t.name}</span>
+                                                <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-full shrink-0">
+                                                    {t.type === 'project' ? 'Project' : 'Collection'}
+                                                </span>
                                             </button>
                                         </li>
                                     ))}
@@ -200,9 +383,6 @@ function AddToCollectionButton({
                         <Plus className="w-3 h-3" />
                         New Collection
                     </a>
-                    <span className="text-[10px] text-muted-foreground italic">
-                        Anyone can add to Public
-                    </span>
                 </div>
             </PopoverContent>
         </Popover>
@@ -217,22 +397,36 @@ export default function ProjectDetailClientPage({
     learningPaths: initialLearningPaths,
     users: allUsers,
     currentUser: serverUser,
+    childProjects: initialChildProjects = [],
     inviteToken,
     initialTab,
 }: ProjectDetailClientPageProps) {
     const { currentUser: clientUser } = useAuth();
     const currentUser = clientUser || serverUser;
     const [project, setProject] = useState(initialProject);
+    const [membershipVersion, setMembershipVersion] = useState(0);
+
+    const handleMembershipChanged = useCallback((targetId: string, type: 'collection' | 'project', isAdded: boolean) => {
+        setMembershipVersion(v => v + 1);
+        if (type === 'project') {
+            setProject(prev => ({
+                ...prev,
+                parentProjectId: isAdded ? targetId : (prev.parentProjectId === targetId ? undefined : prev.parentProjectId)
+            }));
+        }
+    }, []);
+
     const [tasks, setTasks] = useState(initialTasks);
     const [discussions, setDiscussions] = useState(initialDiscussions);
     const [posts, setPosts] = useState(initialPosts);
     const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
     const [users, setUsers] = useState(allUsers);
+    const [childProjects, setChildProjects] = useState(initialChildProjects);
     
     // Map initialTab string to tab index
     const initialTabIndex = useMemo(() => {
         if (!initialTab) return 0;
-        const map: Record<string, number> = { about: 0, posts: 1, tasks: 2, discussion: 3, team: 4, learning: 5, governance: 6 };
+        const map: Record<string, number> = { about: 0, posts: 1, tasks: 2, discussion: 3, team: 4, learning: 5, governance: 6, 'collected projects': 7 };
         return map[initialTab.toLowerCase()] ?? 0;
     }, [initialTab]);
 
@@ -251,6 +445,8 @@ export default function ProjectDetailClientPage({
         setDiscussions(initialDiscussions);
         setLearningPaths(initialLearningPaths);
         setUsers(allUsers);
+        setChildProjects(initialChildProjects);
+
     }, [initialProject, initialTasks, initialDiscussions, initialLearningPaths, allUsers]);
 
     const hydratedDiscussions: HydratedDiscussion[] = useMemo(() => {
@@ -490,15 +686,28 @@ export default function ProjectDetailClientPage({
             <div className="container mx-auto px-4 py-8">
                 <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
 
-            {/* Add to Collection & Steem — shown below the header for non-guests */}
-            {!isGuest && (
-                <div className="mt-3 flex justify-end gap-2">
-                    {isMember && currentUser && (
-                        <CreatePostDialog project={project} currentUser={currentUser} />
-                    )}
-                    <AddToCollectionButton projectId={project.id} isGuest={isGuest} />
-                </div>
-            )}
+            {/* Action bar — Member of indicator (left) + action buttons (right) */}
+            <div className="mt-3 flex items-center justify-between gap-2 flex-wrap min-h-[36px]">
+                <MemberOfIndicator 
+                    key={`member-of-${project.id}-${membershipVersion}`} 
+                    projectId={project.id} 
+                    currentUserId={currentUser?.id ?? null} 
+                    onMembershipChanged={handleMembershipChanged}
+                />
+                {!isGuest && (
+                    <div className="flex items-center gap-2 ml-auto">
+                        {isMember && currentUser && (
+                            <CreatePostDialog project={project} currentUser={currentUser} />
+                        )}
+                        <AddToCollectionButton 
+                            projectId={project.id} 
+                            isGuest={isGuest} 
+                            initialParentProjectId={project.parentProjectId}
+                            onMembershipChanged={handleMembershipChanged}
+                        />
+                    </div>
+                )}
+            </div>
 
             <div className="mt-8">
                 <Tabs selectedIndex={tabIndex} onSelect={index => setTabIndex(index)}>
@@ -510,6 +719,7 @@ export default function ProjectDetailClientPage({
                         <Tab>Team</Tab>
                         <Tab>Learning Paths</Tab>
                         <Tab>Governance</Tab>
+                        {childProjects.length > 0 && <Tab>Collected Projects</Tab>}
                     </TabList>
 
                     <TabPanel>
@@ -619,6 +829,35 @@ export default function ProjectDetailClientPage({
                             <p>Details about project governance and decision-making.</p>
                         </div>
                     </TabPanel>
+                    {childProjects.length > 0 && (
+                        <TabPanel>
+                            <div className="p-4 space-y-4">
+                                <h2 className="text-xl font-bold">Collected Projects</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Projects nested under {project.name}.
+                                </p>
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    {childProjects.map(child => (
+                                        <a
+                                            key={child.id}
+                                            href={buildHybridUrl('/projects', child.id, child.name)}
+                                            className="group flex flex-col gap-1.5 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <FolderOpen className="w-4 h-4 text-primary shrink-0" />
+                                                <span className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                                                    {child.name}
+                                                </span>
+                                            </div>
+                                            {child.tagline && (
+                                                <p className="text-xs text-muted-foreground line-clamp-2">{child.tagline}</p>
+                                            )}
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        </TabPanel>
+                    )}
                 </Tabs>
             </div>
 

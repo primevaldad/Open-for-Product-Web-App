@@ -4,9 +4,11 @@ import { findLearningPathsByIds } from '@/lib/data.server';
 import ModuleAccordion from '@/components/module-accordion';
 import { deepSerialize } from '@/lib/utils.server';
 import type { LearningPath } from '@/lib/types';
+import { extractId } from '@/lib/slug';
 
 export async function generateMetadata({ params }: { params: { pathId: string } }): Promise<Metadata> {
-    const paths = await findLearningPathsByIds([params.pathId]);
+    const cleanId = extractId(params.pathId);
+    const paths = await findLearningPathsByIds([cleanId]);
     if (paths.length === 0) return { title: 'Learning Path Not Found | Open for Product' };
     return {
         title: `Learning Path - ${paths[0].title} | Open for Product`,
@@ -16,7 +18,8 @@ export async function generateMetadata({ params }: { params: { pathId: string } 
 
 // This is a server component
 async function getLearningPathDetails(pathId: string): Promise<{ path: LearningPath | null }> {
-    const paths = await findLearningPathsByIds([pathId]);
+    const cleanId = extractId(pathId);
+    const paths = await findLearningPathsByIds([cleanId]);
     if (paths.length === 0) {
         return { path: null };
     }
@@ -45,7 +48,12 @@ export default async function LearningPathPage({ params }: { params: { pathId: s
             <div className="space-y-4">
                 <h2 className="text-2xl font-semibold mb-4">Modules</h2>
                 {path.modules.map((module, index) => (
-                    <ModuleAccordion key={module.moduleId} module={{...module, order: index + 1}} />
+                    <ModuleAccordion 
+                        key={module.moduleId} 
+                        module={{...module, order: index + 1}} 
+                        pathId={path.pathId}
+                        pathTitle={path.title}
+                    />
                 ))}
             </div>
         </div>

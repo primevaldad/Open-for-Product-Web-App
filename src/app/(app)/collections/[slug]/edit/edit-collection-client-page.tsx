@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Layers, Loader2, Trash2, Plus, X, Search, Image as ImageIcon, Upload } from 'lucide-react';
+import { Layers, Loader2, Trash2, X, Search, Image as ImageIcon, Upload, ChevronsUpDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
@@ -31,9 +44,10 @@ import type { HydratedCollection, HydratedProject, ProjectCollection } from '@/l
 
 interface EditCollectionPageClientProps {
     slug: string;
+    allProjects?: HydratedProject[];
 }
 
-export default function EditCollectionPageClient({ slug }: EditCollectionPageClientProps) {
+export default function EditCollectionPageClient({ slug, allProjects = [] }: EditCollectionPageClientProps) {
     const router = useRouter();
 
     const [collection, setCollection] = useState<HydratedCollection | null>(null);
@@ -51,6 +65,7 @@ export default function EditCollectionPageClient({ slug }: EditCollectionPageCli
 
     // Project search
     const [projectSearch, setProjectSearch] = useState('');
+    const [projectSearchOpen, setProjectSearchOpen] = useState(false);
 
     useEffect(() => {
         if (authLoading || !currentUser) return;
@@ -111,6 +126,34 @@ export default function EditCollectionPageClient({ slug }: EditCollectionPageCli
             setCollection(prev => prev ? { ...prev, name, description, visibility, coverImageUrl } : prev);
         } else {
             toast.error(result.error ?? 'Failed to save.');
+        }
+    };
+
+    const handleAddProject = async (projectId: string) => {
+        if (!collection) return;
+        if (collection.memberProjectIds.includes(projectId)) {
+            toast.error('Project is already in this collection.');
+            return;
+        }
+
+        const result = await addProjectToCollectionAction(collection.id, projectId);
+        if (result.success) {
+            const addedProject = allProjects.find(p => p.id === projectId);
+            setCollection(prev => {
+                if (!prev) return null;
+                const nextProjects = [...prev.projects];
+                if (addedProject && !nextProjects.some(p => p.id === projectId)) {
+                    nextProjects.push(addedProject);
+                }
+                return {
+                    ...prev,
+                    projects: nextProjects,
+                    memberProjectIds: [...prev.memberProjectIds, projectId],
+                };
+            });
+            toast.success('Project added to collection.');
+        } else {
+            toast.error(result.error ?? 'Failed to add project.');
         }
     };
 
@@ -245,7 +288,7 @@ export default function EditCollectionPageClient({ slug }: EditCollectionPageCli
                                     className="relative"
                                     disabled={uploading}
                                 >
-                                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                                    <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
                                     {coverImageUrl ? 'Change Image' : 'Upload Image'}
                                     <input
                                         type="file"
@@ -295,9 +338,50 @@ export default function EditCollectionPageClient({ slug }: EditCollectionPageCli
                     </h2>
                 </div>
 
+                <div className="flex flex-col gap-2">
+                    <Label>Add Project to Collection</Label>
+                    <Popover open={projectSearchOpen} onOpenChange={setProjectSearchOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={projectSearchOpen}
+                                className="w-full justify-between font-normal"
+                            >
+                                Select a project to add...
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                            <Command>
+                                <CommandInput placeholder="Search projects to add..." />
+                                <CommandList>
+                                    <CommandEmpty>No projects found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {allProjects
+                                            .filter(p => !collection.memberProjectIds.includes(p.id))
+                                            .map((project) => (
+                                                <CommandItem
+                                                    key={project.id}
+                                                    value={project.name}
+                                                    onSelect={() => {
+                                                        handleAddProject(project.id);
+                                                        setProjectSearchOpen(false);
+                                                    }}
+                                                >
+                                                    {project.name}
+                                                </CommandItem>
+                                            ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+
                 {collection.projects.length > 0 && (
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="relative pt-2">
+                        <Search className="absolute left-3 top-[calc(50%+4px)] -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                             placeholder="Filter projects…"
                             className="pl-9"
@@ -310,7 +394,7 @@ export default function EditCollectionPageClient({ slug }: EditCollectionPageCli
                 {filteredProjects.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">
                         {collection.projects.length === 0
-                            ? 'No projects in this collection yet. Add projects from any project page.'
+                            ? 'No projects in this collection yet. Select a project above to add it.'
                             : 'No projects match your search.'}
                     </p>
                 ) : (
@@ -336,10 +420,6 @@ export default function EditCollectionPageClient({ slug }: EditCollectionPageCli
                         ))}
                     </ul>
                 )}
-
-                <p className="text-xs text-muted-foreground">
-                    To add a project, visit the project page and use the &ldquo;Add to Collection&rdquo; option there.
-                </p>
             </section>
 
             <Separator />

@@ -11,7 +11,9 @@ import {
     getAllUsers, 
     getAllProjects, 
     getFeedPosts, 
-    getDiscussionsByProjects 
+    getDiscussionsByProjects,
+    getAllPublicCollections,
+    findCollectionsByOwner
 } from '@/lib/data.server';
 import { FeedClientPage } from './feed-client-page';
 import { deepSerialize } from '@/lib/utils.server';
@@ -23,14 +25,21 @@ export default async function FeedPage() {
         redirect('/login');
     }
 
-    // 1. Get all projects to find memberships and follows
-    const [allUsers, allProjects] = await Promise.all([
+    // 1. Get all projects and collections to find memberships and follows
+    const [allUsers, allProjects, publicCollections, ownedCollections] = await Promise.all([
         getAllUsers(),
         getAllProjects(currentUser),
+        getAllPublicCollections(),
+        findCollectionsByOwner(currentUser.id)
     ]);
 
     const usersMap = new Map(allUsers.map(u => [u.id, u]));
     const projectsMap = new Map(allProjects.map(p => [p.id, p]));
+
+    // Create map of accessible collections (public + owned)
+    const accessibleCollectionsMap = new Map();
+    publicCollections.forEach(c => accessibleCollectionsMap.set(c.id, c));
+    ownedCollections.forEach(c => accessibleCollectionsMap.set(c.id, c));
 
     // 2. Identify relevant projects
     const memberProjectIds = allProjects
@@ -54,11 +63,27 @@ export default async function FeedPage() {
         getGlobalActivityFeed(),
     ]);
 
-    // 4. Hydrate Activity (existing logic)
+    // 4. Hydrate Activity with security filtering
     const hydratedActivity = rawActivity.map(item => {
         const actor = usersMap.get(item.actorId);
-        const project = item.projectId ? projectsMap.get(item.projectId) : undefined;
         if (!actor) return null;
+
+        // Security filter: if the activity is associated with a project but that project is not in projectsMap, filter it out.
+        if (item.projectId && !projectsMap.has(item.projectId)) {
+            return null;
+        }
+
+        // Security filter: if the activity is a collection activity, check accessibility.
+        if (item.type.startsWith('collection-') && item.context?.collectionId) {
+            const collId = item.context.collectionId;
+            if (item.context.isProjectCollection) {
+                if (!projectsMap.has(collId)) return null;
+            } else {
+                if (!accessibleCollectionsMap.has(collId)) return null;
+            }
+        }
+
+        const project = item.projectId ? projectsMap.get(item.projectId) : undefined;
         return {
             id: item.id,
             actor,

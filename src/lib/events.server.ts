@@ -120,6 +120,55 @@ async function dispatchEvent(event: Event): Promise<void> {
             }
             break;
         }
+
+        case EventType.COLLECTION_CREATED:
+        case EventType.COLLECTION_UPDATED:
+        case EventType.COLLECTION_DELETED: {
+            // Self-notification or log record for the creator/owner
+            await createNotification({
+                userId: event.actorUserId,
+                eventId: event.id,
+            });
+            break;
+        }
+
+        case EventType.PROJECT_ADDED_TO_COLLECTION:
+        case EventType.PROJECT_REMOVED_FROM_COLLECTION: {
+            const { projectId, actorUserId } = event;
+            const collectionOwnerId = event.payload?.collectionOwnerId;
+            const recipientIds = new Set<string>();
+
+            // 1. Notify the collection owner (if not the actor)
+            if (collectionOwnerId && collectionOwnerId !== actorUserId) {
+                recipientIds.add(collectionOwnerId);
+            }
+
+            // 2. Notify the project leads/owner (if not the actor)
+            if (projectId) {
+                const project = await findProjectById(projectId, null);
+                if (project) {
+                    if (project.ownerId && project.ownerId !== actorUserId) {
+                        recipientIds.add(project.ownerId);
+                    }
+                    project.team.forEach(m => {
+                        if (m.userId !== actorUserId) {
+                            recipientIds.add(m.userId);
+                        }
+                    });
+                }
+            }
+
+            // 3. Keep a record for the actor themselves so it shows in their own notification list if needed
+            recipientIds.add(actorUserId);
+
+            for (const userId of recipientIds) {
+                await createNotification({
+                    userId,
+                    eventId: event.id,
+                });
+            }
+            break;
+        }
     }
 }
 

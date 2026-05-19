@@ -7,7 +7,8 @@ import {
     findTasksByProjectId, 
     getAllUsers, 
     getRecommendedLearningPathsForProject,
-    getPostsByProject
+    getPostsByProject,
+    getChildProjects
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import ProjectDetailClientPage from './project-detail-client-page';
@@ -20,9 +21,11 @@ import type {
     Post
 } from '@/lib/types';
 import { deepSerialize } from '@/lib/utils.server';
+import { extractId } from '@/lib/slug';
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-    const project = await findProjectById(params.id, null);
+    const cleanId = extractId(params.id);
+    const project = await findProjectById(cleanId, null);
     if (!project) return { title: 'Project Not Found | Open for Product' };
     return {
         title: `Project - ${project.name} | Open for Product`,
@@ -38,20 +41,23 @@ interface ProjectPageData {
     users: User[];
     currentUser: User | null;
     learningPaths: LearningPath[];
+    childProjects: HydratedProject[];
 }
 
 async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
+    const cleanId = extractId(projectId);
     const currentUser = await getAuthenticatedUser();
-    const [project, discussions, tasks, posts, users] = await Promise.all([
-        findProjectById(projectId, currentUser),
-        getDiscussionsForProject(projectId),
-        findTasksByProjectId(projectId),
-        getPostsByProject(projectId),
+    const [project, discussions, tasks, posts, users, childProjects] = await Promise.all([
+        findProjectById(cleanId, currentUser),
+        getDiscussionsForProject(cleanId),
+        findTasksByProjectId(cleanId),
+        getPostsByProject(cleanId),
         getAllUsers(),
+        getChildProjects(cleanId),
     ]);
 
     if (!project) {
-        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [] };
+        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [], childProjects: [] };
     }
 
     const learningPaths = await getRecommendedLearningPathsForProject(project);
@@ -70,11 +76,13 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
         users,
         currentUser: currentUser ?? null,
         learningPaths,
+        childProjects,
     };
 }
 
 export default async function ProjectPage({ params, searchParams }: { params: { id: string }, searchParams: { inviteToken?: string, tab?: string } }) {
-    const data = await getProjectPageData(params.id);
+    const cleanId = extractId(params.id);
+    const data = await getProjectPageData(cleanId);
 
     if (!data.project) {
         notFound();
@@ -87,7 +95,8 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
         posts,
         users, 
         currentUser, 
-        learningPaths 
+        learningPaths,
+        childProjects 
     } = data;
 
     return (
@@ -99,6 +108,7 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
             users={deepSerialize(users)}
             currentUser={deepSerialize(currentUser)}
             learningPaths={deepSerialize(learningPaths)}
+            childProjects={deepSerialize(childProjects)}
             inviteToken={searchParams.inviteToken}
             initialTab={searchParams.tab}
         />

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { EventType, HydratedNotification } from '@/lib/types';
 import { timeAgo, toDate } from '@/lib/utils';
 import { markNotificationAsRead } from '@/app/actions/notifications';
@@ -19,7 +20,7 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
 
     if (!event || !actor) return <p>Corrupted notification data.</p>;
 
-    const actorName = <strong>{actor.name}</strong>;
+    const actorName = <strong>{actor.name || actor.username || 'User'}</strong>;
     const projectName = project ? <strong>{project.name}</strong> : 'a project';
 
     switch (event.type) {
@@ -84,6 +85,54 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
             return <p>{actorName} completed a learning path{event.payload?.pathTitle ? `: "${event.payload.pathTitle}"` : ''}!</p>;
         case EventType.LEARNING_PATH_CONNECTED_TO_PROJECT:
             return <p>{actorName} connected a learning path to {projectName}.</p>;
+            
+        case EventType.COLLECTION_CREATED: {
+            const collectionName = event.payload?.collectionName || 'a collection';
+            const collectionLink = (
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {collectionName}
+                </Link>
+            );
+            return <p>Your collection {collectionLink} was created successfully.</p>;
+        }
+        case EventType.COLLECTION_UPDATED: {
+            const collectionName = event.payload?.collectionName || 'a collection';
+            const collectionLink = (
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {collectionName}
+                </Link>
+            );
+            return <p>Your collection {collectionLink} was updated successfully.</p>;
+        }
+        case EventType.COLLECTION_DELETED: {
+            return <p>Your collection <strong>{event.payload?.collectionName || 'a collection'}</strong> was deleted successfully.</p>;
+        }
+        case EventType.PROJECT_ADDED_TO_COLLECTION: {
+            const collectionName = event.payload?.collectionName || 'a collection';
+            const collectionLink = event.payload?.isProjectCollection ? (
+                <Link href={`/projects/${event.payload.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {collectionName}
+                </Link>
+            ) : (
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {collectionName}
+                </Link>
+            );
+            return <p>{actorName} added {projectName} to the collection {collectionLink}.</p>;
+        }
+        case EventType.PROJECT_REMOVED_FROM_COLLECTION: {
+            const collectionName = event.payload?.collectionName || 'a collection';
+            const collectionLink = event.payload?.isProjectCollection ? (
+                <Link href={`/projects/${event.payload.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {collectionName}
+                </Link>
+            ) : (
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                    {collectionName}
+                </Link>
+            );
+            return <p>{actorName} removed {projectName} from the collection {collectionLink}.</p>;
+        }
 
         default:
             return <p>An unknown notification type was received.</p>;
@@ -114,8 +163,8 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
             onClick={handleClick}
         >
             <Avatar className="w-10 h-10 border">
-                <AvatarImage src={notification.actor?.avatarUrl} alt={notification.actor?.name} />
-                <AvatarFallback>{getInitials(notification.actor?.name || '?')}</AvatarFallback>
+                <AvatarImage src={notification.actor?.photoUrl || notification.actor?.avatarUrl} alt={notification.actor?.name || notification.actor?.username || 'User'} />
+                <AvatarFallback>{getInitials(notification.actor?.name || notification.actor?.username || 'U')}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
                 <div className="text-sm">
