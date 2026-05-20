@@ -114,3 +114,49 @@
   background-color: #4a5568; /* A brighter highlight color */
   color: #ffffff; /* Pure white for highlighted text */
 }
+
+/* Custom styles for Tiptap mentions */
+.mention {
+  background-color: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+  font-weight: 500;
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+  box-decoration-break: clone;
+}
+
+/* Custom styles for inline code inside prose */
+.prose :not(pre) > code {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  padding: 0.15em 0.3em;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  font-weight: 400;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Remove default Tailwind typography quotes from inline code */
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: "" !important;
+}
+
+/* Custom styles for pre code blocks inside prose */
+.prose pre {
+  background-color: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.prose pre code {
+  background-color: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 0.9em !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}

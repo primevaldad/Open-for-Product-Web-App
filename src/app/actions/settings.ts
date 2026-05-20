@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { randomUUID } from 'crypto';
 import { findUserById, getAllTags } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { adminAuth, adminStorage } from '@/lib/firebase.server';
@@ -160,21 +161,26 @@ export async function uploadAvatarAction(base64DataUrl: string): Promise<{ succe
     }
 
     // --- Upload to Firebase Storage ---
+    const downloadToken = randomUUID();
     const filePath = `avatars/${currentUser.id}/avatar.png`;
     const file = adminStorage.file(filePath);
     await file.save(buffer, {
       metadata: {
         contentType: mimeType,
-        cacheControl: 'public, max-age=31536000',
+        metadata: {
+          uploadedBy: currentUser.id,
+          firebaseStorageDownloadTokens: downloadToken,
+        },
       },
-      // Make the file publicly accessible
-      public: true,
     });
 
-    // Get the public URL
-    const publicUrl = `https://storage.googleapis.com/${adminStorage.name}/${filePath}`;
+    // Get the standard Firebase Storage Download URL format
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${adminStorage.name}/o/${encodeURIComponent(
+      filePath
+    )}?alt=media&token=${downloadToken}`;
+    
     // Append cache-bust so browsers reload the image after update
-    const avatarUrl = `${publicUrl}?v=${Date.now()}`;
+    const avatarUrl = `${publicUrl}&v=${Date.now()}`;
 
     // --- Persist to Firestore and Firebase Auth ---
     const updateResult = await updateUser(currentUser.id, { avatarUrl });

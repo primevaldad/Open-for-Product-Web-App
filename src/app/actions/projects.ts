@@ -867,3 +867,20 @@ export async function getProjectFollowersAction(
     return { success: false, error: error.message || "Failed to fetch project followers." };
   }
 }
+
+export async function getMentionSuggestionsAction(): Promise<{ success: boolean; users?: User[]; projects?: any[]; error?: string }> {
+  try {
+    const users = await getAllUsers();
+    const projects = await getAllProjects();
+    return deepSerialize({
+      success: true,
+      users,
+      projects,
+    });
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to fetch mention suggestions.",
+    };
+  }
+}

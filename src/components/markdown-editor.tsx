@@ -8,7 +8,8 @@ import {
   Heading, 
   Quote, 
   Settings2,
-  ChevronDown
+  ChevronDown,
+  FolderKanban
 } from 'lucide-react';
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Editor, EditorContent, ReactRenderer, useEditor, InputRule } from '@tiptap/react';
@@ -39,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getInitials } from '@/lib/utils';
+import { getMentionSuggestionsAction } from '@/app/actions/projects';
 
 const MentionList = forwardRef((props: any, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -56,8 +58,10 @@ const MentionList = forwardRef((props: any, ref) => {
         return true;
       }
       if (event.key === 'Enter') {
-        props.command({ id: props.items[selectedIndex].username || props.items[selectedIndex].id, label: props.items[selectedIndex].name });
-        return true;
+        if (props.items[selectedIndex]) {
+          props.command({ id: props.items[selectedIndex].id, label: props.items[selectedIndex].name });
+          return true;
+        }
       }
       return false;
     },
@@ -68,18 +72,29 @@ const MentionList = forwardRef((props: any, ref) => {
   }
 
   return (
-    <div className="z-50 p-2 bg-background border border-border rounded-md shadow-lg">
-      {props.items.map((item: User, index: number) => (
+    <div className="z-50 p-2 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto min-w-[200px]">
+      {props.items.map((item: any, index: number) => (
         <div
           key={index}
-          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${index === selectedIndex ? 'bg-muted' : ''}`}
-          onClick={() => props.command({ id: item.username || item.id, label: item.name })}
+          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${index === selectedIndex ? 'bg-muted' : ''}`}
+          onClick={() => props.command({ id: item.id, label: item.name })}
         >
-          <Avatar className="h-8 w-8">
-            {item.avatarUrl && <AvatarImage src={item.avatarUrl} alt={item.name} />}
-            <AvatarFallback>{getInitials(item.name)}</AvatarFallback>
-          </Avatar>
-          <span className="font-medium">{item.name}</span>
+          {item.type === 'project' ? (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+              <FolderKanban className="h-4 w-4" />
+            </div>
+          ) : (
+            <Avatar className="h-8 w-8 shrink-0">
+              {item.avatarUrl && <AvatarImage src={item.avatarUrl} alt={item.name} />}
+              <AvatarFallback>{getInitials(item.name)}</AvatarFallback>
+            </Avatar>
+          )}
+          <div className="flex flex-col text-left">
+            <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{item.name}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {item.type === 'project' ? 'Project' : `@${item.id}`}
+            </span>
+          </div>
         </div>
       ))}
     </div>
@@ -105,6 +120,35 @@ export function MarkdownEditor({
   steemFlavor = false
 }: MarkdownEditorProps) {
   const isUpdatingFromEditor = useRef(false);
+
+  // States to hold dynamically fetched users and projects
+  const [fetchedUsers, setFetchedUsers] = useState<User[]>([]);
+  const [fetchedProjects, setFetchedProjects] = useState<any[]>([]);
+
+  // Ref to always hold latest users and projects for Tiptap Suggestion items function without rebuilding schema
+  const suggestionsRef = useRef<{ users: User[]; projects: any[] }>({ users: [], projects: [] });
+
+  useEffect(() => {
+    async function loadSuggestions() {
+      try {
+        const res = await getMentionSuggestionsAction();
+        if (res.success) {
+          if (res.users) setFetchedUsers(res.users);
+          if (res.projects) setFetchedProjects(res.projects);
+        }
+      } catch (e) {
+        console.error('Failed to load mention suggestions:', e);
+      }
+    }
+    loadSuggestions();
+  }, []);
+
+  useEffect(() => {
+    suggestionsRef.current = {
+      users: users.length > 0 ? users : fetchedUsers,
+      projects: fetchedProjects,
+    };
+  }, [users, fetchedUsers, fetchedProjects]);
 
   const extensions = useMemo(() => [
     StarterKit.configure({
@@ -136,8 +180,32 @@ export function MarkdownEditor({
         return `@${node.attrs.label ?? node.attrs.id}`;
       },
       suggestion: {
-        items: ({ query }: { query: string; editor: Editor; }) => 
-          users.filter(user => user.name.toLowerCase().startsWith(query.toLowerCase())).slice(0, 5),
+        items: ({ query }: { query: string; editor: Editor; }) => {
+          const lowerQuery = query.toLowerCase();
+          const { users: currentUsers, projects: currentProjects } = suggestionsRef.current;
+          
+          const filteredUsers = currentUsers
+            .filter(u => u.name.toLowerCase().includes(lowerQuery) || (u.username && u.username.toLowerCase().includes(lowerQuery)))
+            .slice(0, 5)
+            .map(u => ({
+              id: u.username || u.id,
+              name: u.name,
+              avatarUrl: u.avatarUrl,
+              type: 'user' as const,
+            }));
+
+          const filteredProjects = currentProjects
+            .filter(p => p.name.toLowerCase().includes(lowerQuery))
+            .slice(0, 5)
+            .map(p => ({
+              id: p.id,
+              name: p.name,
+              avatarUrl: p.photoUrl,
+              type: 'project' as const,
+            }));
+
+          return [...filteredUsers, ...filteredProjects];
+        },
         render: () => {
           let reactRenderer: ReactRenderer<any>;
           let popup: any;
@@ -179,13 +247,14 @@ export function MarkdownEditor({
         },
       },
     }),
-  ], [steemFlavor, users]);
+  ], [steemFlavor]);
 
   const [, forceUpdate] = useState(0);
 
   const editor = useEditor({
     extensions,
     content: value,
+    contentType: 'markdown',
     onUpdate: ({ editor }) => {
       isUpdatingFromEditor.current = true;
       const md = (editor.storage as any).markdown.getMarkdown();
@@ -206,7 +275,24 @@ export function MarkdownEditor({
   const formattingTools = [
     { name: 'bold', action: () => editor?.chain().focus().toggleBold().run(), icon: Bold, tooltip: 'Bold', shortcut: 'Mod+B' },
     { name: 'italic', action: () => editor?.chain().focus().toggleItalic().run(), icon: Italic, tooltip: 'Italic', shortcut: 'Mod+I' },
-    { name: 'code', action: () => editor?.chain().focus().toggleCode().run(), icon: Code, tooltip: 'Code Snippet', shortcut: 'Mod+E' },
+    { 
+      name: 'code', 
+      action: () => {
+        if (!editor) return;
+        const { state } = editor;
+        const { from, to } = state.selection;
+        const text = state.doc.textBetween(from, to, '\n');
+        
+        if (text.includes('\n')) {
+          editor.chain().focus().toggleCodeBlock().run();
+        } else {
+          editor.chain().focus().toggleCode().run();
+        }
+      }, 
+      icon: Code, 
+      tooltip: 'Code Snippet', 
+      shortcut: 'Mod+E' 
+    },
     { name: 'blockquote', action: () => editor?.chain().focus().toggleBlockquote().run(), icon: Quote, tooltip: 'Quote', shortcut: 'Mod+Shift+B' },
     { name: 'link', action: () => { 
       let url = window.prompt('URL'); 
@@ -231,7 +317,7 @@ export function MarkdownEditor({
     if (editor) {
       // Retain the current selection if possible when updating externally
       const { from, to } = editor.state.selection;
-      editor.commands.setContent(value, { emitUpdate: false });
+      editor.commands.setContent(value, false, { contentType: 'markdown' });
       try {
         editor.commands.setTextSelection({ from, to });
       } catch (e) {
@@ -253,7 +339,13 @@ export function MarkdownEditor({
             <TooltipTrigger asChild>
               <Button 
                 type="button" 
-                variant={editor?.isActive(tool.name) ? "secondary" : "ghost"} 
+                variant={
+                  (tool.name === 'code' 
+                    ? (editor?.isActive('code') || editor?.isActive('codeBlock')) 
+                    : editor?.isActive(tool.name)) 
+                      ? "secondary" 
+                      : "ghost"
+                }
                 size="icon" 
                 className="h-8 w-8 shrink-0" 
                 onClick={tool.action}
