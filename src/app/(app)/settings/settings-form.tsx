@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useTransition, useState } from 'react';
+import { AvatarUpload } from '@/components/avatar-upload';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -186,6 +187,21 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+
+        {/* Avatar section — saves independently of the main form */}
+        <div className="flex items-center gap-6 rounded-lg border p-4 bg-muted/30">
+          <AvatarUpload user={currentUser} />
+          <div className="space-y-1">
+            <p className="font-semibold text-base">{currentUser.name}</p>
+            {currentUser.username && (
+              <p className="text-sm text-muted-foreground">@{currentUser.username}</p>
+            )}
+            <p className="text-xs text-muted-foreground pt-1">
+              Click your avatar to upload a new photo. Supports JPG, PNG, GIF up to 5 MB.
+            </p>
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="name"

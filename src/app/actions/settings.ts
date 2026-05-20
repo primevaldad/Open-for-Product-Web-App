@@ -4,9 +4,9 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { findUserById, getAllTags } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
-import { adminAuth } from '@/lib/firebase.server';
+import { adminAuth, adminStorage } from '@/lib/firebase.server';
 import { deepSerialize } from '@/lib/utils.server';
-import { updateUser } from './user'; // Import the correct high-level action
+import { updateUser } from './user';
 import type { User, GlobalTag } from '@/lib/types';
 
 const UserSettingsSchema = z.object({
@@ -133,4 +133,60 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
   }
 
   return { success: true };
+}
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+
+export async function uploadAvatarAction(base64DataUrl: string): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
+  try {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      return { success: false, error: 'Not authenticated.' };
+    }
+
+    // --- Validate ---
+    if (!base64DataUrl.startsWith('data:image/')) {
+      return { success: false, error: 'Invalid image format.' };
+    }
+    const [header, base64Data] = base64DataUrl.split(',');
+    if (!base64Data) {
+      return { success: false, error: 'Invalid image data.' };
+    }
+    const mimeMatch = header.match(/data:(image\/[a-zA-Z+]+);base64/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.byteLength > MAX_AVATAR_BYTES) {
+      return { success: false, error: 'Image is too large. Maximum size is 5MB.' };
+    }
+
+    // --- Upload to Firebase Storage ---
+    const filePath = `avatars/${currentUser.id}/avatar.png`;
+    const file = adminStorage.file(filePath);
+    await file.save(buffer, {
+      metadata: {
+        contentType: mimeType,
+        cacheControl: 'public, max-age=31536000',
+      },
+      // Make the file publicly accessible
+      public: true,
+    });
+
+    // Get the public URL
+    const publicUrl = `https://storage.googleapis.com/${adminStorage.name}/${filePath}`;
+    // Append cache-bust so browsers reload the image after update
+    const avatarUrl = `${publicUrl}?v=${Date.now()}`;
+
+    // --- Persist to Firestore and Firebase Auth ---
+    const updateResult = await updateUser(currentUser.id, { avatarUrl });
+    if (!updateResult.success) {
+      return { success: false, error: updateResult.error };
+    }
+    await adminAuth.updateUser(currentUser.id, { photoURL: publicUrl });
+
+    revalidatePath('/', 'layout');
+    return { success: true, avatarUrl };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    return { success: false, error: msg };
+  }
 }

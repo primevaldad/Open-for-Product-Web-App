@@ -38,6 +38,9 @@ if (!getApps().length) {
 
 const adminDb = admin.firestore();
 const adminAuth = admin.auth();
+const adminStorage = admin.storage().bucket(
+  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'open-for-product.firebasestorage.app'
+);
 
 const POSTS_COLLECTION = 'steemPosts';
 
@@ -106,4 +109,4 @@ export async function saveSteemPosts(userId: UserId, posts: SteemPost[]): Promis
   }
 }
 
-export { adminDb, adminAuth };
+export { adminDb, adminAuth, adminStorage };
