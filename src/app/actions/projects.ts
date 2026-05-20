@@ -825,3 +825,45 @@ export async function removeProjectFromProjectAction(parentId: string, childId: 
     return { success: false, error: error.message };
   }
 }
+
+export async function getProjectFollowersAction(
+  projectId: string
+): Promise<ServerActionResponse<Array<{ id: string; name: string; avatarUrl?: string; username?: string }>>> {
+  try {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      return { success: false, error: "Authentication required." };
+    }
+
+    const project = await findProjectById(projectId, currentUser);
+    if (!project) {
+      return { success: false, error: "Project not found." };
+    }
+
+    const isMember = project.team.some((member) => member.userId === currentUser.id);
+    if (!isMember) {
+      return { success: false, error: "You must be a project member to view followers." };
+    }
+
+    const snap = await adminDb.collection("users")
+      .where("followedProjectIds", "array-contains", projectId)
+      .get();
+
+    const followers = snap.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: (data.name || "Unknown User") as string,
+        avatarUrl: (data.avatarUrl || data.photoUrl || "") as string,
+        username: (data.username || "") as string,
+      };
+    });
+
+    return deepSerialize({
+      success: true,
+      data: followers,
+    });
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to fetch project followers." };
+  }
+}

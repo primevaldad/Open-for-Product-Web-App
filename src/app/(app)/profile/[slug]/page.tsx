@@ -4,10 +4,12 @@ import { notFound } from 'next/navigation';
 import ProfileClientPage from './profile-client-page';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { deepSerialize } from '@/lib/utils.server';
+import { extractId } from '@/lib/slug';
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  let user = await findUserByUsername(params.slug);
-  if (!user) user = await findUserById(params.slug);
+  const userId = extractId(params.slug);
+  let user = await findUserById(userId);
+  if (!user) user = await findUserByUsername(params.slug);
 
   if (!user) return { title: 'Profile Not Found | Open for Product' };
   return {
@@ -17,10 +19,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function UserProfilePage({ params }: { params: { slug: string } }) {
-  let user = await findUserByUsername(params.slug);
+  const userId = extractId(params.slug);
+  let user = await findUserById(userId);
 
   if (!user) {
-    user = await findUserById(params.slug);
+    user = await findUserByUsername(params.slug);
   }
 
   if (!user) {

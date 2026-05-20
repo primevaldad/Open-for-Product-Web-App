@@ -18,6 +18,7 @@ import {
 import { CreditCard, LogOut, Settings, User as UserIcon, Bell } from "lucide-react"
 import Link from "next/link"
 import type { User } from "@/lib/types";
+import { buildHybridUrl } from "@/lib/slug";
 import { getInitials } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider"; 
 import { useRouter, usePathname } from "next/navigation";
@@ -82,7 +83,7 @@ export function UserNav({ currentUser }: UserNavProps) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <Link href={`/profile/${user.id}`}>
+          <Link href={buildHybridUrl('/profile', user.id, user.username || user.name)}>
             <DropdownMenuItem>
               <UserIcon className="mr-2 h-4 w-4" />
               <span>Profile</span>

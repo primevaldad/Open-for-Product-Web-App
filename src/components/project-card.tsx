@@ -79,7 +79,7 @@ export default function ProjectCard({
         );
     }
 
-    const profileUrl = `/profile/${user.username || user.id}`;
+    const profileUrl = buildHybridUrl('/profile', user.id, user.username || user.name);
     
     return (
       <TooltipProvider>

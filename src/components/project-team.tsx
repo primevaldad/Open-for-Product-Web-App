@@ -11,6 +11,8 @@ import type { HydratedProjectMember, User } from '@/lib/types';
 import { getInitials, toDate } from '@/lib/utils';
 import { getProjectInvitesAction, acceptInviteAction, getCollaboratorsAction, cancelInviteAction, resendInviteAction, sendProjectInviteAction } from '@/app/actions/invite';
 import type { ProjectInvite } from '@/lib/types';
+import { getProjectFollowersAction } from '@/app/actions/projects';
+import { buildHybridUrl } from '@/lib/slug';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -19,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, X, Send, Trash2, RefreshCw, MessageSquare, Mail, UserPlus, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, X, Send, Trash2, RefreshCw, MessageSquare, Mail, UserPlus, Loader2, ChevronDown, ChevronRight, Users } from "lucide-react";
 
 interface ProjectTeamProps {
     projectId: string;
@@ -52,6 +54,28 @@ export default function ProjectTeam({
     const [customMessage, setCustomMessage] = useState('');
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
     const [isComboOpen, setIsComboOpen] = useState(false);
+    const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+    const [followers, setFollowers] = useState<Array<{ id: string; name: string; avatarUrl?: string; username?: string }>>([]);
+    const [loadingFollowers, setLoadingFollowers] = useState(false);
+    const [isFollowersOpen, setIsFollowersOpen] = useState(false);
+
+    const handleOpenFollowers = async () => {
+        setIsFollowersOpen(true);
+        setLoadingFollowers(true);
+        try {
+            const res = await getProjectFollowersAction(projectId);
+            if (res.success && res.data) {
+                setFollowers(res.data);
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } catch (e: any) {
+            toast({ title: 'Error', description: e.message || 'Failed to load followers', variant: 'destructive' });
+        } finally {
+            setLoadingFollowers(false);
+        }
+    };
+
     const { toast } = useToast();
     const router = useRouter();
 
@@ -84,6 +108,16 @@ export default function ProjectTeam({
     const userMap = useMemo(() => new Map(team.map(member => [member.userId, member])), [team]);
     const isCurrentUserMember = currentUser ? userMap.has(currentUser.id) : false;
     const currentUserMember = currentUser ? userMap.get(currentUser.id) : undefined;
+
+    useEffect(() => {
+        if (isCurrentUserMember) {
+            getProjectFollowersAction(projectId).then(res => {
+                if (res.success && res.data) {
+                    setFollowers(res.data);
+                }
+            });
+        }
+    }, [projectId, isCurrentUserMember]);
 
     const availableRoles: Array<'participant' | 'contributor' | 'lead'> = ['participant', 'contributor', 'lead'];
 
@@ -402,45 +436,54 @@ export default function ProjectTeam({
 
             {isLead && historyInvites.length > 0 && (
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-muted-foreground">
-                            <Mail className="h-5 w-5" />
-                            Invitation History
-                        </CardTitle>
+                    <CardHeader className="cursor-pointer select-none hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors" onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2 text-muted-foreground">
+                                <Mail className="h-5 w-5" />
+                                Invitation History
+                            </CardTitle>
+                            {isHistoryExpanded ? (
+                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            )}
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        {historyInvites.map(invite => (
-                            <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg opacity-80">
-                                <div>
-                                    <p className="font-semibold text-muted-foreground">{invite.email}</p>
-                                    <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
-                                        <Badge variant="outline" className="capitalize opacity-70">{invite.role}</Badge>
-                                        <span className="capitalize text-xs">
-                                            Status: <span className={cn(
-                                                "font-medium",
-                                                invite.status === 'accepted' ? 'text-green-500' :
-                                                invite.status === 'declined' ? 'text-red-500' : 
-                                                invite.status === 'cancelled' ? 'text-gray-500' : 'text-gray-500'
-                                            )}>{invite.status}</span>
-                                        </span>
+                    {isHistoryExpanded && (
+                        <CardContent className="space-y-4">
+                            {historyInvites.map(invite => (
+                                <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg opacity-80">
+                                    <div>
+                                        <p className="font-semibold text-muted-foreground">{invite.email}</p>
+                                        <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
+                                            <Badge variant="outline" className="capitalize opacity-70">{invite.role}</Badge>
+                                            <span className="capitalize text-xs">
+                                                Status: <span className={cn(
+                                                    "font-medium",
+                                                    invite.status === 'accepted' ? 'text-green-500' :
+                                                    invite.status === 'declined' ? 'text-red-500' : 
+                                                    invite.status === 'cancelled' ? 'text-gray-500' : 'text-gray-500'
+                                                )}>{invite.status}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {invite.status === 'expired' && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                onClick={() => handleResendInvite(invite.id)}
+                                                disabled={loading[invite.id]}
+                                                title="Renew and Resend"
+                                            >
+                                                <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    {invite.status === 'expired' && (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            onClick={() => handleResendInvite(invite.id)}
-                                            disabled={loading[invite.id]}
-                                            title="Renew and Resend"
-                                        >
-                                            <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </CardContent>
+                            ))}
+                        </CardContent>
+                    )}
                 </Card>
             )}
 
@@ -524,8 +567,19 @@ export default function ProjectTeam({
             )}
 
             <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle>Team Members</CardTitle>
+                    {isCurrentUserMember && (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex items-center gap-1.5"
+                            onClick={handleOpenFollowers}
+                        >
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span>Followers: {followers.length}</span>
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                     {approvedMembers.length > 0 ? (
@@ -556,6 +610,47 @@ export default function ProjectTeam({
                     )}
                 </CardContent>
             </Card>
+
+            <Dialog open={isFollowersOpen} onOpenChange={setIsFollowersOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Project Followers</DialogTitle>
+                    </DialogHeader>
+                    {loadingFollowers ? (
+                        <div className="flex justify-center py-6">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : followers.length > 0 ? (
+                        <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1 py-1">
+                            {followers.map(follower => {
+                                const profileUrl = buildHybridUrl('/profile', follower.id, follower.username || follower.name);
+                                return (
+                                    <div key={follower.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/55 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <UserAvatar user={{ name: follower.name, avatarUrl: follower.avatarUrl }} className="h-9 w-9" />
+                                            <div>
+                                                <a href={profileUrl} className="font-medium hover:underline text-sm block">
+                                                    {follower.name}
+                                                </a>
+                                                {follower.username && (
+                                                    <span className="text-xs text-muted-foreground block">
+                                                        @{follower.username}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <a href={profileUrl} className="text-xs text-primary hover:underline">
+                                            View Profile
+                                        </a>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-6">No users are following this project yet.</p>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

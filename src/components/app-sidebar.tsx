@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { User } from "@/lib/types";
+import { buildHybridUrl } from "@/lib/slug";
 
 import {
   Sidebar,
@@ -75,7 +76,7 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
                         </SidebarMenuItem>
                     ))}
                     <SidebarMenuItem>
-                        <Link href={`/profile/${user.id}`} onClick={() => setOpenMobile(false)}>
+                        <Link href={buildHybridUrl('/profile', user.id, user.username || user.name)} onClick={() => setOpenMobile(false)}>
                             <SidebarMenuButton isActive={pathname.startsWith('/profile')}>
                                 <UserAvatar user={user} className="size-5" badgeSize="sm" />
                                 Profile

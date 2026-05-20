@@ -7,6 +7,7 @@ import ProjectCard from '@/components/project-card';
 import ShareButton from '@/components/share-button';
 import { Button } from '@/components/ui/button';
 import { getAllProjectPathLinks, getAllLearningPaths } from '@/lib/data.server';
+import { buildHybridUrl } from '@/lib/slug';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,7 +83,7 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
                     <p className="text-sm text-muted-foreground">
                         Curated by{' '}
                         <Link
-                            href={`/profile/${collection.owner.username ?? collection.owner.id}`}
+                            href={buildHybridUrl('/profile', collection.owner.id, collection.owner.username || collection.owner.name)}
                             className="font-medium text-foreground hover:underline"
                         >
                             {collection.owner.name}
