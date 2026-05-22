@@ -254,7 +254,7 @@ export function MarkdownEditor({
   const editor = useEditor({
     extensions,
     content: value,
-    contentType: 'markdown',
+    // TipTap's markdown handling is provided by the Markdown extension; no need for contentType option.
     onUpdate: ({ editor }) => {
       isUpdatingFromEditor.current = true;
       const md = (editor.storage as any).markdown.getMarkdown();
@@ -317,7 +317,7 @@ export function MarkdownEditor({
     if (editor) {
       // Retain the current selection if possible when updating externally
       const { from, to } = editor.state.selection;
-      editor.commands.setContent(value, false, { contentType: 'markdown' });
+      editor.commands.setContent(value);
       try {
         editor.commands.setTextSelection({ from, to });
       } catch (e) {

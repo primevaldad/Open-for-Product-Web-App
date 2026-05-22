@@ -68,11 +68,20 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
         return { ...discussion, user: user || null };
     }).filter(d => d.user); // Ensure user is not null
 
+    const isMember = currentUser && (
+        project.team?.some(member => member.userId === currentUser.id) ||
+        project.owner?.id === currentUser.id
+    );
+
+    const filteredPosts = isMember
+        ? posts
+        : posts.filter(post => post.status !== 'draft');
+
     return {
         project,
         discussions: hydratedDiscussions as (Discussion & { user: User })[],
         tasks,
-        posts,
+        posts: filteredPosts,
         users,
         currentUser: currentUser ?? null,
         learningPaths,

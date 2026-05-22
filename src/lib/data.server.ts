@@ -846,10 +846,24 @@ export async function createPost(postData: Omit<Post, 'id' | 'createdAt' | 'upda
     const now = FieldValue.serverTimestamp();
     await postRef.set({
         ...postData,
+        status: postData.status || 'published',
         createdAt: now,
         updatedAt: now,
     });
     return postRef.id;
+}
+
+export async function findPostById(postId: string): Promise<Post | undefined> {
+    if (!postId) return undefined;
+    const doc = await adminDb.collection('posts').doc(postId).get();
+    if (!doc.exists) return undefined;
+    const data = doc.data()!;
+    return {
+        id: doc.id,
+        ...data,
+        createdAt: serializeTimestamp(data.createdAt),
+        updatedAt: serializeTimestamp(data.updatedAt)
+    } as Post;
 }
 
 export async function updatePost(postId: string, updates: Partial<Post>): Promise<void> {
@@ -902,7 +916,7 @@ export async function getFeedPosts(projectIds: string[]): Promise<Post[]> {
                 createdAt: serializeTimestamp(data.createdAt),
                 updatedAt: serializeTimestamp(data.updatedAt)
             } as Post;
-        });
+        }).filter(post => post.status !== 'draft');
         allPosts.push(...posts);
     }
     

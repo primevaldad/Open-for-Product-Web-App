@@ -147,8 +147,8 @@ async function dispatchEvent(event: Event): Promise<void> {
             if (projectId) {
                 const project = await findProjectById(projectId, null);
                 if (project) {
-                    if (project.ownerId && project.ownerId !== actorUserId) {
-                        recipientIds.add(project.ownerId);
+                    if (project.owner?.id && project.owner.id !== actorUserId) {
+                        recipientIds.add(project.owner.id);
                     }
                     project.team.forEach(m => {
                         if (m.userId !== actorUserId) {

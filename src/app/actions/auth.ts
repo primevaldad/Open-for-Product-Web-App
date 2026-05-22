@@ -24,7 +24,7 @@ const LoginSchema = z.object({
 
 // --- SERVER ACTIONS ---
 
-export async function login(values: z.infer<typeof LoginSchema>): Promise<{ success: boolean; error?: string }> {
+export async function login(values: z.infer<typeof LoginSchema>): Promise<{ success: boolean; error?: string; requiresSignup?: boolean; email?: string | null }> {
   const validatedFields = LoginSchema.safeParse(values);
   if (!validatedFields.success) {
     return { success: false, error: "Invalid ID token provided." };

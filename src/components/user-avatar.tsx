@@ -4,7 +4,7 @@ import { cn, getInitials } from "@/lib/utils";
 import type { User } from "@/lib/types";
 
 interface UserAvatarProps {
-  user: User;
+  user: Partial<User>;
   className?: string;
   badgeSize?: "sm" | "md" | "lg";
 }

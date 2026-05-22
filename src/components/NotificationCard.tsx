@@ -163,7 +163,7 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
             onClick={handleClick}
         >
             <Avatar className="w-10 h-10 border">
-                <AvatarImage src={notification.actor?.photoUrl || notification.actor?.avatarUrl} alt={notification.actor?.name || notification.actor?.username || 'User'} />
+                <AvatarImage src={notification.actor?.avatarUrl || notification.actor?.photoUrl} alt={notification.actor?.name || notification.actor?.username || 'User'} />
                 <AvatarFallback>{getInitials(notification.actor?.name || notification.actor?.username || 'U')}</AvatarFallback>
             </Avatar>
             <div className="flex-1">

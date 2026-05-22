@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,28 +17,38 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { SteemKeychain } from '@/lib/steem-keychain.client';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Share2, Rocket } from 'lucide-react';
-import type { HydratedProject, User } from '@/lib/types';
+import { PlusCircle, Edit } from 'lucide-react';
+import type { HydratedProject, User, Post } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { createPostAction, confirmSteemBroadcastAction } from '@/app/actions/post';
+import { createPostAction, updatePostAction, confirmSteemBroadcastAction } from '@/app/actions/post';
 import { SteemLogo } from '@/components/steem-logo';
 
 interface CreatePostDialogProps {
   project: HydratedProject;
   currentUser: User;
+  post?: Post;
   trigger?: React.ReactNode;
 }
 
-export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDialogProps) {
+export function CreatePostDialog({ project, currentUser, post, trigger }: CreatePostDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
-  const [title, setTitle] = useState(`Update: ${project.name}`);
-  const [body, setBody] = useState(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n${project.tagline}`);
-  const [tags, setTags] = useState('openforproduct development');
-  const [broadcastToSteem, setBroadcastToSteem] = useState(!!currentUser.steemVerified);
+  const [title, setTitle] = useState(post?.title ?? `Update: ${project.name}`);
+  const [body, setBody] = useState(post?.content ?? `I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n${project.tagline}`);
+  const [tags, setTags] = useState(post?.tags ? post.tags.join(' ') : 'openforproduct development');
+  const [broadcastToSteem, setBroadcastToSteem] = useState(post ? post.steemStatus !== 'none' : !!currentUser.steemVerified);
 
-  const handlePost = async () => {
+  useEffect(() => {
+    if (open) {
+      setTitle(post?.title ?? `Update: ${project.name}`);
+      setBody(post?.content ?? `I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n${project.tagline}`);
+      setTags(post?.tags ? post.tags.join(' ') : 'openforproduct development');
+      setBroadcastToSteem(post ? post.steemStatus !== 'none' : !!currentUser.steemVerified);
+    }
+  }, [open, post, project, currentUser]);
+
+  const handlePost = async (status: 'draft' | 'published') => {
     setIsPosting(true);
     try {
       const cleanTags = tags
@@ -47,24 +57,36 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
         .split(/\s+/)
         .filter(t => t.length > 0);
 
-      const permlink = broadcastToSteem
+      const shouldBroadcast = status === 'published' && broadcastToSteem;
+      const permlink = shouldBroadcast
         ? `${project.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-update-${Date.now().toString(36)}`
         : undefined;
 
-      // 1. Save to OfP Firestore
-      const result = await createPostAction({
-        projectId: project.id,
-        title,
-        content: body,
-        tags: cleanTags,
-        broadcastToSteem,
-        steemPermlink: permlink
-      });
+      let result;
+      if (post) {
+        result = await updatePostAction(post.id, {
+          title,
+          content: body,
+          tags: cleanTags,
+          status,
+          broadcastToSteem: shouldBroadcast,
+          steemPermlink: permlink
+        });
+      } else {
+        result = await createPostAction({
+          projectId: project.id,
+          title,
+          content: body,
+          tags: cleanTags,
+          status,
+          broadcastToSteem: shouldBroadcast,
+          steemPermlink: permlink
+        });
+      }
 
       if (result.error) throw new Error(result.error);
 
-      // 2. Optional Steem Broadcast
-      if (broadcastToSteem && permlink) {
+      if (shouldBroadcast && permlink) {
         if (!currentUser.steemUsername) {
           throw new Error('Steem username not linked');
         }
@@ -76,23 +98,25 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
           format: 'markdown'
         });
 
+        const activePostId = post ? post.id : result.postId!;
+
         if (currentUser.steemTestnetEnabled) {
           toast({ title: 'Simulation', description: 'Simulating Steem broadcast...' });
           await new Promise(resolve => setTimeout(resolve, 1000));
-          await confirmSteemBroadcastAction(result.postId!, permlink);
+          await confirmSteemBroadcastAction(activePostId, permlink);
         } else {
           const steemResult = await SteemKeychain.requestPost(
             currentUser.steemUsername,
             title,
             body,
-            'hive-111745', // Community tag
+            'hive-111745',
             '',
             jsonMetadata,
             permlink
           );
 
           if (steemResult.success) {
-            await confirmSteemBroadcastAction(result.postId!, permlink);
+            await confirmSteemBroadcastAction(activePostId, permlink);
             toast({ title: 'Published to Steem!' });
           } else {
             toast({
@@ -105,22 +129,30 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
       }
 
       toast({
-        title: 'Post Created',
-        description: 'Your project update has been shared.',
+        title: status === 'draft' ? 'Draft Saved' : (post ? 'Post Updated' : 'Post Created'),
+        description: status === 'draft'
+          ? 'Your draft has been saved successfully.'
+          : 'Your project update has been shared.',
       });
+      
       setOpen(false);
-      setTitle(`Update: ${project.name}`);
-      setBody(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n${project.tagline}`);
+      
+      if (!post) {
+        setTitle(`Update: ${project.name}`);
+        setBody(`I'm excited to share an update about **${project.name}** on Open for Product!\n\n${project.name}\n\n\n\n\n\n${project.tagline}`);
+      }
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Posting Failed',
+        title: 'Operation Failed',
         description: error.message,
       });
     } finally {
       setIsPosting(false);
     }
   };
+
+  const isDraftState = !post || post.status === 'draft';
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -134,7 +166,7 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Create Project Update</DialogTitle>
+          <DialogTitle>{post ? (post.status === 'draft' ? 'Edit Draft' : 'Edit Post') : 'Create Project Update'}</DialogTitle>
           <DialogDescription>
             Share progress, news, or questions about <strong>{project.name}</strong>.
           </DialogDescription>
@@ -171,7 +203,7 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
             />
           </div>
 
-          {currentUser.steemVerified && (
+          {currentUser.steemVerified && isDraftState && (
             <div className="flex items-center space-x-2 pt-2 border-t">
               <Checkbox
                 id="steem-broadcast"
@@ -180,21 +212,39 @@ export function CreatePostDialog({ project, currentUser, trigger }: CreatePostDi
               />
               <Label htmlFor="steem-broadcast" className="flex items-center gap-2 cursor-pointer">
                 <SteemLogo className="h-4 w-4 text-[#3c4fe0]" />
-                Broadcast to Steem Blockchain
+                Broadcast to Steem Blockchain on Publish
               </Label>
             </div>
           )}
         </div>
 
-        <DialogFooter className="border-t pt-4">
+        <DialogFooter className="border-t pt-4 gap-2 sm:gap-0">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handlePost}
-            disabled={isPosting || !title || !body}
-            className="gap-2"
-          >
-            {isPosting ? 'Posting...' : 'Create Post'}
-          </Button>
+          {isDraftState ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => handlePost('draft')}
+                disabled={isPosting || !title || !body}
+              >
+                {isPosting ? 'Saving...' : 'Save Draft'}
+              </Button>
+              <Button
+                onClick={() => handlePost('published')}
+                disabled={isPosting || !title || !body}
+                className="gap-2"
+              >
+                {isPosting ? 'Publishing...' : 'Publish Update'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={() => handlePost('published')}
+              disabled={isPosting || !title || !body}
+            >
+              {isPosting ? 'Updating...' : 'Update Post'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

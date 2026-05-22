@@ -6,17 +6,13 @@ import { Lightbulb } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { highlightProjectBlockers } from "@/ai/flows/highlight-project-blockers";
+import { highlightProjectBlockers, type HighlightProjectBlockersOutput } from "@/ai/flows/highlight-project-blockers";
 import type { Task, Discussion } from "@/lib/types";
 
 interface Blocker {
   title: string;
   description: string;
   riskLevel: string;
-}
-
-interface Blockers {
-  potentialBlockers: Blocker[];
 }
 
 interface HighlightBlockersProps {
@@ -27,7 +23,7 @@ interface HighlightBlockersProps {
 export function HighlightBlockers({ tasks, discussions }: HighlightBlockersProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [blockers, setBlockers] = useState<Blockers | null>(null);
+  const [blockers, setBlockers] = useState<HighlightProjectBlockersOutput | null>(null);
 
   const getBlockers = async () => {
     try {

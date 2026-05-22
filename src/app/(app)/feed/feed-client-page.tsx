@@ -47,7 +47,6 @@ export function FeedClientPage({
   // Identify relevant projects for the current user
   const myProjects = projects.filter(p => 
     p.ownerId === currentUser.id || 
-    p.owner?.id === currentUser.id ||
     (Array.isArray(p.team) && p.team.some(tm => tm.userId === currentUser.id)) ||
     (currentUser.followedProjectIds || []).includes(p.id)
   );

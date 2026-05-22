@@ -736,11 +736,11 @@ export default function ProjectDetailClientPage({
                     </TabPanel>
                     <TabPanel>
                         {hasReadAccess ? (
-                            <ProjectPostsTab posts={posts} users={users} />
+                            <ProjectPostsTab posts={posts} users={users} currentUser={currentUser ?? undefined} project={project} />
                         ) : (
                             <div className="relative py-12 flex justify-center">
                                 <div className="absolute inset-0 blur-md pointer-events-none opacity-50">
-                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} />
+                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} currentUser={currentUser ?? undefined} project={project} />
                                 </div>
                                 <GuestOverlay />
                             </div>

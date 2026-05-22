@@ -870,8 +870,9 @@ export async function getProjectFollowersAction(
 
 export async function getMentionSuggestionsAction(): Promise<{ success: boolean; users?: User[]; projects?: any[]; error?: string }> {
   try {
+    const currentUser = await getAuthenticatedUser();
     const users = await getAllUsers();
-    const projects = await getAllProjects();
+    const projects = await getAllProjects(currentUser);
     return deepSerialize({
       success: true,
       users,

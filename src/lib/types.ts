@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -16,7 +15,8 @@ export interface User {
     username?: string;
     email: string;
     role?: string; // Can be 'guest' or undefined for regular users
-    avatarUrl?: string;
+    photoUrl?: string;
+    avatarUrl?: string; // New avatar URL field
     interests?: ProfileTag[];
     bio?: string;
     draftProjects?: ProjectId[]; // IDs of projects the user is drafting
@@ -81,6 +81,7 @@ export interface Post {
     steemAuthor?: string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+    status?: 'draft' | 'published';
 }
 
 // This represents a tag that is associated with a project.
@@ -441,6 +442,17 @@ export interface Activity {
 
         // Context for discussion-related activities
         discussionId?: string;
+
+        // Context for collection-related activities
+        collectionId?: string;
+        collectionName?: string;
+        collectionSlug?: string;
+        isProjectCollection?: boolean;
+
+        // Context for Steem-related activities
+        steemTitle?: string;
+        steemUrl?: string;
+        steemCommunity?: string;
     };
 }
 
@@ -470,6 +482,7 @@ export interface SteemPost {
     total_payout_value: string;
     curator_payout_value: string;
     pending_payout_value: string;
+    community_title?: string;
 }
 
 // --- Project Collections ---
