@@ -10,11 +10,22 @@ interface MarkdownProps {
 }
 
 export default function Markdown({ content, steemFlavor = false }: MarkdownProps) {
+  // Convert @mentions to clickable links (user/profile) using simple regex
+  const mentionLink = (text: string) => {
+    return text.replace(/@([\w-]+)/g, (match, handle) => {
+      // Assuming user profile routes are /profile/[handle]
+      const href = `/profile/${handle}`;
+      return `<a href="${href}" class="mention">@${handle}</a>`;
+    });
+  };
+
+  const processedContent = mentionLink(content);
+
   return (
     <div className="prose dark:prose-invert max-w-none">
         <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            rehypePlugins={steemFlavor ? [rehypeRaw] : []}
+            rehypePlugins={[rehypeRaw]}
             components={{
                 a: ({node, ...props}) => {
                     let href = props.href;
@@ -30,7 +41,7 @@ export default function Markdown({ content, steemFlavor = false }: MarkdownProps
                 }
             }}
         >
-            {content}
+            {processedContent}
         </ReactMarkdown>
     </div>
   );
