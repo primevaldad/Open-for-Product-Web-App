@@ -41,6 +41,7 @@ import { User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getInitials } from '@/lib/utils';
 import { getMentionSuggestionsAction } from '@/app/actions/projects';
+import { buildHybridUrl, extractId } from '@/lib/slug';
 
 const MentionList = forwardRef((props: any, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -59,7 +60,8 @@ const MentionList = forwardRef((props: any, ref) => {
       }
       if (event.key === 'Enter') {
         if (props.items[selectedIndex]) {
-          props.command({ id: props.items[selectedIndex].id, label: props.items[selectedIndex].name });
+          const item = props.items[selectedIndex];
+          props.command({ id: item.id, label: item.name, mentionType: item.type, uid: item.uid });
           return true;
         }
       }
@@ -68,16 +70,20 @@ const MentionList = forwardRef((props: any, ref) => {
   }));
 
   if (props.items.length === 0) {
-    return null;
+    // Show a friendly message instead of hiding the popup so users can type spaces without losing the list
+    return (
+      <div className="p-2 text-sm text-muted-foreground">No matches</div>
+    );
   }
 
   return (
-    <div className="z-50 p-2 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto min-w-[200px]">
+    <div className="z-50 p-2 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto min-w-[200px] flex flex-col gap-0.5">
       {props.items.map((item: any, index: number) => (
-        <div
+        <button
+          type="button"
           key={index}
-          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${index === selectedIndex ? 'bg-muted' : ''}`}
-          onClick={() => props.command({ id: item.id, label: item.name })}
+          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors w-full text-left outline-none border-none ${index === selectedIndex ? 'bg-muted' : ''}`}
+          onMouseDown={(e) => { e.preventDefault(); props.command({ id: item.id, label: item.name, mentionType: item.type, uid: item.uid }); }}
         >
           {item.type === 'project' ? (
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
@@ -95,7 +101,7 @@ const MentionList = forwardRef((props: any, ref) => {
               {item.type === 'project' ? 'Project' : `@${item.id}`}
             </span>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -132,12 +138,15 @@ export function MarkdownEditor({
     async function loadSuggestions() {
       try {
         const res = await getMentionSuggestionsAction();
+        console.log('[MarkdownEditor] Mention suggestions response:', res);
         if (res.success) {
           if (res.users) setFetchedUsers(res.users);
           if (res.projects) setFetchedProjects(res.projects);
+        } else {
+          console.error('[MarkdownEditor] Error from server action:', res.error);
         }
       } catch (e) {
-        console.error('Failed to load mention suggestions:', e);
+        console.error('[MarkdownEditor] Failed to load mention suggestions:', e);
       }
     }
     loadSuggestions();
@@ -149,6 +158,20 @@ export function MarkdownEditor({
       projects: fetchedProjects,
     };
   }, [users, fetchedUsers, fetchedProjects]);
+
+  const mentionLink = (text: string) => {
+    // Legacy support: convert bare @mentions (not inside a markdown link) to profile links.
+    // New mentions serialize as [@Name](/profile/uid-slug), so this is only for old content.
+    let processed = text.replace(/(?<!\[)@([\w-]+)/g, (match, handle) => {
+      const href = `/profile/${handle}`;
+      return `<a href="${href}" class="mention">@${handle}</a>`;
+    });
+    // Replace generic [mention] placeholders with a styled span (fallback)
+    processed = processed.replace(/\[mention\]/g, () => {
+      return `<span class="mention placeholder">@unknown</span>`;
+    });
+    return processed;
+  };
 
   const extensions = useMemo(() => [
     StarterKit.configure({
@@ -174,35 +197,126 @@ export function MarkdownEditor({
       transformCopiedText: true,
     }),
     Link.configure({ openOnClick: false, autolink: true }),
-    Mention.configure({
+    Mention.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          mentionType: { default: 'user', parseHTML: (el: HTMLElement) => el.getAttribute('data-mention-type') || 'user', renderHTML: (attrs: any) => ({ 'data-mention-type': attrs.mentionType }) },
+          uid: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute('data-uid'), renderHTML: (attrs: any) => attrs.uid ? { 'data-uid': attrs.uid } : {} },
+        };
+      },
+      parseHTML() {
+        return [
+          ...this.parent?.() || [],
+          {
+            tag: 'a[href^="/projects/"]',
+            getAttrs: (node: string | HTMLElement) => {
+              if (typeof node === 'string') return false;
+              const text = node.textContent || '';
+              if (!text.startsWith('@')) return false;
+              
+              const href = node.getAttribute('href') || '';
+              const slugPart = href.substring('/projects/'.length);
+              const id = extractId(slugPart);
+              const label = text.substring(1);
+              
+              return {
+                id,
+                label,
+                mentionType: 'project',
+              };
+            },
+          },
+          {
+            tag: 'a[href^="/profile/"]',
+            getAttrs: (node: string | HTMLElement) => {
+              if (typeof node === 'string') return false;
+              const text = node.textContent || '';
+              if (!text.startsWith('@')) return false;
+              
+              const href = node.getAttribute('href') || '';
+              const slugPart = href.substring('/profile/'.length);
+              const uid = extractId(slugPart);
+              const label = text.substring(1);
+              
+              const usernameSlug = slugPart.substring(uid.length + 1); // "johndoe" from "uid123-johndoe"
+              return {
+                id: usernameSlug || label,
+                label,
+                mentionType: 'user',
+                uid,
+              };
+            },
+          },
+        ];
+      },
+      // tiptap-markdown reads extension.storage.markdown.serialize to convert
+      // a node back to a markdown string. Without this it falls back to `[mention]`.
+      addStorage() {
+        return {
+          markdown: {
+            serialize(state: any, node: any) {
+              const label = node.attrs.label ?? node.attrs.id;
+              const mType = node.attrs.mentionType || 'user';
+              const id = node.attrs.id;
+              // For users, build hybrid URL using uid (Firebase UID) if available, else id
+              // For projects, use the project id directly
+              if (mType === 'project') {
+                const href = buildHybridUrl('/projects', id, label);
+                state.write(`[@${label}](${href})`);
+              } else {
+                // User: uid holds the Firebase UID, id holds the username
+                const uid = node.attrs.uid || id;
+                const href = buildHybridUrl('/profile', uid, id);
+                state.write(`[@${label}](${href})`);
+              }
+            },
+            parse: {},
+          },
+        };
+      },
+    }).configure({
       HTMLAttributes: { class: 'mention' },
       renderLabel({ node }) {
         return `@${node.attrs.label ?? node.attrs.id}`;
       },
       suggestion: {
-        items: ({ query }: { query: string; editor: Editor; }) => {
-          const lowerQuery = query.toLowerCase();
+        allowSpaces: true,
+        items: ({ query }) => {
+          // Trim whitespace so typing a space after a mention does not clear suggestions
+          const trimmed = query.trim();
+          const lowerQuery = trimmed.toLowerCase();
           const { users: currentUsers, projects: currentProjects } = suggestionsRef.current;
           
           const filteredUsers = currentUsers
-            .filter(u => u.name.toLowerCase().includes(lowerQuery) || (u.username && u.username.toLowerCase().includes(lowerQuery)))
+            .filter(u => {
+              const nameMatch = (u.name || '').toLowerCase().includes(lowerQuery);
+              const usernameMatch = (u.username || '').toLowerCase().includes(lowerQuery);
+              return nameMatch || usernameMatch;
+            })
             .slice(0, 5)
             .map(u => ({
               id: u.username || u.id,
-              name: u.name,
+              name: u.name || 'Unknown User',
               avatarUrl: u.avatarUrl,
               type: 'user' as const,
+              uid: u.id, // Firebase UID for hybrid URL
             }));
 
           const filteredProjects = currentProjects
-            .filter(p => p.name.toLowerCase().includes(lowerQuery))
+            .filter(p => (p.name || '').toLowerCase().includes(lowerQuery))
             .slice(0, 5)
             .map(p => ({
               id: p.id,
-              name: p.name,
+              name: p.name || 'Unknown Project',
               avatarUrl: p.photoUrl,
               type: 'project' as const,
             }));
+
+          // If query is empty (user just typed '@'), show top results
+          if (trimmed === '') {
+            return [...filteredUsers, ...filteredProjects];
+          }
 
           return [...filteredUsers, ...filteredProjects];
         },
@@ -217,9 +331,13 @@ export function MarkdownEditor({
                 editor: props.editor,
               });
 
+              if (!props.clientRect) {
+                return;
+              }
+
               popup = tippy('body', {
                 getReferenceClientRect: props.clientRect,
-                appendTo: () => document.body,
+                appendTo: () => props.editor?.view?.dom?.closest('[role="dialog"]') || document.body,
                 content: reactRenderer.element,
                 showOnCreate: true,
                 interactive: true,
@@ -228,20 +346,25 @@ export function MarkdownEditor({
               });
             },
             onUpdate(props: any) {
-              reactRenderer.updateProps(props);
-              popup[0].setProps({ getReferenceClientRect: props.clientRect });
+              reactRenderer?.updateProps(props);
+
+              if (!props.clientRect) {
+                return;
+              }
+
+              popup?.[0]?.setProps({ getReferenceClientRect: props.clientRect });
             },
             onKeyDown(props: any) {
               if (props.event.key === 'Escape') {
-                popup[0].hide();
+                popup?.[0]?.hide();
                 return true;
               }
-              const mentionListRef = reactRenderer.ref as any;
+              const mentionListRef = reactRenderer?.ref as any;
               return mentionListRef?.onKeyDown(props);
             },
             onExit() {
-              popup[0].destroy();
-              reactRenderer.destroy();
+              popup?.[0]?.destroy();
+              reactRenderer?.destroy();
             },
           };
         },
@@ -251,9 +374,18 @@ export function MarkdownEditor({
 
   const [, forceUpdate] = useState(0);
 
+  const processedValue = useMemo(() => {
+    if (!value) return value;
+    // Pre-process markdown mention links into HTML <a> tags so Tiptap's parseHTML catches them
+    // Match [@Name](/profile/uid-slug) or [@Name](/projects/id-slug)
+    return value.replace(/\[@([^\]]+)\]\((\/(?:profile|projects)\/[^)]+)\)/g, (match, label, href) => {
+      return `<a href="${href}">@${label}</a>`;
+    });
+  }, [value]);
+
   const editor = useEditor({
     extensions,
-    content: value,
+    content: processedValue,
     // TipTap's markdown handling is provided by the Markdown extension; no need for contentType option.
     onUpdate: ({ editor }) => {
       isUpdatingFromEditor.current = true;

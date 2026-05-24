@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Star, Edit, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Markdown from '@/components/ui/markdown';
 
 interface TaskCardProps {
   task: Task;
@@ -39,7 +40,11 @@ export default function TaskCard({ task, assignee, onEdit, onDelete }: TaskCardP
         </div>
       </CardHeader>
       <CardContent>
-        {description && <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{description}</p>}
+        {description && (
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-4 prose-sm">
+            <Markdown content={description} />
+          </div>
+        )}
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             {dueDate && <span>Due: {new Date(typeof dueDate === 'string' ? dueDate : (dueDate as any).toDate?.() ?? dueDate).toLocaleDateString()}</span>}
             {estimatedHours != null && <span>{estimatedHours} hrs</span>}

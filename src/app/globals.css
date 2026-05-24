@@ -125,6 +125,19 @@
   box-decoration-break: clone;
 }
 
+/* Mention links inside prose — override default prose anchor styles */
+.prose a.mention {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.prose a.mention:hover {
+  background-color: hsl(var(--primary) / 0.25);
+  text-decoration: none;
+}
+
 /* Custom styles for inline code inside prose */
 .prose :not(pre) > code {
   background-color: hsl(var(--muted));
