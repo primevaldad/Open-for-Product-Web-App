@@ -21,6 +21,7 @@ interface ProjectPostsTabProps {
   users: User[];
   currentUser?: User;
   project?: HydratedProject;
+  onPostSaved?: (savedPost: Post) => void;
 }
 
 export function ProjectPostsTab({ posts, users, currentUser, project }: ProjectPostsTabProps) {
@@ -84,6 +85,7 @@ export function ProjectPostsTab({ posts, users, currentUser, project }: ProjectP
                       project={project} 
                       currentUser={currentUser} 
                       post={post}
+                      onPostSaved={onPostSaved}
                       trigger={
                         <Button 
                           variant="outline" 

@@ -885,3 +885,109 @@ export async function getMentionSuggestionsAction(): Promise<{ success: boolean;
     };
   }
 }
+
+export async function editDiscussionComment(data: {
+  projectId: string;
+  commentId: string;
+  content: string;
+}): Promise<ServerActionResponse<Discussion>> {
+  const { projectId, commentId, content } = data;
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required' };
+
+  try {
+    const commentRef = adminDb.collection('projects').doc(projectId).collection('discussions').doc(commentId);
+    const commentSnap = await commentRef.get();
+    if (!commentSnap.exists) {
+      return { success: false, error: 'Comment not found' };
+    }
+
+    const commentData = commentSnap.data() as Discussion;
+    if (commentData.userId !== currentUser.id) {
+      return { success: false, error: 'You are not authorized to edit this comment.' };
+    }
+
+    const now = new Date().toISOString();
+    await commentRef.update({
+      content,
+      editedAt: now,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    const updatedComment: Discussion = {
+      ...commentData,
+      id: commentId,
+      content,
+      editedAt: now,
+      updatedAt: now,
+    };
+
+    // Log the edit activity in database events (safe from browser console leak)
+    await createAndDispatchEvent({
+      type: EventType.DISCUSSION_COMMENT_EDITED,
+      actorUserId: currentUser.id,
+      projectId,
+      payload: { commentId },
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, data: deepSerialize(updatedComment) };
+  } catch (error: any) {
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return { success: false, error: message };
+  }
+}
+
+export async function deleteDiscussionComment(data: {
+  projectId: string;
+  commentId: string;
+}): Promise<ServerActionResponse<string>> {
+  const { projectId, commentId } = data;
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) return { success: false, error: 'Authentication required' };
+
+  try {
+    const commentRef = adminDb.collection('projects').doc(projectId).collection('discussions').doc(commentId);
+    const commentSnap = await commentRef.get();
+    if (!commentSnap.exists) {
+      return { success: false, error: 'Comment not found' };
+    }
+
+    const commentData = commentSnap.data() as Discussion;
+    
+    const project = await findProjectById(projectId, currentUser);
+    if (!project) {
+      return { success: false, error: 'Project not found' };
+    }
+
+    const isAuthor = commentData.userId === currentUser.id;
+    const isLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead') || project.owner?.id === currentUser.id;
+
+    if (!isAuthor && !isLead) {
+      return { success: false, error: 'You are not authorized to delete this comment.' };
+    }
+
+    const deletedBy = isAuthor ? 'author' : 'admin';
+    const now = new Date().toISOString();
+
+    await commentRef.update({
+      deletedAt: now,
+      deletedBy,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    // Log the delete activity in database events (safe from browser console leak)
+    await createAndDispatchEvent({
+      type: EventType.DISCUSSION_COMMENT_DELETED,
+      actorUserId: currentUser.id,
+      projectId,
+      payload: { commentId, deletedBy },
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, data: commentId };
+  } catch (error: any) {
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return { success: false, error: message };
+  }
+}

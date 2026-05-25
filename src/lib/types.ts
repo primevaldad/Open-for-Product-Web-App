@@ -176,6 +176,9 @@ export interface Discussion {
     parentId?: string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
+    deletedAt?: string;
+    deletedBy?: 'author' | 'admin' | 'system';
+    editedAt?: string;
 }
 
 export interface HydratedDiscussion extends Discussion {
@@ -351,6 +354,10 @@ export enum EventType {
     PROJECT_VISIBILITY_UPDATED = 'project-visibility-updated',
     INVITE_ACCEPTED = 'invite-accepted',
     INVITE_REJECTED = 'invite-rejected',
+    DISCUSSION_COMMENT_EDITED = 'discussion-comment-edited',
+    DISCUSSION_COMMENT_DELETED = 'discussion-comment-deleted',
+    POST_EDITED = 'post-edited',
+    POST_DELETED = 'post-deleted',
     // Collections
     COLLECTION_CREATED = 'collection-created',
     COLLECTION_UPDATED = 'collection-updated',

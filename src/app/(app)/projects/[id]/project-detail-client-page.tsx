@@ -631,6 +631,67 @@ export default function ProjectDetailClientPage({
         }
     };
 
+    const handleDeleteComment = async (commentId: string) => {
+        const { deleteDiscussionComment } = await import('@/app/actions/projects');
+        
+        const previousDiscussions = [...discussions];
+        setDiscussions(prev => prev.map(d => {
+            if (d.id === commentId) {
+                return {
+                    ...d,
+                    deletedAt: new Date().toISOString(),
+                    deletedBy: d.userId === currentUser?.id ? 'author' : 'admin'
+                };
+            }
+            return d;
+        }));
+
+        const result = await deleteDiscussionComment({ projectId: project.id, commentId });
+        if (result.success) {
+            toast({ title: 'Success', description: 'Comment deleted successfully!' });
+        } else {
+            setDiscussions(previousDiscussions);
+            toast({ title: 'Error', description: result.error || 'Failed to delete comment.', variant: 'destructive' });
+        }
+    };
+
+    const handleEditComment = async (commentId: string, content: string) => {
+        const { editDiscussionComment } = await import('@/app/actions/projects');
+        
+        const previousDiscussions = [...discussions];
+        setDiscussions(prev => prev.map(d => {
+            if (d.id === commentId) {
+                return {
+                    ...d,
+                    content,
+                    editedAt: new Date().toISOString()
+                };
+            }
+            return d;
+        }));
+
+        const result = await editDiscussionComment({ projectId: project.id, commentId, content });
+        if (result.success && result.data) {
+            toast({ title: 'Success', description: 'Comment edited successfully!' });
+            setDiscussions(prev => prev.map(d => d.id === commentId ? result.data : d));
+        } else {
+            setDiscussions(previousDiscussions);
+            toast({ title: 'Error', description: result.error || 'Failed to edit comment.', variant: 'destructive' });
+        }
+    };
+
+    const handlePostSaved = (savedPost: Post) => {
+        setPosts(prev => {
+            const index = prev.findIndex(p => p.id === savedPost.id);
+            if (index !== -1) {
+                const next = [...prev];
+                next[index] = savedPost;
+                return next;
+            }
+            return [savedPost, ...prev];
+        });
+    };
+
     const GuestOverlay = () => {
         // use usePathname or window.location.pathname
         return (
@@ -697,7 +758,7 @@ export default function ProjectDetailClientPage({
                 {!isGuest && (
                     <div className="flex items-center gap-2 ml-auto">
                         {isMember && currentUser && (
-                            <CreatePostDialog project={project} currentUser={currentUser} />
+                            <CreatePostDialog project={project} currentUser={currentUser} onPostSaved={handlePostSaved} />
                         )}
                         <AddToCollectionButton 
                             projectId={project.id} 
@@ -736,11 +797,11 @@ export default function ProjectDetailClientPage({
                     </TabPanel>
                     <TabPanel>
                         {hasReadAccess ? (
-                            <ProjectPostsTab posts={posts} users={users} currentUser={currentUser ?? undefined} project={project} />
+                            <ProjectPostsTab posts={posts} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} />
                         ) : (
                             <div className="relative py-12 flex justify-center">
                                 <div className="absolute inset-0 blur-md pointer-events-none opacity-50">
-                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} currentUser={currentUser ?? undefined} project={project} />
+                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} />
                                 </div>
                                 <GuestOverlay />
                             </div>
@@ -772,9 +833,12 @@ export default function ProjectDetailClientPage({
                             <DiscussionForum 
                                 discussions={hydratedDiscussions}
                                 onAddComment={handleAddComment}
+                                onEditComment={handleEditComment}
+                                onDeleteComment={handleDeleteComment}
                                 isMember={isMember || false}
                                 currentUser={currentUser}
                                 users={users}
+                                isProjectLead={isLead || false}
                             />
                          ) : (
                             <div className="relative flex items-center justify-center">

@@ -28,9 +28,10 @@ interface CreatePostDialogProps {
   currentUser: User;
   post?: Post;
   trigger?: React.ReactNode;
+  onPostSaved?: (savedPost: Post) => void;
 }
 
-export function CreatePostDialog({ project, currentUser, post, trigger }: CreatePostDialogProps) {
+export function CreatePostDialog({ project, currentUser, post, trigger, onPostSaved }: CreatePostDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
@@ -85,6 +86,23 @@ export function CreatePostDialog({ project, currentUser, post, trigger }: Create
       }
 
       if (result.error) throw new Error(result.error);
+
+      const savedPost: Post = {
+        id: post ? post.id : (result.postId || `temp-${Date.now()}`),
+        projectId: project.id,
+        userId: currentUser.id,
+        title,
+        content: body,
+        tags: cleanTags,
+        status,
+        steemStatus: shouldBroadcast ? 'pending' : (post?.steemStatus ?? 'none'),
+        steemPermlink: permlink ?? post?.steemPermlink,
+        steemAuthor: shouldBroadcast ? currentUser.steemUsername : post?.steemAuthor,
+        createdAt: post?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      onPostSaved?.(savedPost);
 
       if (shouldBroadcast && permlink) {
         if (!currentUser.steemUsername) {
