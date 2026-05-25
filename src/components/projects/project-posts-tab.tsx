@@ -24,7 +24,7 @@ interface ProjectPostsTabProps {
   onPostSaved?: (savedPost: Post) => void;
 }
 
-export function ProjectPostsTab({ posts, users, currentUser, project }: ProjectPostsTabProps) {
+export function ProjectPostsTab({ posts, users, currentUser, project, onPostSaved }: ProjectPostsTabProps) {
   const userMap = new Map(users.map(u => [u.id, u]));
 
   const isTeamMember = !!(
