@@ -82,6 +82,11 @@ export interface Post {
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
     status?: 'draft' | 'published';
+    // Soft-delete fields (published posts only)
+    deletedAt?: string;
+    deletedBy?: 'author' | 'admin' | 'system';
+    // Edit tracking
+    editedAt?: string;
 }
 
 // This represents a tag that is associated with a project.

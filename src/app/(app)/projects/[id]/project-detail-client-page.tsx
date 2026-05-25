@@ -41,6 +41,7 @@ import {
     removeProjectFromCollectionAction,
     getCollectionsContainingProject,
 } from '@/app/actions/collections';
+import { deletePostAction } from '@/app/actions/post';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
 import { buildHybridUrl } from '@/lib/slug';
@@ -692,6 +693,45 @@ export default function ProjectDetailClientPage({
         });
     };
 
+    const handleDeletePost = async (postId: string, wasDraft: boolean) => {
+        // Optimistic update first
+        if (wasDraft) {
+            setPosts(prev => prev.filter(p => p.id !== postId));
+        } else {
+            setPosts(prev =>
+                prev.map(p =>
+                    p.id === postId
+                        ? { ...p, deletedAt: new Date().toISOString(), deletedBy: 'author' as const }
+                        : p
+                )
+            );
+        }
+
+        const result = await deletePostAction(postId);
+
+        if (result.error) {
+            // Roll back optimistic update
+            toast({ title: 'Error', description: result.error, variant: 'destructive' });
+            // Re-fetch is handled by revalidatePath server-side; local rollback is a best-effort
+            if (wasDraft) {
+                // We can't easily restore a hard-deleted draft, so just let the server revalidate
+            } else {
+                setPosts(prev =>
+                    prev.map(p =>
+                        p.id === postId ? { ...p, deletedAt: undefined, deletedBy: undefined } : p
+                    )
+                );
+            }
+        } else {
+            toast({
+                title: wasDraft ? 'Draft deleted' : 'Post deleted',
+                description: wasDraft
+                    ? 'The draft has been permanently deleted.'
+                    : 'The post has been removed.',
+            });
+        }
+    };
+
     const GuestOverlay = () => {
         // use usePathname or window.location.pathname
         return (
@@ -797,11 +837,11 @@ export default function ProjectDetailClientPage({
                     </TabPanel>
                     <TabPanel>
                         {hasReadAccess ? (
-                            <ProjectPostsTab posts={posts} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} />
+                            <ProjectPostsTab posts={posts} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} onPostDeleted={handleDeletePost} />
                         ) : (
                             <div className="relative py-12 flex justify-center">
                                 <div className="absolute inset-0 blur-md pointer-events-none opacity-50">
-                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} />
+                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} onPostDeleted={handleDeletePost} />
                                 </div>
                                 <GuestOverlay />
                             </div>

@@ -874,6 +874,11 @@ export async function updatePost(postId: string, updates: Partial<Post>): Promis
     await postRef.update(dataToUpdate);
 }
 
+export async function deletePost(postId: string): Promise<void> {
+    await adminDb.collection('posts').doc(postId).delete();
+}
+
+
 export async function getPostsByProject(projectId: string): Promise<Post[]> {
     const snapshot = await adminDb.collection('posts')
         .where('projectId', '==', projectId)
