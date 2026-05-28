@@ -418,6 +418,7 @@ export default function ProjectDetailClientPage({
     }, []);
 
     const [tasks, setTasks] = useState(initialTasks);
+    const [syncingTasks, setSyncingTasks] = useState<Set<string>>(new Set());
     const [discussions, setDiscussions] = useState(initialDiscussions);
     const [posts, setPosts] = useState(initialPosts);
     const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
@@ -608,6 +609,38 @@ export default function ProjectDetailClientPage({
         } else {
             handleServerResponse(result, '', 'Failed to update task.');
         }
+    };
+
+    const handleMoveTask = async (taskId: string, newStatus: Task['status'], newSortOrder: number) => {
+        const taskToMove = tasks.find(t => t.id === taskId);
+        if (!taskToMove) return;
+
+        // Start syncing
+        setSyncingTasks(prev => new Set(prev).add(taskId));
+
+        // Optimistically update
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus, sortOrder: newSortOrder } : t));
+
+        const updatedTaskData: Task = {
+            ...taskToMove,
+            status: newStatus,
+            sortOrder: newSortOrder,
+        };
+
+        const result = await updateTaskAction(updatedTaskData);
+        
+        if (!result.success) {
+            // Revert on failure
+            toast({ title: 'Error', description: result.error || 'Failed to move task', variant: 'destructive' });
+            setTasks(prev => prev.map(t => t.id === taskId ? taskToMove : t));
+        }
+
+        // End syncing
+        setSyncingTasks(prev => {
+            const next = new Set(prev);
+            next.delete(taskId);
+            return next;
+        });
     };
 
     const handleDeleteTask = async (taskId: string) => {
@@ -857,7 +890,7 @@ export default function ProjectDetailClientPage({
                                         </AddTaskDialog>
                                     )}
                                 </div>
-                                <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} />
+                                <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} syncingTasks={syncingTasks} />
                             </>
                         ) : (
                             <div className="relative h-64 flex items-center justify-center">

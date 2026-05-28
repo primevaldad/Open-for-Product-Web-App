@@ -204,6 +204,7 @@ export interface Task {
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
     isMilestone?: boolean;
+    sortOrder?: number;
 }
 
 export interface HydratedTask extends Omit<Task, 'assignedToId'> {
