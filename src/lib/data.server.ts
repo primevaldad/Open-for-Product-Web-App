@@ -404,6 +404,13 @@ export async function findTasksByProjectId(projectId: string): Promise<Task[]> {
     });
 }
 
+export async function getTaskFromDb(projectId: string, taskId: string): Promise<Task | null> {
+    const doc = await adminDb.collection('projects').doc(projectId).collection('tasks').doc(taskId).get();
+    if (!doc.exists) return null;
+    const data = doc.data()!;
+    return { id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt), dueDate: data.dueDate ? serializeTimestamp(data.dueDate) : undefined } as Task;
+}
+
 export async function addTaskToDb(projectId: string, task: Omit<Task, 'id'>): Promise<string> {
     const taskRef = await adminDb.collection('projects').doc(projectId).collection('tasks').add(task);
     return taskRef.id;

@@ -16,9 +16,10 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   isSyncing?: boolean;
+  canEdit?: boolean;
 }
 
-export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing }: TaskCardProps) {
+export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing, canEdit = true }: TaskCardProps) {
   const { title, description, dueDate, estimatedHours, isMilestone, id } = task;
 
   const getInitials = (name = '') => name.split(' ').map(n => n[0]).join('');
@@ -45,15 +46,19 @@ export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing }
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start gap-2">
             <div className="flex items-start gap-2 flex-1 min-w-0">
-              <div 
-                {...attributes} 
-                {...listeners}
-                className="cursor-grab active:cursor-grabbing hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                aria-label="Drag task"
-              >
-                <GripVertical className="h-5 w-5" />
-              </div>
-              <CardTitle className="text-lg font-bold truncate">{title}</CardTitle>
+              {canEdit ? (
+                <div 
+                  {...attributes} 
+                  {...listeners}
+                  className="cursor-grab active:cursor-grabbing hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  aria-label="Drag task"
+                >
+                  <GripVertical className="h-5 w-5" />
+                </div>
+              ) : (
+                <div className="w-1" /> // Visual spacer when no drag handle
+              )}
+              <CardTitle className="text-lg font-bold line-clamp-2 break-words leading-tight">{title}</CardTitle>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {isSyncing && (
@@ -107,28 +112,30 @@ export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing }
                   <div className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">Unassigned</div>
               )}
           </div>
-          <div className="flex gap-1">
-              <TooltipProvider>
-                  <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(task)}>
-                              <Edit className="h-4 w-4" />
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Edit Task</TooltipContent>
-                  </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                  <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30" onClick={() => onDelete(id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Delete Task</TooltipContent>
-                  </Tooltip>
-              </TooltipProvider>
-          </div>
+          {canEdit && (
+              <div className="flex gap-1">
+                  <TooltipProvider>
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(task)}>
+                                  <Edit className="h-4 w-4" />
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit Task</TooltipContent>
+                      </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30" onClick={() => onDelete(id)}>
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete Task</TooltipContent>
+                      </Tooltip>
+                  </TooltipProvider>
+              </div>
+          )}
         </CardFooter>
       </Card>
     </div>

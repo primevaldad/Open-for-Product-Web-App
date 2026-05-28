@@ -29,6 +29,7 @@ import {
   addNotification,
   addTaskToDb,
   deleteTaskFromDb,
+  getTaskFromDb,
   findProjectById,
   findUserById,
   updateProjectInDb,
@@ -456,8 +457,8 @@ export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' 
         const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
-        const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
-        if (!isLead) return { success: false, error: 'Only project leads can add tasks.' };
+        const isMember = project.team.some(member => member.userId === currentUser.id);
+        if (!isMember) return { success: false, error: 'Only project members can add tasks.' };
         
         const taskId = await addTaskToDb(data.projectId, {
             ...data,
@@ -481,6 +482,28 @@ export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' 
         return { success: false, error: message };
     }
 }
+function canUserEditTask(task: Task, currentUserId: string, project: Project): boolean {
+    const role = project.team.find(m => m.userId === currentUserId)?.role;
+    
+    // Lead - always able to edit/delete
+    if (role === 'lead') return true;
+    
+    // Contributor - can edit their own tasks, other Contributor tasks, and tasks assigned to them
+    if (role === 'contributor') {
+        if (task.createdBy === currentUserId) return true;
+        if (task.assignedToId === currentUserId) return true;
+        const creatorRole = project.team.find(m => m.userId === task.createdBy)?.role;
+        if (creatorRole === 'contributor') return true;
+    }
+
+    // Participant - can edit tasks assigned to them or created by them only
+    if (role === 'participant') {
+        if (task.createdBy === currentUserId) return true;
+        if (task.assignedToId === currentUserId) return true;
+    }
+
+    return false;
+}
 
 export async function updateTask(data: Task): Promise<ServerActionResponse<Task>> {
     const currentUser = await getAuthenticatedUser();
@@ -490,10 +513,20 @@ export async function updateTask(data: Task): Promise<ServerActionResponse<Task>
         const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
-        const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
-        if (!isLead) return { success: false, error: 'Only project leads can update tasks.' };
+        const dbTask = await getTaskFromDb(data.projectId, data.id);
+        if (!dbTask) return { success: false, error: 'Task not found.' };
+
+        if (!canUserEditTask(dbTask, currentUser.id, project)) {
+            return { success: false, error: 'You do not have permission to update this task.' };
+        }
 
         const { id: taskId, projectId, ...taskData } = data;
+        
+        // Ensure malicious users can't change createdBy
+        if (taskData.createdBy !== dbTask.createdBy) {
+            return { success: false, error: 'Cannot change task creator.' };
+        }
+
         await updateTaskInDb(projectId, taskId, {
             ...taskData,
             updatedAt: new Date().toISOString(),
@@ -514,8 +547,12 @@ export async function deleteTask(data: { id: string; projectId: string }): Promi
         const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
-        const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
-        if (!isLead) return { success: false, error: 'Only project leads can delete tasks.' };
+        const dbTask = await getTaskFromDb(data.projectId, data.id);
+        if (!dbTask) return { success: false, error: 'Task not found.' };
+
+        if (!canUserEditTask(dbTask, currentUser.id, project)) {
+            return { success: false, error: 'You do not have permission to delete this task.' };
+        }
 
         await deleteTaskFromDb(data.projectId, data.id);
         revalidatePath(`/projects/${data.projectId}`);

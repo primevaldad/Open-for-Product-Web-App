@@ -27,9 +27,10 @@ interface TaskBoardProps {
   onDeleteTask: (taskId: string) => void;
   onMoveTask?: (taskId: string, newStatus: Task['status'], newSortOrder: number) => void;
   syncingTasks?: Set<string>;
+  canEditTask?: (task: Task) => boolean;
 }
 
-const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syncingTasks }: { title: string, status: string, tasks: Task[], users: User[], onEditTask: (task: Task) => void, onDeleteTask: (taskId: string) => void, syncingTasks?: Set<string> }) => {
+const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syncingTasks, canEditTask }: { title: string, status: string, tasks: Task[], users: User[], onEditTask: (task: Task) => void, onDeleteTask: (taskId: string) => void, syncingTasks?: Set<string>, canEditTask?: (task: Task) => boolean }) => {
   const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   
   const { setNodeRef, isOver } = useDroppable({ id: status, data: { type: 'Column', status } });
@@ -37,7 +38,7 @@ const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syn
   return (
       <div 
         ref={setNodeRef}
-        className={`bg-gray-100 dark:bg-gray-900 rounded-lg p-4 flex-1 flex flex-col min-h-[500px] transition-colors ${isOver ? 'ring-2 ring-blue-400 bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+        className={`bg-gray-100 dark:bg-gray-900 rounded-lg p-4 flex-1 min-w-0 w-full lg:max-w-[calc(33.33%-1rem)] flex flex-col min-h-[500px] transition-colors ${isOver ? 'ring-2 ring-blue-400 bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
       >
         <h3 className="text-lg font-semibold text-center text-gray-800 dark:text-gray-200 mb-4 flex justify-between items-center">
           {title}
@@ -55,6 +56,7 @@ const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syn
                   onEdit={onEditTask} 
                   onDelete={onDeleteTask} 
                   isSyncing={syncingTasks?.has(task.id)}
+                  canEdit={canEditTask ? canEditTask(task) : false}
                 />
               )
             })}
@@ -64,7 +66,7 @@ const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syn
   );
 };
 
-export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks }: TaskBoardProps) {
+export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks, canEditTask }: TaskBoardProps) {
   // Local optimistic state
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
@@ -247,9 +249,9 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col lg:flex-row gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} />
-        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} />
-        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} />
+        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
+        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
+        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
       </div>
 
       <DragOverlay dropAnimation={dropAnimation}>
@@ -260,6 +262,7 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
                     assignee={activeAssignee} 
                     onEdit={() => {}} 
                     onDelete={() => {}} 
+                    canEdit={true}
                 />
             </div>
         ) : null}

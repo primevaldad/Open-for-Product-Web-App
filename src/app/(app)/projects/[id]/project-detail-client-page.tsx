@@ -434,6 +434,26 @@ export default function ProjectDetailClientPage({
 
     const [tabIndex, setTabIndex] = useState(initialTabIndex);
 
+    const canEditTask = useCallback((task: Task) => {
+        if (!currentUser) return false;
+        const role = project.team.find(m => m.userId === currentUser.id)?.role;
+        
+        if (role === 'lead') return true;
+        
+        if (role === 'contributor') {
+            if (task.createdBy === currentUser.id) return true;
+            if (task.assignedToId === currentUser.id) return true;
+            const creatorRole = project.team.find(m => m.userId === task.createdBy)?.role;
+            if (creatorRole === 'contributor') return true;
+        }
+
+        if (role === 'participant') {
+            if (task.createdBy === currentUser.id) return true;
+            if (task.assignedToId === currentUser.id) return true;
+        }
+        return false;
+    }, [currentUser, project.team]);
+
     const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [acceptingInvite, setAcceptingInvite] = useState(false);
@@ -890,7 +910,7 @@ export default function ProjectDetailClientPage({
                                         </AddTaskDialog>
                                     )}
                                 </div>
-                                <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} syncingTasks={syncingTasks} />
+                                <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
                             </>
                         ) : (
                             <div className="relative h-64 flex items-center justify-center">
