@@ -320,7 +320,7 @@ function HomeClientPageInner({
 
     const totalPages = Math.ceil(filteredAndSorted.length / pageSize);
 
-    const shouldShowSuggestions = !isGuest && cleanSuggestedProjects.length > 0;
+    const shouldShowSuggestions = cleanSuggestedProjects.length > 0;
 
     // -------------------------------------------------------------------------
     // Render
@@ -447,24 +447,24 @@ function HomeClientPageInner({
                             </div>
                         )}
 
-                        {/* AI suggestions toggle */}
-                        <div className={cn('flex items-center space-x-2', !aiEnabled && 'opacity-50 cursor-not-allowed')}>
+                        {/* Suggestions toggle */}
+                        <div className={cn('flex items-center space-x-2', !shouldShowSuggestions && 'opacity-50 cursor-not-allowed')}>
                             <Switch
                                 id="show-suggested"
-                                checked={aiEnabled && shouldShowSuggestions && suggestionsOpen.includes('suggestions')}
+                                checked={shouldShowSuggestions && suggestionsOpen.includes('suggestions')}
                                 onCheckedChange={() => {
                                     // Collapse/expand the suggestions accordion
                                     setSuggestionsOpen(prev =>
                                         prev.includes('suggestions') ? [] : ['suggestions']
                                     );
                                 }}
-                                disabled={!aiEnabled}
+                                disabled={!shouldShowSuggestions}
                             />
                             <Label
                                 htmlFor="show-suggested"
-                                className={cn(!aiEnabled && 'text-muted-foreground cursor-not-allowed')}
+                                className={cn(!shouldShowSuggestions && 'text-muted-foreground cursor-not-allowed')}
                             >
-                                Show Suggestions {!aiEnabled && '(AI required)'}
+                                Show Suggestions
                             </Label>
                         </div>
 
@@ -547,9 +547,11 @@ function HomeClientPageInner({
                             <AccordionTrigger className="hover:no-underline py-0 mb-4">
                                 <div className="flex items-center gap-2">
                                     <h2 className="text-2xl font-bold tracking-tight">Suggested for you</h2>
-                                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                                        AI Recommendation
-                                    </span>
+                                    {aiEnabled && currentUser && (
+                                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                                            AI Recommendation
+                                        </span>
+                                    )}
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-0 overflow-visible">
