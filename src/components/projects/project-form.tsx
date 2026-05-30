@@ -17,6 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MarkdownEditor } from '@/components/markdown-editor';
 import UserSelector from '@/components/users/user-selector';
@@ -58,6 +59,8 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
         name: '',
         tagline: '',
         description: '',
+        mission: '',
+        currentFocus: '',
         project_type: 'public',
         photoUrl: '',
         contributionNeeds: '',
@@ -82,6 +85,8 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
         name: initialData.name || '',
         tagline: initialData.tagline || '',
         description: initialData.description || '',
+        mission: initialData.mission || '',
+        currentFocus: initialData.currentFocus || '',
         project_type: initialData.project_type || 'public',
         photoUrl: initialData.photoUrl || '',
         contributionNeeds: Array.isArray(initialData.contributionNeeds)
@@ -242,6 +247,48 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
               </FormControl>
               <FormDescription>
                 A detailed description of your project. Supports Markdown for formatting.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="mission"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mission & Vision</FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  placeholder="What is the overarching mission and vision of this project?"
+                  className="min-h-[100px]"
+                />
+              </FormControl>
+              <FormDescription>
+                Briefly describe the ultimate goal or purpose of the project.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="currentFocus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Current Focus</FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  placeholder="What is the immediate priority right now?"
+                  className="min-h-[100px]"
+                />
+              </FormControl>
+              <FormDescription>
+                Describe what the team is focusing on right now to help Jester understand the current state.
               </FormDescription>
               <FormMessage />
             </FormItem>

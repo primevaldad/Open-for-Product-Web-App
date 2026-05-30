@@ -41,10 +41,7 @@
           "order": "DESCENDING"
         }
       ]
-    }
-  ],
-  "fieldOverrides": [],
-  "collectionGroupIndexes": [
+    },
     {
       "collectionGroup": "activity",
       "queryScope": "COLLECTION",
@@ -101,5 +98,6 @@
         }
       ]
     }
-  ]
+  ],
+  "fieldOverrides": []
 }

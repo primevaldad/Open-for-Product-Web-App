@@ -8,9 +8,11 @@ import {
     getAllUsers, 
     getRecommendedLearningPathsForProject,
     getPostsByProject,
-    getChildProjects
+    getChildProjects,
+    getProjectActivityFeed
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
+import { getPlatformConfigAction } from '@/app/actions/admin';
 import ProjectDetailClientPage from './project-detail-client-page';
 import type { 
     User, 
@@ -18,7 +20,8 @@ import type {
     HydratedProject,
     Task,
     LearningPath,
-    Post
+    Post,
+    Activity
 } from '@/lib/types';
 import { deepSerialize } from '@/lib/utils.server';
 import { extractId } from '@/lib/slug';
@@ -42,22 +45,26 @@ interface ProjectPageData {
     currentUser: User | null;
     learningPaths: LearningPath[];
     childProjects: HydratedProject[];
+    activities: Activity[];
+    isQueenEnabled: boolean;
 }
 
 async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
     const cleanId = extractId(projectId);
     const currentUser = await getAuthenticatedUser();
-    const [project, discussions, tasks, posts, users, childProjects] = await Promise.all([
+    const [project, discussions, tasks, posts, users, childProjects, activities, configRes] = await Promise.all([
         findProjectById(cleanId, currentUser),
         getDiscussionsForProject(cleanId),
         findTasksByProjectId(cleanId),
         getPostsByProject(cleanId),
         getAllUsers(),
         getChildProjects(cleanId),
+        getProjectActivityFeed(cleanId),
+        getPlatformConfigAction()
     ]);
 
     if (!project) {
-        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [], childProjects: [] };
+        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [], childProjects: [], activities: [], isQueenEnabled: false };
     }
 
     const learningPaths = await getRecommendedLearningPathsForProject(project);
@@ -86,6 +93,8 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
         currentUser: currentUser ?? null,
         learningPaths,
         childProjects,
+        activities,
+        isQueenEnabled: configRes.success && configRes.data?.defaultFeaturesEnabled?.queen ? true : false,
     };
 }
 
@@ -105,7 +114,9 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
         users, 
         currentUser, 
         learningPaths,
-        childProjects 
+        childProjects,
+        activities,
+        isQueenEnabled
     } = data;
 
     return (
@@ -118,6 +129,8 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
             currentUser={deepSerialize(currentUser)}
             learningPaths={deepSerialize(learningPaths)}
             childProjects={deepSerialize(childProjects)}
+            activities={deepSerialize(activities)}
+            isQueenEnabled={isQueenEnabled}
             inviteToken={searchParams.inviteToken}
             initialTab={searchParams.tab}
         />

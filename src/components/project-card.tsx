@@ -186,7 +186,7 @@ export default function ProjectCard({
             </div>
             <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
                 <Sparkles className='h-4 w-4 text-amber-500' />
-                <span>AI Forecast: High Potential</span>
+                <span>Jester forecast: {project.progress ? (project.progress > 50 ? 'Strong momentum, high viability' : 'Building foundational momentum') : 'Analyzing project state...'}</span>
             </div>
           </CardContent>
           <CardFooter className='flex items-center justify-between bg-muted/50 p-4 mt-auto'>

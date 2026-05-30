@@ -7,11 +7,12 @@ import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
 import { toDate } from '@/lib/utils';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post } from '@/lib/types';
+import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post, Activity } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
 import DiscussionForum from '@/components/discussion-forum';
+import { OnboardContributorDialog } from '@/components/projects/onboard-contributor-dialog';
 import ProjectTeam from '@/components/project-team';
 import { CreatePostDialog } from '@/components/projects/create-post-dialog';
 import { ProjectPostsTab } from '@/components/projects/project-posts-tab';
@@ -44,6 +45,7 @@ import {
 import { deletePostAction } from '@/app/actions/post';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
+import { LeadDashboardTab } from '@/components/projects/lead-dashboard-tab';
 import { buildHybridUrl } from '@/lib/slug';
 
 
@@ -58,6 +60,8 @@ interface ProjectDetailClientPageProps {
     childProjects?: HydratedProject[];
     inviteToken?: string;
     initialTab?: string;
+    activities?: Activity[];
+    isQueenEnabled?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -401,11 +405,14 @@ export default function ProjectDetailClientPage({
     childProjects: initialChildProjects = [],
     inviteToken,
     initialTab,
+    activities,
+    isQueenEnabled,
 }: ProjectDetailClientPageProps) {
     const { currentUser: clientUser } = useAuth();
     const currentUser = clientUser || serverUser;
     const [project, setProject] = useState(initialProject);
     const [membershipVersion, setMembershipVersion] = useState(0);
+    const [isOnboardDialogOpen, setIsOnboardDialogOpen] = useState(false);
 
     const handleMembershipChanged = useCallback((targetId: string, type: 'collection' | 'project', isAdded: boolean) => {
         setMembershipVersion(v => v + 1);
@@ -428,7 +435,7 @@ export default function ProjectDetailClientPage({
     // Map initialTab string to tab index
     const initialTabIndex = useMemo(() => {
         if (!initialTab) return 0;
-        const map: Record<string, number> = { about: 0, posts: 1, tasks: 2, discussion: 3, team: 4, learning: 5, governance: 6, 'collected projects': 7 };
+        const map: Record<string, number> = { about: 0, posts: 1, tasks: 2, discussion: 3, team: 4, learning: 5, governance: 6, 'collected projects': 7, lead: 8 };
         return map[initialTab.toLowerCase()] ?? 0;
     }, [initialTab]);
 
@@ -515,6 +522,9 @@ export default function ProjectDetailClientPage({
         [currentUser, project.team]
     );
 
+    const isOwner = currentUser?.id === project.owner?.id;
+    const showLeadDashboard = isLead || isOwner;
+
     const isGuest = !currentUser || currentUser.role === 'guest';
     const hasReadAccess = !isGuest || !!inviteToken;
 
@@ -548,8 +558,9 @@ export default function ProjectDetailClientPage({
             toast({ title: 'Error', description: 'You must be logged in to join a project.', variant: 'destructive' });
             return;
         }
-        const result = await joinProjectAction(project.id);
-        handleServerResponse(result, 'Successfully joined the project!', 'Failed to join the project.');
+        
+        // Open the AI onboarding dialog instead of immediately joining
+        setIsOnboardDialogOpen(true);
     };
 
     const handleLeaveProject = async () => {
@@ -567,9 +578,7 @@ export default function ProjectDetailClientPage({
             const res = await acceptInviteAction(inviteToken);
             if (res.success) {
                 toast({ title: 'Success', description: 'You have joined the project!' });
-                // We should remove the invite token from the URL to dismiss the banner
-                router.replace(`/projects/${project.id}?tab=team`);
-                router.refresh();
+                setIsOnboardDialogOpen(true);
             } else {
                 toast({ title: 'Error', description: res.error, variant: 'destructive' });
             }
@@ -874,12 +883,58 @@ export default function ProjectDetailClientPage({
                         <Tab>Learning Paths</Tab>
                         <Tab>Governance</Tab>
                         {childProjects.length > 0 && <Tab>Collected Projects</Tab>}
+                        {showLeadDashboard && <Tab>Lead Dashboard</Tab>}
                     </TabList>
 
                     <TabPanel>
-                        <div className="prose dark:prose-invert max-w-none p-4 relative">
+                        <div className="p-4 relative">
                             <div className={!hasReadAccess ? "blur-md pointer-events-none select-none" : ""}>
-                                <Markdown content={project.description} />
+                                <Tabs>
+                                    <TabList className="flex space-x-4 border-b mb-6 text-sm font-medium text-muted-foreground pb-2">
+                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Description</Tab>
+                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Mission & Vision</Tab>
+                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Current Focus</Tab>
+                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Recent Activity</Tab>
+                                    </TabList>
+
+                                    <TabPanel className="prose dark:prose-invert max-w-none">
+                                        <Markdown content={project.description} />
+                                    </TabPanel>
+
+                                    <TabPanel className="prose dark:prose-invert max-w-none">
+                                        {project.mission ? (
+                                            <p>{project.mission}</p>
+                                        ) : (
+                                            <p className="text-muted-foreground italic">No mission statement provided yet.</p>
+                                        )}
+                                    </TabPanel>
+
+                                    <TabPanel className="prose dark:prose-invert max-w-none">
+                                        {project.currentFocus ? (
+                                            <p>{project.currentFocus}</p>
+                                        ) : (
+                                            <p className="text-muted-foreground italic">No current focus provided yet.</p>
+                                        )}
+                                    </TabPanel>
+
+                                    <TabPanel>
+                                        {activities && activities.length > 0 ? (
+                                            <div className="space-y-4">
+                                                <p className="text-sm text-muted-foreground mb-4">
+                                                    This is context for Jester to analyze project momentum.
+                                                </p>
+                                                {activities.map(activity => (
+                                                    <div key={activity.id} className="flex flex-col text-sm border-l-2 pl-3 pb-2 border-gray-200 dark:border-gray-700">
+                                                        <span className="font-semibold capitalize">{activity.type.replace(/-/g, ' ')}</span>
+                                                        <span className="text-muted-foreground text-xs">{new Date(activity.timestamp as string).toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-muted-foreground text-sm italic">No recent activity.</p>
+                                        )}
+                                    </TabPanel>
+                                </Tabs>
                             </div>
                             {!hasReadAccess && (
                                 <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/30 dark:bg-black/30">
@@ -1015,6 +1070,12 @@ export default function ProjectDetailClientPage({
                             </div>
                         </TabPanel>
                     )}
+
+                    {showLeadDashboard && (
+                        <TabPanel>
+                            <LeadDashboardTab projectId={project.id} />
+                        </TabPanel>
+                    )}
                 </Tabs>
             </div>
 
@@ -1027,6 +1088,19 @@ export default function ProjectDetailClientPage({
                     teamMembers={users} 
                 />
             )}
+            <OnboardContributorDialog 
+                isOpen={isOnboardDialogOpen} 
+                onClose={() => setIsOnboardDialogOpen(false)} 
+                projectId={project.id} 
+                projectName={project.name}
+                projectMission={project.mission}
+                isQueenEnabled={isQueenEnabled}
+                onJoinManually={async () => {
+                    const result = await joinProjectAction(project.id);
+                    handleServerResponse(result, 'Successfully joined the project!', 'Failed to join the project.');
+                    setIsOnboardDialogOpen(false);
+                }}
+            />
         </div>
         </>
     );

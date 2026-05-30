@@ -392,6 +392,30 @@ export async function getGlobalActivityFeed(): Promise<Activity[]> {
     });
 }
 
+export async function getProjectActivityFeed(projectId: string): Promise<Activity[]> {
+    const activitySnapshot = await adminDb.collection('activity')
+        .where('projectId', '==', projectId)
+        .orderBy('timestamp', 'desc')
+        .limit(50)
+        .get();
+
+    if (activitySnapshot.empty) {
+        return [];
+    }
+
+    return activitySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            type: data.type,
+            actorId: data.actorId,
+            timestamp: serializeTimestamp(data.timestamp),
+            projectId: data.projectId,
+            context: data.context || {},
+        } as Activity;
+    });
+}
+
 
 // --- Task Data Access ---
 

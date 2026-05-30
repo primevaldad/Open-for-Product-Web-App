@@ -45,6 +45,8 @@ export interface Project {
     photoUrl?: string;
     tagline: string;
     description: string;
+    mission?: string;
+    currentFocus?: string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
     startDate: Timestamp | string;
@@ -128,6 +130,8 @@ export interface HydratedProject {
     photoUrl?: string;
     tagline: string;
     description: string;
+    mission?: string;
+    currentFocus?: string;
     createdAt: Timestamp | string;
     updatedAt: Timestamp | string;
     startDate: Timestamp | string;
@@ -412,6 +416,12 @@ export enum ActivityType {
     CollectionProjectRemoved = 'collection-project-removed',
     SteemCommunityPost = 'steem-community-post',
     SteemBlogSync = 'steem-blog-sync',
+    QueenActionProposed = 'queen-action-proposed',
+    QueenActionApproved = 'queen-action-approved',
+    QueenActionRejected = 'queen-action-rejected',
+    JesterBriefGenerated = 'jester-brief-generated',
+    ProjectMissionUpdated = 'project-mission-updated',
+    ProjectFocusUpdated = 'project-focus-updated',
 }
 
 // This defines the structure of the object returned by getUserActivity
@@ -465,7 +475,76 @@ export interface Activity {
         steemTitle?: string;
         steemUrl?: string;
         steemCommunity?: string;
+
+        // Context for Queen/Jester activities
+        queenActionId?: string;
+        queenActionType?: string;
+        jesterInsightId?: string;
     };
+}
+
+// --- Queen & Jester AI Types ---
+
+export interface ContributorProfile {
+    id: string;
+    projectId: string;
+    userId: string;
+    goals?: string;
+    skills?: string[];
+    hoursPerWeek?: number;
+    contributionStyle?: string;
+    rawOnboardingJson?: Record<string, any>;
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+}
+
+export type QueenActionStatus = 'pending_approval' | 'approved' | 'edited_then_approved' | 'rejected' | 'executed' | 'failed';
+
+export interface QueenAction {
+    id: string;
+    projectId: string;
+    type: string; // 'welcome_message', 'task_recommendation', 'outreach_draft', etc.
+    status: QueenActionStatus;
+    payload: Record<string, any>;
+    computerCallId?: string;
+    proposedAt: Timestamp | string;
+    decidedAt?: Timestamp | string;
+    decidedByUserId?: string;
+    editsDiff?: Record<string, any>;
+}
+
+export interface JesterInsight {
+    id: string;
+    projectId: string;
+    kind: string; // 'stalled_task', 'pattern_stabilizing', etc.
+    summary: string;
+    evidence: Record<string, any>;
+    severity: 'info' | 'nudge' | 'warning';
+    createdAt: Timestamp | string;
+}
+
+export interface AiCallLog {
+    id: string;
+    projectId?: string;
+    queenActionId?: string;
+    triggeredBy: 'queen' | 'jester' | 'user';
+    promptTemplateId: string;
+    promptFull: string;
+    model: string;
+    response: string;
+    sources?: Record<string, any>[];
+    creditsEstimated?: number;
+    creditsActual?: number;
+    status: 'ok' | 'partial' | 'error';
+    createdAt: Timestamp | string;
+}
+
+export interface PlatformConfig {
+    id: string; // e.g., 'global_settings'
+    activeAiModel: string;
+    defaultFeaturesEnabled: Record<string, boolean>;
+    projectOverrides: Record<string, Record<string, boolean>>; // projectId -> feature flags
+    adminUserIds: string[];
 }
 
 export interface SteemAccount {
