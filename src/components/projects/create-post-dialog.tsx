@@ -118,40 +118,37 @@ export function CreatePostDialog({ project, currentUser, post, trigger, onPostSa
 
         const activePostId = post ? post.id : result.postId!;
 
-        if (currentUser.steemTestnetEnabled) {
-          toast({ title: 'Simulation', description: 'Simulating Steem broadcast...' });
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        const steemResult = await SteemKeychain.requestPost(
+          currentUser.steemUsername,
+          title,
+          body,
+          'hive-111745',
+          '',
+          jsonMetadata,
+          permlink
+        );
+
+        if (steemResult.success) {
           await confirmSteemBroadcastAction(activePostId, permlink);
+          toast({ 
+            title: 'Published to OfP & Steem!',
+            description: 'Your update was successfully saved and broadcasted to the blockchain.' 
+          });
         } else {
-          const steemResult = await SteemKeychain.requestPost(
-            currentUser.steemUsername,
-            title,
-            body,
-            'hive-111745',
-            '',
-            jsonMetadata,
-            permlink
-          );
-
-          if (steemResult.success) {
-            await confirmSteemBroadcastAction(activePostId, permlink);
-            toast({ title: 'Published to Steem!' });
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Steem Broadcast Failed',
-              description: 'Post saved to OfP, but Steem broadcast failed.'
-            });
-          }
+          toast({
+            variant: 'destructive',
+            title: 'Steem Broadcast Failed',
+            description: `${steemResult.message || 'Steem broadcast failed.'} However, your post was still saved to Open for Product.`
+          });
         }
+      } else {
+        toast({
+          title: status === 'draft' ? 'Draft Saved' : (post ? 'Post Updated' : 'Post Created'),
+          description: status === 'draft'
+            ? 'Your draft has been saved successfully.'
+            : 'Your project update has been shared.',
+        });
       }
-
-      toast({
-        title: status === 'draft' ? 'Draft Saved' : (post ? 'Post Updated' : 'Post Created'),
-        description: status === 'draft'
-          ? 'Your draft has been saved successfully.'
-          : 'Your project update has been shared.',
-      });
       
       setOpen(false);
       

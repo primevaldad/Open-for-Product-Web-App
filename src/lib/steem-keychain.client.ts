@@ -12,7 +12,11 @@ export interface KeychainResponse {
 
 export class SteemKeychain {
   static isAvailable(): boolean {
-    return typeof window !== 'undefined' && !!(window as any).steem_keychain;
+    return typeof window !== 'undefined' && (!!(window as any).hive_keychain || !!(window as any).steem_keychain);
+  }
+
+  private static getKeychain(): any {
+    return (window as any).hive_keychain || (window as any).steem_keychain;
   }
 
   /**
@@ -29,18 +33,21 @@ export class SteemKeychain {
   ): Promise<KeychainResponse> {
     return new Promise((resolve) => {
       if (!this.isAvailable()) {
-        resolve({ success: false, message: 'Steem Keychain not found.', result: null, error: 'NOT_FOUND' });
+        resolve({ success: false, message: 'Steem Keychain extension is not installed or enabled in this browser.', result: null, error: 'NOT_FOUND' });
         return;
       }
 
-      (window as any).steem_keychain.requestPost(
+      const metadataString = typeof json_metadata === 'object' ? JSON.stringify(json_metadata) : json_metadata;
+
+      this.getKeychain().requestPost(
         account,
         title,
         body,
         parent_permlink,
         parent_author,
-        json_metadata,
+        metadataString,
         permlink,
+        "", // comment_options is required as a string by the Steem Keychain fork
         (response: any) => {
           resolve(response);
         }
@@ -58,11 +65,11 @@ export class SteemKeychain {
   ): Promise<KeychainResponse> {
     return new Promise((resolve) => {
       if (!this.isAvailable()) {
-        resolve({ success: false, message: 'Steem Keychain not found.', result: null, error: 'NOT_FOUND' });
+        resolve({ success: false, message: 'Steem Keychain extension is not installed or enabled in this browser.', result: null, error: 'NOT_FOUND' });
         return;
       }
 
-      (window as any).steem_keychain.requestSignBuffer(
+      this.getKeychain().requestSignBuffer(
         account,
         message,
         role,

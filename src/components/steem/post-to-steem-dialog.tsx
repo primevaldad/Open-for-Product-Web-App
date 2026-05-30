@@ -54,7 +54,7 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
       return;
     }
 
-    if (!currentUser.steemVerified && !currentUser.steemTestnetEnabled) {
+    if (!currentUser.steemVerified) {
       toast({
         variant: 'destructive',
         title: 'Account Not Verified',
@@ -80,23 +80,18 @@ export function PostToSteemDialog({ project, currentUser }: PostToSteemDialogPro
         format: 'markdown'
       });
 
-      if (currentUser.steemTestnetEnabled) {
-        toast({ title: 'Simulation Mode', description: 'Simulating Steem broadcast...' });
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      } else {
-        const result = await SteemKeychain.requestPost(
-          currentUser.steemUsername,
-          title,
-          body,
-          'hive-111745', // Community tag
-          '',
-          jsonMetadata,
-          permlink
-        );
+      const result = await SteemKeychain.requestPost(
+        currentUser.steemUsername,
+        title,
+        body,
+        'hive-111745', // Community tag
+        '',
+        jsonMetadata,
+        permlink
+      );
 
-        if (!result.success) {
-          throw new Error(result.message);
-        }
+      if (!result.success) {
+        throw new Error(result.message);
       }
 
       toast({

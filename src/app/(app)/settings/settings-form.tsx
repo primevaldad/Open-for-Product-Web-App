@@ -50,7 +50,6 @@ const SettingsSchema = z.object({
   website: z.string().optional(),
   steemUsername: z.string().optional(),
   steemFeedPreference: z.enum(['all', 'blog', 'none']).optional(),
-  steemTestnetEnabled: z.boolean().optional(),
   steemIconOverlay: z.boolean().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
 });
@@ -84,7 +83,6 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
       website: currentUser.website || '',
       steemUsername: currentUser.steemUsername || '',
       steemFeedPreference: currentUser.steemFeedPreference || 'all',
-      steemTestnetEnabled: currentUser.steemTestnetEnabled || false,
       steemIconOverlay: currentUser.steemIconOverlay || false,
       aiFeaturesEnabled: currentUser.aiFeaturesEnabled || false,
     },
@@ -133,26 +131,22 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
       // 2. Request post from Keychain
       const permlink = `verify-${Math.random().toString(36).substring(7)}`;
       
-      if (!SteemKeychain.isAvailable() && !form.getValues('steemTestnetEnabled')) {
-        throw new Error('Steem Keychain is not installed.');
+      if (!SteemKeychain.isAvailable()) {
+        throw new Error('Steem Keychain extension is not installed or enabled in this browser.');
       }
 
-      if (form.getValues('steemTestnetEnabled')) {
-        toast({ title: 'Simulation Mode', description: 'Simulating verification post...' });
-      } else {
-        const keychainResult = await SteemKeychain.requestPost(
-          steemUsername,
-          'Open for Product Verification',
-          `This post verifies my account on Open for Product.\n\nVerification Code: ${code}`,
-          'hive-111745',
-          '',
-          JSON.stringify({ tags: ['openforproduct'], app: 'openforproduct/1.0' }),
-          permlink
-        );
+      const keychainResult = await SteemKeychain.requestPost(
+        steemUsername,
+        'Open for Product Verification',
+        `This post verifies my account on Open for Product.\n\nVerification Code: ${code}`,
+        'hive-111745',
+        '',
+        JSON.stringify({ tags: ['openforproduct'], app: 'openforproduct/1.0' }),
+        permlink
+      );
 
-        if (!keychainResult.success) {
-          throw new Error(keychainResult.message);
-        }
+      if (!keychainResult.success) {
+        throw new Error(keychainResult.message);
       }
 
       // 3. Verify on server
@@ -417,29 +411,6 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
               </p>
             </div>
           )}
-
-          <FormField
-              control={form.control}
-              name="steemTestnetEnabled"
-              render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-md border p-2 bg-background/50">
-                      <div className="space-y-0.5">
-                          <FormLabel className="text-xs font-semibold uppercase tracking-wider">
-                              Developer: Use Steem Testnet
-                          </FormLabel>
-                          <FormDescription className="text-[10px]">
-                              Bypass live blockchain for development and testing.
-                          </FormDescription>
-                      </div>
-                      <FormControl>
-                          <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                          />
-                      </FormControl>
-                  </FormItem>
-              )}
-          />
 
           <FormField
               control={form.control}
