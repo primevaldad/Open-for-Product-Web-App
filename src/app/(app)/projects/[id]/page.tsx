@@ -49,7 +49,7 @@ interface ProjectPageData {
     isQueenEnabled: boolean;
 }
 
-async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
+async function getProjectPageData(projectId: string, inviteToken?: string): Promise<ProjectPageData> {
     const cleanId = extractId(projectId);
     const currentUser = await getAuthenticatedUser();
     const [project, discussions, tasks, posts, users, childProjects, activities, configRes] = await Promise.all([
@@ -64,6 +64,38 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
     ]);
 
     if (!project) {
+        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [], childProjects: [], activities: [], isQueenEnabled: false };
+    }
+
+    // Check project visibility access
+    const projectType = project.project_type || 'public';
+    let hasAccess = false;
+
+    if (projectType === 'public') {
+        hasAccess = true;
+    } else if (projectType === 'private') {
+        const isMember = currentUser && project.team.some(member => member.userId === currentUser.id);
+        hasAccess = !!isMember;
+    } else if (projectType === 'personal') {
+        const isOwner = currentUser && project.owner?.id === currentUser.id;
+        hasAccess = !!isOwner;
+    }
+
+    // Bypass if there is a valid invite token
+    if (!hasAccess && inviteToken) {
+        const { adminDb } = await import('@/lib/data.server');
+        const inviteQuery = await adminDb.collection('projectInvites')
+            .where('projectId', '==', cleanId)
+            .where('token', '==', inviteToken)
+            .where('status', '==', 'pending')
+            .limit(1)
+            .get();
+        if (!inviteQuery.empty) {
+            hasAccess = true;
+        }
+    }
+
+    if (!hasAccess) {
         return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [], childProjects: [], activities: [], isQueenEnabled: false };
     }
 
@@ -100,7 +132,7 @@ async function getProjectPageData(projectId: string): Promise<ProjectPageData> {
 
 export default async function ProjectPage({ params, searchParams }: { params: { id: string }, searchParams: { inviteToken?: string, tab?: string } }) {
     const cleanId = extractId(params.id);
-    const data = await getProjectPageData(cleanId);
+    const data = await getProjectPageData(cleanId, searchParams.inviteToken);
 
     if (!data.project) {
         notFound();

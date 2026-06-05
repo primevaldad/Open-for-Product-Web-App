@@ -34,6 +34,7 @@ export interface User {
     steemVerificationCode?: string;
     steemFeedPreference?: 'all' | 'blog' | 'none';
     steemIconOverlay?: boolean;
+    steemTestnetEnabled?: boolean;
     followedProjectIds?: string[];
     lastCommunityFeedSeenAt?: string;
     bypassOnboarding?: boolean;

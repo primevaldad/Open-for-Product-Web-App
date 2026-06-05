@@ -197,7 +197,7 @@ export async function getAllProjects(currentUser: User | null): Promise<Hydrated
     });
 }
 
-export async function getAllPublishedProjects(): Promise<HydratedProject[]> {
+export async function getAllPublishedProjects(currentUser: User | null): Promise<HydratedProject[]> {
     const [projectsSnap, tagsSnapshot] = await Promise.all([
         adminDb.collection('projects').where('status', '==', 'published').get(),
         adminDb.collection('tags').get()
@@ -235,7 +235,28 @@ export async function getAllPublishedProjects(): Promise<HydratedProject[]> {
         return project;
     });
 
-    return Promise.all(projectsWithTags.map(project => hydrateProject(project)));
+    const allPublished = await Promise.all(projectsWithTags.map(project => hydrateProject(project)));
+
+    if (!currentUser) {
+        return allPublished.filter(p => p.project_type === 'public' || !p.project_type);
+    }
+
+    return allPublished.filter(project => {
+        const projectType = project.project_type || 'public'; // Default to public
+
+        switch (projectType) {
+            case 'public':
+                return true;
+            case 'private':
+                // Visible if user is a member of the team
+                return project.team.some(member => member.userId === currentUser.id);
+            case 'personal':
+                // Visible only to the owner
+                return project.owner?.id === currentUser.id;
+            default:
+                return true; // Default to visible for safety if type is unknown
+        }
+    });
 }
 
 

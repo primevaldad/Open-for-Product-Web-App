@@ -118,7 +118,7 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
     return { success: false, error: validatedFields.error.issues[0]?.message || 'Invalid data.' };
   }
 
-  const { name, tagline, description, photoUrl, contributionNeeds, tags, team } = validatedFields.data;
+  const { name, tagline, description, photoUrl, contributionNeeds, tags, team, project_type, mission, currentFocus } = validatedFields.data;
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
 
@@ -153,6 +153,9 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
         endDate: admin.firestore.Timestamp.fromDate(new Date()),
         tagline,
         description,
+        mission: mission || '',
+        currentFocus: currentFocus || '',
+        project_type: project_type || 'public',
         tags: projectTags,
         contributionNeeds: contributionNeeds.split(',').map((i) => i.trim()),
         progress: 0,

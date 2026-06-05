@@ -38,10 +38,10 @@ type ProjectFormValues = CreateProjectFormValues | EditProjectFormValues;
 
 // Helper to convert Firestore Timestamp or string to Date
 const toDate = (value: any): Date | undefined => {
-    if (!value) return undefined;
-    if (typeof value?.toDate === 'function') return value.toDate();
-    if (typeof value === 'string') return new Date(value);
-    return undefined;
+  if (!value) return undefined;
+  if (typeof value?.toDate === 'function') return value.toDate();
+  if (typeof value === 'string') return new Date(value);
+  return undefined;
 };
 
 export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
@@ -56,26 +56,26 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(isEditMode ? EditProjectSchema : CreateProjectSchema),
     defaultValues: {
-        name: '',
-        tagline: '',
-        description: '',
-        mission: '',
-        currentFocus: '',
-        project_type: 'public',
-        photoUrl: '',
-        contributionNeeds: '',
-        tags: [],
-        team: [],
+      name: '',
+      tagline: '',
+      description: '',
+      mission: '',
+      currentFocus: '',
+      project_type: 'public',
+      photoUrl: '',
+      contributionNeeds: '',
+      tags: [],
+      team: [],
     },
   });
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      
+
       const mappedTeam = (initialData.team || []).map(member => ({
-          ...member,
-          createdAt: toDate(member.createdAt),
-          updatedAt: toDate(member.updatedAt),
+        ...member,
+        createdAt: toDate(member.createdAt),
+        updatedAt: toDate(member.updatedAt),
       }));
 
       const uniqueTeam = Array.from(new Map(mappedTeam.map(item => [item.userId, item])).values());
@@ -109,15 +109,15 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
           if (result.success) {
             toast({ title: 'Project Updated', description: 'Your changes have been saved.' });
             if (action === 'publish' && initialData.status !== 'published') {
-                const pubResult = await publishProject(initialData.id);
-                if(pubResult.success) {
-                    toast({ title: 'Project Published', description: 'Your project is now live.' });
-                    router.push(`/projects/${initialData.id}`);
-                } else {
-                    toast({ title: 'Publishing Error', description: pubResult.error, variant: 'destructive' });
-                }
+              const pubResult = await publishProject(initialData.id);
+              if (pubResult.success) {
+                toast({ title: 'Project Published', description: 'Your project is now live.' });
+                router.push(`/projects/${initialData.id}`);
+              } else {
+                toast({ title: 'Publishing Error', description: pubResult.error, variant: 'destructive' });
+              }
             } else {
-                router.refresh();
+              router.refresh();
             }
           } else {
             toast({ title: 'Error', description: result.error, variant: 'destructive' });
@@ -171,7 +171,7 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   className="flex flex-col space-y-1"
                 >
                   <FormItem className="flex items-center space-x-3 space-y-0">
@@ -207,7 +207,7 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="photoUrl"
@@ -295,18 +295,18 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
           )}
         />
 
-        <FormField 
+        <FormField
           control={form.control}
-          name="tags" 
+          name="tags"
           render={({ field }) => (
             <FormItem>
               <FormLabel htmlFor="tags">Tags</FormLabel>
               <FormControl>
-                <AdvancedTagSelector 
-                  id="tags" 
-                  availableTags={tags} 
-                  value={field.value as ProjectTag[]} 
-                  onChange={handleTagsChange} 
+                <AdvancedTagSelector
+                  id="tags"
+                  availableTags={tags}
+                  value={field.value as ProjectTag[]}
+                  onChange={handleTagsChange}
                   isProject // Enable project-specific features
                 />
               </FormControl>
@@ -315,11 +315,11 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
               </FormDescription>
               <FormMessage />
             </FormItem>
-          )} 
+          )}
         />
-        
+
         <FormField control={form.control} name="contributionNeeds" render={({ field }) => (<FormItem><FormLabel>Contribution Needs</FormLabel><FormControl><Input placeholder="e.g., UI/UX, Backend" {...field} /></FormControl><FormDescription>What kind of help are you looking for? (comma-separated)</FormDescription><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="team" render={({ field }) => (<FormItem><FormLabel htmlFor="team">Team Members</FormLabel><FormControl><UserSelector id="team" users={users} value={field.value} onChange={field.onChange}/></FormControl><FormDescription>{isEditMode ? 'Manage the project team.' : 'You will be added as project lead.'}</FormDescription><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="team" render={({ field }) => (<FormItem><FormLabel htmlFor="team">Team Members</FormLabel><FormControl><UserSelector id="team" users={users} value={field.value} onChange={field.onChange} /></FormControl><FormDescription>{isEditMode ? 'Manage the project team.' : 'You will be added as project lead.'}</FormDescription><FormMessage /></FormItem>)} />
 
         <div className="flex justify-end space-x-4">
           <Button type="button" variant="outline" onClick={() => form.handleSubmit((values) => onSubmit(values, 'save'))()} disabled={isPending}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditMode ? 'Save Changes' : 'Save Draft')}</Button>

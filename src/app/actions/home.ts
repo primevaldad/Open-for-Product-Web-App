@@ -45,7 +45,7 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
     try {
         const currentUser = await getAuthenticatedUser();
         const [projects, allTags, learningPathsResponse, allProjectPathLinks] = await Promise.all([
-            getAllPublishedProjects(),
+            getAllPublishedProjects(currentUser),
             getAllGlobalTags(),
             getAllLearningPaths(),
             getAllProjectPathLinks(),
