@@ -121,6 +121,7 @@ async function handleProjectSubmission(values: CreateProjectFormValues, status: 
   const { name, tagline, description, photoUrl, contributionNeeds, tags, team, project_type, mission, currentFocus } = validatedFields.data;
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
+  if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
   const projectTags: ProjectTag[] = tags.map(tag => ({
     ...tag,
@@ -206,6 +207,7 @@ export async function saveProjectDraft(values: CreateProjectFormValues) {
 export async function publishProject(projectId: string) {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
+  if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
   try {
     await adminDb.runTransaction(async (transaction) => {
@@ -243,6 +245,7 @@ export async function updateProject(values: EditProjectFormValues) {
   const { id, tags, governance, ...projectData } = validatedFields.data;
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
+  if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
   try {
     const projectTags: ProjectTag[] = tags.map(tag => ({
@@ -316,6 +319,7 @@ export async function updateProject(values: EditProjectFormValues) {
 export async function joinProject(projectId: string): Promise<ServerActionResponse<HydratedProjectMember>> {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
+  if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
   try {
     const project = await findProjectById(projectId, currentUser); // FIX: Add currentUser argument
@@ -347,6 +351,7 @@ export async function joinProject(projectId: string): Promise<ServerActionRespon
 export async function leaveProject(projectId: string): Promise<ServerActionResponse<{}>> {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) return { success: false, error: 'Authentication required.' };
+  // We allow unverified users to leave a project they were added to, so no emailVerified check here.
 
   try {
     const project = await findProjectById(projectId, currentUser);
@@ -377,6 +382,7 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
     const { projectId, userId, role } = data;
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required.' };
+    if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
     try {
         const project = await findProjectById(projectId, currentUser); // FIX: Add currentUser argument
@@ -415,6 +421,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
     const { projectId, content, parentId } = data;
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required' };
+    if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
     try {
         const newCommentData: Omit<Discussion, 'id'> = {
@@ -455,6 +462,7 @@ export async function addDiscussionComment(data: { projectId: string; content: s
 export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'> & { projectId: string }): Promise<ServerActionResponse<Task>> {
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required.' };
+    if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
     try {
         const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
@@ -511,6 +519,7 @@ function canUserEditTask(task: Task, currentUserId: string, project: Project): b
 export async function updateTask(data: Task): Promise<ServerActionResponse<Task>> {
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required.' };
+    if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
     try {
         const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument
@@ -545,6 +554,7 @@ export async function updateTask(data: Task): Promise<ServerActionResponse<Task>
 export async function deleteTask(data: { id: string; projectId: string }): Promise<ServerActionResponse<{}>> {
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return { success: false, error: 'Authentication required.' };
+    if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
 
     try {
         const project = await findProjectById(data.projectId, currentUser); // FIX: Add currentUser argument

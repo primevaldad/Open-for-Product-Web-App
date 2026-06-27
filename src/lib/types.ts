@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
 // A string representing a user's unique ID. This will typically be a Firebase Auth UID.
 export type UserId = string;
@@ -38,6 +38,9 @@ export interface User {
     followedProjectIds?: string[];
     lastCommunityFeedSeenAt?: string;
     bypassOnboarding?: boolean;
+    emailVerified?: boolean;
+    // Timestamp of when verification email was last sent
+    verificationEmailSentAt?: Timestamp | FieldValue;
 }
 
 export interface Project {

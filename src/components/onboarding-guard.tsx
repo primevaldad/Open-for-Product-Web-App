@@ -29,7 +29,7 @@ export function OnboardingGuard({ user, memberProjectIds = [], children }: Onboa
         const hasInviteToken = !!searchParams.get('inviteToken');
 
         // Define exempt routes that SHOULD NOT trigger a redirect to /onboarding
-        let isExempt = pathname.startsWith('/onboarding') || pathname.startsWith('/api/');
+        let isExempt = pathname.startsWith('/onboarding') || pathname.startsWith('/verify-email') || pathname.startsWith('/api/');
 
         // If visiting a project, allow bypass ONLY IF they are a member OR have an invite token
         if (isProjectRoute && projectIdFromUrl) {

@@ -86,6 +86,7 @@ export async function getAuthenticatedUser(): Promise<User | null> {
             console.warn(`User with ID ${decodedToken.uid} not found in database.`);
             return null;
         }
+        user.emailVerified = decodedToken.email_verified;
         return user;
     } catch (error: any) {
         // When a session cookie is invalid or expired, verifySessionCookie throws.

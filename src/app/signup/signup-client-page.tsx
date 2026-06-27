@@ -88,7 +88,7 @@ function SignUpForm() {
             description: "You're now logged in.",
           });
           // Use window.location.href for a hard refresh to ensure the session is picked up
-          window.location.href = redirectTo;
+          window.location.href = '/verify-email';
         } else {
           setError(result.error || 'An unexpected server error occurred.');
         }

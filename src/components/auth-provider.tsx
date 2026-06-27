@@ -60,6 +60,9 @@ export function AuthProvider({ serverUser, children }: AuthProviderProps) {
 
         if (sessionResponse.ok) {
           const appUser = await findUserById(firebaseUser.uid);
+          if (appUser) {
+            appUser.emailVerified = firebaseUser.emailVerified;
+          }
           setCurrentUser(appUser || null);
         } else {
           console.error('Failed to create session, signing out:', await sessionResponse.text());

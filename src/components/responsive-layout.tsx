@@ -9,6 +9,7 @@ import { UserNav } from '@/components/user-nav';
 import { Logo } from '@/components/logo';
 import { NotificationBell } from '@/components/NotificationBell';
 import { DynamicHeader } from '@/components/dynamic-header';
+import { EmailVerificationBanner } from '@/components/email-verification-banner';
 import type { User } from '@/lib/types';
 
 interface ResponsiveLayoutProps {
@@ -29,9 +30,11 @@ export function ResponsiveLayout({ serverUser, children, notifications, hasNewFe
   if (isAuthenticated) {
     return (
       <SidebarProvider>
-        <div className="flex h-full min-h-screen w-full bg-background">
-          <AppSidebar user={user} hasNewCommunityContent={hasNewFeedItems} />
-          <SidebarInset className="flex flex-col flex-1 rounded-tl-xl">
+        <div className="flex flex-col h-full min-h-screen w-full bg-background">
+          <EmailVerificationBanner isVerified={user.emailVerified} email={user.email} />
+          <div className="flex flex-1 overflow-hidden">
+            <AppSidebar user={user} hasNewCommunityContent={hasNewFeedItems} />
+            <SidebarInset className="flex flex-col flex-1 rounded-tl-xl overflow-hidden">
             <header className="sticky top-0 z-10 flex items-center justify-between gap-4 bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm md:px-6">
               <div className="flex items-center gap-4">
                 <SidebarToggle />
@@ -50,6 +53,7 @@ export function ResponsiveLayout({ serverUser, children, notifications, hasNewFe
             </main>
           </SidebarInset>
         </div>
+        </div>
       </SidebarProvider>
     );
   }
@@ -57,6 +61,7 @@ export function ResponsiveLayout({ serverUser, children, notifications, hasNewFe
   // Guest (Unauthenticated) Layout
   return (
     <div className="flex flex-col min-h-screen w-full bg-background">
+      {user && <EmailVerificationBanner isVerified={user.emailVerified} email={user.email} />}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b bg-background/80 px-4 py-2 backdrop-blur-sm md:px-6">
         <Link href="/" className="flex items-center gap-4">
           <Logo />

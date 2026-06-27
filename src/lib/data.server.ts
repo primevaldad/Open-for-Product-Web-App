@@ -75,7 +75,16 @@ export async function findUserById(userId: string): Promise<User | undefined> {
     const userSnap = await adminDb.collection('users').doc(userId).get();
     if (userSnap.exists) {
         const { embedding, ...data } = userSnap.data()!;
-        return { id: userSnap.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
+        return {
+            id: userSnap.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt),
+            // Convert to ISO string so it can cross the Server→Client boundary
+            verificationEmailSentAt: data.verificationEmailSentAt
+                ? serializeTimestamp(data.verificationEmailSentAt)
+                : undefined,
+        } as unknown as User;
     }
     return undefined;
 }
