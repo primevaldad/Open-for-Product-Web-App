@@ -83,6 +83,14 @@ function SignUpForm() {
         });
 
         if (result.success) {
+          // Explicitly post to session endpoint to initialize cookie and trigger verification email.
+          // This keeps the verification email sending tightly bounded to the signup path.
+          await fetch(`/api/auth/session?sendVerificationEmail=true`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
+
           toast({
             title: 'Account Created!',
             description: "You're now logged in.",

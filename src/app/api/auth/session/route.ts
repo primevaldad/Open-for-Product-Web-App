@@ -16,8 +16,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const sendVerificationEmail = searchParams.get('sendVerificationEmail') === 'true';
+
     // createSessionCookie handles token verification, cookie creation, and setting it.
-    await createSessionCookie(idToken);
+    await createSessionCookie(idToken, sendVerificationEmail);
 
     return NextResponse.json({ status: 'success' }, { status: 200 });
   } catch (error: unknown) {

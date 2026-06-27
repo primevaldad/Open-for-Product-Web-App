@@ -106,15 +106,10 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
 
     revalidatePath('/onboarding');
 
-    // Send verification email exactly once for new signups.
-    // Set the timestamp atomically with the send so resend throttling works.
-    await adminDb.collection('users').doc(uid).update({
-      verificationEmailSentAt: FieldValue.serverTimestamp(),
-    });
-    await sendCustomVerificationEmail(email).catch((err) =>
-      console.error('[AUTH_ACTION_TRACE] Failed to send verification email during signup:', err)
-    );
-
+    // We do not send the verification email here anymore.
+    // The client-side AuthProvider will automatically trigger /api/auth/session
+    // as soon as createUserWithEmailAndPassword succeeds client-side, which
+    // is where the initial session is established and the email is dispatched.
     return { success: true, userId: uid };
 
   } catch (error) { // Type error as FirebaseError or generic Error

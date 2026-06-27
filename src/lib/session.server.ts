@@ -36,7 +36,7 @@ export const adminAuth = getAuth();
 const SESSION_DURATION_MS = 60 * 60 * 24 * 5 * 1000; // 5 days in milliseconds
 const SESSION_DURATION_SECS = SESSION_DURATION_MS / 1000;
 
-export async function createSessionCookie(idToken: string): Promise<string> {
+export async function createSessionCookie(idToken: string, sendVerificationEmail = false): Promise<string> {
     try {
         const decodedIdToken = await adminAuth.verifyIdToken(idToken, true);
         const uid = decodedIdToken.uid;
@@ -54,6 +54,41 @@ export async function createSessionCookie(idToken: string): Promise<string> {
             path: '/',
             sameSite: process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax',
         });
+
+        // If requested (i.e. on initial login/signup session establishing), send the verification email.
+        // We use a transaction to throttle it to avoid double sends from client refreshes.
+        if (sendVerificationEmail && decodedIdToken.email && !decodedIdToken.email_verified) {
+            const userRef = admin.firestore().collection('users').doc(uid);
+            try {
+                const throttleResult = await admin.firestore().runTransaction(async (transaction) => {
+                    const userDoc = await transaction.get(userRef);
+                    if (!userDoc.exists) return { allowed: true };
+                    
+                    const userData = userDoc.data();
+                    const lastSent = userData?.verificationEmailSentAt?.toDate?.();
+                    if (lastSent) {
+                        const elapsed = (Date.now() - lastSent.getTime()) / 1000;
+                        if (elapsed < 60) {
+                            return { allowed: false };
+                        }
+                    }
+                    transaction.update(userRef, {
+                        verificationEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                    return { allowed: true };
+                });
+
+                if (throttleResult.allowed) {
+                    // Import dynamically to avoid circular dependencies
+                    const { sendCustomVerificationEmail } = await import('@/app/actions/auth');
+                    await sendCustomVerificationEmail(decodedIdToken.email).catch((err) =>
+                        console.error('[SESSION_SERVER] Failed to send initial verification email:', err)
+                    );
+                }
+            } catch (err) {
+                console.error('[SESSION_SERVER] Failed to execute verification email transaction:', err);
+            }
+        }
 
         return uid;
     } catch (error) {
