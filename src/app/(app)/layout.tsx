@@ -42,17 +42,15 @@ export default async function AppLayout({
         disableTransitionOnChange
     >
         <AuthProvider serverUser={currentUser}>
-            <TooltipProvider>
-                <OnboardingGuard user={currentUser} memberProjectIds={memberProjectIds}>
-                    <ResponsiveLayout 
-                        serverUser={currentUser} 
-                        notifications={<NotificationBell />}
-                        hasNewFeedItems={hasNewFeedItems}
-                    >
-                        {children}
-                    </ResponsiveLayout>
-                </OnboardingGuard>
-            </TooltipProvider>
+            <OnboardingGuard user={currentUser} memberProjectIds={memberProjectIds}>
+                <ResponsiveLayout 
+                    serverUser={currentUser} 
+                    notifications={<NotificationBell />}
+                    hasNewFeedItems={hasNewFeedItems}
+                >
+                    {children}
+                </ResponsiveLayout>
+            </OnboardingGuard>
         </AuthProvider>
     </ThemeProvider>
   );

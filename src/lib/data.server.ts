@@ -98,7 +98,15 @@ export async function findUserByUsername(username: string): Promise<User | undef
     }
     const userDoc = userSnapshot.docs[0];
     const { embedding, ...data } = userDoc.data();
-    return { id: userDoc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
+    return {
+        id: userDoc.id,
+        ...data,
+        createdAt: serializeTimestamp(data.createdAt),
+        updatedAt: serializeTimestamp(data.updatedAt),
+        verificationEmailSentAt: data.verificationEmailSentAt
+            ? serializeTimestamp(data.verificationEmailSentAt)
+            : undefined,
+    } as unknown as User;
 }
 
 export async function findUserByEmail(email: string): Promise<User | undefined> {
@@ -110,7 +118,15 @@ export async function findUserByEmail(email: string): Promise<User | undefined> 
     }
     const userDoc = userSnapshot.docs[0];
     const { embedding, ...data } = userDoc.data();
-    return { id: userDoc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User;
+    return {
+        id: userDoc.id,
+        ...data,
+        createdAt: serializeTimestamp(data.createdAt),
+        updatedAt: serializeTimestamp(data.updatedAt),
+        verificationEmailSentAt: data.verificationEmailSentAt
+            ? serializeTimestamp(data.verificationEmailSentAt)
+            : undefined,
+    } as unknown as User;
 }
 
 export async function createGuestUser(uid: string): Promise<User> {
@@ -137,7 +153,15 @@ export async function findUsersByIds(userIds: string[]): Promise<User[]> {
         const userSnapshot = await q.get();
         userSnapshot.docs.forEach(doc => {
             const { embedding, ...data } = doc.data();
-            users.push({ id: doc.id, ...data, createdAt: serializeTimestamp(data.createdAt), updatedAt: serializeTimestamp(data.updatedAt) } as User);
+            users.push({
+                id: doc.id,
+                ...data,
+                createdAt: serializeTimestamp(data.createdAt),
+                updatedAt: serializeTimestamp(data.updatedAt),
+                verificationEmailSentAt: data.verificationEmailSentAt
+                    ? serializeTimestamp(data.verificationEmailSentAt)
+                    : undefined,
+            } as unknown as User);
         });
     }
     return users;

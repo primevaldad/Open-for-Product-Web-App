@@ -23,7 +23,7 @@ export function UserAvatar({ user, className, badgeSize = "sm" }: UserAvatarProp
   };
 
   return (
-    <div className={cn("relative inline-block", className)}>
+    <div className={cn("relative inline-block transform-gpu [transform:translateZ(0)] will-change-transform", className)}>
       <Avatar className={cn("h-full w-full", className)}>
         {(user.photoUrl || user.avatarUrl) && <AvatarImage src={user.photoUrl || user.avatarUrl} alt={user.name || user.username || 'User'} />}
         <AvatarFallback>{getInitials(user.name || user.username || 'U')}</AvatarFallback>

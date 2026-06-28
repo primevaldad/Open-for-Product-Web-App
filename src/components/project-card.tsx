@@ -70,19 +70,24 @@ export default function ProjectCard({
 
     if (!user || !user.name) {
         return (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger><Avatar className='border-2 border-background h-8 w-8'><AvatarFallback><UserIcon className='h-4 w-4 text-muted-foreground' /></AvatarFallback></Avatar></TooltipTrigger>
-                    <TooltipContent><p>Unknown User</p></TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span onClick={(e) => e.stopPropagation()}>
+                        <Avatar className='border-2 border-background h-8 w-8'>
+                            <AvatarFallback>
+                                <UserIcon className='h-4 w-4 text-muted-foreground' />
+                            </AvatarFallback>
+                        </Avatar>
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent className="pointer-events-none"><p>Unknown User</p></TooltipContent>
+            </Tooltip>
         );
     }
 
     const profileUrl = buildHybridUrl('/profile', user.id, user.username || user.name);
     
     return (
-      <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <span onClick={(e) => handleNavigation(e, profileUrl)} className="cursor-pointer" role="link" tabIndex={0}>
@@ -92,32 +97,32 @@ export default function ProjectCard({
               </Avatar>
             </span>
           </TooltipTrigger>
-          <TooltipContent>
+          <TooltipContent className="pointer-events-none">
             <p>{user.name} - <span className="capitalize">{role}</span></p>
           </TooltipContent>
         </Tooltip>
-      </TooltipProvider>
     );
   };
 
   return (
-      <Card 
-        className={cn(
-            'group relative flex flex-col overflow-hidden transition-all hover:shadow-lg cursor-pointer',
-            isLead && 'border-2 border-yellow-500',
-            className
-        )}
-        onClick={() => router.push(buildHybridUrl('/projects', project.id, project.name))}
-      >
+    <Card 
+      className={cn(
+        'relative flex flex-col overflow-hidden cursor-pointer transform-gpu [transform:translateZ(0)] will-change-transform',
+        isLead && 'border-2 border-yellow-500',
+        className
+      )}
+      onClick={() => router.push(buildHybridUrl('/projects', project.id, project.name))}
+    >
           <CardHeader className='relative p-0 h-48'>
               <Image
                   src={project.photoUrl || fallbackImage}
                   alt={project.name}
                   fill
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover"
                   data-ai-hint="project image"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-transform duration-300 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
               
               <div className="relative flex flex-col justify-end h-full p-4 text-slate-100">
                   {suggestionText && (
@@ -136,22 +141,20 @@ export default function ProjectCard({
                               </Badge>
                           ))}
                        {recommendedPaths.length > 0 && (
-                          <TooltipProvider>
-                              <Tooltip>
-                                  <TooltipTrigger onClick={(e) => e.stopPropagation()}>
-                                      <Badge variant={'secondary'} className='flex items-center gap-1.5'>
-                                          <BookOpen className='h-3 w-3' />
-                                          {recommendedPaths.length}
-                                      </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                      <p className='font-semibold mb-1'>Recommended Learning:</p>
-                                      <ul className='list-disc list-inside'>
-                                          {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
-                                      </ul>
-                                  </TooltipContent>
-                              </Tooltip>
-                          </TooltipProvider>
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Badge variant={'secondary'} className='flex items-center gap-1.5 cursor-pointer' onClick={(e) => e.stopPropagation()}>
+                                      <BookOpen className='h-3 w-3' />
+                                      {recommendedPaths.length}
+                                  </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="pointer-events-none">
+                                  <p className='font-semibold mb-1'>Recommended Learning:</p>
+                                  <ul className='list-disc list-inside'>
+                                      {recommendedPaths.map(p => <li key={p.pathId}>{p.title}</li>)}
+                                  </ul>
+                              </TooltipContent>
+                          </Tooltip>
                       )}
                   </div>
                   <div className="bg-black/40 p-3 rounded-lg backdrop-blur-sm border border-white/10">
@@ -165,14 +168,14 @@ export default function ProjectCard({
               </div>
               {project.isExpertReviewed && (
                   <div className="absolute top-2 right-2">
-                      <TooltipProvider>
                           <Tooltip>
-                              <TooltipTrigger onClick={(e) => e.stopPropagation()}>
-                                  <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
+                              <TooltipTrigger asChild>
+                                  <span className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                                      <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
+                                  </span>
                               </TooltipTrigger>
-                              <TooltipContent><p>Expert Reviewed</p></TooltipContent>
+                              <TooltipContent className="pointer-events-none"><p>Expert Reviewed</p></TooltipContent>
                           </Tooltip>
-                      </TooltipProvider>
                   </div>
               )}
           </CardHeader>
@@ -199,20 +202,18 @@ export default function ProjectCard({
                     ))}
                 </div>
                 {hiddenMembersCount > 0 && (
-                    <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
                         <div className='ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground'>
                             +{hiddenMembersCount}
                         </div>
                         </TooltipTrigger>
-                        <TooltipContent onClick={(e) => e.stopPropagation()}>
+                        <TooltipContent className="pointer-events-none" onClick={(e) => e.stopPropagation()}>
                         <p>
                             {uniqueMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
                         </p>
                         </TooltipContent>
                     </Tooltip>
-                    </TooltipProvider>
                 )}
             </div>
           </CardFooter>

@@ -6,8 +6,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    loader: 'custom',
-    loaderFile: './loader.js',
     remotePatterns: [
       {
         protocol: 'https',
