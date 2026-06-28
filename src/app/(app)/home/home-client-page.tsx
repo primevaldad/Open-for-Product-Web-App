@@ -101,13 +101,14 @@ const ProjectList = ({
     if (!projects || projects.length === 0) return null;
     return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
+            {projects.map((project, index) => (
                 <ProjectCard
                     key={project.id}
                     project={project}
                     currentUser={currentUser}
                     allProjectPathLinks={allProjectPathLinks}
                     allLearningPaths={allLearningPaths}
+                    priority={index < 6}
                 />
             ))}
         </div>
