@@ -115,7 +115,7 @@ export default function ProjectCard({
       )}
       onClick={() => router.push(buildHybridUrl('/projects', project.id, project.name))}
     >
-          <CardHeader className='relative p-0 h-48'>
+          <CardHeader className='relative p-0 h-48 [isolation:isolate]'>
               <Image
                   src={project.photoUrl || fallbackImage}
                   alt={project.name}
