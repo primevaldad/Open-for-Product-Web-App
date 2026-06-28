@@ -109,7 +109,7 @@ export default function ProjectCard({
   return (
     <Card 
       className={cn(
-        'relative flex flex-col overflow-hidden cursor-pointer transform-gpu [transform:translateZ(0)] will-change-transform',
+        'relative flex flex-col overflow-hidden cursor-pointer [transform:translateZ(0)] [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased]',
         isLead && 'border-2 border-yellow-500',
         className
       )}
