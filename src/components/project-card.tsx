@@ -18,6 +18,7 @@ interface ProjectCardProps {
   allProjectPathLinks: ProjectPathLink[];
   allLearningPaths: LearningPath[];
   suggestionText?: string;
+  priority?: boolean;
 }
 
 const MAX_VISIBLE_MEMBERS = 4;
@@ -28,7 +29,8 @@ export default function ProjectCard({
     className, 
     allProjectPathLinks, 
     allLearningPaths, 
-    suggestionText 
+    suggestionText,
+    priority = false,
 }: ProjectCardProps) {
   const router = useRouter();
   
@@ -120,6 +122,8 @@ export default function ProjectCard({
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover"
+                  style={{ objectFit: "cover" }}
+                  priority={priority}
                   data-ai-hint="project image"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />

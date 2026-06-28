@@ -24,7 +24,7 @@ env:
     value: "1:36569631324:web:9cacdc439f6b8ced253499"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_APP_URL
-    value: "https://openforproduct.com"
+    value: "https://app.openforproduct.com"
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
     value: "G-ZT8QHXENFE"
