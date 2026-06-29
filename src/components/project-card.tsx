@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle, Sparkles, User as UserIcon } from 'lucide-react';
@@ -74,7 +75,7 @@ export default function ProjectCard({
         return (
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span onClick={(e) => e.stopPropagation()}>
+                    <span className="pointer-events-auto relative z-30">
                         <Avatar className='border-2 border-background h-8 w-8'>
                             <AvatarFallback>
                                 <UserIcon className='h-4 w-4 text-muted-foreground' />
@@ -92,12 +93,12 @@ export default function ProjectCard({
     return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span onClick={(e) => handleNavigation(e, profileUrl)} className="cursor-pointer" role="link" tabIndex={0}>
+            <Link href={profileUrl} className="pointer-events-auto relative z-30 cursor-pointer focus:outline-none block rounded-full">
               <Avatar className={cn('border-2 h-8 w-8', role === 'lead' ? 'border-yellow-500' : 'border-background')}>
                 {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
                 <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
               </Avatar>
-            </span>
+            </Link>
           </TooltipTrigger>
           <TooltipContent className="pointer-events-none">
             <p>{user.name} - <span className="capitalize">{role}</span></p>
@@ -109,13 +110,14 @@ export default function ProjectCard({
   return (
     <Card 
       className={cn(
-        'group relative flex flex-col overflow-hidden cursor-pointer [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl',
+        'group relative flex flex-col overflow-hidden [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl',
         isLead && 'border-2 border-yellow-500',
         className
       )}
-      onClick={() => router.push(buildHybridUrl('/projects', project.id, project.name))}
     >
-          <CardHeader className='relative p-0 h-48 [isolation:isolate]'>
+      <Link href={buildHybridUrl('/projects', project.id, project.name)} className="absolute inset-0 z-10 focus:outline-none" aria-label={`View project ${project.name}`} />
+      
+      <CardHeader className='relative z-20 pointer-events-none p-0 h-48 [isolation:isolate]'>
               <Image
                   src={project.photoUrl || fallbackImage}
                   alt={project.name}
@@ -140,14 +142,14 @@ export default function ProjectCard({
                           .sort((a, b) => (b.isCategory ? 1 : 0) - (a.isCategory ? 1 : 0))
                           .slice(0, 3)
                           .map((tag: ProjectTag) => (
-                              <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'} className='text-xs font-medium'>
+                              <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'} className='text-xs font-medium pointer-events-auto relative z-30'>
                                   {tag.display}
                               </Badge>
                           ))}
                        {recommendedPaths.length > 0 && (
                           <Tooltip>
                               <TooltipTrigger asChild>
-                                  <Badge variant={'secondary'} className='flex items-center gap-1.5 cursor-pointer' onClick={(e) => e.stopPropagation()}>
+                                  <Badge variant={'secondary'} className='flex items-center gap-1.5 cursor-default pointer-events-auto relative z-30'>
                                       <BookOpen className='h-3 w-3' />
                                       {recommendedPaths.length}
                                   </Badge>
@@ -174,7 +176,7 @@ export default function ProjectCard({
                   <div className="absolute top-2 right-2">
                           <Tooltip>
                               <TooltipTrigger asChild>
-                                  <span className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                                  <span className="cursor-default pointer-events-auto relative z-30">
                                       <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
                                   </span>
                               </TooltipTrigger>
@@ -183,7 +185,7 @@ export default function ProjectCard({
                   </div>
               )}
           </CardHeader>
-          <CardContent className='flex-grow p-4'>
+          <CardContent className='relative z-20 pointer-events-none flex-grow p-4'>
             <div className='mb-4'>
               <div className='mb-1 flex justify-between text-xs text-muted-foreground'>
                 <span>Progress</span>
@@ -196,7 +198,7 @@ export default function ProjectCard({
                 <span>Jester forecast: {project.progress ? (project.progress > 50 ? 'Strong momentum, high viability' : 'Building foundational momentum') : 'Analyzing project state...'}</span>
             </div>
           </CardContent>
-          <CardFooter className='flex items-center justify-between bg-muted/50 p-4 mt-auto'>
+          <CardFooter className='relative z-20 pointer-events-none flex items-center justify-between bg-muted/50 p-4 mt-auto'>
             <div className='flex flex-grow items-center'>
                 <div className='flex items-end -space-x-2'>
                     {visibleMembers.map((member) => (
@@ -208,11 +210,11 @@ export default function ProjectCard({
                 {hiddenMembersCount > 0 && (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                        <div className='ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground'>
+                        <div className='pointer-events-auto relative z-30 ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground cursor-default'>
                             +{hiddenMembersCount}
                         </div>
                         </TooltipTrigger>
-                        <TooltipContent className="pointer-events-none" onClick={(e) => e.stopPropagation()}>
+                        <TooltipContent className="pointer-events-none">
                         <p>
                             {uniqueMembers.slice(MAX_VISIBLE_MEMBERS).map(member => member.user?.name || 'Unknown').join(', ')}
                         </p>
