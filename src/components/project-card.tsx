@@ -109,7 +109,7 @@ export default function ProjectCard({
   return (
     <Card 
       className={cn(
-        'relative flex flex-col overflow-hidden cursor-pointer [transform:translateZ(0)] [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased]',
+        'group relative flex flex-col overflow-hidden cursor-pointer [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl',
         isLead && 'border-2 border-yellow-500',
         className
       )}
@@ -121,7 +121,7 @@ export default function ProjectCard({
                   alt={project.name}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                   style={{ objectFit: "cover" }}
                   priority={priority}
                   data-ai-hint="project image"
