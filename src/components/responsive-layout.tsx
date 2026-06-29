@@ -21,7 +21,7 @@ interface ResponsiveLayoutProps {
 
 export function ResponsiveLayout({ serverUser, children, notifications, hasNewFeedItems }: ResponsiveLayoutProps) {
   const { currentUser: clientUser } = useAuth();
-  
+
   // A user is considered authenticated if either the server-side check 
   // or the client-side live session finds a valid user doc.
   const user = clientUser || serverUser;
@@ -34,25 +34,25 @@ export function ResponsiveLayout({ serverUser, children, notifications, hasNewFe
           <EmailVerificationBanner isVerified={user.emailVerified} email={user.email} />
           <div className="flex flex-1 overflow-hidden">
             <AppSidebar user={user} hasNewCommunityContent={hasNewFeedItems} />
-            <SidebarInset className="flex flex-col flex-1 rounded-tl-xl overflow-hidden">
-            <header className="sticky top-0 z-10 flex items-center justify-between gap-4 bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm md:px-6">
-              <div className="flex items-center gap-4">
-                <SidebarToggle />
-                <Link href="/">
-                  <Logo />
-                </Link>
-                <DynamicHeader />
-              </div>
-              <div className="flex items-center gap-4">
-                {notifications}
-                <UserNav currentUser={user} />
-              </div>
-            </header>
-            <main className="flex-1 overflow-auto p-4 md:p-6">
-              {children}
-            </main>
-          </SidebarInset>
-        </div>
+            <SidebarInset className="flex flex-col flex-1 rounded-tl-xl">
+              <header className="sticky top-0 z-10 flex items-center justify-between gap-4 bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm md:px-6">
+                <div className="flex items-center gap-4">
+                  <SidebarToggle />
+                  <Link href="/">
+                    <Logo />
+                  </Link>
+                  <DynamicHeader />
+                </div>
+                <div className="flex items-center gap-4">
+                  {notifications}
+                  <UserNav currentUser={user} />
+                </div>
+              </header>
+              <main className="flex-1 overflow-auto p-4 md:p-6">
+                {children}
+              </main>
+            </SidebarInset>
+          </div>
         </div>
       </SidebarProvider>
     );
