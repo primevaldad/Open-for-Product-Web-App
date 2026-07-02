@@ -551,6 +551,11 @@ export interface PlatformConfig {
     defaultFeaturesEnabled: Record<string, boolean>;
     projectOverrides: Record<string, Record<string, boolean>>; // projectId -> feature flags
     adminUserIds: string[];
+    defaultGovernance?: {
+        decisionModel: DecisionModel;
+        valueFlow: ValueFlowBucket[];
+        financialSnapshot?: FinancialSnapshot;
+    };
 }
 
 export interface SteemAccount {
@@ -668,6 +673,13 @@ export interface CooperativeDecision {
     date?: string;
 }
 
+export interface FinancialSnapshot {
+    creditOnHand: number;
+    neededForNextTasks: number;
+    alreadyDedicated: number;
+    remainingNeed: number;
+}
+
 export interface ProjectGovernanceConfig {
     source: GovernanceSource;
     parentProjectId?: string;
@@ -676,5 +688,8 @@ export interface ProjectGovernanceConfig {
     valueFlow: ValueFlowBucket[];
     lastDecision?: CooperativeDecision;
     nextDecision?: CooperativeDecision;
+    financialSnapshot?: FinancialSnapshot;
+    updatedAt?: string;
+    updatedBy?: string;
 }
 

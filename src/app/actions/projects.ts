@@ -22,6 +22,7 @@ import type {
   CreateProjectPageDataResponse,
   EditProjectPageDataResponse,
   DraftsPageDataResponse,
+  ProjectGovernanceConfig,
 } from '@/lib/types';
 import {
   adminDb,
@@ -1053,4 +1054,137 @@ export async function deleteDiscussionComment(data: {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred';
     return { success: false, error: message };
   }
+}
+
+export async function saveProjectGovernanceConfigAction(
+    projectId: string,
+    config: ProjectGovernanceConfig
+): Promise<ServerActionResponse<void>> {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return { success: false, error: 'Authentication required.' };
+    if (!currentUser.emailVerified) return { success: false, error: 'Please verify your email address to perform this action.' };
+
+    try {
+        const project = await findProjectById(projectId, currentUser);
+        if (!project) return { success: false, error: 'Project not found.' };
+
+        const isLead = project.team.some(m => m.userId === currentUser.id && m.role === 'lead');
+        const isOwner = project.ownerId === currentUser.id;
+        const isAdmin = currentUser.role === 'admin';
+        
+        if (!isLead && !isOwner && !isAdmin) {
+            return { success: false, error: 'Permission denied. Only project leads and admins can update governance.' };
+        }
+
+        // Validate valueFlow
+        let sum = 0;
+        const seenIds = new Set<string>();
+        for (const bucket of config.valueFlow) {
+            if (!bucket.id || bucket.id.trim() === '') {
+                return { success: false, error: 'Bucket ID cannot be empty.' };
+            }
+            if (seenIds.has(bucket.id)) {
+                return { success: false, error: 'Duplicate Bucket ID found.' };
+            }
+            seenIds.add(bucket.id);
+
+            if (!bucket.label || bucket.label.trim() === '') {
+                return { success: false, error: 'Bucket label cannot be empty.' };
+            }
+            if (bucket.percentage < 0) {
+                return { success: false, error: 'Bucket percentage cannot be negative.' };
+            }
+            sum += bucket.percentage;
+        }
+
+        if (sum !== 100) {
+            return { success: false, error: `Value flow allocations must sum to exactly 100% (currently ${sum}%).` };
+        }
+
+        const { getPlatformConfigAction, cascadeGovernanceUpdates } = await import('./admin');
+
+        // If inherited, resolve parent config if applicable
+        if (config.source === 'inherited') {
+            if (config.parentProjectId && config.parentProjectId !== 'platform_default') {
+                const parent = await findProjectById(config.parentProjectId, null);
+                if (parent) {
+                    config.parentProjectTitle = parent.name;
+                    if (parent.governanceConfig) {
+                        config.decisionModel = parent.governanceConfig.decisionModel;
+                        config.valueFlow = parent.governanceConfig.valueFlow.map(b => ({ ...b }));
+                        if (parent.governanceConfig.financialSnapshot) {
+                            config.financialSnapshot = { ...parent.governanceConfig.financialSnapshot };
+                        }
+                    } else {
+                        // Fallback to default platform config if parent has no config
+                        const platformRes = await getPlatformConfigAction();
+                        const defaultGov = platformRes.success && platformRes.data?.defaultGovernance
+                            ? platformRes.data.defaultGovernance
+                            : {
+                                decisionModel: 'project_lead_advisory' as DecisionModel,
+                                valueFlow: [
+                                    { id: "contributors", label: "Contributors", percentage: 75, description: "Value distributed to people doing project work." },
+                                    { id: "commons", label: "Community Commons", percentage: 15, description: "Shared project/ecosystem capacity: reusable assets, tools, documentation, templates, education, and community support." },
+                                    { id: "long_term_stake", label: "Long-Term Stake", percentage: 10, description: "Reserved for long-term project alignment, sustainability, or future ownership/stake logic." }
+                                ]
+                            };
+                        config.decisionModel = defaultGov.decisionModel;
+                        config.valueFlow = defaultGov.valueFlow.map(b => ({ ...b }));
+                        if (defaultGov.financialSnapshot) {
+                            config.financialSnapshot = { ...defaultGov.financialSnapshot };
+                        }
+                    }
+                }
+            } else {
+                config.parentProjectTitle = "Open for Product";
+                const platformRes = await getPlatformConfigAction();
+                const defaultGov = platformRes.success && platformRes.data?.defaultGovernance
+                    ? platformRes.data.defaultGovernance
+                    : {
+                        decisionModel: 'project_lead_advisory' as DecisionModel,
+                        valueFlow: [
+                            { id: "contributors", label: "Contributors", percentage: 75, description: "Value distributed to people doing project work." },
+                            { id: "commons", label: "Community Commons", percentage: 15, description: "Shared project/ecosystem capacity: reusable assets, tools, documentation, templates, education, and community support." },
+                            { id: "long_term_stake", label: "Long-Term Stake", percentage: 10, description: "Reserved for long-term project alignment, sustainability, or future ownership/stake logic." }
+                        ]
+                    };
+                config.decisionModel = defaultGov.decisionModel;
+                config.valueFlow = defaultGov.valueFlow.map(b => ({ ...b }));
+                if (defaultGov.financialSnapshot) {
+                    config.financialSnapshot = { ...defaultGov.financialSnapshot };
+                }
+            }
+        }
+
+        // Default last decision date to today if empty/missing
+        if (config.lastDecision) {
+            if (!config.lastDecision.date || config.lastDecision.date.trim() === '') {
+                config.lastDecision.date = new Date().toISOString().split('T')[0];
+            }
+        }
+
+        // 'TBD' for next decision if date is missing/empty
+        if (config.nextDecision) {
+            if (!config.nextDecision.date || config.nextDecision.date.trim() === '') {
+                config.nextDecision.date = 'TBD';
+            }
+        }
+
+        // Set metadata
+        config.updatedAt = new Date().toISOString();
+        config.updatedBy = currentUser.id;
+
+        await updateProjectInDb(projectId, {
+            governanceConfig: config
+        });
+
+        // Cascading Updates! Recursively update all child projects that inherit from this project.
+        await cascadeGovernanceUpdates(projectId, config);
+
+        revalidatePath(`/projects/${projectId}`);
+        return { success: true };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        return { success: false, error: message };
+    }
 }

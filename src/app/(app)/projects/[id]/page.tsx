@@ -12,6 +12,7 @@ import {
     getProjectActivityFeed
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
+import { adminDb } from '@/lib/firebase.server';
 import { getPlatformConfigAction } from '@/app/actions/admin';
 import ProjectDetailClientPage from './project-detail-client-page';
 import type { 
@@ -160,6 +161,43 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
         isQueenEnabled
     } = data;
 
+    // Fetch parent options (the direct parent project, and collections containing this project)
+    let parentProject = null;
+    if (project.parentProjectId) {
+        parentProject = await findProjectById(project.parentProjectId, null);
+    }
+
+    const collectionsSnap = await adminDb.collection('collections')
+        .where('memberProjectIds', 'array-contains', cleanId)
+        .get();
+
+    const parentCollections = collectionsSnap.docs.map(doc => {
+        const docData = doc.data();
+        return {
+            id: doc.id,
+            title: docData.name || docData.title || 'Untitled Collection',
+            type: 'collection' as const
+        };
+    });
+
+    const parentOptions = [];
+    if (parentProject) {
+        parentOptions.push({
+            id: parentProject.id,
+            title: parentProject.name,
+            type: 'project' as const
+        });
+    }
+    parentCollections.forEach(c => {
+        parentOptions.push(c);
+    });
+    // Add default platform
+    parentOptions.push({
+        id: 'platform_default',
+        title: 'Open for Product (Global Platform)',
+        type: 'platform' as const
+    });
+
     return (
         <ProjectDetailClientPage
             project={deepSerialize(project)}
@@ -174,6 +212,7 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
             isQueenEnabled={isQueenEnabled}
             inviteToken={searchParams.inviteToken}
             initialTab={searchParams.tab}
+            parentOptions={deepSerialize(parentOptions)}
         />
     );
 }

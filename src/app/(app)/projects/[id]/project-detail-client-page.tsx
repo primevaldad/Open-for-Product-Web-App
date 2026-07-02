@@ -63,6 +63,7 @@ interface ProjectDetailClientPageProps {
     initialTab?: string;
     activities?: Activity[];
     isQueenEnabled?: boolean;
+    parentOptions?: Array<{ id: string; title: string; type: 'project' | 'collection' | 'platform' }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -408,6 +409,7 @@ export default function ProjectDetailClientPage({
     initialTab,
     activities,
     isQueenEnabled,
+    parentOptions,
 }: ProjectDetailClientPageProps) {
     const { currentUser: clientUser } = useAuth();
     const currentUser = clientUser || serverUser;
@@ -1045,7 +1047,7 @@ export default function ProjectDetailClientPage({
                         </div>
                     </TabPanel>
                     <TabPanel>
-                        <ProjectGovernance project={project} currentUser={currentUser} isLead={isLead} />
+                        <ProjectGovernance project={project} currentUser={currentUser} isLead={isLead} parentOptions={parentOptions} />
                     </TabPanel>
                     {childProjects.length > 0 && (
                         <TabPanel>
