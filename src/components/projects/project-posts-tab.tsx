@@ -46,14 +46,15 @@ export function ProjectPostsTab({
 }: ProjectPostsTabProps) {
   const userMap = new Map(users.map(u => [u.id, u]));
 
+  const isAdmin = currentUser?.role === 'admin';
   const isTeamMember = !!(
     currentUser &&
     project &&
-    (project.team?.some(member => member.userId === currentUser.id) ||
+    (isAdmin ||
+      project.team?.some(member => member.userId === currentUser.id) ||
       project.owner?.id === currentUser.id)
   );
 
-  const isAdmin = currentUser?.role === 'admin';
   const isLead =
     isAdmin ||
     !!(
@@ -62,6 +63,16 @@ export function ProjectPostsTab({
       (project.team?.some(m => m.userId === currentUser.id && m.role === 'lead') ||
         project.owner?.id === currentUser.id)
     );
+
+  console.log('[CLIENT] ProjectPostsTab:', {
+    currentUserId: currentUser?.id,
+    currentUserRole: currentUser?.role,
+    isAdmin,
+    isTeamMember,
+    isLead,
+    allPosts: posts.map(p => ({ id: p.id, status: p.status, title: p.title })),
+    postsCount: posts.length
+  });
 
   const publishedPosts = posts.filter(post => post.status !== 'draft');
 

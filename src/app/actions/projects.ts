@@ -388,8 +388,12 @@ export async function addTeamMember(data: { projectId: string; userId: string; r
         const project = await findProjectById(projectId, currentUser); // FIX: Add currentUser argument
         if (!project) return { success: false, error: 'Project not found.' };
 
-        const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
-        if (!isLead) return { success: false, error: 'Only project leads can add team members.' };
+        const isProjectLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
+        const isPublicProject = project.project_type === 'public' || !project.project_type;
+        const isPlatformAdmin = currentUser.role === 'admin';
+        const isAuthorized = isProjectLead || (isPlatformAdmin && isPublicProject);
+
+        if (!isAuthorized) return { success: false, error: 'Only project leads (or platform admins for public projects) can add team members.' };
 
         const isAlreadyMember = project.team.some(member => member.userId === userId);
         if (isAlreadyMember) return { success: false, error: 'User is already a member of this project.' };
@@ -1011,7 +1015,8 @@ export async function deleteDiscussionComment(data: {
     }
 
     const isAuthor = commentData.userId === currentUser.id;
-    const isLead = project.team.some(member => member.user.id === currentUser.id && member.role === 'lead') || project.owner?.id === currentUser.id;
+    const isPlatformAdmin = currentUser.role === 'admin';
+    const isLead = isPlatformAdmin || project.team.some(member => member.user.id === currentUser.id && member.role === 'lead') || project.owner?.id === currentUser.id;
 
     if (!isAuthor && !isLead) {
       return { success: false, error: 'You are not authorized to delete this comment.' };

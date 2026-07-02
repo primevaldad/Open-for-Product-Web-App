@@ -3,11 +3,16 @@
 import { adminDb } from '@/lib/firebase.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { PlatformConfig, User } from '@/lib/types';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function getPlatformConfigAction(): Promise<{ success: boolean; data?: PlatformConfig; error?: string }> {
     try {
         const currentUser = await getAuthenticatedUser();
         if (!currentUser) return { success: false, error: 'Not authenticated' };
+
+        if (currentUser.role !== 'admin') {
+            return { success: false, error: 'Unauthorized. You are not a platform admin.' };
+        }
 
         const doc = await adminDb.collection('platform_config').doc('global_settings').get();
         if (!doc.exists) {
@@ -22,7 +27,7 @@ export async function getPlatformConfigAction(): Promise<{ success: boolean; dat
                         queen: false,
                     },
                     projectOverrides: {},
-                    adminUserIds: [], // We should check if the currentUser is an admin before letting them save, but for MVP we will allow it or rely on a hardcoded list.
+                    adminUserIds: [],
                 }
             };
         }
@@ -39,14 +44,8 @@ export async function updatePlatformConfigAction(config: PlatformConfig): Promis
         const currentUser = await getAuthenticatedUser();
         if (!currentUser) return { success: false, error: 'Not authenticated' };
 
-        // Ensure user is admin
-        const existing = await adminDb.collection('platform_config').doc('global_settings').get();
-        if (existing.exists) {
-            const existingData = existing.data() as PlatformConfig;
-            // If there are existing admins, the currentUser MUST be one of them to save anything.
-            if (existingData.adminUserIds?.length > 0 && !existingData.adminUserIds.includes(currentUser.id)) {
-                return { success: false, error: 'Unauthorized. You are not a platform admin.' };
-            }
+        if (currentUser.role !== 'admin') {
+            return { success: false, error: 'Unauthorized. You are not a platform admin.' };
         }
 
         await adminDb.collection('platform_config').doc('global_settings').set(config, { merge: true });
@@ -61,17 +60,36 @@ export async function getAllUsersForAdminAction(): Promise<{ success: boolean; d
         const currentUser = await getAuthenticatedUser();
         if (!currentUser) return { success: false, error: 'Not authenticated' };
 
-        const configDoc = await adminDb.collection('platform_config').doc('global_settings').get();
-        if (configDoc.exists) {
-            const config = configDoc.data() as PlatformConfig;
-            if (config.adminUserIds?.length > 0 && !config.adminUserIds.includes(currentUser.id)) {
-                return { success: false, error: 'Unauthorized' };
-            }
+        if (currentUser.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
         }
 
         const snapshot = await adminDb.collection('users').get();
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         return { success: true, data: JSON.parse(JSON.stringify(users)) as User[] };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+export async function setUserAdminStatusAction(targetUserId: string, isAdmin: boolean): Promise<{ success: boolean; error?: string }> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) return { success: false, error: 'Not authenticated' };
+
+        if (currentUser.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        if (targetUserId === currentUser.id && !isAdmin) {
+            return { success: false, error: 'You cannot remove admin status from yourself.' };
+        }
+
+        await adminDb.collection('users').doc(targetUserId).set({
+            role: isAdmin ? 'admin' : FieldValue.delete()
+        }, { merge: true });
+
+        return { success: true };
     } catch (e: any) {
         return { success: false, error: e.message };
     }

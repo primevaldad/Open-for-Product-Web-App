@@ -19,8 +19,12 @@ export async function inviteMember(data: { projectId: string; email: string; rol
         const project = await findProjectById(projectId, currentUser);
         if (!project) return { success: false, error: 'Project not found.' };
 
-        const isLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
-        if (!isLead) return { success: false, error: 'Only project leads can invite members.' };
+        const isProjectLead = project.team.some(member => member.userId === currentUser.id && member.role === 'lead');
+        const isPublicProject = project.project_type === 'public' || !project.project_type;
+        const isPlatformAdmin = currentUser.role === 'admin';
+        const isAuthorized = isProjectLead || (isPlatformAdmin && isPublicProject);
+
+        if (!isAuthorized) return { success: false, error: 'Only project leads (or platform admins for public projects) can invite members.' };
 
         // 1. Check if the user already exists in the system
         const targetUser = await findUserByEmail(email);

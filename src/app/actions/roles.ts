@@ -17,10 +17,13 @@ async function getProjectLeads(projectId: string): Promise<User[]> {
     return project.team.filter(m => m.role === 'lead').map(m => m.user as User);
 }
 
-async function isProjectLead(projectId: string, userId: string): Promise<boolean> {
+async function canManageMembers(projectId: string, user: User): Promise<boolean> {
     const project = await findProjectById(projectId, null);
     if (!project) return false;
-    return project.team.some(m => m.userId === userId && m.role === 'lead');
+    const isLead = project.team.some(m => m.userId === user.id && m.role === 'lead');
+    const isPublic = project.project_type === 'public' || !project.project_type;
+    const isAdmin = user.role === 'admin';
+    return isLead || (isAdmin && isPublic);
 }
 
 export async function applyForRole({ projectId, userId, role }: { projectId: string, userId: string, role: ProjectMember['role'] }) {
@@ -61,8 +64,8 @@ export async function approveRoleApplication({ projectId, userId, role }: { proj
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return deepSerialize({ success: false, error: 'User not authenticated.' });
 
-    if (!await isProjectLead(projectId, currentUser.id)) {
-        return deepSerialize({ success: false, error: 'Only project leads can approve applications.' });
+    if (!await canManageMembers(projectId, currentUser)) {
+        return deepSerialize({ success: false, error: 'Only project leads (or platform admins for public projects) can approve applications.' });
     }
 
     try {
@@ -78,8 +81,8 @@ export async function denyRoleApplication({ projectId, userId }: { projectId: st
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return deepSerialize({ success: false, error: 'User not authenticated.' });
 
-    if (!await isProjectLead(projectId, currentUser.id)) {
-        return deepSerialize({ success: false, error: 'Only project leads can deny applications.' });
+    if (!await canManageMembers(projectId, currentUser)) {
+        return deepSerialize({ success: false, error: 'Only project leads (or platform admins for public projects) can deny applications.' });
     }
 
     try {

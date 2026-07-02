@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { PlatformConfig, User } from '@/lib/types';
-import { updatePlatformConfigAction, getAllUsersForAdminAction } from '@/app/actions/admin';
+import { updatePlatformConfigAction, getAllUsersForAdminAction, setUserAdminStatusAction } from '@/app/actions/admin';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,25 +49,30 @@ export default function AdminClientPage({ initialConfig, currentUserId }: { init
         }));
     };
 
-    const handleAddAdmin = () => {
-        if (selectedUserId && !config.adminUserIds.includes(selectedUserId)) {
-            setConfig(prev => ({
-                ...prev,
-                adminUserIds: [...(prev.adminUserIds || []), selectedUserId]
-            }));
+    const handleAddAdmin = async () => {
+        if (!selectedUserId) return;
+        const res = await setUserAdminStatusAction(selectedUserId, true);
+        if (res.success) {
+            setUsers(prev => prev.map(u => u.id === selectedUserId ? { ...u, role: 'admin' } : u));
             setSelectedUserId('');
+            toast({ title: 'Admin added', description: 'User role updated to admin.' });
+        } else {
+            toast({ title: 'Error', description: res.error, variant: 'destructive' });
         }
     };
 
-    const handleRemoveAdmin = (userId: string) => {
+    const handleRemoveAdmin = async (userId: string) => {
         if (userId === currentUserId) {
             toast({ title: 'Action not allowed', description: 'You cannot remove yourself.', variant: 'destructive' });
             return;
         }
-        setConfig(prev => ({
-            ...prev,
-            adminUserIds: (prev.adminUserIds || []).filter(id => id !== userId)
-        }));
+        const res = await setUserAdminStatusAction(userId, false);
+        if (res.success) {
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: undefined } : u));
+            toast({ title: 'Admin removed', description: 'User admin role removed.' });
+        } else {
+            toast({ title: 'Error', description: res.error, variant: 'destructive' });
+        }
     };
 
     return (
@@ -137,21 +142,18 @@ export default function AdminClientPage({ initialConfig, currentUserId }: { init
                     <div>
                         <Label>Current Admins</Label>
                         <div className="mt-2 space-y-2">
-                            {(config.adminUserIds || []).map(adminId => {
-                                const user = users.find(u => u.id === adminId);
-                                return (
-                                    <div key={adminId} className="flex items-center justify-between p-3 border rounded-md bg-background">
-                                        <div>
-                                            <p className="font-medium">{user ? user.name : adminId}</p>
-                                            <p className="text-xs text-muted-foreground">{user ? user.email : ''}</p>
-                                        </div>
-                                        <Button variant="ghost" size="sm" onClick={() => handleRemoveAdmin(adminId)} disabled={adminId === currentUserId}>
-                                            Remove
-                                        </Button>
+                            {users.filter(u => u.role === 'admin').map(adminUser => (
+                                <div key={adminUser.id} className="flex items-center justify-between p-3 border rounded-md bg-background">
+                                    <div>
+                                        <p className="font-medium">{adminUser.name}</p>
+                                        <p className="text-xs text-muted-foreground">{adminUser.email}</p>
                                     </div>
-                                );
-                            })}
-                            {(!config.adminUserIds || config.adminUserIds.length === 0) && (
+                                    <Button variant="ghost" size="sm" onClick={() => handleRemoveAdmin(adminUser.id)} disabled={adminUser.id === currentUserId}>
+                                        Remove
+                                    </Button>
+                                </div>
+                            ))}
+                            {users.filter(u => u.role === 'admin').length === 0 && (
                                 <p className="text-sm text-muted-foreground">No admins configured.</p>
                             )}
                         </div>
@@ -165,7 +167,7 @@ export default function AdminClientPage({ initialConfig, currentUserId }: { init
                                     <SelectValue placeholder="Select a user" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {users.filter(u => !(config.adminUserIds || []).includes(u.id)).map(user => (
+                                    {users.filter(u => u.role !== 'admin').map(user => (
                                         <SelectItem key={user.id} value={user.id}>
                                             {user.name} ({user.email})
                                         </SelectItem>

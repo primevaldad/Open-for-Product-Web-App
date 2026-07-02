@@ -108,6 +108,7 @@ async function getProjectPageData(projectId: string, inviteToken?: string): Prom
     }).filter(d => d.user); // Ensure user is not null
 
     const isMember = currentUser && (
+        currentUser.role === 'admin' ||
         project.team?.some(member => member.userId === currentUser.id) ||
         project.owner?.id === currentUser.id
     );
@@ -115,6 +116,14 @@ async function getProjectPageData(projectId: string, inviteToken?: string): Prom
     const filteredPosts = isMember
         ? posts
         : posts.filter(post => post.status !== 'draft');
+
+    console.log('[SERVER] ProjectPage:', {
+        currentUserId: currentUser?.id,
+        currentUserRole: currentUser?.role,
+        isMember,
+        allPostsCount: posts.length,
+        filteredPostsCount: filteredPosts.length
+    });
 
     return {
         project,

@@ -13,15 +13,8 @@ export default async function AdminPage() {
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) redirect('/login');
 
-    const result = await getPlatformConfigAction();
-    if (!result.success || !result.data) {
-        return <div className="p-8">Error loading platform config: {result.error}</div>;
-    }
-
-    const config = result.data;
-
-    // Optional: enforce admin only view
-    if (config.adminUserIds && config.adminUserIds.length > 0 && !config.adminUserIds.includes(currentUser.id)) {
+    // Enforce admin only view
+    if (currentUser.role !== 'admin') {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="text-center">
@@ -31,6 +24,13 @@ export default async function AdminPage() {
             </div>
         );
     }
+
+    const result = await getPlatformConfigAction();
+    if (!result.success || !result.data) {
+        return <div className="p-8">Error loading platform config: {result.error}</div>;
+    }
+
+    const config = result.data;
 
     return <AdminClientPage initialConfig={config} currentUserId={currentUser.id} />;
 }

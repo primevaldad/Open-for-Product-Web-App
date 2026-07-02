@@ -83,14 +83,16 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
                             </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <Link href="/settings" onClick={() => setOpenMobile(false)}>
-                            <SidebarMenuButton isActive={pathname.startsWith('/settings')}>
-                                <Settings />
-                                Settings
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
+                    {user?.role === 'admin' && (
+                        <SidebarMenuItem>
+                            <Link href="/admin" onClick={() => setOpenMobile(false)}>
+                                <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
+                                    <Settings />
+                                    Settings
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )}
                 </SidebarMenu>
             </SidebarContent>
         </Sidebar>
