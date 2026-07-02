@@ -72,6 +72,7 @@ export interface Project {
     embedding?: any; // VectorValue
     parentProjectId?: string; // For nested projects
     isCollection?: boolean; // Whether this project acts as a collection (has children)
+    governanceConfig?: ProjectGovernanceConfig;
 }
 
 export interface Post {
@@ -157,6 +158,7 @@ export interface HydratedProject {
     embedding?: any; // VectorValue
     parentProjectId?: string; // For nested projects
     isCollection?: boolean; // Whether this project acts as a collection (has children)
+    governanceConfig?: ProjectGovernanceConfig;
 }
 
 export interface HydratedProjectMember {
@@ -640,3 +642,39 @@ export interface HydratedCollection extends Omit<ProjectCollection, 'ownerId'> {
     /** Resolved project objects — subset of memberProjectIds that could be found */
     projects: HydratedProject[];
 }
+
+// --- Governance Configuration Models ---
+
+export type GovernanceSource = 'inherited' | 'custom' | 'not_configured';
+
+export type DecisionModel =
+    | 'project_lead'
+    | 'project_lead_advisory'
+    | 'majority_vote'
+    | 'consensus'
+    | 'parent_inherited';
+
+export interface ValueFlowBucket {
+    id: string;
+    label: string;
+    percentage: number;
+    description?: string;
+}
+
+export interface CooperativeDecision {
+    id: string;
+    title: string;
+    status: 'draft' | 'scheduled' | 'approved' | 'rejected' | 'completed';
+    date?: string;
+}
+
+export interface ProjectGovernanceConfig {
+    source: GovernanceSource;
+    parentProjectId?: string;
+    parentProjectTitle?: string;
+    decisionModel: DecisionModel;
+    valueFlow: ValueFlowBucket[];
+    lastDecision?: CooperativeDecision;
+    nextDecision?: CooperativeDecision;
+}
+

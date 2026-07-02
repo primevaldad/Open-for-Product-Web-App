@@ -16,6 +16,7 @@ import { OnboardContributorDialog } from '@/components/projects/onboard-contribu
 import ProjectTeam from '@/components/project-team';
 import { CreatePostDialog } from '@/components/projects/create-post-dialog';
 import { ProjectPostsTab } from '@/components/projects/project-posts-tab';
+import ProjectGovernance from '@/components/projects/project-governance';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import { useAuth } from '@/components/auth-provider';
@@ -1044,10 +1045,7 @@ export default function ProjectDetailClientPage({
                         </div>
                     </TabPanel>
                     <TabPanel>
-                        <div className="p-4">
-                            <h2 className="text-xl font-bold">Governance</h2>
-                            <p>Details about project governance and decision-making.</p>
-                        </div>
+                        <ProjectGovernance project={project} currentUser={currentUser} isLead={isLead} />
                     </TabPanel>
                     {childProjects.length > 0 && (
                         <TabPanel>
