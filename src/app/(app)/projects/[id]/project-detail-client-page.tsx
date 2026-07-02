@@ -441,16 +441,24 @@ export default function ProjectDetailClientPage({
 
     const [tabIndex, setTabIndex] = useState(initialTabIndex);
 
+    const getHighestProjectRole = useCallback((userId: string) => {
+        const roles = project.team.filter(m => m.userId === userId).map(m => m.role);
+        if (roles.includes('lead')) return 'lead';
+        if (roles.includes('contributor')) return 'contributor';
+        if (roles.includes('participant')) return 'participant';
+        return undefined;
+    }, [project.team]);
+
     const canEditTask = useCallback((task: Task) => {
         if (!currentUser) return false;
-        const role = project.team.find(m => m.userId === currentUser.id)?.role;
+        const role = getHighestProjectRole(currentUser.id);
         
         if (role === 'lead') return true;
         
         if (role === 'contributor') {
             if (task.createdBy === currentUser.id) return true;
             if (task.assignedToId === currentUser.id) return true;
-            const creatorRole = project.team.find(m => m.userId === task.createdBy)?.role;
+            const creatorRole = getHighestProjectRole(task.createdBy);
             if (creatorRole === 'contributor') return true;
         }
 
@@ -459,7 +467,7 @@ export default function ProjectDetailClientPage({
             if (task.assignedToId === currentUser.id) return true;
         }
         return false;
-    }, [currentUser, project.team]);
+    }, [currentUser, getHighestProjectRole]);
 
     const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);

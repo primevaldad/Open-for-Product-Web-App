@@ -29,7 +29,20 @@ async function hydrateProject(project: Project): Promise<HydratedProject> {
     const team = Array.isArray(project.team) ? project.team : [];
     const uniqueTeamMembers = new Map<string, ProjectMember>();
     team.forEach(member => {
-        uniqueTeamMembers.set(member.userId, member);
+        const existing = uniqueTeamMembers.get(member.userId);
+        if (existing) {
+            const priority: Record<string, number> = { lead: 3, contributor: 2, participant: 1 };
+            const existingPriority = priority[existing.role] || 0;
+            const newPriority = priority[member.role] || 0;
+            if (newPriority > existingPriority) {
+                existing.role = member.role;
+            }
+            if (member.pendingRole) {
+                existing.pendingRole = member.pendingRole;
+            }
+        } else {
+            uniqueTeamMembers.set(member.userId, { ...member });
+        }
     });
     const uniqueTeam = Array.from(uniqueTeamMembers.values());
     const memberIds = uniqueTeam.map(member => member.userId);

@@ -497,8 +497,16 @@ export async function addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' 
         return { success: false, error: message };
     }
 }
+function getHighestProjectRole(team: ProjectMember[], userId: string): ProjectMember['role'] | undefined {
+    const roles = team.filter(m => m.userId === userId).map(m => m.role);
+    if (roles.includes('lead')) return 'lead';
+    if (roles.includes('contributor')) return 'contributor';
+    if (roles.includes('participant')) return 'participant';
+    return undefined;
+}
+
 function canUserEditTask(task: Task, currentUserId: string, project: Project): boolean {
-    const role = project.team.find(m => m.userId === currentUserId)?.role;
+    const role = getHighestProjectRole(project.team, currentUserId);
     
     // Lead - always able to edit/delete
     if (role === 'lead') return true;
@@ -507,7 +515,7 @@ function canUserEditTask(task: Task, currentUserId: string, project: Project): b
     if (role === 'contributor') {
         if (task.createdBy === currentUserId) return true;
         if (task.assignedToId === currentUserId) return true;
-        const creatorRole = project.team.find(m => m.userId === task.createdBy)?.role;
+        const creatorRole = getHighestProjectRole(project.team, task.createdBy);
         if (creatorRole === 'contributor') return true;
     }
 
