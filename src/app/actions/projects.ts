@@ -23,6 +23,7 @@ import type {
   EditProjectPageDataResponse,
   DraftsPageDataResponse,
   ProjectGovernanceConfig,
+  DecisionModel,
 } from '@/lib/types';
 import {
   adminDb,
@@ -1069,7 +1070,7 @@ export async function saveProjectGovernanceConfigAction(
         if (!project) return { success: false, error: 'Project not found.' };
 
         const isLead = project.team.some(m => m.userId === currentUser.id && m.role === 'lead');
-        const isOwner = project.ownerId === currentUser.id;
+        const isOwner = project.owner?.id === currentUser.id;
         const isAdmin = currentUser.role === 'admin';
         
         if (!isLead && !isOwner && !isAdmin) {
@@ -1118,7 +1119,7 @@ export async function saveProjectGovernanceConfigAction(
                     } else {
                         // Fallback to default platform config if parent has no config
                         const platformRes = await getPlatformConfigAction();
-                        const defaultGov = platformRes.success && platformRes.data?.defaultGovernance
+                        const defaultGov: any = platformRes.success && platformRes.data?.defaultGovernance
                             ? platformRes.data.defaultGovernance
                             : {
                                 decisionModel: 'project_lead_advisory' as DecisionModel,
@@ -1138,7 +1139,7 @@ export async function saveProjectGovernanceConfigAction(
             } else {
                 config.parentProjectTitle = "Open for Product";
                 const platformRes = await getPlatformConfigAction();
-                const defaultGov = platformRes.success && platformRes.data?.defaultGovernance
+                const defaultGov: any = platformRes.success && platformRes.data?.defaultGovernance
                     ? platformRes.data.defaultGovernance
                     : {
                         decisionModel: 'project_lead_advisory' as DecisionModel,

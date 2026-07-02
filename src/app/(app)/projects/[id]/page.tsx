@@ -9,7 +9,10 @@ import {
     getRecommendedLearningPathsForProject,
     getPostsByProject,
     getChildProjects,
-    getProjectActivityFeed
+    getProjectActivityFeed,
+    getFundingGoalsForProject,
+    getFundingAllocationsForProject,
+    getFundingContributionsForProject,
 } from '@/lib/data.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { adminDb } from '@/lib/firebase.server';
@@ -198,6 +201,13 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
         type: 'platform' as const
     });
 
+    // Fetch Fundry subcollections
+    const [fundingGoals, fundingAllocations, fundingContributions] = await Promise.all([
+        getFundingGoalsForProject(cleanId),
+        getFundingAllocationsForProject(cleanId),
+        getFundingContributionsForProject(cleanId)
+    ]);
+
     return (
         <ProjectDetailClientPage
             project={deepSerialize(project)}
@@ -213,6 +223,9 @@ export default async function ProjectPage({ params, searchParams }: { params: { 
             inviteToken={searchParams.inviteToken}
             initialTab={searchParams.tab}
             parentOptions={deepSerialize(parentOptions)}
+            fundingGoals={deepSerialize(fundingGoals)}
+            fundingAllocations={deepSerialize(fundingAllocations)}
+            fundingContributions={deepSerialize(fundingContributions)}
         />
     );
 }

@@ -73,6 +73,7 @@ export interface Project {
     parentProjectId?: string; // For nested projects
     isCollection?: boolean; // Whether this project acts as a collection (has children)
     governanceConfig?: ProjectGovernanceConfig;
+    fundry?: FundryConfig;
 }
 
 export interface Post {
@@ -159,6 +160,7 @@ export interface HydratedProject {
     parentProjectId?: string; // For nested projects
     isCollection?: boolean; // Whether this project acts as a collection (has children)
     governanceConfig?: ProjectGovernanceConfig;
+    fundry?: FundryConfig;
 }
 
 export interface HydratedProjectMember {
@@ -691,5 +693,213 @@ export interface ProjectGovernanceConfig {
     financialSnapshot?: FinancialSnapshot;
     updatedAt?: string;
     updatedBy?: string;
+}
+
+// --- Fundry Models ---
+
+export interface FundryConfig {
+    enabled: boolean;
+    mode: "planning" | "manual" | "live";
+    fundingStatus: "not_started" | "open" | "paused" | "closed";
+
+    creditSystem: {
+        enabled: boolean;
+        creditsPerAllocationWindow: number;
+        allocationWindowDays: number;
+        rollingLock: boolean;
+        creditLabel: string;
+        allowReallocationBeforeLock: boolean;
+    };
+
+    pool: {
+        currency: "USD";
+
+        confirmedAmount: number;
+        pendingCollectionAmount: number;
+        pledgedAmount: number;
+        placeholderAmount: number;
+
+        unallocatedConfirmedAmount: number;
+        unallocatedPendingAmount: number;
+    };
+
+    valuation: {
+        displayMode: "confirmed_only" | "confirmed_plus_pending" | "planning";
+        currentCreditValue: number;
+        totalActiveCredits: number;
+        lastCalculatedAt: Timestamp | string | null;
+    };
+
+    settings: {
+        allowParticipantAllocation: boolean;
+        allowDelegation: boolean;
+        requireLeadApprovalForSpending: boolean;
+        allowSelfDirectedSpending: boolean;
+    };
+
+    payments: {
+        paymentProcessorConnected: boolean;
+        processorName: string | null;
+        livePaymentsEnabled: boolean;
+        manualContributionsEnabled: boolean;
+    };
+}
+
+export interface FundryFundingGoal {
+    id: string;
+    projectId: string;
+
+    title: string;
+    description: string;
+
+    category:
+        | "tools"
+        | "labor"
+        | "marketing"
+        | "research"
+        | "operations"
+        | "legal"
+        | "community"
+        | "other";
+
+    minimumStartAmount: number;
+    targetAmount: number;
+
+    directedValue: number;
+    lockedValue: number;
+    confirmedValue: number;
+    pendingValue: number;
+    pledgedValue: number;
+    placeholderValue: number;
+
+    spentAmount: number;
+
+    fundingStatus:
+        | "unfunded"
+        | "partially_directed"
+        | "directed_pending_lock"
+        | "funded_pending_collection"
+        | "funded"
+        | "overfunded"
+        | "in_progress"
+        | "completed";
+
+    priority: "low" | "medium" | "high" | "critical";
+
+    workStatus:
+        | "not_started"
+        | "ready"
+        | "in_progress"
+        | "blocked"
+        | "completed"
+        | "cancelled";
+
+    visibility: "public" | "members" | "leads";
+
+    createdBy: string;
+    assignedOwnerId: string | null;
+
+    dueDate: Timestamp | string | null;
+    notes: string;
+
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+}
+
+export interface FundryAllocation {
+    id: string;
+    projectId: string;
+    goalId: string;
+    poolId: string | "default";
+
+    userId: string;
+
+    creditsAllocated: number;
+
+    allocatedAt: Timestamp | string;
+    editableUntil: Timestamp | string;
+    lockedAt: Timestamp | string | null;
+
+    status:
+        | "active"
+        | "locked"
+        | "superseded"
+        | "cancelled"
+        | "settled";
+
+    estimatedValueAtAllocation: number;
+    currentEstimatedValue: number;
+    lockedValue: number | null;
+
+    note: string;
+
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+}
+
+export interface FundryContribution {
+    id: string;
+    projectId: string;
+
+    contributorId: string | null;
+    contributorName: string;
+
+    amount: number;
+    currency: "USD";
+
+    contributionType:
+        | "placeholder"
+        | "pledge"
+        | "pending_collection"
+        | "manual"
+        | "processor";
+
+    status:
+        | "placeholder"
+        | "pledged"
+        | "pending_collection"
+        | "confirmed"
+        | "cancelled"
+        | "refunded";
+
+    paymentProcessor: null | "stripe" | "paypal" | "other";
+    externalReferenceId: string | null;
+    goalId?: string | null;
+
+    note: string;
+
+    createdAt: Timestamp | string;
+    confirmedAt: Timestamp | string | null;
+}
+
+export interface FundryLedgerEntry {
+    id: string;
+    projectId: string;
+
+    entryType:
+        | "fundry_enabled"
+        | "funding_goal_created"
+        | "funding_goal_updated"
+        | "contribution_created"
+        | "contribution_confirmed"
+        | "credits_allocated"
+        | "allocation_updated"
+        | "allocation_locked"
+        | "funds_spent"
+        | "manual_adjustment";
+
+    amount: number;
+    currencyOrCredit: "USD" | "FUND_CREDIT";
+
+    fromUserId: string | null;
+    toUserId: string | null;
+    goalId: string | null;
+    allocationId: string | null;
+    contributionId: string | null;
+
+    description: string;
+
+    createdBy: string | "system";
+    createdAt: Timestamp | string;
 }
 

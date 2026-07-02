@@ -7,7 +7,7 @@ import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
 import { toDate } from '@/lib/utils';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post, Activity } from '@/lib/types';
+import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post, Activity, FundryFundingGoal, FundryAllocation, FundryContribution } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
@@ -64,6 +64,9 @@ interface ProjectDetailClientPageProps {
     activities?: Activity[];
     isQueenEnabled?: boolean;
     parentOptions?: Array<{ id: string; title: string; type: 'project' | 'collection' | 'platform' }>;
+    fundingGoals?: FundryFundingGoal[];
+    fundingAllocations?: FundryAllocation[];
+    fundingContributions?: FundryContribution[];
 }
 
 // ---------------------------------------------------------------------------
@@ -410,6 +413,9 @@ export default function ProjectDetailClientPage({
     activities,
     isQueenEnabled,
     parentOptions,
+    fundingGoals = [],
+    fundingAllocations = [],
+    fundingContributions = [],
 }: ProjectDetailClientPageProps) {
     const { currentUser: clientUser } = useAuth();
     const currentUser = clientUser || serverUser;
@@ -1047,7 +1053,15 @@ export default function ProjectDetailClientPage({
                         </div>
                     </TabPanel>
                     <TabPanel>
-                        <ProjectGovernance project={project} currentUser={currentUser} isLead={isLead} parentOptions={parentOptions} />
+                        <ProjectGovernance 
+                            project={project} 
+                            currentUser={currentUser} 
+                            isLead={isLead} 
+                            parentOptions={parentOptions} 
+                            fundingGoals={fundingGoals}
+                            fundingAllocations={fundingAllocations}
+                            fundingContributions={fundingContributions}
+                        />
                     </TabPanel>
                     {childProjects.length > 0 && (
                         <TabPanel>

@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './firebase.server';
-import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember, ProjectCollection, HydratedCollection, Post } from './types';
+import type { Activity, Project, User, Discussion, Notification, Task, LearningPath, UserLearningProgress, GlobalTag, ProjectPathLink, ProjectTag, Module, HydratedProject, HydratedProjectMember, ProjectMember, ProjectCollection, HydratedCollection, Post, FundryFundingGoal, FundryAllocation, FundryContribution, FundryLedgerEntry } from './types';
 import { serializeTimestamp } from './utils.server';
 import { extractId } from './slug';
 
@@ -1076,4 +1076,55 @@ export async function hasNewCommunityContent(userId: string, followedProjectIds:
     // For now, let's just check posts as the primary indicator for "Community Feed" updates
     
     return false;
+}
+
+export async function getFundingGoalsForProject(projectId: string): Promise<FundryFundingGoal[]> {
+    const snap = await adminDb.collection('projects').doc(projectId).collection('fundingGoals').orderBy('createdAt', 'desc').get();
+    return snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+            ...d,
+            createdAt: serializeTimestamp(d.createdAt),
+            updatedAt: serializeTimestamp(d.updatedAt),
+            dueDate: d.dueDate ? serializeTimestamp(d.dueDate) : null
+        } as FundryFundingGoal;
+    });
+}
+
+export async function getFundingAllocationsForProject(projectId: string): Promise<FundryAllocation[]> {
+    const snap = await adminDb.collection('projects').doc(projectId).collection('fundingAllocations').get();
+    return snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+            ...d,
+            allocatedAt: serializeTimestamp(d.allocatedAt),
+            editableUntil: serializeTimestamp(d.editableUntil),
+            lockedAt: d.lockedAt ? serializeTimestamp(d.lockedAt) : null,
+            createdAt: serializeTimestamp(d.createdAt),
+            updatedAt: serializeTimestamp(d.updatedAt)
+        } as FundryAllocation;
+    });
+}
+
+export async function getFundingContributionsForProject(projectId: string): Promise<FundryContribution[]> {
+    const snap = await adminDb.collection('projects').doc(projectId).collection('fundingContributions').orderBy('createdAt', 'desc').get();
+    return snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+            ...d,
+            createdAt: serializeTimestamp(d.createdAt),
+            confirmedAt: d.confirmedAt ? serializeTimestamp(d.confirmedAt) : null
+        } as FundryContribution;
+    });
+}
+
+export async function getFundingLedgerForProject(projectId: string): Promise<FundryLedgerEntry[]> {
+    const snap = await adminDb.collection('projects').doc(projectId).collection('fundingLedger').orderBy('createdAt', 'desc').get();
+    return snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+            ...d,
+            createdAt: serializeTimestamp(d.createdAt)
+        } as FundryLedgerEntry;
+    });
 }
