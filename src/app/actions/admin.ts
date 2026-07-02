@@ -10,10 +10,6 @@ export async function getPlatformConfigAction(): Promise<{ success: boolean; dat
         const currentUser = await getAuthenticatedUser();
         if (!currentUser) return { success: false, error: 'Not authenticated' };
 
-        if (currentUser.role !== 'admin') {
-            return { success: false, error: 'Unauthorized. You are not a platform admin.' };
-        }
-
         const doc = await adminDb.collection('platform_config').doc('global_settings').get();
         if (!doc.exists) {
             // Return defaults if it doesn't exist
