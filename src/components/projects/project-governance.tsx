@@ -50,6 +50,7 @@ interface ProjectGovernanceProps {
     fundingGoals?: FundryFundingGoal[];
     fundingAllocations?: FundryAllocation[];
     fundingContributions?: FundryContribution[];
+    renderSection?: 'governance' | 'fundry';
 }
 
 const defaultGovernanceConfig: ProjectGovernanceConfig = {
@@ -164,14 +165,17 @@ function getSanitizedConfig(config: any): { isMalformed: boolean; data: ProjectG
     };
 }
 
+const EMPTY_ARRAY: any[] = [];
+
 export default function ProjectGovernance({ 
     project, 
     currentUser, 
     isLead, 
-    parentOptions = [],
-    fundingGoals = [],
-    fundingAllocations = [],
-    fundingContributions = []
+    parentOptions = EMPTY_ARRAY,
+    fundingGoals = EMPTY_ARRAY,
+    fundingAllocations = EMPTY_ARRAY,
+    fundingContributions = EMPTY_ARRAY,
+    renderSection
 }: ProjectGovernanceProps) {
     const { toast } = useToast();
     const router = useRouter();
@@ -789,8 +793,10 @@ export default function ProjectGovernance({
                 </div>
             )}
 
-            {/* Header Summary Card */}
-            <Card className="relative overflow-hidden bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-black dark:to-slate-900 border-muted">
+            {(!renderSection || renderSection === 'governance') && (
+                <>
+                    {/* Header Summary Card */}
+                    <Card className="relative overflow-hidden bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-black dark:to-slate-900 border-muted">
                 <CardHeader className="pb-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
@@ -1216,7 +1222,11 @@ export default function ProjectGovernance({
                     )}
                 </CardContent>
             </Card>
+            </>
+            )}
 
+            {(!renderSection || renderSection === 'fundry') && (
+                <>
             {/* Financial Snapshot Card */}
             <Card>
                 <CardHeader>
@@ -1894,6 +1904,8 @@ export default function ProjectGovernance({
                         </div>
                     </div>
                 </div>
+            )}
+            </>
             )}
         </div>
     );

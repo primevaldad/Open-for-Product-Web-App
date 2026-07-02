@@ -6,6 +6,9 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { useToast } from '@/hooks/use-toast';
 import { toDate } from '@/lib/utils';
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post, Activity, FundryFundingGoal, FundryAllocation, FundryContribution } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
@@ -20,7 +23,7 @@ import ProjectGovernance from '@/components/projects/project-governance';
 import { Button } from '@/components/ui/button';
 import Markdown from '@/components/ui/markdown';
 import { useAuth } from '@/components/auth-provider';
-import { Layers, Plus, Check, ChevronDown, Loader2, Search, Minus, FolderOpen } from 'lucide-react';
+import { Layers, Plus, Check, ChevronDown, Loader2, Search, Minus, FolderOpen, X } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -440,15 +443,6 @@ export default function ProjectDetailClientPage({
     const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
     const [users, setUsers] = useState(allUsers);
     const [childProjects, setChildProjects] = useState(initialChildProjects);
-    
-    // Map initialTab string to tab index
-    const initialTabIndex = useMemo(() => {
-        if (!initialTab) return 0;
-        const map: Record<string, number> = { about: 0, posts: 1, tasks: 2, discussion: 3, team: 4, learning: 5, governance: 6, 'collected projects': 7, lead: 8 };
-        return map[initialTab.toLowerCase()] ?? 0;
-    }, [initialTab]);
-
-    const [tabIndex, setTabIndex] = useState(initialTabIndex);
 
     const getHighestProjectRole = useCallback((userId: string) => {
         const roles = project.team.filter(m => m.userId === userId).map(m => m.role);
@@ -492,8 +486,9 @@ export default function ProjectDetailClientPage({
         setLearningPaths(initialLearningPaths);
         setUsers(allUsers);
         setChildProjects(initialChildProjects);
+        setPosts(initialPosts);
 
-    }, [initialProject, initialTasks, initialDiscussions, initialLearningPaths, allUsers]);
+    }, [initialProject, initialTasks, initialDiscussions, initialLearningPaths, allUsers, initialChildProjects, initialPosts]);
 
     const hydratedDiscussions: HydratedDiscussion[] = useMemo(() => {
         const usersMap = new Map(users.map(u => [u.id, u]));
@@ -541,6 +536,61 @@ export default function ProjectDetailClientPage({
 
     const isOwner = currentUser?.id === project.owner?.id;
     const showLeadDashboard = isLead || isOwner;
+
+    const activeTabs = useMemo(() => {
+        const tabs = [
+            { key: 'overview', label: 'Overview' },
+            { key: 'work', label: 'Work' },
+            { key: 'team', label: 'Team' },
+            { key: 'learning', label: 'Learning' },
+            { key: 'governance', label: 'Governance' },
+            { key: 'fundry', label: 'Fundry' },
+        ];
+        if (showLeadDashboard) {
+            tabs.push({ key: 'lead', label: 'Lead' });
+        }
+        return tabs;
+    }, [showLeadDashboard]);
+
+    const initialTabIndex = useMemo(() => {
+        if (!initialTab) return 0;
+        const aliases: Record<string, string> = {
+            about: 'overview',
+            posts: 'overview',
+            tasks: 'work',
+            discussion: 'team',
+            'learning paths': 'learning',
+            'collected projects': 'overview',
+            'lead dashboard': 'lead'
+        };
+        const normalized = initialTab.toLowerCase();
+        const resolved = aliases[normalized] || normalized;
+        const idx = activeTabs.findIndex(t => t.key === resolved);
+        return idx !== -1 ? idx : 0;
+    }, [initialTab, activeTabs]);
+
+    const [tabIndex, setTabIndex] = useState(initialTabIndex);
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+    const handleTabChange = (index: number) => {
+        setTabIndex(index);
+        const key = activeTabs[index]?.key || 'overview';
+        const newUrl = `${window.location.pathname}?tab=${key}${inviteToken ? `&inviteToken=${inviteToken}` : ''}`;
+        window.history.pushState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+    };
+
+    useEffect(() => {
+        const handlePopState = () => {
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('tab') || 'overview';
+            const idx = activeTabs.findIndex(t => t.key === tab.toLowerCase());
+            if (idx !== -1) {
+                setTabIndex(idx);
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [activeTabs]);
 
     const isGuest = !currentUser || currentUser.role === 'guest';
     const hasReadAccess = !isGuest || !!inviteToken;
@@ -864,238 +914,555 @@ export default function ProjectDetailClientPage({
         <>
             {renderInviteBanner()}
             <div className="container mx-auto px-4 py-8">
-                <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
-
-            {/* Action bar — Member of indicator (left) + action buttons (right) */}
-            <div className="mt-3 flex items-center justify-between gap-2 flex-wrap min-h-[36px]">
-                <MemberOfIndicator 
-                    key={`member-of-${project.id}-${membershipVersion}`} 
-                    projectId={project.id} 
-                    currentUserId={currentUser?.id ?? null} 
-                    onMembershipChanged={handleMembershipChanged}
-                />
-                {!isGuest && (
-                    <div className="flex items-center gap-2 ml-auto">
-                        {isMember && currentUser && (
-                            <CreatePostDialog project={project} currentUser={currentUser} onPostSaved={handlePostSaved} />
+                
+                {/* Compact Persistent Header Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 mb-6 gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Link href="/home" className="text-xs text-muted-foreground hover:text-foreground">
+                            &larr; Projects
+                        </Link>
+                        <span className="text-muted-foreground text-xs">/</span>
+                        <h1 className="text-xl font-bold text-foreground">{project.name}</h1>
+                        <Badge variant="outline" className="capitalize text-xs bg-slate-50 dark:bg-slate-900/50">
+                            {project.status}
+                        </Badge>
+                        {currentUser && (
+                            <Badge variant="secondary" className="capitalize text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400">
+                                {isLead ? 'Project Lead' : isMember ? 'Contributor' : 'Visitor'}
+                            </Badge>
                         )}
-                        <AddToCollectionButton 
-                            projectId={project.id} 
-                            isGuest={isGuest} 
-                            initialParentProjectId={project.parentProjectId}
-                            onMembershipChanged={handleMembershipChanged}
-                        />
                     </div>
-                )}
-            </div>
+                    
+                    <div className="flex items-center gap-2">
+                        {/* Join/Leave CTAs if they are supported */}
+                        {!isMember && currentUser ? (
+                            <Button size="sm" className="h-8 text-xs font-semibold" onClick={handleJoinProject}>
+                                Join Project
+                            </Button>
+                        ) : isMember && currentUser && (
+                            <Button variant="ghost" size="sm" className="h-8 text-xs text-red-500 hover:bg-red-50 font-semibold" onClick={handleLeaveProject}>
+                                Leave Project
+                            </Button>
+                        )}
+                    </div>
+                </div>
 
-            <div className="mt-8">
-                <Tabs selectedIndex={tabIndex} onSelect={index => setTabIndex(index)}>
+                <div className="mt-8">
+                    <Tabs selectedIndex={tabIndex} onSelect={handleTabChange}>
                     <TabList>
-                        <Tab>About</Tab>
-                        <Tab>Posts</Tab>
-                        <Tab>Tasks</Tab>
-                        <Tab>Discussion</Tab>
-                        <Tab>Team</Tab>
-                        <Tab>Learning Paths</Tab>
-                        <Tab>Governance</Tab>
-                        {childProjects.length > 0 && <Tab>Collected Projects</Tab>}
-                        {showLeadDashboard && <Tab>Lead Dashboard</Tab>}
+                        {activeTabs.map(t => (
+                            <Tab key={t.key}>{t.label}</Tab>
+                        ))}
                     </TabList>
 
+                    {/* Tab 1: Overview Panel */}
                     <TabPanel>
-                        <div className="p-4 relative">
-                            <div className={!hasReadAccess ? "blur-md pointer-events-none select-none" : ""}>
-                                <Tabs>
-                                    <TabList className="flex space-x-4 border-b mb-6 text-sm font-medium text-muted-foreground pb-2">
-                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Description</Tab>
-                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Mission & Vision</Tab>
-                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Current Focus</Tab>
-                                        <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Recent Activity</Tab>
-                                    </TabList>
+                        <div className="space-y-8 mt-6">
+                            {/* Title & Subtitle */}
+                            <div>
+                                <h2 className="text-2xl font-bold">Overview</h2>
+                                <p className="text-sm text-muted-foreground">What is this project, and what is happening now?</p>
+                            </div>
 
-                                    <TabPanel className="prose dark:prose-invert max-w-none">
-                                        <Markdown content={project.description} />
-                                    </TabPanel>
+                            {/* Full Project Hero */}
+                            <ProjectHeader project={project} currentUser={currentUser} onJoin={handleJoinProject} onLeave={handleLeaveProject} />
 
-                                    <TabPanel className="prose dark:prose-invert max-w-none">
-                                        {project.mission ? (
-                                            <p>{project.mission}</p>
-                                        ) : (
-                                            <p className="text-muted-foreground italic">No mission statement provided yet.</p>
+                            {/* Action bar — Member of indicator (left) + action buttons (right) */}
+                            <div className="flex items-center justify-between gap-2 flex-wrap min-h-[36px] bg-muted/20 p-3 rounded-lg">
+                                <MemberOfIndicator 
+                                    key={`member-of-${project.id}-${membershipVersion}`} 
+                                    projectId={project.id} 
+                                    currentUserId={currentUser?.id ?? null} 
+                                    onMembershipChanged={handleMembershipChanged}
+                                />
+                                {!isGuest && (
+                                    <div className="flex items-center gap-2 ml-auto">
+                                        {isMember && currentUser && (
+                                            <CreatePostDialog project={project} currentUser={currentUser} onPostSaved={handlePostSaved} />
                                         )}
-                                    </TabPanel>
+                                        <AddToCollectionButton 
+                                            projectId={project.id} 
+                                            isGuest={isGuest} 
+                                            initialParentProjectId={project.parentProjectId}
+                                            onMembershipChanged={handleMembershipChanged}
+                                        />
+                                    </div>
+                                )}
+                            </div>
 
-                                    <TabPanel className="prose dark:prose-invert max-w-none">
-                                        {project.currentFocus ? (
-                                            <p>{project.currentFocus}</p>
-                                        ) : (
-                                            <p className="text-muted-foreground italic">No current focus provided yet.</p>
-                                        )}
-                                    </TabPanel>
+                            {/* Overview Summary Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {/* Work Card */}
+                                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTabChange(activeTabs.findIndex(t => t.key === 'work'))}>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                            <span>Work & Execution</span>
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {tasks.filter(t => t.status !== 'Done').length} Active
+                                            </Badge>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-xs text-muted-foreground mb-3">View active, blocked, and ready tasks.</p>
+                                        <span className="text-xs text-primary font-semibold hover:underline">View work &rarr;</span>
+                                    </CardContent>
+                                </Card>
 
-                                    <TabPanel>
-                                        {activities && activities.length > 0 ? (
-                                            <div className="space-y-4">
-                                                <p className="text-sm text-muted-foreground mb-4">
-                                                    This is context for Jester to analyze project momentum.
-                                                </p>
-                                                {activities.map(activity => (
-                                                    <div key={activity.id} className="flex flex-col text-sm border-l-2 pl-3 pb-2 border-gray-200 dark:border-gray-700">
-                                                        <span className="font-semibold capitalize">{activity.type.replace(/-/g, ' ')}</span>
-                                                        <span className="text-muted-foreground text-xs">{new Date(activity.timestamp as string).toLocaleString()}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-muted-foreground text-sm italic">No recent activity.</p>
-                                        )}
-                                    </TabPanel>
-                                </Tabs>
+                                {/* Team Card */}
+                                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTabChange(activeTabs.findIndex(t => t.key === 'team'))}>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                            <span>Team & Dialogue</span>
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {project.team.length} Members
+                                            </Badge>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-xs text-muted-foreground mb-3">Meet the team and join the dialogue.</p>
+                                        <span className="text-xs text-primary font-semibold hover:underline">Meet the team &rarr;</span>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Learning Card */}
+                                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTabChange(activeTabs.findIndex(t => t.key === 'learning'))}>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                            <span>Learning Portal</span>
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {learningPaths.length} Paths
+                                            </Badge>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-xs text-muted-foreground mb-3">Explore skill paths and developer guides.</p>
+                                        <span className="text-xs text-primary font-semibold hover:underline">Explore learning paths &rarr;</span>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Governance Card */}
+                                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTabChange(activeTabs.findIndex(t => t.key === 'governance'))}>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                            <span>Governance</span>
+                                            <Badge variant="outline" className="text-[10px] capitalize">
+                                                {project.governanceConfig?.decisionModel.replace(/_/g, ' ') || 'Lead-based'}
+                                            </Badge>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-xs text-muted-foreground mb-3">Understand authority, voting, and guidelines.</p>
+                                        <span className="text-xs text-primary font-semibold hover:underline">Review governance &rarr;</span>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Fundry Card */}
+                                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTabChange(activeTabs.findIndex(t => t.key === 'fundry'))}>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                            <span>Fundry Portal</span>
+                                            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400">
+                                                {project.fundry?.enabled ? 'Active' : 'Planning'}
+                                            </Badge>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-xs text-muted-foreground mb-3">Signal resources and view funded goals.</p>
+                                        <span className="text-xs text-primary font-semibold hover:underline">Open Fundry &rarr;</span>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Lead Dashboard Card */}
+                                {showLeadDashboard && (
+                                    <Card className="hover:shadow-md transition-shadow cursor-pointer border-amber-200 bg-amber-50/10 dark:bg-amber-950/5" onClick={() => handleTabChange(activeTabs.findIndex(t => t.key === 'lead'))}>
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                                <span>Lead Dashboard</span>
+                                                <Badge className="bg-amber-100 text-amber-800 text-[9px] uppercase tracking-wide dark:bg-amber-950 dark:text-amber-300">Admin</Badge>
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-xs text-muted-foreground mb-3">Needs review actions, recommendations, and briefs.</p>
+                                            <span className="text-xs text-amber-600 font-semibold hover:underline dark:text-amber-400">Open lead dashboard &rarr;</span>
+                                        </CardContent>
+                                    </Card>
+                                )}
                             </div>
-                            {!hasReadAccess && (
-                                <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/30 dark:bg-black/30">
-                                    <GuestOverlay />
-                                </div>
-                            )}
-                        </div>
-                    </TabPanel>
-                    <TabPanel>
-                        {hasReadAccess ? (
-                            <ProjectPostsTab posts={posts} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} onPostDeleted={handleDeletePost} />
-                        ) : (
-                            <div className="relative py-12 flex justify-center">
-                                <div className="absolute inset-0 blur-md pointer-events-none opacity-50">
-                                    <ProjectPostsTab posts={posts.slice(0, 1)} users={users} currentUser={currentUser ?? undefined} project={project} onPostSaved={handlePostSaved} onPostDeleted={handleDeletePost} />
-                                </div>
-                                <GuestOverlay />
-                            </div>
-                        )}
-                    </TabPanel>
-                    <TabPanel>
-                        {hasReadAccess ? (
-                            <>
-                                <div className="flex justify-end mb-4">
-                                    {isMember && (
-                                        <AddTaskDialog projectId={project.id} status="To Do" addTask={handleAddTask}>
-                                            <Button>Add Task</Button>
-                                        </AddTaskDialog>
-                                    )}
-                                </div>
-                                <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
-                            </>
-                        ) : (
-                            <div className="relative h-64 flex items-center justify-center">
-                                <div className="absolute inset-0 blur-sm pointer-events-none opacity-50">
-                                    <TaskBoard tasks={tasks.slice(0, 2)} users={users} onEditTask={() => {}} onDeleteTask={() => {}} />
-                                </div>
-                                <GuestOverlay />
-                            </div>
-                        )}
-                    </TabPanel>
-                    <TabPanel>
-                         {hasReadAccess ? (
-                            <DiscussionForum 
-                                discussions={hydratedDiscussions}
-                                onAddComment={handleAddComment}
-                                onEditComment={handleEditComment}
-                                onDeleteComment={handleDeleteComment}
-                                isMember={isMember || false}
-                                currentUser={currentUser}
-                                users={users}
-                                isProjectLead={isLead || false}
-                            />
-                         ) : (
-                            <div className="relative flex items-center justify-center">
-                                <div className="absolute inset-0 blur-md pointer-events-none opacity-50">
-                                    {/* Dummy discussions for visual effect */}
-                                    <p className="p-4">Sample discussion content...</p>
-                                    <p className="p-4">Sample discussion reply...</p>
-                                </div>
-                                <div className="py-12 w-full flex justify-center">
-                                    <GuestOverlay />
-                                </div>
-                            </div>
-                         )}
-                    </TabPanel>
-                    <TabPanel>
-                        {hasReadAccess ? (
-                            <ProjectTeam 
-                                projectId={project.id}
-                                team={project.team}
-                                users={users}
-                                currentUser={currentUser}
-                                addTeamMember={() => {}} // Placeholder
-                                isLead={isLead || false}
-                                applyForRole={handleApplyForRole}
-                                approveRoleApplication={handleApproveRoleApplication}
-                                denyRoleApplication={handleDenyRoleApplication}
-                            />
-                            ) : (
-                                <div className="relative py-12 flex justify-center">
-                                    <GuestOverlay />
-                                </div>
-                            )}
-                    </TabPanel>
-                    <TabPanel>
-                        <div className="p-4">
-                            <h2 className="text-xl font-bold mb-4">Recommended Learning Paths</h2>
-                            {learningPaths.length > 0 ? (
-                                <ul className="space-y-4">
-                                    {learningPaths.map(path => (
-                                        <li key={path.pathId} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow">
-                                            <h3 className="font-bold text-lg">{path.title}</h3>
-                                            <p className="text-gray-600 dark:text-gray-400">{path.description}</p>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : <p>No recommended learning paths for this project yet.</p>}
-                        </div>
-                    </TabPanel>
-                    <TabPanel>
-                        <ProjectGovernance 
-                            project={project} 
-                            currentUser={currentUser} 
-                            isLead={isLead} 
-                            parentOptions={parentOptions} 
-                            fundingGoals={fundingGoals}
-                            fundingAllocations={fundingAllocations}
-                            fundingContributions={fundingContributions}
-                        />
-                    </TabPanel>
-                    {childProjects.length > 0 && (
-                        <TabPanel>
-                            <div className="p-4 space-y-4">
-                                <h2 className="text-xl font-bold">Collected Projects</h2>
-                                <p className="text-sm text-muted-foreground">
-                                    Projects nested under {project.name}.
-                                </p>
-                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    {childProjects.map(child => (
-                                        <a
-                                            key={child.id}
-                                            href={buildHybridUrl('/projects', child.id, child.name)}
-                                            className="group flex flex-col gap-1.5 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <FolderOpen className="w-4 h-4 text-primary shrink-0" />
-                                                <span className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                                                    {child.name}
-                                                </span>
-                                            </div>
-                                            {child.tagline && (
-                                                <p className="text-xs text-muted-foreground line-clamp-2">{child.tagline}</p>
+
+                            {/* Project details tabs (description, mission & vision, current focus) */}
+                            <div className="border rounded-xl p-6 bg-card relative">
+                                <div className={!hasReadAccess ? "blur-md pointer-events-none select-none" : ""}>
+                                    <Tabs>
+                                        <TabList className="flex space-x-4 border-b mb-6 text-sm font-medium text-muted-foreground pb-2">
+                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Description</Tab>
+                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Mission & Vision</Tab>
+                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Current Focus</Tab>
+                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Recent Activity</Tab>
+                                        </TabList>
+
+                                        <TabPanel className="prose dark:prose-invert max-w-none">
+                                            <Markdown content={project.description} />
+                                        </TabPanel>
+
+                                        <TabPanel className="prose dark:prose-invert max-w-none">
+                                            {project.mission ? (
+                                                <p>{project.mission}</p>
+                                            ) : (
+                                                <p className="text-muted-foreground italic">No mission statement provided yet.</p>
                                             )}
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-                        </TabPanel>
-                    )}
+                                        </TabPanel>
 
+                                        <TabPanel className="prose dark:prose-invert max-w-none">
+                                            {project.currentFocus ? (
+                                                <p>{project.currentFocus}</p>
+                                            ) : (
+                                                <p className="text-muted-foreground italic">No current focus provided yet.</p>
+                                            )}
+                                        </TabPanel>
+
+                                        <TabPanel>
+                                            <div className="space-y-8">
+                                                {/* Recent Updates (Published Updates) */}
+                                                <div className="space-y-4">
+                                                    <h3 className="text-lg font-bold border-b pb-2">Recent Updates</h3>
+                                                    {posts.filter(p => p.status !== 'draft').length === 0 ? (
+                                                        <p className="text-sm text-muted-foreground italic">No updates published yet.</p>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {posts.filter(p => p.status !== 'draft').map(post => (
+                                                                <Card 
+                                                                    key={post.id} 
+                                                                    className="p-4 space-y-2 relative hover:shadow-md transition-shadow cursor-pointer border-indigo-100 dark:border-indigo-950 bg-indigo-50/5"
+                                                                    onClick={() => setSelectedPost(post)}
+                                                                >
+                                                                    <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                                                                        <span className="font-semibold text-indigo-600 dark:text-indigo-400">Published Update</span>
+                                                                        <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                    <h4 className="font-bold text-sm text-foreground/90">{post.title}</h4>
+                                                                    <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
+                                                                    <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">Read full update &rarr;</span>
+                                                                </Card>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Draft Updates (visible only to members/leads/admins) */}
+                                                {(isLead || isMember || currentUser?.role === 'admin') && (
+                                                    <div className="space-y-4 pt-4 border-t">
+                                                        <h3 className="text-lg font-bold text-muted-foreground flex items-center gap-2">
+                                                            <span>Draft Updates</span>
+                                                            <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-semibold">Lead/Contributor Only</Badge>
+                                                        </h3>
+                                                        {posts.filter(p => p.status === 'draft').length === 0 ? (
+                                                            <p className="text-xs text-muted-foreground italic">No draft updates.</p>
+                                                        ) : (
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                {posts.filter(p => p.status === 'draft').map(post => (
+                                                                    <Card 
+                                                                        key={post.id} 
+                                                                        className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-slate-50/50 dark:bg-slate-950/20"
+                                                                        onClick={() => setSelectedPost(post)}
+                                                                    >
+                                                                        <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                                                                            <span className="font-semibold text-amber-600 dark:text-amber-400">Draft</span>
+                                                                            <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                        <h4 className="font-bold text-sm text-foreground/85">{post.title}</h4>
+                                                                        <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
+                                                                        <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">Preview draft &rarr;</span>
+                                                                    </Card>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Jester Activity Logs */}
+                                                <div className="space-y-4 pt-4 border-t">
+                                                    <h3 className="text-base font-bold text-foreground/80">Project Event Logs</h3>
+                                                    {activities && activities.length > 0 ? (
+                                                        <div className="space-y-3">
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Event telemetry context utilized by Jester for daily briefings.
+                                                            </p>
+                                                            {activities.map(activity => (
+                                                                <div key={activity.id} className="flex flex-col text-xs border-l-2 pl-3 pb-1 border-slate-200 dark:border-slate-800">
+                                                                    <span className="font-medium text-foreground/80 capitalize">{activity.type.replace(/-/g, ' ')}</span>
+                                                                    <span className="text-muted-foreground text-[10px]">{new Date(activity.timestamp as string).toLocaleString()}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-muted-foreground text-xs italic">No event logs recorded.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </TabPanel>
+                                    </Tabs>
+                                </div>
+                                {!hasReadAccess && (
+                                    <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/30 dark:bg-black/30">
+                                        <GuestOverlay />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Connected / Related Projects summary */}
+                            {childProjects.length > 0 && (
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold border-b pb-2">Connected Projects</h3>
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                        {childProjects.map(child => (
+                                            <a
+                                                key={child.id}
+                                                href={buildHybridUrl('/projects', child.id, child.name)}
+                                                className="group flex flex-col gap-1.5 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <FolderOpen className="w-4 h-4 text-primary shrink-0" />
+                                                    <span className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                                                        {child.name}
+                                                    </span>
+                                                </div>
+                                                {child.tagline && (
+                                                    <p className="text-xs text-muted-foreground line-clamp-2">{child.tagline}</p>
+                                                )}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </TabPanel>
+
+                    {/* Tab 2: Work Panel */}
+                    <TabPanel>
+                        <div className="space-y-6 mt-6">
+                            {/* Title & Subtitle */}
+                            <div>
+                                <h2 className="text-2xl font-bold">Work</h2>
+                                <p className="text-sm text-muted-foreground">What needs doing, and what is ready to move?</p>
+                            </div>
+
+                            {/* Work Summary Cards */}
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                                <Card className="p-3 text-center">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Active</span>
+                                    <span className="text-2xl font-bold">{tasks.filter(t => t.status !== 'Done').length}</span>
+                                </Card>
+                                <Card className="p-3 text-center">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block text-red-500">Blocked</span>
+                                    <span className="text-2xl font-bold text-red-600 dark:text-red-400">{tasks.filter(t => t.title.toLowerCase().includes('blocked') || t.description?.toLowerCase().includes('blocked')).length}</span>
+                                </Card>
+                                <Card className="p-3 text-center">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block text-emerald-500">Completed</span>
+                                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{tasks.filter(t => t.status === 'Done').length}</span>
+                                </Card>
+                                <Card className="p-3 text-center">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Needs Owner</span>
+                                    <span className="text-2xl font-bold">{tasks.filter(t => !t.assignedToId).length}</span>
+                                </Card>
+                                <Card className="p-3 text-center">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block text-blue-500">Ready</span>
+                                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{tasks.filter(t => t.status === 'To Do').length}</span>
+                                </Card>
+                            </div>
+
+                            {/* TaskBoard Kanban table */}
+                            {hasReadAccess ? (
+                                <>
+                                    <div className="flex justify-end">
+                                        {isMember && (
+                                            <AddTaskDialog projectId={project.id} status="To Do" addTask={handleAddTask}>
+                                                <Button size="sm" className="h-8 text-xs font-semibold">
+                                                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Task
+                                                </Button>
+                                            </AddTaskDialog>
+                                        )}
+                                    </div>
+                                    <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
+                                </>
+                            ) : (
+                                <div className="relative h-64 flex items-center justify-center">
+                                    <div className="absolute inset-0 blur-sm pointer-events-none opacity-50">
+                                        <TaskBoard tasks={tasks.slice(0, 2)} users={users} onEditTask={() => {}} onDeleteTask={() => {}} />
+                                    </div>
+                                    <GuestOverlay />
+                                </div>
+                            )}
+                        </div>
+                    </TabPanel>
+
+                    {/* Tab 3: Team Panel */}
+                    <TabPanel>
+                        <div className="space-y-8 mt-6">
+                            {/* Title & Subtitle */}
+                            <div>
+                                <h2 className="text-2xl font-bold">Team</h2>
+                                <p className="text-sm text-muted-foreground">Who is here, and how can people participate?</p>
+                            </div>
+
+                            {/* Team Members List */}
+                            {hasReadAccess ? (
+                                <ProjectTeam 
+                                    projectId={project.id}
+                                    team={project.team}
+                                    users={users}
+                                    currentUser={currentUser}
+                                    addTeamMember={() => {}} 
+                                    isLead={isLead || false}
+                                    applyForRole={handleApplyForRole}
+                                    approveRoleApplication={handleApproveRoleApplication}
+                                    denyRoleApplication={handleDenyRoleApplication}
+                                />
+                            ) : (
+                                <div className="relative py-12 flex justify-center border rounded-xl">
+                                    <GuestOverlay />
+                                </div>
+                            )}
+
+                            {/* Dialogue section (formerly Discussion) */}
+                            <div className="space-y-4 pt-6 border-t">
+                                <div>
+                                    <h3 className="text-xl font-bold">Dialogue</h3>
+                                    <p className="text-xs text-muted-foreground">Share updates, ask questions, and brainstorm with the community.</p>
+                                </div>
+                                {hasReadAccess ? (
+                                    <DiscussionForum 
+                                        discussions={hydratedDiscussions}
+                                        onAddComment={handleAddComment}
+                                        onEditComment={handleEditComment}
+                                        onDeleteComment={handleDeleteComment}
+                                        isMember={isMember || false}
+                                        currentUser={currentUser}
+                                        users={users}
+                                        isProjectLead={isLead || false}
+                                    />
+                                ) : (
+                                    <div className="relative py-12 flex justify-center border rounded-xl">
+                                        <GuestOverlay />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </TabPanel>
+
+                    {/* Tab 4: Learning Panel */}
+                    <TabPanel>
+                        <div className="space-y-6 mt-6">
+                            {/* Title & Subtitle */}
+                            <div>
+                                <h2 className="text-2xl font-bold">Learning</h2>
+                                <p className="text-sm text-muted-foreground">What can I learn to contribute with more confidence?</p>
+                            </div>
+
+                            {/* Recommended Learning Paths */}
+                            <div className="p-4 bg-card border rounded-xl">
+                                <h3 className="text-lg font-bold mb-4">Recommended Learning Paths</h3>
+                                {learningPaths.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {learningPaths.map(path => (
+                                            <Card key={path.pathId} className="p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <h3 className="font-bold text-lg">{path.title}</h3>
+                                                <p className="text-sm text-muted-foreground mt-2">{path.description}</p>
+                                                <div className="mt-4">
+                                                    <Link href={`/learning/${path.pathId}`}>
+                                                        <Button variant="outline" size="sm" className="h-8 text-xs font-semibold">
+                                                            Start Path
+                                                        </Button>
+                                                    </Link>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-muted-foreground text-sm italic">No recommended learning paths for this project yet.</p>
+                                )}
+                            </div>
+                        </div>
+                    </TabPanel>
+
+                    {/* Tab 5: Governance Panel */}
+                    <TabPanel>
+                        <div className="space-y-6 mt-6">
+                            {/* Title & Subtitle */}
+                            <div>
+                                <h2 className="text-2xl font-bold">Governance</h2>
+                                <p className="text-sm text-muted-foreground">How are decisions made, and who has authority?</p>
+                            </div>
+
+                            {/* Project Governance Component (Governance only mode) */}
+                            <ProjectGovernance 
+                                project={project} 
+                                currentUser={currentUser} 
+                                isLead={isLead} 
+                                parentOptions={parentOptions} 
+                                renderSection="governance"
+                            />
+                        </div>
+                    </TabPanel>
+
+                    {/* Tab 6: Fundry Panel */}
+                    <TabPanel>
+                        <div className="space-y-6 mt-6">
+                            {/* Title & Subtitle */}
+                            <div>
+                                <h2 className="text-2xl font-bold">Fundry Portal</h2>
+                                <p className="text-sm text-muted-foreground">What resources are available, and what can they make possible?</p>
+                            </div>
+
+                            {/* Project Governance Component (Fundry only mode) */}
+                            <ProjectGovernance 
+                                project={project} 
+                                currentUser={currentUser} 
+                                isLead={isLead} 
+                                parentOptions={parentOptions} 
+                                fundingGoals={fundingGoals}
+                                fundingAllocations={fundingAllocations}
+                                fundingContributions={fundingContributions}
+                                renderSection="fundry"
+                            />
+                        </div>
+                    </TabPanel>
+
+                    {/* Tab 7: Lead Panel (visible only to project leads/admins) */}
                     {showLeadDashboard && (
                         <TabPanel>
-                            <LeadDashboardTab projectId={project.id} />
+                            <div className="space-y-8 mt-6">
+                                {/* Title & Subtitle */}
+                                <div>
+                                    <h2 className="text-2xl font-bold text-amber-900 dark:text-amber-200">Lead Dashboard</h2>
+                                    <p className="text-sm text-muted-foreground">What needs the project lead’s attention?</p>
+                                </div>
+
+                                {/* Needs Attention Summary Cards */}
+                                <Card className="border-amber-200 bg-amber-50/10 dark:bg-amber-950/5">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                                            <span>Needs Attention</span>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ul className="space-y-2 text-sm text-amber-800 dark:text-amber-300 list-disc pl-5">
+                                            {tasks.filter(t => t.title.toLowerCase().includes('blocked') || t.description?.toLowerCase().includes('blocked')).length > 0 && (
+                                                <li>There are {tasks.filter(t => t.title.toLowerCase().includes('blocked') || t.description?.toLowerCase().includes('blocked')).length} blocked tasks on the board.</li>
+                                            )}
+                                            {fundingGoals.filter(g => g.fundingStatus === 'funded' && g.workStatus === 'not_started').length > 0 && (
+                                                <li>There are {fundingGoals.filter(g => g.fundingStatus === 'funded' && g.workStatus === 'not_started').length} fully funded goals ready to start.</li>
+                                            )}
+                                            {project.team.some(m => m.role === 'lead') ? null : (
+                                                <li>This project does not have any active leads assigned.</li>
+                                            )}
+                                            <li>Review AI-generated task recommendations from Session Queen below.</li>
+                                        </ul>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Lead Dashboard Tab (AI approvals + briefs) */}
+                                <LeadDashboardTab projectId={project.id} />
+                            </div>
                         </TabPanel>
                     )}
                 </Tabs>
@@ -1123,6 +1490,31 @@ export default function ProjectDetailClientPage({
                     setIsOnboardDialogOpen(false);
                 }}
             />
+            {selectedPost && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-100">
+                    <div className="bg-white dark:bg-gray-900 border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex justify-between items-center border-b p-4">
+                            <div className="flex flex-col gap-0.5">
+                                <h3 className="font-bold text-lg text-foreground">{selectedPost.title}</h3>
+                                <span className="text-xs text-muted-foreground">
+                                    Posted on {new Date(selectedPost.createdAt as string).toLocaleString()} by {users.find(u => u.id === selectedPost.userId)?.username || 'Unknown User'}
+                                </span>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedPost(null)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="p-6 overflow-y-auto prose dark:prose-invert max-w-none text-sm text-foreground/90">
+                            <Markdown content={selectedPost.content} />
+                        </div>
+                        <div className="border-t p-3 bg-muted/20 flex justify-end">
+                            <Button variant="outline" size="sm" onClick={() => setSelectedPost(null)}>
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
         </>
     );
