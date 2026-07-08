@@ -1272,18 +1272,18 @@ export default function ProjectDetailClientPage({
 
                             {/* TaskBoard Kanban table */}
                             {hasReadAccess ? (
-                                <>
-                                    <div className="flex justify-end">
-                                        {isMember && (
-                                            <AddTaskDialog projectId={project.id} status="To Do" addTask={handleAddTask}>
-                                                <Button size="sm" className="h-8 text-xs font-semibold">
-                                                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Task
-                                                </Button>
-                                            </AddTaskDialog>
-                                        )}
-                                    </div>
-                                    <TaskBoard tasks={tasks} users={users} onEditTask={handleOpenEditTaskDialog} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
-                                </>
+                                    <TaskBoard 
+                                        tasks={tasks} 
+                                        users={users} 
+                                        onEditTask={handleOpenEditTaskDialog} 
+                                        onDeleteTask={handleDeleteTask} 
+                                        onMoveTask={handleMoveTask} 
+                                        syncingTasks={syncingTasks} 
+                                        canEditTask={canEditTask} 
+                                        projectId={project.id}
+                                        addTask={handleAddTask}
+                                        isMember={isMember}
+                                    />
                             ) : (
                                 <div className="relative h-64 flex items-center justify-center">
                                     <div className="absolute inset-0 blur-sm pointer-events-none opacity-50">

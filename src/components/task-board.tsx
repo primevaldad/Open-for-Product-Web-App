@@ -3,6 +3,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import type { Task, User } from '@/lib/types';
 import TaskCard from '@/components/task-card';
+import { Plus } from 'lucide-react';
+import { AddTaskDialog } from '@/components/add-task-dialog';
+import type { TaskStatus } from '@/lib/schemas';
 
 import {
   DndContext,
@@ -28,9 +31,36 @@ interface TaskBoardProps {
   onMoveTask?: (taskId: string, newStatus: Task['status'], newSortOrder: number) => void;
   syncingTasks?: Set<string>;
   canEditTask?: (task: Task) => boolean;
+  projectId?: string;
+  addTask?: (values: any) => Promise<any>;
+  isMember?: boolean;
 }
 
-const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syncingTasks, canEditTask }: { title: string, status: string, tasks: Task[], users: User[], onEditTask: (task: Task) => void, onDeleteTask: (taskId: string) => void, syncingTasks?: Set<string>, canEditTask?: (task: Task) => boolean }) => {
+const TaskColumn = ({
+  title,
+  status,
+  tasks,
+  users,
+  onEditTask,
+  onDeleteTask,
+  syncingTasks,
+  canEditTask,
+  projectId,
+  addTask,
+  isMember
+}: {
+  title: string;
+  status: string;
+  tasks: Task[];
+  users: User[];
+  onEditTask: (task: Task) => void;
+  onDeleteTask: (taskId: string) => void;
+  syncingTasks?: Set<string>;
+  canEditTask?: (task: Task) => boolean;
+  projectId?: string;
+  addTask?: (values: any) => Promise<any>;
+  isMember?: boolean;
+}) => {
   const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   
   const { setNodeRef, isOver } = useDroppable({ id: status, data: { type: 'Column', status } });
@@ -40,9 +70,22 @@ const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syn
         ref={setNodeRef}
         className={`bg-gray-100 dark:bg-gray-900 rounded-lg p-4 flex-1 min-w-0 w-full lg:max-w-[calc(33.33%-1rem)] flex flex-col min-h-[500px] transition-colors ${isOver ? 'ring-2 ring-blue-400 bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
       >
-        <h3 className="text-lg font-semibold text-center text-gray-800 dark:text-gray-200 mb-4 flex justify-between items-center">
-          {title}
-          <span className="text-xs bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded-full text-gray-500 font-medium">{tasks.length}</span>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 flex justify-between items-center">
+          <span className="flex items-center gap-2">
+            {title}
+            <span className="text-xs bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded-full text-gray-500 font-medium">{tasks.length}</span>
+          </span>
+          {isMember && projectId && addTask && (
+            <AddTaskDialog projectId={projectId} status={status as TaskStatus} addTask={addTask}>
+              <button 
+                type="button" 
+                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors flex items-center justify-center cursor-pointer"
+                title={`Add task to ${title}`}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </AddTaskDialog>
+          )}
         </h3>
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
           <div className="flex-1 flex flex-col gap-0 min-h-[100px]">
@@ -66,7 +109,7 @@ const TaskColumn = ({ title, status, tasks, users, onEditTask, onDeleteTask, syn
   );
 };
 
-export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks, canEditTask }: TaskBoardProps) {
+export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks, canEditTask, projectId, addTask, isMember }: TaskBoardProps) {
   // Local optimistic state
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
@@ -249,9 +292,9 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col lg:flex-row gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
-        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
-        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} />
+        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} />
+        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} />
+        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} />
       </div>
 
       <DragOverlay dropAnimation={dropAnimation}>
