@@ -54,7 +54,7 @@ export async function createSquareCheckoutLinkAction(
             return { success: false, error: 'Fundry is not enabled on this project.' };
         }
 
-        if (goalId) {
+        if (goalId && goalId !== 'pool_general') {
             const goalSnap = await adminDb.collection('projects').doc(projectId)
                 .collection('fundingGoals').doc(goalId).get();
             if (!goalSnap.exists) {
