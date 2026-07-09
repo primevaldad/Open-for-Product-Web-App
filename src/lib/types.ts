@@ -843,6 +843,7 @@ export interface FundryContribution {
 
     contributorId: string | null;
     contributorName: string;
+    contributorEmail?: string | null;
 
     amount: number;
     currency: "USD";
@@ -860,16 +861,38 @@ export interface FundryContribution {
         | "pending_collection"
         | "confirmed"
         | "cancelled"
-        | "refunded";
+        | "refunded"
+        | "pending_checkout"
+        | "pending_confirmation"
+        | "failed"
+        | "disputed";
 
-    paymentProcessor: null | "stripe" | "paypal" | "other";
+    paymentProcessor: null | "stripe" | "paypal" | "square" | "other";
+    processor?: "square" | null;
     externalReferenceId: string | null;
     goalId?: string | null;
+
+    // Square specific properties
+    squarePaymentLinkId?: string | null;
+    squareOrderId?: string | null;
+    squarePaymentId?: string | null;
+    squareCheckoutUrl?: string | null;
+
+    processorStatus?: string | null;
+    processorReferenceId?: string | null;
+
+    refundedAmount?: number;
+    refundIds?: string[];
+    disputeIds?: string[];
+
+    idempotencyKey?: string;
 
     note: string;
 
     createdAt: Timestamp | string;
+    updatedAt?: Timestamp | string;
     confirmedAt: Timestamp | string | null;
+    lastProcessorEventAt?: Timestamp | string | null;
 }
 
 export interface FundryLedgerEntry {

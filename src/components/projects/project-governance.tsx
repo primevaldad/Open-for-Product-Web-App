@@ -21,6 +21,7 @@ import {
     allocateCreditsAction, 
     addContributionAction 
 } from '@/app/actions/fundry';
+import { createSquareCheckoutLinkAction, getContributionStatusAction } from '@/app/actions/square';
 import { calculateFundryMetrics, toDate } from '@/lib/fundry';
 import type { 
     HydratedProject, 
@@ -255,6 +256,19 @@ export default function ProjectGovernance({
     const [contribGoalId, setContribGoalId] = useState<string>('pool_general');
     const [contribNote, setContribNote] = useState('');
 
+    // Square Checkout Modal State
+    const [isSquareModalOpen, setIsSquareModalOpen] = useState(false);
+    const [squareAmount, setSquareAmount] = useState<number>(25);
+    const [squareName, setSquareName] = useState(currentUser?.name || '');
+    const [squareEmail, setSquareEmail] = useState(currentUser?.email || '');
+    const [squareGoalId, setSquareGoalId] = useState<string>('pool_general');
+    const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
+
+    // Verification Overlay State
+    const [verifyingContributionId, setVerifyingContributionId] = useState<string | null>(null);
+    const [isVerifyingOverlayOpen, setIsVerifyingOverlayOpen] = useState(false);
+    const [verificationState, setVerificationState] = useState<'loading' | 'confirmed' | 'pending' | 'failed'>('loading');
+
     // Sync my allocations when database allocations array changes
     useEffect(() => {
         if (currentUser && fundingAllocations) {
@@ -271,6 +285,66 @@ export default function ProjectGovernance({
             setMyAllocations(initialMap);
         }
     }, [currentUser, fundingAllocations]);
+
+    // Check URL parameters for redirect return from Square Checkout
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const paymentStatus = params.get('payment_status');
+        const contributionId = params.get('contribution_id');
+        
+        if (paymentStatus === 'return' && contributionId) {
+            setVerifyingContributionId(contributionId);
+            setIsVerifyingOverlayOpen(true);
+            
+            // Clean payment query params from the URL
+            const newUrl = window.location.pathname + '?tab=fundry';
+            window.history.replaceState({}, '', newUrl);
+        }
+    }, []);
+
+    // Verification status polling effect
+    useEffect(() => {
+        if (!isVerifyingOverlayOpen || !verifyingContributionId) return;
+
+        let attempts = 0;
+        const maxAttempts = 6; // up to 12 seconds
+        let isStopped = false;
+
+        const checkStatus = async () => {
+            if (isStopped) return;
+            const res = await getContributionStatusAction(project.id, verifyingContributionId);
+            if (res.success && res.data) {
+                const contribution = res.data;
+                if (contribution.status === 'confirmed') {
+                    setVerificationState('confirmed');
+                    router.refresh();
+                    return;
+                } else if (
+                    contribution.status === 'failed' || 
+                    contribution.status === 'cancelled'
+                ) {
+                    setVerificationState('failed');
+                    return;
+                }
+            }
+
+            attempts += 1;
+            if (attempts >= maxAttempts) {
+                setVerificationState('pending');
+                router.refresh();
+            } else {
+                setTimeout(checkStatus, 2000);
+            }
+        };
+
+        setVerificationState('loading');
+        checkStatus();
+
+        return () => {
+            isStopped = true;
+        };
+    }, [isVerifyingOverlayOpen, verifyingContributionId, project.id]);
 
     // Calculate Fundry Metrics Dynamically
     const fundryConfig = project.fundry;
@@ -521,6 +595,38 @@ export default function ProjectGovernance({
             toast({ title: "Error", description: e.message || "An error occurred.", variant: "destructive" });
         } finally {
             setSavingContrib(false);
+        }
+    };
+
+    const handleSquareCheckout = async () => {
+        if (squareAmount < 1) {
+            toast({ title: "Validation Error", description: "Contribution amount must be at least $1.00 USD.", variant: "destructive" });
+            return;
+        }
+        if (!squareName.trim()) {
+            toast({ title: "Validation Error", description: "Contributor name is required.", variant: "destructive" });
+            return;
+        }
+
+        setIsCreatingCheckout(true);
+        try {
+            const res = await createSquareCheckoutLinkAction(
+                project.id,
+                squareAmount,
+                squareGoalId,
+                squareName,
+                squareEmail
+            );
+            if (res.success && res.data) {
+                toast({ title: "Redirecting...", description: "Connecting to Square Checkout securely..." });
+                window.location.href = res.data.checkoutUrl;
+            } else {
+                toast({ title: "Checkout Error", description: res.error || "Failed to create payment link.", variant: "destructive" });
+                setIsCreatingCheckout(false);
+            }
+        } catch (e: any) {
+            toast({ title: "Checkout Error", description: e.message || "Failed to connect to Square.", variant: "destructive" });
+            setIsCreatingCheckout(false);
         }
     };
 
@@ -1330,15 +1436,15 @@ export default function ProjectGovernance({
                 ) : (
                     // Case B: Fundry is Enabled
                     <div className="space-y-6">
-                        {/* Planning Mode Banner */}
-                        <Alert className="bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/10 dark:border-emerald-900">
-                            <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                            <AlertTitle className="text-emerald-800 dark:text-emerald-200 font-semibold flex items-center gap-1.5">
-                                Planning Mode Active
+                        {/* Square Payments Connected Banner */}
+                        <Alert className="bg-indigo-50/50 border-indigo-200 dark:bg-indigo-950/10 dark:border-indigo-900">
+                            <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            <AlertTitle className="text-indigo-800 dark:text-indigo-200 font-semibold flex items-center gap-1.5">
+                                Square Payments Connected
                             </AlertTitle>
-                            <AlertDescription className="text-emerald-700 dark:text-emerald-300 text-xs space-y-1">
-                                <p>Live payments are not connected yet. This project uses manually tracked placeholder, pledged, pending, and manual contributions to coordinate funding priorities.</p>
-                                <p className="font-semibold mt-1">Status: Payments not connected · Manual contribution tracking available</p>
+                            <AlertDescription className="text-indigo-700 dark:text-indigo-300 text-xs space-y-1">
+                                <p>Secure card payments are enabled. Back this project to dynamically allocate credit weightings. Manual tracks are preserved for offline/lead transactions.</p>
+                                <p className="font-semibold mt-1">Status: Live card processing active via Square Checkout</p>
                             </AlertDescription>
                         </Alert>
 
@@ -1349,26 +1455,44 @@ export default function ProjectGovernance({
                                     <CardTitle className="text-base font-bold flex items-center gap-2">
                                         Funding Pool Snapshot
                                     </CardTitle>
-                                    {isLeadOrAdmin && (
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setIsContribModalOpen(true)}
-                                                className="text-xs h-8"
-                                            >
-                                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Contribution
-                                            </Button>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {currentUser && (
                                             <Button
                                                 variant="default"
                                                 size="sm"
-                                                onClick={() => handleGoalModalOpen()}
-                                                className="text-xs h-8"
+                                                onClick={() => {
+                                                    setSquareAmount(25);
+                                                    setSquareName(currentUser.name || '');
+                                                    setSquareEmail(currentUser.email || '');
+                                                    setSquareGoalId('pool_general');
+                                                    setIsSquareModalOpen(true);
+                                                }}
+                                                className="text-xs h-8 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1"
                                             >
-                                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Goal
+                                                <Plus className="h-3.5 w-3.5" /> Back Project
                                             </Button>
-                                        </div>
-                                    )}
+                                        )}
+                                        {isLeadOrAdmin && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setIsContribModalOpen(true)}
+                                                    className="text-xs h-8"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5 mr-1" /> Manual Track
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleGoalModalOpen()}
+                                                    className="text-xs h-8"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Goal
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-6">
@@ -1902,6 +2026,144 @@ export default function ProjectGovernance({
                                 Add Contribution
                             </Button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Square Checkout Modal */}
+            {isSquareModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-background border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+                        <div className="flex justify-between items-center border-b pb-2">
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                                <DollarSign className="h-5 w-5 text-indigo-600" />
+                                Back Project (Secure Card Checkout)
+                            </h3>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsSquareModalOpen(false)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                            <div className="space-y-1">
+                                <Label className="font-semibold">Contributor Name</Label>
+                                <Input 
+                                    value={squareName} 
+                                    onChange={(e) => setSquareName(e.target.value)} 
+                                    placeholder="Your Name (visible in ledger)"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label className="font-semibold">Contributor Email</Label>
+                                <Input 
+                                    type="email"
+                                    value={squareEmail} 
+                                    onChange={(e) => setSquareEmail(e.target.value)} 
+                                    placeholder="your@email.com (private receipt tracking)"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label className="font-semibold">Contribution Amount ($ USD)</Label>
+                                <Input 
+                                    type="number" 
+                                    min="1"
+                                    value={squareAmount} 
+                                    onChange={(e) => setSquareAmount(parseFloat(e.target.value) || 0)} 
+                                    placeholder="25"
+                                />
+                                <span className="text-[10px] text-muted-foreground block">
+                                    Minimum contribution amount is $1.00 USD.
+                                </span>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label className="font-semibold">Direct Signal Assignment (Optional)</Label>
+                                <Select value={squareGoalId} onValueChange={(val: any) => setSquareGoalId(val)}>
+                                    <SelectTrigger className="h-9">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="pool_general">General Pool (Signal shared projects value)</SelectItem>
+                                        {hydratedGoals.map(g => (
+                                            <SelectItem key={g.id} value={g.id}>Goal: {g.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="p-3 bg-slate-50/50 dark:bg-slate-900/10 rounded-md border border-dashed text-xs text-muted-foreground space-y-1.5">
+                                <p>🔒 **Secure processing via Square Checkout**.</p>
+                                <p>We do not store your credit card details locally. Square handles transaction processing securely on their hosted checkout servers.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 border-t pt-3">
+                            <Button variant="ghost" onClick={() => setIsSquareModalOpen(false)} disabled={isCreatingCheckout}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                variant="default" 
+                                onClick={handleSquareCheckout} 
+                                disabled={isCreatingCheckout}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-1.5"
+                            >
+                                {isCreatingCheckout ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                Pay with Card
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Verification Return Overlay */}
+            {isVerifyingOverlayOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                    <div className="bg-background border rounded-xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4">
+                        {verificationState === 'loading' && (
+                            <div className="space-y-3 py-4">
+                                <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mx-auto" />
+                                <h4 className="font-bold text-base text-foreground">Confirming contribution...</h4>
+                                <p className="text-xs text-muted-foreground">Checking payment transaction status with Square...</p>
+                            </div>
+                        )}
+                        {verificationState === 'confirmed' && (
+                            <div className="space-y-3 py-2">
+                                <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto">
+                                    <Check className="h-6 w-6" />
+                                </div>
+                                <h4 className="font-bold text-base text-emerald-700 dark:text-emerald-400">Contribution Confirmed!</h4>
+                                <p className="text-xs text-muted-foreground">Thank you for backing this project. Your credits allocation signals are now active in the pool.</p>
+                                <Button size="sm" className="w-full mt-2" onClick={() => setIsVerifyingOverlayOpen(false)}>
+                                    Done
+                                </Button>
+                            </div>
+                        )}
+                        {verificationState === 'pending' && (
+                            <div className="space-y-3 py-2">
+                                <div className="h-12 w-12 rounded-full bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto">
+                                    <AlertTriangle className="h-6 w-6" />
+                                </div>
+                                <h4 className="font-bold text-base text-amber-700 dark:text-amber-400">Processing Payment...</h4>
+                                <p className="text-xs text-muted-foreground">We've recorded your contribution, and we're processing it with our payment provider. Your pool credits will update shortly once confirmed.</p>
+                                <Button size="sm" className="w-full mt-2" onClick={() => setIsVerifyingOverlayOpen(false)}>
+                                    OK
+                                </Button>
+                            </div>
+                        )}
+                        {verificationState === 'failed' && (
+                            <div className="space-y-3 py-2">
+                                <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive mx-auto">
+                                    <X className="h-6 w-6" />
+                                </div>
+                                <h4 className="font-bold text-base text-destructive">Transaction Unsuccessful</h4>
+                                <p className="text-xs text-muted-foreground">The transaction was cancelled or could not be completed by Square. Please try again.</p>
+                                <Button size="sm" className="w-full mt-2" onClick={() => setIsVerifyingOverlayOpen(false)}>
+                                    Close
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
