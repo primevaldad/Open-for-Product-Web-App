@@ -184,3 +184,31 @@ export async function cascadeGlobalGovernanceUpdates(globalConfig: NonNullable<P
         console.error("Failed to cascade global platform governance updates: ", err);
     }
 }
+
+export async function getWebhookEventsAction(limitCount = 50, lastProcessedAt?: string): Promise<{ success: boolean; data?: any[]; hasMore?: boolean; error?: string }> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser || currentUser.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        let query = adminDb.collection('processed_webhook_events')
+            .orderBy('processedAt', 'desc')
+            .limit(limitCount);
+
+        if (lastProcessedAt) {
+            query = query.startAfter(lastProcessedAt);
+        }
+
+        const snapshot = await query.get();
+        const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        return { 
+            success: true, 
+            data: events,
+            hasMore: snapshot.docs.length === limitCount
+        };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
