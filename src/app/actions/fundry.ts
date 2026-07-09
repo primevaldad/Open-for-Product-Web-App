@@ -334,6 +334,24 @@ export async function addContributionAction(
 
         await docRef.set(newContribution);
 
+        const ledgerRef = adminDb.collection('projects').doc(projectId).collection('fundryLedger').doc();
+        const ledgerEntry: FundryLedgerEntry = {
+            id: ledgerRef.id,
+            projectId,
+            entryType: 'contribution_created',
+            amount: newContribution.amount,
+            currencyOrCredit: 'USD',
+            fromUserId: newContribution.contributorId || null,
+            toUserId: null,
+            goalId: newContribution.goalId || null,
+            allocationId: null,
+            contributionId: docRef.id,
+            description: `Manual contribution of $${newContribution.amount} created for ${newContribution.contributorName || 'contributor'}`,
+            createdBy: auth.currentUser.id,
+            createdAt: new Date().toISOString()
+        };
+        await ledgerRef.set(ledgerEntry);
+
         // Recalculate platform snapshots
         const snapshot = await contributionsRef.get();
         let confirmed = 0, pending = 0, pledged = 0, placeholder = 0;

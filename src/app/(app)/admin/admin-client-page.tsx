@@ -13,6 +13,7 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Shield, Plus, Trash2, Check, AlertCircle } from 'lucide-react';
 import SquareWebhookLogs from './square-webhook-logs';
+import PaymentDiagnostics from './payment-diagnostics';
 
 export default function AdminClientPage({ initialConfig, currentUserId }: { initialConfig: PlatformConfig, currentUserId: string }) {
     const [config, setConfig] = useState<PlatformConfig>(() => {
@@ -431,6 +432,9 @@ export default function AdminClientPage({ initialConfig, currentUserId }: { init
 
             {/* Square Webhook Logs */}
             <SquareWebhookLogs />
+
+            {/* Payment Diagnostics */}
+            <PaymentDiagnostics />
 
             <div className="flex justify-end gap-4">
                 <Button onClick={handleSave} disabled={isSaving}>

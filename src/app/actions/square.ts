@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase.server';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { findProjectById } from '@/lib/data.server';
 import { revalidatePath } from 'next/cache';
-import type { ServerActionResponse, FundryContribution } from '@/lib/types';
+import type { ServerActionResponse, FundryContribution, FundryLedgerEntry } from '@/lib/types';
 import * as crypto from 'crypto';
 
 // Initialize Square Client lazily from environment variables
@@ -109,37 +109,50 @@ export async function createSquareCheckoutLinkAction(
 
         // 3. Request Square Checkout Payment Link
         const client = getSquareClient();
-        const response = await client.checkout.paymentLinks.create({
-            idempotencyKey,
-            order: {
-                locationId,
-                referenceId: contributionId,
-                metadata: {
-                    fundryContributionId: contributionId,
-                    projectId,
-                    goalId: goalId || 'pool_general',
-                    environment: process.env.SQUARE_ENVIRONMENT || 'sandbox'
-                },
-                lineItems: [
-                    {
-                        name: `Fundry Contribution - ${project.name}`,
-                        quantity: '1',
-                        basePriceMoney: {
-                            amount: BigInt(Math.round(amount * 100)), // Value in cents
-                            currency: 'USD'
-                        }
-                    }
-                ]
-            },
-            paymentNote: `Fundry contribution ${contributionId}`,
-            checkoutOptions: {
-                redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/projects/${projectId}?tab=fundry&payment_status=return&contribution_id=${contributionId}`
-            }
-        });
+        let paymentLink: any = null;
 
-        const paymentLink = response.paymentLink;
-        if (!paymentLink || !paymentLink.url) {
-            throw new Error('Square Checkout URL was not returned by the API.');
+        try {
+            const response = await client.checkout.paymentLinks.create({
+                idempotencyKey,
+                order: {
+                    locationId,
+                    referenceId: contributionId,
+                    metadata: {
+                        fundryContributionId: contributionId,
+                        projectId,
+                        goalId: goalId || 'pool_general',
+                        environment: process.env.SQUARE_ENVIRONMENT || 'sandbox'
+                    },
+                    lineItems: [
+                        {
+                            name: `Fundry Contribution - ${project.name}`,
+                            quantity: '1',
+                            basePriceMoney: {
+                                amount: BigInt(Math.round(amount * 100)), // Value in cents
+                                currency: 'USD'
+                            }
+                        }
+                    ]
+                },
+                paymentNote: `Fundry contribution ${contributionId}`,
+                checkoutOptions: {
+                    redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/projects/${projectId}?tab=fundry&payment_status=return&contribution_id=${contributionId}`
+                }
+            });
+
+            paymentLink = response.paymentLink;
+            if (!paymentLink || !paymentLink.url) {
+                throw new Error('Square Checkout URL was not returned by the API.');
+            }
+        } catch (checkoutError: any) {
+            await docRef.update({
+                status: 'failed',
+                processorStatus: 'checkout_creation_failed',
+                checkoutFailedAt: new Date().toISOString(),
+                checkoutFailureReason: checkoutError.message || 'Unknown checkout creation error',
+                updatedAt: new Date().toISOString()
+            });
+            return { success: false, error: checkoutError.message || 'Failed to create Square payment link.' };
         }
 
         // 4. Update the contribution with Square transaction references
@@ -149,6 +162,25 @@ export async function createSquareCheckoutLinkAction(
             squareCheckoutUrl: paymentLink.url || null,
             updatedAt: new Date().toISOString()
         });
+
+        // 5. Write to ledger
+        const ledgerRef = adminDb.collection('projects').doc(projectId).collection('fundryLedger').doc();
+        const ledgerEntry: FundryLedgerEntry = {
+            id: ledgerRef.id,
+            projectId,
+            entryType: 'contribution_created',
+            amount,
+            currencyOrCredit: 'USD',
+            fromUserId: contributorId,
+            toUserId: null,
+            goalId: goalId === 'pool_general' ? null : (goalId || null),
+            allocationId: null,
+            contributionId: docRef.id,
+            description: `Square checkout created for $${amount} contribution from ${contributorName}`,
+            createdBy: contributorId || 'system',
+            createdAt: new Date().toISOString()
+        };
+        await ledgerRef.set(ledgerEntry);
 
         return { 
             success: true, 

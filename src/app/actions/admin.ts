@@ -212,3 +212,40 @@ export async function getWebhookEventsAction(limitCount = 50, lastProcessedAt?: 
         return { success: false, error: e.message };
     }
 }
+
+export async function getPaymentDiagnosticsAction(limitCount = 50): Promise<{ 
+    success: boolean; 
+    deliveryFailures?: any[]; 
+    stuckContributions?: any[]; 
+    error?: string;
+}> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser || currentUser.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        // 1. Fetch webhook delivery failures
+        const failuresSnap = await adminDb.collection('webhook_delivery_failures')
+            .orderBy('timestamp', 'desc')
+            .limit(limitCount)
+            .get();
+        const deliveryFailures = failuresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // 2. Fetch stuck contributions (pending_checkout or failed)
+        const stuckSnap = await adminDb.collectionGroup('fundingContributions')
+            .where('status', 'in', ['pending_checkout', 'failed'])
+            .orderBy('createdAt', 'desc')
+            .limit(limitCount)
+            .get();
+        const stuckContributions = stuckSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        return { 
+            success: true, 
+            deliveryFailures,
+            stuckContributions
+        };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}

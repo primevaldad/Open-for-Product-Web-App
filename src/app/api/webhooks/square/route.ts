@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { WebhooksHelper } from 'square';
 import { adminDb } from '@/lib/firebase.server';
 import { recalculateFundryPool } from '@/app/actions/square';
-import type { FundryContribution } from '@/lib/types';
+import type { FundryContribution, FundryLedgerEntry } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
     try {
@@ -17,6 +17,15 @@ export async function POST(req: NextRequest) {
         if (signatureKey) {
             if (!signature) {
                 console.error('[webhook] Missing x-square-hmacsha256-signature header.');
+                let parsedEventType = 'unknown';
+                try { parsedEventType = JSON.parse(rawBody).type; } catch (e) {}
+                await adminDb.collection('webhook_delivery_failures').doc().set({
+                    reason: 'missing_signature',
+                    timestamp: new Date().toISOString(),
+                    eventType: parsedEventType,
+                    notificationUrl,
+                    rawBodySnippet: rawBody.substring(0, 500)
+                });
                 return new Response('Forbidden: Missing signature', { status: 400 });
             }
             const isValid = await WebhooksHelper.verifySignature({
@@ -27,6 +36,15 @@ export async function POST(req: NextRequest) {
             });
             if (!isValid) {
                 console.error('[webhook] Square signature verification failed.');
+                let parsedEventType = 'unknown';
+                try { parsedEventType = JSON.parse(rawBody).type; } catch (e) {}
+                await adminDb.collection('webhook_delivery_failures').doc().set({
+                    reason: 'invalid_signature',
+                    timestamp: new Date().toISOString(),
+                    eventType: parsedEventType,
+                    notificationUrl,
+                    rawBodySnippet: rawBody.substring(0, 500)
+                });
                 return new Response('Forbidden: Invalid Signature', { status: 403 });
             }
         } else {
@@ -129,6 +147,14 @@ export async function POST(req: NextRequest) {
 
         if (!contributionDoc) {
             console.warn(`[webhook] No matching FundryContribution found for referenceId: ${referenceId}, squareOrderId: ${squareOrderId}. Acknowledging event with 200 OK.`);
+            await adminDb.collection('webhook_delivery_failures').doc().set({
+                reason: 'no_matching_contribution',
+                eventType: event.type,
+                eventId,
+                referenceId,
+                squareOrderId,
+                timestamp: new Date().toISOString()
+            });
             return new Response('Success (no matching contribution)', { status: 200 });
         }
 
@@ -177,9 +203,40 @@ export async function POST(req: NextRequest) {
 
         await contributionRef.update(updates);
 
+        if (status === 'confirmed') {
+            const ledgerRef = adminDb.collection('projects').doc(projectId).collection('fundryLedger').doc();
+            const ledgerEntry: FundryLedgerEntry = {
+                id: ledgerRef.id,
+                projectId,
+                entryType: 'contribution_confirmed',
+                amount: contributionData.amount,
+                currencyOrCredit: 'USD',
+                fromUserId: contributionData.contributorId || null,
+                toUserId: null,
+                goalId: contributionData.goalId || null,
+                allocationId: null,
+                contributionId: contributionData.id,
+                description: `Square contribution of $${contributionData.amount} confirmed for ${contributionData.contributorName || 'contributor'}`,
+                createdBy: 'system',
+                createdAt: new Date().toISOString()
+            };
+            await ledgerRef.set(ledgerEntry);
+        }
+
         // 6. Recalculate Fundry Pool
         if (projectId) {
-            await recalculateFundryPool(projectId);
+            try {
+                await recalculateFundryPool(projectId);
+            } catch (poolErr: any) {
+                console.error(`[webhook] Pool recalculation failed for project ${projectId}:`, poolErr);
+                await adminDb.collection('webhook_delivery_failures').doc().set({
+                    reason: 'pool_recalculation_failed',
+                    projectId,
+                    contributionId: contributionData.id,
+                    error: poolErr.message,
+                    timestamp: new Date().toISOString()
+                });
+            }
         }
 
         // 7. Mark event as processed to ensure idempotency
