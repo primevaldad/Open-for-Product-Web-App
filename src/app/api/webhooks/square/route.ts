@@ -9,7 +9,9 @@ export async function POST(req: NextRequest) {
         const rawBody = await req.text();
         const signature = req.headers.get('x-square-hmacsha256-signature');
         const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
-        const notificationUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhooks/square`;
+        const proto = req.headers.get('x-forwarded-proto') || 'http';
+        const host = req.headers.get('host') || 'localhost:3000';
+        const notificationUrl = `${proto}://${host}/api/webhooks/square`;
 
         // 1. Signature Verification
         if (signatureKey) {
