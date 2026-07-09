@@ -32,3 +32,16 @@ env:
   - variable: FASTMAIL_API_TOKEN
     secret: FASTMAIL_API_TOKEN
     availability: [RUNTIME]
+  - variable: SQUARE_ENVIRONMENT
+    secret: SQUARE_ENVIRONMENT
+    availability: [RUNTIME]
+  - variable: SQUARE_ACCESS_TOKEN
+    secret: SQUARE_ACCESS_TOKEN
+    availability: [RUNTIME]
+  - variable: SQUARE_LOCATION_ID
+    secret: SQUARE_LOCATION_ID
+    availability: [RUNTIME]
+  - variable: SQUARE_WEBHOOK_SIGNATURE_KEY
+    secret: SQUARE_WEBHOOK_SIGNATURE_KEY
+    availability: [RUNTIME]
+

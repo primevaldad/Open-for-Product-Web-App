@@ -36,6 +36,13 @@ export async function POST(req: NextRequest) {
         const event = JSON.parse(rawBody);
         const eventId = event.event_id;
 
+        // Check if this is an event type we care to process
+        const supportedEvents = ['payment.created', 'payment.updated', 'order.updated'];
+        if (!supportedEvents.includes(event.type)) {
+            console.log(`[webhook] Event type ${event.type} is not processed by Fundry. Acknowledging event with 200 OK.`);
+            return new Response('Success (event type not handled)', { status: 200 });
+        }
+
         // 2. Idempotency Check
         const eventRef = adminDb.collection('processed_webhook_events').doc(eventId);
         const eventSnap = await eventRef.get();
@@ -121,8 +128,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (!contributionDoc) {
-            console.warn(`[webhook] No matching FundryContribution found for referenceId: ${referenceId}, squareOrderId: ${squareOrderId}`);
-            return new Response('Contribution not found', { status: 404 });
+            console.warn(`[webhook] No matching FundryContribution found for referenceId: ${referenceId}, squareOrderId: ${squareOrderId}. Acknowledging event with 200 OK.`);
+            return new Response('Success (no matching contribution)', { status: 200 });
         }
 
         const contributionData = contributionDoc.data() as FundryContribution;
