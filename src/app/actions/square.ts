@@ -231,6 +231,12 @@ export async function recalculateFundryPool(projectId: string): Promise<void> {
 
     snapshot.docs.forEach(doc => {
         const c = doc.data() as FundryContribution;
+        
+        // Skip contributions directed to a specific goal (they are not part of the general pool)
+        if (c.goalId && c.goalId !== 'pool_general') {
+            return;
+        }
+
         if (c.status === 'confirmed') {
             const netAmount = c.amount - (c.refundedAmount || 0);
             confirmed += netAmount > 0 ? netAmount : 0;
