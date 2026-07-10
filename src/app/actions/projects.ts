@@ -508,6 +508,8 @@ function getHighestProjectRole(team: ProjectMember[], userId: string): ProjectMe
 }
 
 function canUserEditTask(task: Task, currentUserId: string, project: Project): boolean {
+    if (task.assignedToId === currentUserId) return true;
+
     const role = getHighestProjectRole(project.team, currentUserId);
     
     // Lead - always able to edit/delete
@@ -516,7 +518,6 @@ function canUserEditTask(task: Task, currentUserId: string, project: Project): b
     // Contributor - can edit their own tasks, other Contributor tasks, and tasks assigned to them
     if (role === 'contributor') {
         if (task.createdBy === currentUserId) return true;
-        if (task.assignedToId === currentUserId) return true;
         const creatorRole = getHighestProjectRole(project.team, task.createdBy);
         if (creatorRole === 'contributor') return true;
     }
@@ -524,7 +525,6 @@ function canUserEditTask(task: Task, currentUserId: string, project: Project): b
     // Participant - can edit tasks assigned to them or created by them only
     if (role === 'participant') {
         if (task.createdBy === currentUserId) return true;
-        if (task.assignedToId === currentUserId) return true;
     }
 
     return false;

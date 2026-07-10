@@ -454,20 +454,21 @@ export default function ProjectDetailClientPage({
 
     const canEditTask = useCallback((task: Task) => {
         if (!currentUser) return false;
+        
+        if (task.assignedToId === currentUser.id) return true;
+
         const role = getHighestProjectRole(currentUser.id);
         
         if (role === 'lead') return true;
         
         if (role === 'contributor') {
             if (task.createdBy === currentUser.id) return true;
-            if (task.assignedToId === currentUser.id) return true;
             const creatorRole = getHighestProjectRole(task.createdBy);
             if (creatorRole === 'contributor') return true;
         }
 
         if (role === 'participant') {
             if (task.createdBy === currentUser.id) return true;
-            if (task.assignedToId === currentUser.id) return true;
         }
         return false;
     }, [currentUser, getHighestProjectRole]);
@@ -536,6 +537,16 @@ export default function ProjectDetailClientPage({
 
     const isOwner = currentUser?.id === project.owner?.id;
     const showLeadDashboard = isLead || isOwner;
+
+    const selectableFundingGoals = useMemo(() => {
+        const isAdmin = currentUser?.role === 'admin';
+        return fundingGoals.filter(goal => {
+            if (isLead || isAdmin || isOwner) return true;
+            if (isMember && (goal.visibility === 'members' || goal.visibility === 'public')) return true;
+            if (goal.visibility === 'public') return true;
+            return false;
+        });
+    }, [fundingGoals, isLead, isMember, isOwner, currentUser]);
 
     const activeTabs = useMemo(() => {
         const tabs = [
@@ -679,6 +690,7 @@ export default function ProjectDetailClientPage({
             estimatedHours: values.estimatedHours,
             dueDate: values.dueDate?.toISOString(),
             isMilestone: values.isMilestone,
+            fundingGoalIds: values.fundingGoalIds || [],
         };
         const result = await addTaskAction(taskDataForAction);
         if (result.success && result.data) {
@@ -695,8 +707,10 @@ export default function ProjectDetailClientPage({
         const updatedTaskData: Task = {
             ...editingTask,
             ...values,
+            assignedToId: values.assigneeId,
             dueDate: values.dueDate ? values.dueDate.toISOString() : editingTask.dueDate,
         };
+        delete (updatedTaskData as any).assigneeId;
         const result = await updateTaskAction(updatedTaskData);
         if (result.success && result.data) {
             setTasks(tasks.map(t => t.id === result.data.id ? result.data : t));
@@ -1285,6 +1299,7 @@ export default function ProjectDetailClientPage({
                                         isMember={isMember}
                                         isLead={isLead || currentUser?.role === 'admin'}
                                         fundingGoals={fundingGoals}
+                                        selectableFundingGoals={selectableFundingGoals}
                                     />
                             ) : (
                                 <div className="relative h-64 flex items-center justify-center">
@@ -1478,7 +1493,7 @@ export default function ProjectDetailClientPage({
                     task={editingTask} 
                     teamMembers={users} 
                     isLead={isLead || currentUser?.role === 'admin'}
-                    fundingGoals={fundingGoals}
+                    fundingGoals={selectableFundingGoals}
                 />
             )}
             <OnboardContributorDialog 

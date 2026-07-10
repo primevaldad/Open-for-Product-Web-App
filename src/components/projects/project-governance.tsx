@@ -1724,11 +1724,11 @@ export default function ProjectGovernance({
                                         <div className="grid grid-cols-3 gap-2 border p-2 bg-muted/20 rounded-md text-center text-xs">
                                             <div>
                                                 <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Available</span>
-                                                <span className="font-bold text-foreground">{remainingAvailableCredits}</span>
+                                                <span className="font-bold text-foreground">{hydratedGoals.length === 1 ? 0 : remainingAvailableCredits}</span>
                                             </div>
                                             <div>
                                                 <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Allocated</span>
-                                                <span className="font-bold text-primary">{myTotalCreditsAllocated}</span>
+                                                <span className="font-bold text-primary">{hydratedGoals.length === 1 ? 100 : myTotalCreditsAllocated}</span>
                                             </div>
                                             <div>
                                                 <span className="text-[10px] text-muted-foreground uppercase block font-semibold">Locked</span>
@@ -1742,7 +1742,8 @@ export default function ProjectGovernance({
                                         ) : (
                                             <div className="space-y-4 pt-2">
                                                 {hydratedGoals.map(goal => {
-                                                    const credits = myAllocations[goal.id] || 0;
+                                                    const isSingleGoal = hydratedGoals.length === 1;
+                                                    const credits = isSingleGoal ? 100 : (myAllocations[goal.id] || 0);
                                                     const usdVal = credits * currentCreditValue;
 
                                                     // Calculate my direct contribution to this goal
@@ -1773,25 +1774,28 @@ export default function ProjectGovernance({
                                                                     value={[credits]}
                                                                     onValueChange={(val) => handleCreditChange(goal.id, val[0])}
                                                                     min={0}
-                                                                    max={credits + remainingAvailableCredits}
+                                                                    max={isSingleGoal ? 100 : credits + remainingAvailableCredits}
                                                                     step={1}
                                                                     className="flex-1"
+                                                                    disabled={isSingleGoal}
                                                                 />
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
 
-                                                <Button
-                                                    variant="default"
-                                                    size="sm"
-                                                    disabled={savingAllocations || myTotalCreditsAllocated === 0}
-                                                    onClick={handleSaveAllocations}
-                                                    className="w-full text-xs font-semibold h-9 flex items-center justify-center gap-1.5"
-                                                >
-                                                    {savingAllocations ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                                                    Save Allocation Signals
-                                                </Button>
+                                                {hydratedGoals.length > 1 && (
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        disabled={savingAllocations || myTotalCreditsAllocated === 0}
+                                                        onClick={handleSaveAllocations}
+                                                        className="w-full text-xs font-semibold h-9 flex items-center justify-center gap-1.5"
+                                                    >
+                                                        {savingAllocations ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                                        Save Allocation Signals
+                                                    </Button>
+                                                )}
 
                                                 <p className="text-[9px] text-muted-foreground text-center italic mt-2">
                                                     Rolling Lock: Allocations remain editable for 7 days, after which they lock in value.

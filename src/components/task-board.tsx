@@ -36,6 +36,7 @@ interface TaskBoardProps {
   isMember?: boolean;
   isLead?: boolean;
   fundingGoals?: { id: string; title: string }[];
+  selectableFundingGoals?: { id: string; title: string }[];
 }
 
 const TaskColumn = ({
@@ -51,7 +52,8 @@ const TaskColumn = ({
   addTask,
   isMember,
   isLead,
-  fundingGoals
+  fundingGoals,
+  selectableFundingGoals
 }: {
   title: string;
   status: string;
@@ -66,6 +68,7 @@ const TaskColumn = ({
   isMember?: boolean;
   isLead?: boolean;
   fundingGoals?: { id: string; title: string }[];
+  selectableFundingGoals?: { id: string; title: string }[];
 }) => {
   const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   
@@ -87,7 +90,7 @@ const TaskColumn = ({
               status={status as TaskStatus} 
               addTask={addTask}
               isLead={isLead}
-              fundingGoals={fundingGoals}
+              fundingGoals={selectableFundingGoals}
             >
               <button 
                 type="button" 
@@ -122,7 +125,7 @@ const TaskColumn = ({
   );
 };
 
-export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks, canEditTask, projectId, addTask, isMember, isLead, fundingGoals }: TaskBoardProps) {
+export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks, canEditTask, projectId, addTask, isMember, isLead, fundingGoals, selectableFundingGoals }: TaskBoardProps) {
   // Local optimistic state
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
@@ -305,9 +308,9 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col lg:flex-row gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} />
-        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} />
-        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} />
+        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />
+        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />
+        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />
       </div>
 
       <DragOverlay dropAnimation={dropAnimation}>
