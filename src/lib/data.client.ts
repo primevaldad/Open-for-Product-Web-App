@@ -52,8 +52,14 @@ export function subscribeToProjectFundingGoals(projectId: string, callback: (goa
         const goals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FundryFundingGoal));
         // Sort by createdAt desc to match server side
         goals.sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            const getTime = (val: any) => {
+                if (!val) return 0;
+                if (typeof val === 'string') return new Date(val).getTime();
+                if (typeof val.toMillis === 'function') return val.toMillis();
+                return 0;
+            };
+            const dateA = getTime(a.createdAt);
+            const dateB = getTime(b.createdAt);
             return dateB - dateA;
         });
         callback(goals);
