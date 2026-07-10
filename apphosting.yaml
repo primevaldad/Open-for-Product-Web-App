@@ -44,4 +44,8 @@ env:
   - variable: SQUARE_WEBHOOK_SIGNATURE_KEY
     secret: SQUARE_WEBHOOK_SIGNATURE_KEY
     availability: [RUNTIME]
+  - variable: SQUARE_WEBHOOK_NOTIFICATION_URL
+    value: "https://app.openforproduct.com/api/webhooks/square"
+    availability: [RUNTIME]
+
 

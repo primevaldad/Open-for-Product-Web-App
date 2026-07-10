@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
         const signature = req.headers.get('x-square-hmacsha256-signature');
         const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
         const proto = req.headers.get('x-forwarded-proto') || 'http';
-        const host = req.headers.get('host') || 'localhost:3000';
-        const notificationUrl = `${proto}://${host}/api/webhooks/square`;
+        const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
+        const notificationUrl = process.env.SQUARE_WEBHOOK_NOTIFICATION_URL || `${proto}://${host}/api/webhooks/square`;
 
         // 1. Signature Verification
         if (signatureKey) {
