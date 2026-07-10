@@ -216,10 +216,12 @@ export interface Task {
     updatedAt: Timestamp | string;
     isMilestone?: boolean;
     sortOrder?: number;
+    fundingGoalIds?: string[];
 }
 
 export interface HydratedTask extends Omit<Task, 'assignedToId'> {
     assignee?: User;
+    fundingGoals?: { id: string; title: string }[];
 }
 
 // Represents a link between a Project and a Learning Path.

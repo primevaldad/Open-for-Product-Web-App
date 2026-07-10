@@ -17,9 +17,10 @@ interface TaskCardProps {
   onDelete: (taskId: string) => void;
   isSyncing?: boolean;
   canEdit?: boolean;
+  fundingGoals?: { id: string; title: string }[];
 }
 
-export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing, canEdit = true }: TaskCardProps) {
+export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing, canEdit = true, fundingGoals }: TaskCardProps) {
   const { title, description, dueDate, estimatedHours, isMilestone, id } = task;
 
   const getInitials = (name = '') => name.split(' ').map(n => n[0]).join('');
@@ -87,10 +88,23 @@ export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing, 
               <Markdown content={description} />
             </div>
           )}
-          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-2">
               {dueDate && <span>Due: {new Date(typeof dueDate === 'string' ? dueDate : (dueDate as any).toDate?.() ?? dueDate).toLocaleDateString()}</span>}
               {estimatedHours != null && <span>{estimatedHours} hrs</span>}
           </div>
+          {task.fundingGoalIds && task.fundingGoalIds.length > 0 && fundingGoals && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {task.fundingGoalIds.map(goalId => {
+                const goal = fundingGoals.find(g => g.id === goalId);
+                if (!goal) return null;
+                return (
+                  <div key={goal.id} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                    <span>🎯</span> {goal.title}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-between items-center">
           <div className="flex items-center">

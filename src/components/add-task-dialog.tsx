@@ -32,9 +32,11 @@ interface AddTaskDialogProps extends PropsWithChildren {
   projectId: string;
   status: TaskStatus;
   addTask: (values: AddTaskDialogFormValues) => Promise<ServerActionResponse>;
+  isLead?: boolean;
+  fundingGoals?: { id: string; title: string }[];
 }
 
-export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskDialogProps) {
+export function AddTaskDialog({ projectId, status, addTask, children, isLead, fundingGoals }: AddTaskDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +49,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
       description: '',
       status: status,
       isMilestone: false,
+      fundingGoalIds: [],
     },
   });
 
@@ -68,7 +71,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
       <DialogTrigger asChild onClick={() => setIsOpen(true)}>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Task</DialogTitle>
           <DialogDescription>
@@ -121,6 +124,56 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
                 </FormItem>
               )}
             />
+            {isLead && fundingGoals && fundingGoals.length > 0 && (
+              <FormField
+                control={form.control}
+                name="fundingGoalIds"
+                render={() => (
+                  <FormItem>
+                    <div className="mb-4">
+                      <FormLabel className="text-base">Funding Goals</FormLabel>
+                      <DialogDescription>
+                        Select the funding goals this task contributes to.
+                      </DialogDescription>
+                    </div>
+                    {fundingGoals.map((goal) => (
+                      <FormField
+                        key={goal.id}
+                        control={form.control}
+                        name="fundingGoalIds"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={goal.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(goal.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...(field.value || []), goal.id])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value) => value !== goal.id
+                                          )
+                                        )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                {goal.title}
+                              </FormLabel>
+                            </FormItem>
+                          )
+                        }}
+                      />
+                    ))}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={isPending}>

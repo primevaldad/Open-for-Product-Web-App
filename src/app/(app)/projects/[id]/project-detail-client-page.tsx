@@ -1283,6 +1283,8 @@ export default function ProjectDetailClientPage({
                                         projectId={project.id}
                                         addTask={handleAddTask}
                                         isMember={isMember}
+                                        isLead={isLead || currentUser?.role === 'admin'}
+                                        fundingGoals={fundingGoals}
                                     />
                             ) : (
                                 <div className="relative h-64 flex items-center justify-center">
@@ -1475,6 +1477,8 @@ export default function ProjectDetailClientPage({
                     onSave={handleUpdateTask} 
                     task={editingTask} 
                     teamMembers={users} 
+                    isLead={isLead || currentUser?.role === 'admin'}
+                    fundingGoals={fundingGoals}
                 />
             )}
             <OnboardContributorDialog 

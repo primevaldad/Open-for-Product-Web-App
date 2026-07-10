@@ -34,6 +34,8 @@ interface TaskBoardProps {
   projectId?: string;
   addTask?: (values: any) => Promise<any>;
   isMember?: boolean;
+  isLead?: boolean;
+  fundingGoals?: { id: string; title: string }[];
 }
 
 const TaskColumn = ({
@@ -47,7 +49,9 @@ const TaskColumn = ({
   canEditTask,
   projectId,
   addTask,
-  isMember
+  isMember,
+  isLead,
+  fundingGoals
 }: {
   title: string;
   status: string;
@@ -60,6 +64,8 @@ const TaskColumn = ({
   projectId?: string;
   addTask?: (values: any) => Promise<any>;
   isMember?: boolean;
+  isLead?: boolean;
+  fundingGoals?: { id: string; title: string }[];
 }) => {
   const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   
@@ -76,7 +82,13 @@ const TaskColumn = ({
             <span className="text-xs bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded-full text-gray-500 font-medium">{tasks.length}</span>
           </span>
           {isMember && projectId && addTask && (
-            <AddTaskDialog projectId={projectId} status={status as TaskStatus} addTask={addTask}>
+            <AddTaskDialog 
+              projectId={projectId} 
+              status={status as TaskStatus} 
+              addTask={addTask}
+              isLead={isLead}
+              fundingGoals={fundingGoals}
+            >
               <button 
                 type="button" 
                 className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors flex items-center justify-center cursor-pointer"
@@ -100,6 +112,7 @@ const TaskColumn = ({
                   onDelete={onDeleteTask} 
                   isSyncing={syncingTasks?.has(task.id)}
                   canEdit={canEditTask ? canEditTask(task) : false}
+                  fundingGoals={fundingGoals}
                 />
               )
             })}
@@ -109,7 +122,7 @@ const TaskColumn = ({
   );
 };
 
-export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks, canEditTask, projectId, addTask, isMember }: TaskBoardProps) {
+export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDeleteTask, onMoveTask, syncingTasks, canEditTask, projectId, addTask, isMember, isLead, fundingGoals }: TaskBoardProps) {
   // Local optimistic state
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
@@ -292,9 +305,9 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col lg:flex-row gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} />
-        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} />
-        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} />
+        <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} />
+        <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} />
+        <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} />
       </div>
 
       <DragOverlay dropAnimation={dropAnimation}>
@@ -306,6 +319,7 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
                     onEdit={() => {}} 
                     onDelete={() => {}} 
                     canEdit={true}
+                    fundingGoals={fundingGoals}
                 />
             </div>
         ) : null}

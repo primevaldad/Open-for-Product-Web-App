@@ -25,9 +25,11 @@ interface EditTaskDialogProps {
     onSave: (values: TaskFormValues) => void;
     task: Task | null; // Can be null for creating a new task
     teamMembers: User[];
+    isLead?: boolean;
+    fundingGoals?: { id: string; title: string }[];
 }
 
-export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: EditTaskDialogProps) {
+export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers, isLead, fundingGoals }: EditTaskDialogProps) {
     const isEditing = !!task;
 
     const form = useForm<TaskFormValues>({
@@ -41,6 +43,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
             estimatedHours: task?.estimatedHours || undefined,
             dueDate: task?.dueDate ? new Date(task.dueDate as string) : undefined,
             isMilestone: task?.isMilestone || false,
+            fundingGoalIds: task?.fundingGoalIds || [],
         },
     });
 
@@ -56,6 +59,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
                     estimatedHours: task.estimatedHours,
                     dueDate: task.dueDate ? new Date(task.dueDate as string) : undefined,
                     isMilestone: task.isMilestone,
+                    fundingGoalIds: task.fundingGoalIds || [],
                   }
                 : {
                     title: '',
@@ -65,6 +69,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
                     estimatedHours: undefined,
                     dueDate: undefined,
                     isMilestone: false,
+                    fundingGoalIds: [],
                   }
         );
     }, [task, form]);
@@ -76,7 +81,7 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Task' : 'Add New Task'}</DialogTitle>
                 </DialogHeader>
@@ -89,6 +94,54 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers }: E
                         <FormField control={form.control} name="estimatedHours" render={({ field }) => ( <FormItem><FormLabel>Estimated Hours</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")} >{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="isMilestone" render={({ field }) => ( <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Mark as milestone</FormLabel></div></FormItem> )} />
+                        {isLead && fundingGoals && fundingGoals.length > 0 && (
+                            <FormField
+                                control={form.control}
+                                name="fundingGoalIds"
+                                render={() => (
+                                    <FormItem>
+                                        <div className="mb-4">
+                                            <FormLabel className="text-base">Funding Goals</FormLabel>
+                                            <div className="text-[0.8rem] text-muted-foreground">Select the funding goals this task contributes to.</div>
+                                        </div>
+                                        {fundingGoals.map((goal) => (
+                                            <FormField
+                                                key={goal.id}
+                                                control={form.control}
+                                                name="fundingGoalIds"
+                                                render={({ field }) => {
+                                                    return (
+                                                        <FormItem
+                                                            key={goal.id}
+                                                            className="flex flex-row items-start space-x-3 space-y-0"
+                                                        >
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value?.includes(goal.id)}
+                                                                    onCheckedChange={(checked) => {
+                                                                        return checked
+                                                                            ? field.onChange([...(field.value || []), goal.id])
+                                                                            : field.onChange(
+                                                                                  field.value?.filter(
+                                                                                      (value) => value !== goal.id
+                                                                                  )
+                                                                              )
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <FormLabel className="font-normal">
+                                                                {goal.title}
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                    )
+                                                }}
+                                            />
+                                        ))}
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <Button type="submit">{isEditing ? 'Save Changes' : 'Create Task'}</Button>
                     </form>
                 </Form>

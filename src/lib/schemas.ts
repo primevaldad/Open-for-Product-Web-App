@@ -47,6 +47,7 @@ export const TaskSchema = z.object({
     estimatedHours: z.number().optional(),
     dueDate: z.date().optional(),
     isMilestone: z.boolean().optional(),
+    fundingGoalIds: z.array(z.string()).optional(),
 });
 
 
