@@ -47,6 +47,7 @@ import {
     getCollectionsContainingProject,
 } from '@/app/actions/collections';
 import { deletePostAction } from '@/app/actions/post';
+import { subscribeToProjectTasks, subscribeToProjectFundingGoals } from '@/lib/data.client';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
 import { LeadDashboardTab } from '@/components/projects/lead-dashboard-tab';
@@ -437,6 +438,21 @@ export default function ProjectDetailClientPage({
     }, []);
 
     const [tasks, setTasks] = useState(initialTasks);
+    const [liveFundingGoals, setLiveFundingGoals] = useState(fundingGoals);
+
+    useEffect(() => {
+        const unsubTasks = subscribeToProjectTasks(project.id, (newTasks) => {
+            setTasks(newTasks);
+        });
+        const unsubGoals = subscribeToProjectFundingGoals(project.id, (newGoals) => {
+            setLiveFundingGoals(newGoals);
+        });
+        return () => {
+            unsubTasks();
+            unsubGoals();
+        };
+    }, [project.id]);
+
     const [syncingTasks, setSyncingTasks] = useState<Set<string>>(new Set());
     const [discussions, setDiscussions] = useState(initialDiscussions);
     const [posts, setPosts] = useState(initialPosts);
@@ -540,13 +556,13 @@ export default function ProjectDetailClientPage({
 
     const selectableFundingGoals = useMemo(() => {
         const isAdmin = currentUser?.role === 'admin';
-        return fundingGoals.filter(goal => {
+        return liveFundingGoals.filter(goal => {
             if (isLead || isAdmin || isOwner) return true;
             if (isMember && (goal.visibility === 'members' || goal.visibility === 'public')) return true;
             if (goal.visibility === 'public') return true;
             return false;
         });
-    }, [fundingGoals, isLead, isMember, isOwner, currentUser]);
+    }, [liveFundingGoals, isLead, isMember, isOwner, currentUser]);
 
     const activeTabs = useMemo(() => {
         const tabs = [
@@ -1298,7 +1314,7 @@ export default function ProjectDetailClientPage({
                                         addTask={handleAddTask}
                                         isMember={isMember}
                                         isLead={isLead || currentUser?.role === 'admin'}
-                                        fundingGoals={fundingGoals}
+                                        fundingGoals={liveFundingGoals}
                                         selectableFundingGoals={selectableFundingGoals}
                                     />
                             ) : (
@@ -1436,7 +1452,7 @@ export default function ProjectDetailClientPage({
                                 currentUser={currentUser} 
                                 isLead={isLead} 
                                 parentOptions={parentOptions} 
-                                fundingGoals={fundingGoals}
+                                fundingGoals={liveFundingGoals}
                                 fundingAllocations={fundingAllocations}
                                 fundingContributions={fundingContributions}
                                 renderSection="fundry"
@@ -1466,8 +1482,8 @@ export default function ProjectDetailClientPage({
                                             {tasks.filter(t => t.title.toLowerCase().includes('blocked') || t.description?.toLowerCase().includes('blocked')).length > 0 && (
                                                 <li>There are {tasks.filter(t => t.title.toLowerCase().includes('blocked') || t.description?.toLowerCase().includes('blocked')).length} blocked tasks on the board.</li>
                                             )}
-                                            {fundingGoals.filter(g => g.fundingStatus === 'funded' && g.workStatus === 'not_started').length > 0 && (
-                                                <li>There are {fundingGoals.filter(g => g.fundingStatus === 'funded' && g.workStatus === 'not_started').length} fully funded goals ready to start.</li>
+                                            {liveFundingGoals.filter(g => g.fundingStatus === 'funded' && g.workStatus === 'not_started').length > 0 && (
+                                                <li>There are {liveFundingGoals.filter(g => g.fundingStatus === 'funded' && g.workStatus === 'not_started').length} fully funded goals ready to start.</li>
                                             )}
                                             {project.team.some(m => m.role === 'lead') ? null : (
                                                 <li>This project does not have any active leads assigned.</li>

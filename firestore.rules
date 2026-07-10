@@ -33,6 +33,14 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isTeamMember(resource);
       allow delete: if false; // Deletes are disabled for now
+
+      match /tasks/{taskId} {
+        allow read: if isSignedIn();
+      }
+
+      match /fundingGoals/{goalId} {
+        allow read: if isSignedIn();
+      }
     }
 
     // --- Users Collection ---
