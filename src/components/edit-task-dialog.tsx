@@ -92,7 +92,27 @@ export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers, isL
                         <FormField control={form.control} name="status" render={({ field }) => ( <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{TaskStatusSchema.options.map(status => ( <SelectItem key={status} value={status}>{status}</SelectItem> ))}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="assigneeId" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{teamMembers.map((member) => ( <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem> ))}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="estimatedHours" render={({ field }) => ( <FormItem><FormLabel>Estimated Hours</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")} >{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="dueDate" render={({ field }) => ( 
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Due Date</FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        type="date"
+                                        className="w-full"
+                                        value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                                        onChange={(e) => {
+                                            if (!e.target.value) {
+                                                field.onChange(undefined);
+                                            } else {
+                                                // Create date from string keeping local timezone intent
+                                                field.onChange(new Date(e.target.value + "T12:00:00"));
+                                            }
+                                        }}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
                         <FormField control={form.control} name="isMilestone" render={({ field }) => ( <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Mark as milestone</FormLabel></div></FormItem> )} />
                         {fundingGoals && fundingGoals.length > 0 && (
                             <FormField
