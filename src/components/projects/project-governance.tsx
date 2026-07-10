@@ -1745,15 +1745,30 @@ export default function ProjectGovernance({
                                                     const credits = myAllocations[goal.id] || 0;
                                                     const usdVal = credits * currentCreditValue;
 
+                                                    // Calculate my direct contribution to this goal
+                                                    const myGoalContribution = (fundingContributions || []).filter(c => 
+                                                        c.goalId === goal.id && 
+                                                        c.contributorId === currentUser?.id &&
+                                                        c.status === 'confirmed'
+                                                    ).reduce((sum, c) => sum + c.amount, 0);
+
                                                     return (
                                                         <div key={goal.id} className="space-y-1 pb-3 border-b last:border-b-0 last:pb-0">
+                                                            {myGoalContribution > 0 && (
+                                                                <div className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide mb-1">
+                                                                    Your contribution:
+                                                                </div>
+                                                            )}
                                                             <div className="flex justify-between items-center text-xs">
                                                                 <span className="font-semibold truncate max-w-[140px]" title={goal.title}>{goal.title}</span>
                                                                 <Badge variant="secondary" className="text-[10px] font-bold">
-                                                                    {credits} credits (${Math.round(usdVal)})
+                                                                    {credits} credits (+ ${Math.round(usdVal)})
                                                                 </Badge>
                                                             </div>
                                                             <div className="pt-1.5 flex items-center gap-3">
+                                                                {myGoalContribution > 0 && (
+                                                                    <span className="text-xs font-bold text-emerald-600">${myGoalContribution}</span>
+                                                                )}
                                                                 <Slider 
                                                                     value={[credits]}
                                                                     onValueChange={(val) => handleCreditChange(goal.id, val[0])}
