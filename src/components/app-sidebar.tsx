@@ -10,6 +10,7 @@ import {
   Settings,
   Library,
   Rss,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -50,6 +51,7 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
             label: "Feed",
             showIndicator: hasNewCommunityContent 
         },
+        { href: "/about", icon: <Info />, label: "About" },
     ];
 
     return (

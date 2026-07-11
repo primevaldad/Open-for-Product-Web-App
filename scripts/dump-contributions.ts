@@ -9,7 +9,7 @@ async function main() {
     
     snapshot.docs.forEach(doc => {
         const c = doc.data() as FundryContribution;
-        console.log(`ID: ${c.id}, Goal: ${c.goalId || 'pool'}, Amount: $${c.amount}, Status: ${c.status}, Source: ${c.processorName || 'manual'}`);
+        console.log(`ID: ${c.id}, Goal: ${c.goalId || 'pool'}, Amount: $${c.amount}, Status: ${c.status}, Source: ${c.processor || 'manual'}`);
     });
 }
 
