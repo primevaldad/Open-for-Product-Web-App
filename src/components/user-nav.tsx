@@ -20,7 +20,7 @@ import Link from "next/link"
 import type { User } from "@/lib/types";
 import { buildHybridUrl } from "@/lib/slug";
 import { getInitials } from "@/lib/utils";
-import { useAuth } from "@/components/auth-provider"; 
+import { useAuth } from "@/components/auth-provider";
 import { useRouter, usePathname } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/user-avatar";
@@ -32,7 +32,7 @@ interface UserNavProps {
 export function UserNav({ currentUser }: UserNavProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser: clientUser, loading, signOut } = useAuth(); 
+  const { currentUser: clientUser, loading, signOut } = useAuth();
 
   const user = clientUser || currentUser;
 
@@ -48,14 +48,17 @@ export function UserNav({ currentUser }: UserNavProps) {
   if (!user || user.role === 'guest') {
     const redirectTo = encodeURIComponent(pathname);
     return (
-        <div className="flex items-center gap-2">
-            <Link href={`/login?redirectTo=${redirectTo}`}>
-                <Button variant="ghost">Log In</Button>
-            </Link>
-            <Link href={`/signup?redirectTo=${redirectTo}`}>
-                <Button>Sign Up</Button>
-            </Link>
-        </div>
+      <div className="flex items-center gap-2">
+        <Link href="/about">
+          <Button variant="ghost">About</Button>
+        </Link>
+        <Link href={`/login?redirectTo=${redirectTo}`}>
+          <Button variant="ghost">Log In</Button>
+        </Link>
+        <Link href={`/signup?redirectTo=${redirectTo}`}>
+          <Button>Sign Up</Button>
+        </Link>
+      </div>
     );
   }
 
@@ -68,9 +71,9 @@ export function UserNav({ currentUser }: UserNavProps) {
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <UserAvatar user={user} className="h-10 w-10" badgeSize="md" />
           {hasUnread && <span className="absolute top-0 right-0 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-            </span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+          </span>
           }
         </Button>
       </DropdownMenuTrigger>
@@ -103,24 +106,24 @@ export function UserNav({ currentUser }: UserNavProps) {
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-         <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-         <DropdownMenuGroup>
-            {user.notifications && user.notifications.length > 0 ? (
-              user.notifications.slice(0, 3).map(n => (
-                <DropdownMenuItem key={n.id} className="flex items-start gap-2">
-                  <div className="w-4 pt-1">
-                    {!n.isRead && <span className="inline-flex rounded-full h-2 w-2 bg-primary"></span>}
-                  </div>
-                  <span className="flex-1 text-xs text-wrap">Notification {n.id.slice(0, 8)}</span>
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <DropdownMenuItem disabled>
-                <Bell className="mr-2 h-4 w-4" />
-                <span>No new notifications</span>
+        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          {user.notifications && user.notifications.length > 0 ? (
+            user.notifications.slice(0, 3).map(n => (
+              <DropdownMenuItem key={n.id} className="flex items-start gap-2">
+                <div className="w-4 pt-1">
+                  {!n.isRead && <span className="inline-flex rounded-full h-2 w-2 bg-primary"></span>}
+                </div>
+                <span className="flex-1 text-xs text-wrap">Notification {n.id.slice(0, 8)}</span>
               </DropdownMenuItem>
-            )}
-         </DropdownMenuGroup>
+            ))
+          ) : (
+            <DropdownMenuItem disabled>
+              <Bell className="mr-2 h-4 w-4" />
+              <span>No new notifications</span>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
