@@ -551,7 +551,7 @@ export default function ProjectDetailClientPage({
         [currentUser, project.team]
     );
 
-    const isOwner = currentUser?.id === project.owner?.id;
+    const isOwner = !!currentUser && currentUser.id === project.owner?.id;
     const showLeadDashboard = isLead || isOwner;
 
     const selectableFundingGoals = useMemo(() => {
