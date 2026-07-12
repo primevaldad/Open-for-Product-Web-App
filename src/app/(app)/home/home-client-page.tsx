@@ -108,7 +108,7 @@ const ProjectList = ({
                     currentUser={currentUser}
                     allProjectPathLinks={allProjectPathLinks}
                     allLearningPaths={allLearningPaths}
-                    priority={index < 6}
+                    priority={index < 2}
                 />
             ))}
         </div>
