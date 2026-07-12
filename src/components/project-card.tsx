@@ -95,7 +95,11 @@ export default function ProjectCard({
           <TooltipTrigger asChild>
             <Link href={profileUrl} className="pointer-events-auto relative z-30 cursor-pointer focus:outline-none block rounded-full">
               <Avatar className={cn('border-2 h-8 w-8', role === 'lead' ? 'border-yellow-500' : 'border-background')}>
-                {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
+                {user.avatarUrl && (
+                  <AvatarImage asChild src={user.avatarUrl}>
+                    <Image src={user.avatarUrl} alt={user.name || "Avatar"} fill sizes="32px" className="object-cover" />
+                  </AvatarImage>
+                )}
                 <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
               </Avatar>
             </Link>
@@ -124,7 +128,6 @@ export default function ProjectCard({
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  style={{ objectFit: "cover" }}
                   priority={priority}
                   data-ai-hint="project image"
               />

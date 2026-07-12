@@ -57,8 +57,10 @@ export default function ProjectHeader({ project, currentUser, onJoin, onLeave }:
         <Image 
           src={project.photoUrl || fallbackImage}
           alt={`${project.name} photo`}
-          layout="fill"
-          objectFit="cover"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
       </div>
       <div className="flex justify-between items-start mb-4">
