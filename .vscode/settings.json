@@ -1,3 +1,4 @@
 {
-    "IDX.aI.showChatInEditorTab": false
+    "IDX.aI.showChatInEditorTab": false,
+    "css.lint.unknownAtRules": "ignore"
 }

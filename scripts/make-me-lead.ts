@@ -15,6 +15,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import type { User } from '../src/lib/types'; // Import the User type
 
 // --- CONFIGURATION ---
 // Set this to the email address of the user you want to make a lead.
@@ -90,7 +91,7 @@ async function main() {
     }
 
     const userDoc = userSnapshot.docs[0];
-    const user = { id: userDoc.id, ...userDoc.data() };
+    const user = { id: userDoc.id, ...userDoc.data() } as User; // Apply the User type
 
     console.log(`✅ Found user: ${user.name} (ID: ${user.id})`);
 
@@ -111,7 +112,7 @@ async function main() {
     for (const projectDoc of projectsSnapshot.docs) {
         const project = projectDoc.data();
         let team = project.team || [];
-        let teamNeedsUpdate = false;
+        const teamNeedsUpdate = false;
 
         // Find the user in the team array
         const userMembership = team.find((member: any) => member.userId === user.id);

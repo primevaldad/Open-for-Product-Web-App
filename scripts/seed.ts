@@ -9,13 +9,16 @@ type User = {
     name: string;
     title: string;
     avatarUrl: string;
-    onboarded: boolean;
+    onboardingCompleted: boolean;
+    aiFeaturesEnabled: boolean;
 };
 
+// This now reflects the normalized data structure we want in the database.
+// It only stores the reference to the user (userId) and their role in the project.
 type TeamMember = {
-    id: string;
-    name: string;
-    avatarUrl: string;
+    userId: string;
+    role: 'participant' | 'lead'; // Assigning a default role
+    createdAt: string;
 };
 
 type LearningPath = {
@@ -127,7 +130,7 @@ async function main() {
     for (const u of newUsersData) {
         const snapshot = await usersCollection.where('name', '==', u.name).get();
         if (snapshot.empty) {
-            await usersCollection.add({ ...u, onboarded: true });
+            await usersCollection.add({ ...u, onboardingCompleted: true, aiFeaturesEnabled: false, createdAt: new Date().toISOString() });
             newUsersAdded++;
             console.log(`Created user: ${u.name}`);
         }
@@ -152,16 +155,16 @@ async function main() {
     for (const projectDoc of existingProjectsSnapshot.docs) {
         const project = projectDoc.data();
         const currentTeam: TeamMember[] = project.team || [];
-        const currentTeamIds = currentTeam.map((m: TeamMember) => m.id);
+        const currentTeamIds = currentTeam.map((m: TeamMember) => m.userId);
 
         const availableUsers = allUsers.filter((u: User) => !currentTeamIds.includes(u.id));
         const shuffledUsers = availableUsers.sort(() => 0.5 - Math.random());
         const numToAdd = Math.floor(Math.random() * 2) + 2; // 2 or 3
         
         const newMembers: TeamMember[] = shuffledUsers.slice(0, numToAdd).map((user: User) => ({
-            id: user.id,
-            name: user.name,
-            avatarUrl: user.avatarUrl,
+            userId: user.id,
+            role: 'participant', // Assigning a default role
+            createdAt: new Date().toISOString(),
         }));
 
         if (newMembers.length > 0) {
@@ -186,9 +189,9 @@ async function main() {
             const shuffledUsers = allUsers.sort(() => 0.5 - Math.random());
             const teamSize = Math.floor(Math.random() * 2) + 2; // 2 or 3
             const teamMembers: TeamMember[] = shuffledUsers.slice(0, teamSize).map((user: User) => ({
-                id: user.id,
-                name: user.name,
-                avatarUrl: user.avatarUrl,
+                userId: user.id,
+                role: 'participant', // Assigning a default role
+                createdAt: new Date().toISOString(),
             }));
             
             const recommendedLearningPathIds = allLearningPaths
@@ -209,7 +212,7 @@ async function main() {
                 team: teamMembers,
                 discussions: [],
                 governance: { contributorsShare: 70, communityShare: 20, sustainabilityShare: 10 },
-                recommendedLearningPaths: recommendedLearningPathIds,
+                recommendedLearningPathIds,
             });
             newProjectsCreated++;
             console.log(`Created new project: \"${p.name}\" with ${teamMembers.length} members.`);

@@ -1,85 +1,95 @@
-
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react';
 import type { User } from '@/lib/types';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, getIdToken, signInAnonymously } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { findUserById } from '@/lib/data.client';
 
-// 1. Top-level context for auth state
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
+  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({ currentUser: null, loading: true });
+const AuthContext = createContext<AuthContextType>({
+  currentUser: null,
+  loading: true,
+  signOut: async () => {},
+});
 
-// 2. Custom hook for easy access to auth state
 export const useAuth = () => useContext(AuthContext);
 
 interface AuthProviderProps {
-  serverUser: User | null;
-  children: React.ReactNode;
+  serverUser: User | null; // Prop for initial server-rendered user
+  children: ReactNode;
 }
 
-// 3. AuthProvider component to wrap the app
 export function AuthProvider({ serverUser, children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(serverUser);
   const [loading, setLoading] = useState(true);
+  const sessionErrorOccurred = useRef(false);
+  const initialLoad = useRef(true);
+
+  const signOut = useCallback(async () => {
+    try {
+      await firebaseSignOut(auth);
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Sign-out failed:', error);
+    }
+  }, []);
 
   useEffect(() => {
-    // If we have a user from the server, we can assume they are logged in.
-    if (serverUser) {
-        setCurrentUser(serverUser);
+    const handleAuthChange = async (firebaseUser: import('firebase/auth').User | null) => {
+      if (initialLoad.current && serverUser) {
         setLoading(false);
+        initialLoad.current = false;
         return;
-    }
+      }
 
-    // If there is no server user, we set up a listener to respond to client-side auth changes.
-    // This is useful for cases like signup or logout which happen entirely on the client.
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-            console.log('[CLIENT_AUTH_TRACE] onAuthStateChanged fired. User is present.');
-            // When a user logs in on the client, get their ID token
-            const idToken = await firebaseUser.getIdToken(true);
-            console.log('[CLIENT_AUTH_TRACE] ID Token retrieved. Sending to server...');
-            // and send it to the server to create a session cookie.
-            const response = await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken }),
-            });
+      if (firebaseUser) {
+        sessionErrorOccurred.current = false;
+        const token = await getIdToken(firebaseUser);
+        const sessionResponse = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: token }),
+        });
 
-            if (response.ok) {
-                console.log('[CLIENT_AUTH_TRACE] Server responded OK. Session should be created.');
-            } else {
-                console.error('[CLIENT_AUTH_TRACE] Server responded with an error:', await response.text());
-            }
-
-            // If Firebase gives us a user, we fetch our detailed user profile from our database.
-            // Note: In a real app, you might want to handle the case where findUserById returns undefined.
-            const appUser = await findUserById(firebaseUser.uid);
-            setCurrentUser(appUser || null);
+        if (sessionResponse.ok) {
+          const appUser = await findUserById(firebaseUser.uid);
+          if (appUser) {
+            appUser.emailVerified = firebaseUser.emailVerified;
+          }
+          setCurrentUser(appUser || null);
         } else {
-            console.log('[CLIENT_AUTH_TRACE] onAuthStateChanged fired. User is NOT present.');
-            // If the user logs out on the client, we must clear the server session.
-            await fetch('/api/auth/session', { method: 'DELETE' });
-            console.log('[CLIENT_AUTH_TRACE] Sent request to delete server session.');
-            
-            // Clear the user state in the context.
-            setCurrentUser(null);
+          console.error('Failed to create session, signing out:', await sessionResponse.text());
+          sessionErrorOccurred.current = true;
+          await signOut();
         }
-        setLoading(false);
-    });
+      } else {
+        setCurrentUser(null);
+        if (!sessionErrorOccurred.current) {
+            try {
+              await signInAnonymously(auth);
+            } catch (error) {
+              console.error('Automatic anonymous sign-in failed:', error);
+            }
+        }
+      }
+      setLoading(false);
+    };
 
-    // Cleanup the listener when the component unmounts
+    const unsubscribe = onAuthStateChanged(auth, handleAuthChange);
+
     return () => unsubscribe();
-  }, [serverUser]);
+  }, [serverUser, signOut]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ currentUser, loading, signOut }}>
+      {children}
     </AuthContext.Provider>
   );
 }

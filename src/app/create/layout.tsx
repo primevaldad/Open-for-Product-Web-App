@@ -19,7 +19,7 @@ export default async function CreateLayout({
     throw error;
   }
 
-  if (!currentUser.onboarded) {
+  if (!currentUser.onboardingCompleted) {
     redirect('/onboarding');
   }
 

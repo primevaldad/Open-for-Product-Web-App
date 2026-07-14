@@ -1,138 +1,231 @@
 
-import { notFound } from "next/navigation";
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { 
+    findProjectById, 
+    getDiscussionsForProject, 
+    findTasksByProjectId, 
+    getAllUsers, 
+    getRecommendedLearningPathsForProject,
+    getPostsByProject,
+    getChildProjects,
+    getProjectActivityFeed,
+    getFundingGoalsForProject,
+    getFundingAllocationsForProject,
+    getFundingContributionsForProject,
+} from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import { adminDb } from '@/lib/firebase.server';
+import { getPlatformConfigAction } from '@/app/actions/admin';
+import ProjectDetailClientPage from './project-detail-client-page';
+import type { 
+    User, 
+    Discussion,
+    HydratedProject,
+    Task,
+    LearningPath,
+    Post,
+    Activity
+} from '@/lib/types';
+import { deepSerialize } from '@/lib/utils.server';
+import { extractId } from '@/lib/slug';
 
-import ProjectDetailClientPage from "./project-detail-client-page";
-import { getAuthenticatedUser } from "@/lib/session.server";
-import {
-  findProjectById,
-  findTasksByProjectId,
-  getAllUsers,
-  getDiscussionsByProjectId,
-  getRecommendedLearningPathsForProject,
-} from "@/lib/data.server";
-import {
-  addTask,
-  addDiscussionComment,
-  addTeamMember,
-  deleteTask,
-  joinProject,
-  updateTask,
-} from "@/app/actions/projects";
-import type { Task, Project, Discussion, Tag, User, LearningPath } from "@/lib/types";
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+    const cleanId = extractId(params.id);
+    const project = await findProjectById(cleanId, null);
+    if (!project) return { title: 'Project Not Found | Open for Product' };
+    return {
+        title: `Project - ${project.name} | Open for Product`,
+        description: project.description,
+    };
+}
 
-const toISOString = (timestamp: any): string | any => {
-    if (timestamp && typeof timestamp.toDate === 'function') {
-        return timestamp.toDate().toISOString();
+interface ProjectPageData {
+    project: HydratedProject | null;
+    discussions: (Discussion & { user?: User })[];
+    tasks: Task[];
+    posts: Post[];
+    users: User[];
+    currentUser: User | null;
+    learningPaths: LearningPath[];
+    childProjects: HydratedProject[];
+    activities: Activity[];
+    isQueenEnabled: boolean;
+}
+
+async function getProjectPageData(projectId: string, inviteToken?: string): Promise<ProjectPageData> {
+    const cleanId = extractId(projectId);
+    const currentUser = await getAuthenticatedUser();
+    const [project, discussions, tasks, posts, users, childProjects, activities, configRes] = await Promise.all([
+        findProjectById(cleanId, currentUser),
+        getDiscussionsForProject(cleanId),
+        findTasksByProjectId(cleanId),
+        getPostsByProject(cleanId),
+        getAllUsers(),
+        getChildProjects(cleanId),
+        getProjectActivityFeed(cleanId),
+        getPlatformConfigAction()
+    ]);
+
+    if (!project) {
+        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [], childProjects: [], activities: [], isQueenEnabled: false };
     }
-    if (timestamp instanceof Date) {
-        return timestamp.toISOString();
+
+    // Check project visibility access
+    const projectType = project.project_type || 'public';
+    let hasAccess = false;
+
+    if (projectType === 'public') {
+        hasAccess = true;
+    } else if (projectType === 'private') {
+        const isMember = currentUser && project.team.some(member => member.userId === currentUser.id);
+        hasAccess = !!isMember;
+    } else if (projectType === 'personal') {
+        const isOwner = currentUser && project.owner?.id === currentUser.id;
+        hasAccess = !!isOwner;
     }
-    return timestamp;
-};
 
-// This is now a Server Component responsible for fetching all necessary data
-export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  // getAuthenticatedUser will redirect if the user is not logged in.
-  const rawCurrentUser = await getAuthenticatedUser();
-  const rawProjectData = await findProjectById(params.id);
+    // Bypass if there is a valid invite token
+    if (!hasAccess && inviteToken) {
+        const { adminDb } = await import('@/lib/data.server');
+        const inviteQuery = await adminDb.collection('projectInvites')
+            .where('projectId', '==', cleanId)
+            .where('token', '==', inviteToken)
+            .where('status', '==', 'pending')
+            .limit(1)
+            .get();
+        if (!inviteQuery.empty) {
+            hasAccess = true;
+        }
+    }
 
-  if (!rawProjectData) {
-    notFound();
-  }
+    if (!hasAccess) {
+        return { project: null, discussions: [], tasks: [], posts: [], users: [], currentUser: null, learningPaths: [], childProjects: [], activities: [], isQueenEnabled: false };
+    }
 
-  // Fetch all raw data
-  const [rawAllUsers, rawProjectTasksData, rawDiscussionData, rawRecommendedLearningPaths] = await Promise.all([
-    getAllUsers(),
-    findTasksByProjectId(params.id),
-    getDiscussionsByProjectId(params.id),
-    getRecommendedLearningPathsForProject(params.id),
-  ]);
+    const learningPaths = await getRecommendedLearningPathsForProject(project);
+    const usersMap = new Map(users.map((user) => [user.id, user]));
 
-  // --- SERIALIZATION --- 
-  // Convert all Firestore Timestamps to ISO strings before passing to client components
+    const hydratedDiscussions = discussions.map(discussion => {
+        const user = usersMap.get(discussion.userId);
+        return { ...discussion, user: user || null };
+    }).filter(d => d.user); // Ensure user is not null
 
-  const currentUser = {
-    ...rawCurrentUser,
-    createdAt: toISOString(rawCurrentUser.createdAt),
-    lastLogin: toISOString(rawCurrentUser.lastLogin),
-  };
+    const isMember = currentUser && (
+        currentUser.role === 'admin' ||
+        project.team?.some(member => member.userId === currentUser.id) ||
+        project.owner?.id === currentUser.id
+    );
 
-  const allUsers = rawAllUsers.map(user => ({
-    ...user,
-    createdAt: toISOString(user.createdAt),
-    lastLogin: toISOString(user.lastLogin),
-  }));
+    const filteredPosts = isMember
+        ? posts
+        : posts.filter(post => post.status !== 'draft');
 
-  const projectTasksData = rawProjectTasksData.map(task => ({
-      ...task,
-      createdAt: toISOString(task.createdAt),
-      updatedAt: toISOString(task.updatedAt),
-  }));
+    console.log('[SERVER] ProjectPage:', {
+        currentUserId: currentUser?.id,
+        currentUserRole: currentUser?.role,
+        isMember,
+        allPostsCount: posts.length,
+        filteredPostsCount: filteredPosts.length
+    });
 
-  const discussionData = rawDiscussionData.map(comment => ({
-      ...comment,
-      timestamp: toISOString(comment.timestamp),
-  }));
+    return {
+        project,
+        discussions: hydratedDiscussions as (Discussion & { user: User })[],
+        tasks,
+        posts: filteredPosts,
+        users,
+        currentUser: currentUser ?? null,
+        learningPaths,
+        childProjects,
+        activities,
+        isQueenEnabled: configRes.success && configRes.data?.defaultFeaturesEnabled?.queen ? true : false,
+    };
+}
 
-  const projectData = {
-      ...rawProjectData,
-      createdAt: toISOString(rawProjectData.createdAt),
-      updatedAt: toISOString(rawProjectData.updatedAt),
-      startDate: rawProjectData.startDate ? toISOString(rawProjectData.startDate) : undefined,
-      endDate: rawProjectData.endDate ? toISOString(rawProjectData.endDate) : undefined,
-      tags: (rawProjectData.tags || []).map(tag => ({
-          ...tag,
-          createdAt: toISOString(tag.createdAt),
-          updatedAt: toISOString(tag.updatedAt),
-      })),
-  };
+export default async function ProjectPage({ params, searchParams }: { params: { id: string }, searchParams: { inviteToken?: string, tab?: string } }) {
+    const cleanId = extractId(params.id);
+    const data = await getProjectPageData(cleanId, searchParams.inviteToken);
 
-  const recommendedLearningPaths = rawRecommendedLearningPaths.map(path => ({
-      ...path,
-      createdAt: toISOString(path.createdAt),
-      updatedAt: toISOString(path.updatedAt),
-  }));
+    if (!data.project) {
+        notFound();
+    }
 
-  // --- HYDRATION --- 
-  // Hydrate data on the server using the safe, serialized data
+    const { 
+        project, 
+        discussions, 
+        tasks, 
+        posts,
+        users, 
+        currentUser, 
+        learningPaths,
+        childProjects,
+        activities,
+        isQueenEnabled
+    } = data;
 
-  const projectTasks = projectTasksData.map(t => {
-    const assignedTo = t.assignedToId
-      ? allUsers.find((u) => u.id === t.assignedToId)
-      : undefined;
-    return { ...t, description: t.description ?? '', assignedTo };
-  }) as Task[];
+    // Fetch parent options (the direct parent project, and collections containing this project)
+    let parentProject = null;
+    if (project.parentProjectId) {
+        parentProject = await findProjectById(project.parentProjectId, null);
+    }
 
-  const hydratedTeam = projectData.team.map(member => {
-      const user = allUsers.find(u => u.id === member.userId);
-      return user ? { ...member, user } : null;
-  }).filter(Boolean) as (typeof projectData.team[0] & { user: User })[];
+    const collectionsSnap = await adminDb.collection('collections')
+        .where('memberProjectIds', 'array-contains', cleanId)
+        .get();
 
-  const hydratedDiscussions = discussionData.map(comment => {
-      const user = allUsers.find(u => u.id === comment.userId);
-      return user ? { ...comment, user } : null;
-  }).filter(Boolean) as (typeof discussionData[0] & { user: User })[];
+    const parentCollections = collectionsSnap.docs.map(doc => {
+        const docData = doc.data();
+        return {
+            id: doc.id,
+            title: docData.name || docData.title || 'Untitled Collection',
+            type: 'collection' as const
+        };
+    });
 
-  const project = {
-      ...projectData,
-      team: hydratedTeam,
-  } as Project;
+    const parentOptions = [];
+    if (parentProject) {
+        parentOptions.push({
+            id: parentProject.id,
+            title: parentProject.name,
+            type: 'project' as const
+        });
+    }
+    parentCollections.forEach(c => {
+        parentOptions.push(c);
+    });
+    // Add default platform
+    parentOptions.push({
+        id: 'platform_default',
+        title: 'Open for Product (Global Platform)',
+        type: 'platform' as const
+    });
 
+    // Fetch Fundry subcollections
+    const [fundingGoals, fundingAllocations, fundingContributions] = await Promise.all([
+        getFundingGoalsForProject(cleanId),
+        getFundingAllocationsForProject(cleanId),
+        getFundingContributionsForProject(cleanId)
+    ]);
 
-  return (
-      <ProjectDetailClientPage
-        project={project}
-        projectTasks={projectTasks}
-        projectDiscussions={hydratedDiscussions}
-        recommendedLearningPaths={recommendedLearningPaths}
-        currentUser={currentUser}
-        allUsers={allUsers}
-        joinProject={joinProject}
-        addTeamMember={addTeamMember}
-        addDiscussionComment={addDiscussionComment}
-        addTask={addTask}
-        updateTask={updateTask}
-        deleteTask={deleteTask}
-      />
-  );
+    return (
+        <ProjectDetailClientPage
+            project={deepSerialize(project)}
+            discussions={deepSerialize(discussions)}
+            tasks={deepSerialize(tasks)}
+            posts={deepSerialize(posts)}
+            users={deepSerialize(users)}
+            currentUser={deepSerialize(currentUser)}
+            learningPaths={deepSerialize(learningPaths)}
+            childProjects={deepSerialize(childProjects)}
+            activities={deepSerialize(activities)}
+            isQueenEnabled={isQueenEnabled}
+            inviteToken={searchParams.inviteToken}
+            initialTab={searchParams.tab}
+            parentOptions={deepSerialize(parentOptions)}
+            fundingGoals={deepSerialize(fundingGoals)}
+            fundingAllocations={deepSerialize(fundingAllocations)}
+            fundingContributions={deepSerialize(fundingContributions)}
+        />
+    );
 }

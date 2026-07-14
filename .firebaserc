@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "open-for-product"
+    "default": "open-for-product",
+    "dev": "open-for-product-dev",
+    "staging": "open-for-product-dev"
   }
 }

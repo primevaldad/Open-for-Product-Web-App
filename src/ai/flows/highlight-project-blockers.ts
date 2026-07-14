@@ -24,9 +24,15 @@ type HighlightProjectBlockersInput = z.infer<
   typeof HighlightProjectBlockersInputSchema
 >;
 
+const BlockerSchema = z.object({
+  title: z.string().describe('A short title for the blocker.'),
+  description: z.string().describe('A detailed description of the blocker.'),
+  riskLevel: z.string().describe('The risk level: Low, Medium, or High.'),
+});
+
 const HighlightProjectBlockersOutputSchema = z.object({
   potentialBlockers: z
-    .array(z.string())
+    .array(BlockerSchema)
     .describe('A list of potential blockers identified.'),
   dependencies: z
     .array(z.string())
@@ -36,7 +42,7 @@ const HighlightProjectBlockersOutputSchema = z.object({
     .describe('A summary of the identified blockers and dependencies.'),
 });
 
-type HighlightProjectBlockersOutput = z.infer<
+export type HighlightProjectBlockersOutput = z.infer<
   typeof HighlightProjectBlockersOutputSchema
 >;
 

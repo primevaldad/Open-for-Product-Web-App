@@ -1,42 +1,39 @@
-# Dependencies
+
+# Local environment variables
+.env*
+
+# Secrets (e.g. keys)
+service-account-key.json
+serviceAccountKey.json
+/src/lib/serviceAccountKey.json
+
+# dependencies
 /node_modules
 /.pnp
 .pnp.js
 
-# Testing
-/coverage
-
-# Next.js build output
-/.next/
-/out/
-
-# Production
-/build
-
-# d.ts files
-*.d.ts
-
-# Vercel
-.vercel
-
-# Local Environment Variables
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Log files
+# debug
+firebase-debug.log*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Genkit
-.genkit-cache/
+# Build and Production
+/.next/
+/out/
+/build
+
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+
+# Testing
+/coverage
 
 # Other
 .DS_Store
-*.tsbuildinfo
 *.pem
-
-# Service account key
-/src/lib/serviceAccountKey.json

@@ -1,0 +1,89 @@
+
+> nextn@0.1.0 typecheck
+> tsc --noEmit
+
+src/__tests__/home-client-page.test.tsx(7,32): error TS2305: Module '"@/lib/types"' has no exported member 'Tag'.
+src/__tests__/home-client-page.test.tsx(26,3): error TS2322: Type 'Date' is not assignable to type 'string | Timestamp'.
+  Type 'Date' is missing the following properties from type 'Timestamp': seconds, nanoseconds, toDate, toMillis, isEqual
+src/__tests__/home-client-page.test.tsx(27,3): error TS2322: Type 'Date' is not assignable to type 'string | Timestamp'.
+  Type 'Date' is missing the following properties from type 'Timestamp': seconds, nanoseconds, toDate, toMillis, isEqual
+src/__tests__/home-client-page.test.tsx(40,23): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type 'ProjectTag'.
+src/__tests__/home-client-page.test.tsx(41,43): error TS2322: Type '"owner"' is not assignable to type '"lead" | "contributor" | "participant"'.
+src/__tests__/home-client-page.test.tsx(42,5): error TS2322: Type 'Date' is not assignable to type 'string | Timestamp'.
+  Type 'Date' is missing the following properties from type 'Timestamp': seconds, nanoseconds, toDate, toMillis, isEqual
+src/__tests__/home-client-page.test.tsx(50,23): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type 'ProjectTag'.
+src/__tests__/home-client-page.test.tsx(51,59): error TS2322: Type '"owner"' is not assignable to type '"lead" | "contributor" | "participant"'.
+src/__tests__/home-client-page.test.tsx(52,5): error TS2322: Type 'Date' is not assignable to type 'string | Timestamp'.
+  Type 'Date' is missing the following properties from type 'Timestamp': seconds, nanoseconds, toDate, toMillis, isEqual
+src/__tests__/home-client-page.test.tsx(64,8): error TS2739: Type '{ allPublishedProjects: HydratedProject[]; currentUser: User; allTags: Tag[]; allProjectPathLinks: undefined[]; allLearningPaths: undefined[]; }' is missing the following properties from type 'HomeClientPageProps': suggestedProjects, aiEnabled
+src/ai/flows/highlight-project-blockers.ts(12,17): error TS2307: Cannot find module 'genkit' or its corresponding type declarations.
+src/ai/flows/suggest-next-steps.ts(12,17): error TS2307: Cannot find module 'genkit' or its corresponding type declarations.
+src/ai/flows/summarize-project-progress.ts(12,17): error TS2307: Cannot find module 'genkit' or its corresponding type declarations.
+src/ai/genkit.ts(2,24): error TS2307: Cannot find module 'genkit' or its corresponding type declarations.
+src/ai/genkit.ts(3,26): error TS2307: Cannot find module '@genkit-ai/googleai' or its corresponding type declarations.
+src/app/(app)/learning/[pathId]/[moduleId]/learning-module-client-page.tsx(126,21): error TS2339: Property 'videoUrl' does not exist on type 'Module'.
+src/app/(app)/learning/[pathId]/[moduleId]/learning-module-client-page.tsx(129,37): error TS2339: Property 'videoUrl' does not exist on type 'Module'.
+src/app/(app)/learning/[pathId]/[moduleId]/learning-module-client-page.tsx(140,46): error TS2339: Property 'description' does not exist on type 'Module'.
+src/app/(app)/learning/[pathId]/[moduleId]/learning-module-client-page.tsx(143,32): error TS2339: Property 'content' does not exist on type 'Module'.
+src/app/(app)/profile/[id]/profile-client-page.tsx(152,24): error TS2322: Type 'ProfileTag' is not assignable to type 'Key'.
+src/app/(app)/profile/[id]/profile-client-page.tsx(153,19): error TS2322: Type 'ProfileTag' is not assignable to type 'ReactNode'.
+src/app/(app)/projects/[id]/edit/__tests__/edit-project-form.test.tsx(34,5): error TS2353: Object literal may only specify known properties, and 'category' does not exist in type 'Project'.
+src/app/(app)/projects/[id]/edit/__tests__/edit-project-form.test.tsx(54,51): error TS2322: Type '{ project: Project; updateProject: Mock<any, any, any>; }' is not assignable to type 'IntrinsicAttributes & EditProjectFormProps'.
+  Property 'updateProject' does not exist on type 'IntrinsicAttributes & EditProjectFormProps'.
+src/app/(app)/projects/[id]/edit/edit-project-form.tsx(3,21): error TS2305: Module '"@/lib/types"' has no exported member 'Tag'.
+src/app/(app)/projects/[id]/edit/page.tsx(3,24): error TS2305: Module '"@/lib/types"' has no exported member 'Tag'.
+src/app/(app)/settings/page.tsx(9,21): error TS2305: Module '"@/lib/types"' has no exported member 'Tag'.
+src/app/(app)/settings/page.tsx(50,34): error TS2339: Property 'message' does not exist on type 'PageDataResponse'.
+  Property 'message' does not exist on type 'SuccessResponse'.
+src/app/(app)/settings/page.tsx(53,43): error TS2339: Property 'message' does not exist on type 'PageDataResponse'.
+  Property 'message' does not exist on type 'SuccessResponse'.
+src/app/actions/learning.ts(41,42): error TS2345: Argument of type '{ userId?: string; pathId?: string; moduleId?: string; completed?: boolean; }' is not assignable to parameter of type '{ userId: string; pathId: string; moduleId: string; completed: boolean; }'.
+  Property 'userId' is optional in type '{ userId?: string; pathId?: string; moduleId?: string; completed?: boolean; }' but required in type '{ userId: string; pathId: string; moduleId: string; completed: boolean; }'.
+src/app/actions/roles.ts(14,27): error TS2554: Expected 2 arguments, but got 1.
+src/app/actions/roles.ts(20,27): error TS2554: Expected 2 arguments, but got 1.
+src/app/actions/roles.ts(36,17): error TS2353: Object literal may only specify known properties, and 'message' does not exist in type 'Omit<Notification, "id">'.
+src/app/create/create-project-form.tsx(3,21): error TS2305: Module '"@/lib/types"' has no exported member 'Tag'.
+src/app/create/page.tsx(5,15): error TS2305: Module '"@/lib/types"' has no exported member 'Tag'.
+src/app/create/page.tsx(32,34): error TS2339: Property 'error' does not exist on type 'CreateProjectPageDataResponse'.
+  Property 'error' does not exist on type 'CreateProjectPageDataSuccess'.
+src/app/create/page.tsx(35,43): error TS2339: Property 'error' does not exist on type 'CreateProjectPageDataResponse'.
+  Property 'error' does not exist on type 'CreateProjectPageDataSuccess'.
+src/app/signup/page.tsx(94,17): error TS2339: Property 'code' does not exist on type 'unknown'.
+src/app/signup/page.tsx(96,24): error TS2339: Property 'code' does not exist on type 'unknown'.
+src/app/signup/page.tsx(98,24): error TS2339: Property 'code' does not exist on type 'unknown'.
+src/components/ai/summarize-progress.tsx(27,107): error TS2339: Property 'discussions' does not exist on type 'Project'.
+src/components/learning-module-list-item.tsx(27,33): error TS2339: Property 'description' does not exist on type 'Module'.
+src/components/module-accordion.tsx(30,71): error TS2339: Property 'description' does not exist on type 'Module & { order: number; }'.
+src/components/module-accordion.tsx(31,47): error TS2339: Property 'content' does not exist on type 'Module & { order: number; }'.
+src/components/projects/project-form.tsx(27,21): error TS2305: Module '"@/lib/types"' has no exported member 'Tag'.
+src/components/projects/project-form.tsx(75,29): error TS2345: Argument of type 'string | FirebaseFirestore.Timestamp' is not assignable to parameter of type 'string | import("/Users/david/Documents/Open for Product/Open for Product Web App/node_modules/@firebase/firestore/dist/index").Timestamp'.
+  Type 'Timestamp' is not assignable to type 'string | Timestamp'.
+    Property 'toJSON' is missing in type 'FirebaseFirestore.Timestamp' but required in type 'import("/Users/david/Documents/Open for Product/Open for Product Web App/node_modules/@firebase/firestore/dist/index").Timestamp'.
+src/components/projects/project-form.tsx(76,29): error TS2345: Argument of type 'string | FirebaseFirestore.Timestamp' is not assignable to parameter of type 'string | import("/Users/david/Documents/Open for Product/Open for Product Web App/node_modules/@firebase/firestore/dist/index").Timestamp'.
+  Type 'Timestamp' is not assignable to type 'string | Timestamp'.
+    Property 'toJSON' is missing in type 'FirebaseFirestore.Timestamp' but required in type 'import("/Users/david/Documents/Open for Product/Open for Product Web App/node_modules/@firebase/firestore/dist/index").Timestamp'.
+src/components/projects/project-form.tsx(152,27): error TS2345: Argument of type 'ProjectTag[]' is not assignable to parameter of type 'objectOutputType<{ id: ZodString; display: ZodString; isCategory: ZodBoolean; }, ZodTypeAny, "passthrough">[]'.
+  Type 'ProjectTag' is not assignable to type 'objectOutputType<{ id: ZodString; display: ZodString; isCategory: ZodBoolean; }, ZodTypeAny, "passthrough">'.
+    Type 'ProjectTag' is not assignable to type '{ [k: string]: unknown; }'.
+      Index signature for type 'string' is missing in type 'ProjectTag'.
+src/components/task-card.tsx(44,46): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | Timestamp' is not assignable to parameter of type 'string | number | Date'.
+      Type 'Timestamp' is not assignable to type 'string | number | Date'.
+        Type 'Timestamp' is missing the following properties from type 'Date': toDateString, toTimeString, toLocaleDateString, toLocaleTimeString, and 37 more.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | Timestamp' is not assignable to parameter of type 'string | number'.
+      Type 'Timestamp' is not assignable to type 'string | number'.
+src/components/theme-provider.tsx(6,41): error TS2307: Cannot find module 'next-themes/dist/types' or its corresponding type declarations.
+src/components/ui/calendar.tsx(57,9): error TS2353: Object literal may only specify known properties, and 'IconLeft' does not exist in type 'Partial<CustomComponents>'.
+src/components/user-nav.tsx(58,66): error TS2339: Property 'read' does not exist on type 'Notification'.
+src/components/user-nav.tsx(107,31): error TS2339: Property 'link' does not exist on type 'Notification'.
+src/components/user-nav.tsx(110,27): error TS2339: Property 'read' does not exist on type 'Notification'.
+src/components/user-nav.tsx(112,67): error TS2339: Property 'message' does not exist on type 'Notification'.
+src/lib/hardcoded-project.ts(14,41): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'ProjectTag'.
+src/lib/hardcoded-project.ts(15,38): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'ProjectTag'.
+src/lib/hardcoded-project.ts(16,48): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'ProjectTag'.
+src/lib/hardcoded-project.ts(17,52): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'ProjectTag'.
+src/lib/hardcoded-project.ts(18,44): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'ProjectTag'.
+src/lib/static-data.ts(2,15): error TS2305: Module '"./types"' has no exported member 'Interest'.
+src/lib/static-data.ts(2,25): error TS2305: Module '"./types"' has no exported member 'ProjectCategory'.

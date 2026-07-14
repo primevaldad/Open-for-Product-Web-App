@@ -108,6 +108,16 @@ const SidebarProvider = React.forwardRef<
           event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
           (event.metaKey || event.ctrlKey)
         ) {
+          // If the focus is on an input, textarea or contenteditable, skip the toggle
+          const target = event.target as HTMLElement
+          if (
+            target.closest("input") ||
+            target.closest("textarea") ||
+            target.isContentEditable
+          ) {
+            return
+          }
+
           event.preventDefault()
           toggleSidebar()
         }
@@ -205,7 +215,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className="w-[--sidebar-width] bg-background p-0 text-sidebar-foreground [&>button]:hidden"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -269,7 +279,7 @@ const Sidebar = React.forwardRef<
 )
 Sidebar.displayName = "Sidebar"
 
-const SidebarTrigger = React.forwardRef<
+const SidebarToggle = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
@@ -281,7 +291,7 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      className={cn("h-7 w-7 text-primary", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -293,7 +303,7 @@ const SidebarTrigger = React.forwardRef<
     </Button>
   )
 })
-SidebarTrigger.displayName = "SidebarTrigger"
+SidebarToggle.displayName = "SidebarToggle"
 
 const SidebarRail = React.forwardRef<
   HTMLButtonElement,
@@ -661,9 +671,9 @@ const SidebarMenuSkeleton = React.forwardRef<
   }
 >(({ className, showIcon = false, ...props }, ref) => {
   // Random width between 50 to 90%.
-  const width = React.useMemo(() => {
+const [width] = React.useState(`${Math.floor(Math.random() * 40) + 50}%`)
     return `${Math.floor(Math.random() * 40) + 50}%`
-  }, [])
+ 
 
   return (
     <div
@@ -768,6 +778,6 @@ export {
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,
-  SidebarTrigger,
+  SidebarToggle,
   useSidebar,
 }

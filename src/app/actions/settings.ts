@@ -1,77 +1,110 @@
-
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserById, updateUser as updateUserInDb } from '@/lib/data.server';
-import { adminApp } from '@/lib/firebase.server';
-import { getAuth } from 'firebase-admin/auth';
+import { randomUUID } from 'crypto';
+import { findUserById, getAllTags } from '@/lib/data.server';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import { adminAuth, adminStorage } from '@/lib/firebase.server';
+import { deepSerialize } from '@/lib/utils.server';
+import { updateUser } from './user';
+import type { User, GlobalTag } from '@/lib/types';
 
 const UserSettingsSchema = z.object({
-  id: z.string(),
   name: z.string().min(1, { message: "Name is required." }),
-  bio: z.string().optional(),
-  avatarDataUrl: z.string().optional().nullable(),
-  email: z.string().email({ message: "Please enter a valid email."}),
-  password: z.string().min(6, { message: "Password must be at least 6 characters."}).optional().or(z.literal('')),
-  passwordConfirmation: z.string().optional(),
-}).refine(data => {
-    if (data.password && data.password !== data.passwordConfirmation) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Passwords do not match",
-    path: ["passwordConfirmation"],
+  username: z.string().min(3, 'Username must be at least 3 characters').or(z.literal('')).optional(),
+  bio: z.string().max(2000, 'Bio must not be longer than 2000 characters.').optional(),
+  interests: z.array(z.union([
+    z.string(),
+    z.object({ id: z.string(), display: z.string() })
+  ])).optional(),
+  company: z.string().optional(),
+  location: z.string().optional(),
+  website: z.string().optional(),
+  steemUsername: z.string().optional(),
+  steemFeedPreference: z.enum(['all', 'blog', 'none']).optional(),
+  steemTestnetEnabled: z.boolean().optional(),
+  steemIconOverlay: z.boolean().optional(),
+  aiFeaturesEnabled: z.boolean().optional(),
 });
+
 
 const OnboardingSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1, { message: 'User ID is required.' }),
   name: z.string().min(1, { message: 'Name is required.' }),
   bio: z.string().optional(),
-  interests: z.array(z.string()).min(1, { message: 'Please select at least one interest.' }),
+  interests: z.array(z.union([
+    z.string(),
+    z.object({ id: z.string(), display: z.string() })
+  ])).min(1, { message: 'Please select at least one interest.' }),
 });
 
-export async function updateUserSettings(values: z.infer<typeof UserSettingsSchema>) {
-  const validatedFields = UserSettingsSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    const zodError = validatedFields.error;
-    const confirmationError = zodError.errors.find(e => e.path.includes('passwordConfirmation'));
-
-    return {
-      success: false,
-      error: confirmationError ? confirmationError.message : "Invalid data provided.",
-    };
-  }
-
-  const { id, name, bio, avatarDataUrl, email, password } = validatedFields.data;
-
+export async function getSettingsPageData() {
+  'use server';
   try {
-    const user = await findUserById(id);
+    const user = await getAuthenticatedUser();
+
     if (!user) {
-        return { success: false, error: "User not found." };
+      return deepSerialize({ success: false, message: 'User not authenticated.' });
     }
+    
+    const allTags = await getAllTags();
 
-    user.name = name;
-    user.bio = bio;
-    user.email = email;
-
-    if (avatarDataUrl) {
-      user.avatarUrl = avatarDataUrl;
-    }
-
-    await updateUserInDb(user);
-
-    if (password) {
-        await getAuth(adminApp).updateUser(id, { password });
-    }
-
-    revalidatePath('/', 'layout');
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "An unexpected error occurred." };
+    return deepSerialize({
+      success: true,
+      user,
+      allTags,
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return deepSerialize({
+      success: false,
+      error: `Failed to load settings data: ${errorMessage}`,
+    });
   }
+}
+
+export async function updateUserSettings(values: z.infer<typeof UserSettingsSchema>) {
+    const validatedFields = UserSettingsSchema.safeParse(values);
+    
+    if (!validatedFields.success) {
+        return {
+            success: false,
+            error: "Invalid data provided.",
+        };
+    }
+
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) {
+            return { success: false, error: "User not found." };
+        }
+        
+        // Use the centralized updateUser action
+        const result = await updateUser(currentUser.id, validatedFields.data as any);
+
+        if (!result.success) {
+            return { success: false, error: result.error };
+        }
+
+        // Also update Firebase Auth if name has changed
+        if (validatedFields.data.name) {
+            await adminAuth.updateUser(currentUser.id, {
+                displayName: validatedFields.data.name
+            });
+        }
+
+        return { success: true };
+    } catch (error) {
+        let errorMessage = "An unexpected error occurred.";
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+            errorMessage = (error as any).message;
+        }
+        return { success: false, error: errorMessage };
+    }
 }
 
 export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSchema>) {
@@ -88,14 +121,78 @@ export async function updateOnboardingInfo(values: z.infer<typeof OnboardingSche
     return { success: false, error: "User not found." };
   }
 
-  user.name = name;
-  user.bio = bio;
-  user.interests = interests;
-  user.onboarded = true;
+  // Use the centralized updateUser action
+  const result = await updateUser(id, {
+    name,
+    bio,
+    interests: interests as any,
+    onboardingCompleted: true,
+  });
 
-  await updateUserInDb(user);
-
-  revalidatePath('/', 'layout');
+  if (!result.success) {
+      return { success: false, error: result.error };
+  }
 
   return { success: true };
+}
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+
+export async function uploadAvatarAction(base64DataUrl: string): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
+  try {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      return { success: false, error: 'Not authenticated.' };
+    }
+
+    // --- Validate ---
+    if (!base64DataUrl.startsWith('data:image/')) {
+      return { success: false, error: 'Invalid image format.' };
+    }
+    const [header, base64Data] = base64DataUrl.split(',');
+    if (!base64Data) {
+      return { success: false, error: 'Invalid image data.' };
+    }
+    const mimeMatch = header.match(/data:(image\/[a-zA-Z+]+);base64/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.byteLength > MAX_AVATAR_BYTES) {
+      return { success: false, error: 'Image is too large. Maximum size is 5MB.' };
+    }
+
+    // --- Upload to Firebase Storage ---
+    const downloadToken = randomUUID();
+    const filePath = `avatars/${currentUser.id}/avatar.png`;
+    const file = adminStorage.file(filePath);
+    await file.save(buffer, {
+      metadata: {
+        contentType: mimeType,
+        metadata: {
+          uploadedBy: currentUser.id,
+          firebaseStorageDownloadTokens: downloadToken,
+        },
+      },
+    });
+
+    // Get the standard Firebase Storage Download URL format
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${adminStorage.name}/o/${encodeURIComponent(
+      filePath
+    )}?alt=media&token=${downloadToken}`;
+    
+    // Append cache-bust so browsers reload the image after update
+    const avatarUrl = `${publicUrl}&v=${Date.now()}`;
+
+    // --- Persist to Firestore and Firebase Auth ---
+    const updateResult = await updateUser(currentUser.id, { avatarUrl });
+    if (!updateResult.success) {
+      return { success: false, error: updateResult.error };
+    }
+    await adminAuth.updateUser(currentUser.id, { photoURL: publicUrl });
+
+    revalidatePath('/', 'layout');
+    return { success: true, avatarUrl };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    return { success: false, error: msg };
+  }
 }

@@ -2,20 +2,21 @@
 'use client';
 
 import {
-  Activity,
   BookOpen,
   FilePlus2,
   FolderKanban,
   Home,
+  Layers,
   Settings,
   Library,
+  Rss,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { User } from "@/lib/types";
+import { buildHybridUrl } from "@/lib/slug";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -23,65 +24,77 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import { Logo } from "./logo";
+import { UserAvatar } from "./user-avatar";
 
 interface AppSidebarProps {
     user: User;
+    hasNewCommunityContent?: boolean;
 }
 
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
     const pathname = usePathname();
+    const { setOpenMobile } = useSidebar();
 
     const menuItems = [
-        { href: "/home", icon: <Home />, label: "Home" },
+        { href: "/projects", icon: <Home />, label: "Projects" },
         { href: "/create", icon: <FilePlus2 />, label: "Create Project" },
         { href: "/drafts", icon: <FolderKanban />, label: "Drafts" },
+        { href: "/collections", icon: <Layers />, label: "Collections" },
         { href: "/learning", icon: <BookOpen />, label: "Learning Paths" },
         { href: "/resources", icon: <Library />, label: "Free Resources" },
-        { href: "/activity", icon: <Activity />, label: "Activity" },
+        { 
+            href: "/feed", 
+            icon: <Rss />, 
+            label: "Feed",
+            showIndicator: hasNewCommunityContent 
+        },
+        { href: "/about", icon: <Info />, label: "About" },
     ];
 
     return (
         <Sidebar className="border-r" collapsible="icon">
-            <SidebarHeader className="p-4">
-                <Link href="/home" className="flex items-center gap-3">
-                    <Image src="/logo.png" alt="Open for Product Logo" width={100} height={100} className="shrink-0" />
-                    <span className="text-lg font-semibold text-sidebar-foreground">Open for Product</span>
+            <SidebarHeader className="px-4 py-2">
+                <Link href="/projects" className="flex items-center gap-3">
+                    <Logo />
+                    <span className="text-lg font-semibold text-sidebar-foreground text-nowrap">Open for Product</span>
                 </Link>
             </SidebarHeader>
             <SidebarContent className="p-4 pt-0">
                 <SidebarMenu>
-                    {menuItems.map((item) => (
+                    {menuItems.map((item: any) => (
                         <SidebarMenuItem key={item.href}>
-                            <Link href={item.href}>
-                                <SidebarMenuButton isActive={pathname === item.href}>
+                            <Link href={item.href} onClick={() => setOpenMobile(false)}>
+                                <SidebarMenuButton isActive={pathname === item.href} className="relative">
                                     {item.icon}
                                     {item.label}
+                                    {item.showIndicator && (
+                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-blue-500" title="New community updates" />
+                                    )}
                                 </SidebarMenuButton>
                             </Link>
                         </SidebarMenuItem>
                     ))}
                     <SidebarMenuItem>
-                        <Link href={`/profile/${user.id}`}>
+                        <Link href={buildHybridUrl('/profile', user.id, user.username || user.name)} onClick={() => setOpenMobile(false)}>
                             <SidebarMenuButton isActive={pathname.startsWith('/profile')}>
-                                <Avatar className="size-5">
-                                    <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                    <AvatarFallback>
-                                        {user.name.charAt(0)}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <UserAvatar user={user} className="size-5" badgeSize="sm" />
                                 Profile
                             </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <Link href="/settings">
-                            <SidebarMenuButton isActive={pathname.startsWith('/settings')}>
-                                <Settings />
-                                Settings
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
+                    {user?.role === 'admin' && (
+                        <SidebarMenuItem>
+                            <Link href="/admin" onClick={() => setOpenMobile(false)}>
+                                <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
+                                    <Settings />
+                                    Settings
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )}
                 </SidebarMenu>
             </SidebarContent>
         </Sidebar>

@@ -24,7 +24,7 @@ export function SummarizeProgress({ project }: SummarizeProgressProps) {
       setSummary(null);
       const res = await summarizeProjectProgress({
         projectName: project.name,
-        recentActivity: `The project is currently at ${project.progress}% completion. There are ${project.discussions.length} active discussion threads. Key recent activities include finalizing the initial design mockups and setting up the development environment.`
+        recentActivity: `The project is currently at ${project.progress ?? 0}% completion. Key recent activities include reviewing contributions and iterating on the project roadmap.`
       });
       setSummary(res.summary);
     } catch (e) {
@@ -42,7 +42,7 @@ export function SummarizeProgress({ project }: SummarizeProgressProps) {
           <Sparkles className="text-primary" />
           AI Summary
         </CardTitle>
-        <CardDescription>Get a quick overview of the project's current status.</CardDescription>
+        <CardDescription>Get a quick overview of the project&apos;s current status.</CardDescription>
       </CardHeader>
       <CardContent>
         {summary && (

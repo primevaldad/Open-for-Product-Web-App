@@ -1,28 +1,34 @@
+import type { Metadata } from 'next';
 
-import OnboardingForm from "./onboarding-form";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { updateOnboardingInfo } from "../actions/settings";
-import { getAuthenticatedUser } from "@/lib/session.server"; // Corrected import
+export const metadata: Metadata = {
+  title: 'Onboarding | Open for Product',
+};
+
+import { OnboardingForm } from "./onboarding-form";
+import { getAuthenticatedUser } from "@/lib/session.server";
 import { redirect } from "next/navigation";
+import { getAllTags } from "@/lib/data.server";
 import type { User } from '@/lib/types';
 
-
-// This is now a Server Component that fetches data and passes it down.
 export default async function OnboardingPage() {
-  const currentUser = await getAuthenticatedUser() as User; // Corrected function call
+  const currentUser = await getAuthenticatedUser() as User;
 
   if (!currentUser) {
     redirect('/login');
   }
 
-  // If the currently simulated user is already onboarded, redirect them away.
-  if (currentUser?.onboarded) {
-    redirect('/home');
+  if (currentUser?.onboardingCompleted) {
+    redirect('/projects');
   }
+
+  const allTags = await getAllTags();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <OnboardingForm newUser={currentUser} updateOnboardingInfo={updateOnboardingInfo} />
+        <OnboardingForm 
+          user={currentUser} 
+          allTags={allTags}
+        />
     </div>
   );
 }

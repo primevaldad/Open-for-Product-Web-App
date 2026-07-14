@@ -1,249 +1,171 @@
-
 'use client';
 
-import { useState, useTransition, type PropsWithChildren } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import type { ProjectMember, Task, TaskStatus } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
-import type { deleteTask, updateTask } from '@/app/actions/projects';
-import { Trash } from 'lucide-react';
+import { useEffect } from 'react';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import type { Task, User } from "@/lib/types";
+import { TaskSchema, type TaskFormValues, TaskStatusSchema } from '@/lib/schemas';
+import { MarkdownEditor } from '@/components/markdown-editor';
 
-interface EditTaskDialogProps extends PropsWithChildren {
-  task: Task;
-  isTeamMember: boolean;
-  projectTeam: ProjectMember[];
-  updateTask: typeof updateTask;
-  deleteTask: typeof deleteTask;
+interface EditTaskDialogProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (values: TaskFormValues) => void;
+    task: Task | null; // Can be null for creating a new task
+    teamMembers: User[];
+    isLead?: boolean;
+    fundingGoals?: { id: string; title: string }[];
 }
 
-const TaskSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  title: z.string().min(1, "Title is required."),
-  description: z.string().optional(),
-  status: z.enum(["To Do", "In Progress", "Done"]),
-  assignedToId: z.string().optional().nullable(),
-  estimatedHours: z.coerce.number().optional(),
-});
+export function EditTaskDialog({ isOpen, onClose, onSave, task, teamMembers, isLead, fundingGoals }: EditTaskDialogProps) {
+    const isEditing = !!task;
 
-type TaskFormValues = z.infer<typeof TaskSchema>;
+    const form = useForm<TaskFormValues>({
+        resolver: zodResolver(TaskSchema),
+        defaultValues: {
+            id: task?.id,
+            title: task?.title || '',
+            description: task?.description || '',
+            status: task?.status || 'To Do',
+            assigneeId: task?.assignedToId || undefined,
+            estimatedHours: task?.estimatedHours || undefined,
+            dueDate: task?.dueDate ? new Date(task.dueDate as string) : undefined,
+            isMilestone: task?.isMilestone || false,
+            fundingGoalIds: task?.fundingGoalIds || [],
+        },
+    });
 
-const taskStatuses: TaskStatus[] = ["To Do", "In Progress", "Done"];
+    useEffect(() => {
+        form.reset(
+            task
+                ? { 
+                    id: task.id,
+                    title: task.title,
+                    description: task.description,
+                    status: task.status,
+                    assigneeId: task.assignedToId,
+                    estimatedHours: task.estimatedHours,
+                    dueDate: task.dueDate ? new Date(task.dueDate as string) : undefined,
+                    isMilestone: task.isMilestone,
+                    fundingGoalIds: task.fundingGoalIds || [],
+                  }
+                : {
+                    title: '',
+                    description: '',
+                    status: 'To Do',
+                    assigneeId: undefined,
+                    estimatedHours: undefined,
+                    dueDate: undefined,
+                    isMilestone: false,
+                    fundingGoalIds: [],
+                  }
+        );
+    }, [task, form]);
 
-export function EditTaskDialog({ task, isTeamMember, projectTeam, updateTask, deleteTask, children }: EditTaskDialogProps) {
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [isDeletePending, startDeleteTransition] = useTransition();
-  const [isOpen, setIsOpen] = useState(false);
-
-  const form = useForm<TaskFormValues>({
-    resolver: zodResolver(TaskSchema),
-    defaultValues: {
-      id: task.id,
-      projectId: task.projectId,
-      title: task.title,
-      description: task.description ?? '',
-      status: task.status,
-      assignedToId: task.assignedTo?.id ?? 'unassigned',
-      estimatedHours: task.estimatedHours ?? 0,
-    },
-  });
-
-  const onSubmit = (values: TaskFormValues) => {
-    if (!isTeamMember) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Only team members can edit tasks.' });
-      return;
+    function onSubmit(values: TaskFormValues) {
+        onSave(values);
+        onClose(); 
     }
 
-    startTransition(async () => {
-      // Handle "unassigned" case
-      const submissionValues = {
-        ...values,
-        assignedToId: values.assignedToId === 'unassigned' ? undefined : values.assignedToId,
-      };
-
-      const result = await updateTask(submissionValues);
-      if (result?.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      } else {
-        toast({ title: 'Task Updated!', description: 'Your changes have been saved.' });
-        setIsOpen(false);
-      }
-    });
-  };
-
-  const handleDelete = () => {
-    startDeleteTransition(async () => {
-        const result = await deleteTask({ id: task.id, projectId: task.projectId });
-        if (result?.error) {
-            toast({ variant: 'destructive', title: 'Error', description: result.error });
-        } else {
-            toast({ title: 'Task Deleted', description: 'The task has been removed.' });
-            setIsOpen(false);
-        }
-    });
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild disabled={!isTeamMember} onClick={() => setIsOpen(true)}>
-        {children}
-      </DialogTrigger>
-      {isOpen && (
-        <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-            <DialogDescription>
-                Update task details, reassign, or change its status.
-            </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                        <Input {...field} placeholder="e.g., Design the homepage" />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                        <Textarea {...field} placeholder="Add more details about the task..." />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {taskStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="assignedToId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Assigned To</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value || 'unassigned'}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Assign to a member" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="unassigned">Unassigned</SelectItem>
-                                {projectTeam.map(member => (
-                                    <SelectItem key={member.user.id} value={member.user.id}>
-                                        {member.user.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </div>
-                <FormField
-                    control={form.control}
-                    name="estimatedHours"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Estimated Hours</FormLabel>
-                        <FormControl>
-                            <Input type="number" {...field} placeholder="0" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <DialogFooter className="pt-4">
-                <div className="flex justify-between w-full">
-                    <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button type="button" variant="destructive" disabled={isDeletePending}>
-                        <Trash className="mr-2 h-4 w-4" />
-                        {isDeletePending ? 'Deleting...' : 'Delete'}
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the task.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete}>Confirm</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                    </AlertDialog>
-
-                    <div className="flex gap-2">
-                    <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                    </div>
-                </div>
-                </DialogFooter>
-            </form>
-            </Form>
-        </DialogContent>
-      )}
-    </Dialog>
-  );
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>{isEditing ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><MarkdownEditor value={field.value || ''} onChange={field.onChange} placeholder="Add more details about the task..." /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="status" render={({ field }) => ( <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{TaskStatusSchema.options.map(status => ( <SelectItem key={status} value={status}>{status}</SelectItem> ))}</SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="assigneeId" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{teamMembers.map((member) => ( <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem> ))}</SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="estimatedHours" render={({ field }) => ( <FormItem><FormLabel>Estimated Hours</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="dueDate" render={({ field }) => ( 
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Due Date</FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        type="date"
+                                        className="w-full"
+                                        value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                                        onChange={(e) => {
+                                            if (!e.target.value) {
+                                                field.onChange(undefined);
+                                            } else {
+                                                // Create date from string keeping local timezone intent
+                                                field.onChange(new Date(e.target.value + "T12:00:00"));
+                                            }
+                                        }}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="isMilestone" render={({ field }) => ( <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Mark as milestone</FormLabel></div></FormItem> )} />
+                        {fundingGoals && fundingGoals.length > 0 && (
+                            <FormField
+                                control={form.control}
+                                name="fundingGoalIds"
+                                render={() => (
+                                    <FormItem>
+                                        <div className="mb-4">
+                                            <FormLabel className="text-base">Funding Goals</FormLabel>
+                                            <div className="text-[0.8rem] text-muted-foreground">Select the funding goals this task contributes to.</div>
+                                        </div>
+                                        {fundingGoals.map((goal) => (
+                                            <FormField
+                                                key={goal.id}
+                                                control={form.control}
+                                                name="fundingGoalIds"
+                                                render={({ field }) => {
+                                                    return (
+                                                        <FormItem
+                                                            key={goal.id}
+                                                            className="flex flex-row items-start space-x-3 space-y-0"
+                                                        >
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value?.includes(goal.id)}
+                                                                    onCheckedChange={(checked) => {
+                                                                        return checked
+                                                                            ? field.onChange([...(field.value || []), goal.id])
+                                                                            : field.onChange(
+                                                                                  field.value?.filter(
+                                                                                      (value) => value !== goal.id
+                                                                                  )
+                                                                              )
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <FormLabel className="font-normal">
+                                                                {goal.title}
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                    )
+                                                }}
+                                            />
+                                        ))}
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+                        <Button type="submit">{isEditing ? 'Save Changes' : 'Create Task'}</Button>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
 }

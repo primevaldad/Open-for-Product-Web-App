@@ -1,0 +1,38 @@
+
+/* In your global CSS file or a specific CSS module */
+
+.markdown-editor-dark .EasyMDEContainer .CodeMirror, 
+.markdown-editor-dark .editor-toolbar, 
+.markdown-editor-dark .editor-statusbar {
+  color: #f8f9fa; /* Light text for dark backgrounds */
+  border-color: #495057; /* Darker borders */
+}
+
+.markdown-editor-dark .CodeMirror-cursor {
+    border-left-color: #f8f9fa;
+}
+
+.markdown-editor-dark .editor-toolbar button {
+    color: #f8f9fa !important; /* Ensure toolbar icons are light */
+}
+
+.markdown-editor-dark .editor-toolbar button.active, 
+.markdown-editor-dark .editor-toolbar button:hover {
+    background: #495057;
+    border-color: #495057;
+}
+
+.markdown-editor-dark .CodeMirror-focused .CodeMirror-selected {
+    background: #555;
+}
+
+.markdown-editor-dark .CodeMirror-selected {
+    background: #444;
+}
+
+.markdown-editor-dark .cm-s-easymde .cm-comment {
+  color: #aaa;
+}
+
+/* Add any other necessary dark mode overrides */
+

@@ -1,117 +1,67 @@
-
 'use client';
 
-import Link from "next/link";
-import {
-  CheckCircle,
-  Pencil,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { EditTaskDialog } from "@/components/edit-task-dialog";
-import type { Task, Project, Module } from "@/lib/types";
-import type { deleteTask, updateTask } from "@/app/actions/projects";
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
+import ActivityList from './activity-list';
+import type { HydratedActivityItem } from './utils';
+import { User } from '@/lib/types';
+import { HydratedProject } from '@/lib/types';
 
-interface CompletedModuleData {
-    path: { id: string; title: string; };
-    module: Module;
+export interface ActivityClientPageProps {
+  activity: HydratedActivityItem[];
+  currentUser: User;
+  projects: HydratedProject[];
+  users: User[];
 }
 
-interface ActivityClientPageProps {
-    myTasks: Task[];
-    completedModulesData: CompletedModuleData[];
-    projects: Project[];
-    updateTask: typeof updateTask;
-    deleteTask: typeof deleteTask;
-}
+export default function ActivityClientPage({ activity, currentUser, projects, users }: ActivityClientPageProps) {
+  // Defensive check to prevent runtime errors if currentUser is not available.
+  if (!currentUser) {
+    return <div className="flex h-screen items-center justify-center"><p>Loading user data...</p></div>;
+  }
 
-export default function ActivityClientPage({ myTasks, completedModulesData, projects, updateTask, deleteTask }: ActivityClientPageProps) {
+  // Filter for the user's projects, ensuring the team property is an array before checking its contents.
+  const myProjects = projects.filter(p => p.owner?.id === currentUser.id || (Array.isArray(p.team) && p.team.some(tm => tm.userId === currentUser.id)));
+  const myProjectIds = myProjects.map(p => p.id);
+
+  const myActivity = activity.filter(a => {
+    if (a.actor.id === currentUser.id) return true;
+    if (a.type.startsWith('collection-') && a.context?.collectionId) {
+      const collId = a.context.collectionId;
+      if (a.context.isProjectCollection && myProjectIds.includes(collId)) return true;
+    }
+    return false;
+  });
+
+  const myProjectsActivity = activity.filter(a => {
+    if (a.project && myProjectIds.includes(a.project.id)) return true;
+    if (a.type.startsWith('collection-') && a.context?.collectionId) {
+      const collId = a.context.collectionId;
+      if (a.context.isProjectCollection && myProjectIds.includes(collId)) return true;
+    }
+    return false;
+  });
 
   return (
-    <>
-      <Card className="mx-auto max-w-3xl md:col-span-1">
-        <CardHeader>
-          <CardTitle>Assigned Tasks</CardTitle>
-          <CardDescription>
-            Here's a list of tasks that require your attention.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myTasks.length > 0 ? (
-            <ul className="space-y-1">
-              {myTasks.map(task => {
-                const project = projects.find(p => p.id === task.projectId);
-                if (!project) return null;
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Activity Feed</h1>
+      <Tabs>
+        <TabList>
+          <Tab>All Activity</Tab>
+          <Tab>My Projects</Tab>
+          <Tab>My Activity</Tab>
+        </TabList>
 
-                return (
-                  <li key={task.id}>
-                    <EditTaskDialog task={task} isTeamMember={true} projectTeam={project.team} updateTask={updateTask} deleteTask={deleteTask}>
-                       <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-                        <div className="flex-grow">
-                          <p className="font-semibold">{task.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            In project: <Link href={`/projects/${project?.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{project?.name}</Link>
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Badge variant={
-                                task.status === 'Done' ? 'secondary' :
-                                task.status === 'In Progress' ? 'default' :
-                                'outline'
-                            }>{task.status}</Badge>
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                       </div>
-                    </EditTaskDialog>
-                    <Separator />
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className="h-48 flex flex-col items-center justify-center text-center text-muted-foreground">
-              <p className="font-semibold">All clear!</p>
-              <p className="text-sm">You have no tasks assigned to you right now.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="mx-auto max-w-3xl md:col-span-1">
-        <CardHeader>
-          <CardTitle>Completed Modules</CardTitle>
-          <CardDescription>
-            A log of your recent learning achievements.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {completedModulesData.length > 0 ? (
-            <ul className="space-y-1">
-              {completedModulesData.map(({ path, module }, index) => (
-                 <li key={`${path.id}-${module.id}-${index}`}>
-                  <div className="flex items-center gap-4 p-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <div>
-                      <p className="font-semibold">{module.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        From path: <Link href={`/learning/${path.id}`} className="font-medium text-primary hover:underline">{path.title}</Link>
-                      </p>
-                    </div>
-                  </div>
-                  <Separator />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="h-48 flex flex-col items-center justify-center text-center text-muted-foreground">
-              <p className="font-semibold">No modules completed yet.</p>
-              <p className="text-sm">Start a learning path to see your progress here.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </>
+        <TabPanel>
+          <ActivityList items={activity} />
+        </TabPanel>
+        <TabPanel>
+          <ActivityList items={myProjectsActivity} />
+        </TabPanel>
+        <TabPanel>
+          <ActivityList items={myActivity} />
+        </TabPanel>
+      </Tabs>
+    </div>
   );
 }

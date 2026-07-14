@@ -65,7 +65,14 @@ const suggestNextStepsFlow = ai.defineFlow(
     outputSchema: SuggestNextStepsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+        const {output} = await prompt(input);
+        return output!;
+    } catch (e) {
+        if (e instanceof Error && e.message.includes('Generative Language API has not been used')) {
+            throw new Error('AI_SERVICE_DISABLED');
+        }
+        throw e;
+    }
   }
 );

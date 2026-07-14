@@ -1,6 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { createSession, clearSession } from '@/lib/session.server';
+import { createSessionCookie, clearSessionCookie } from '@/lib/session.server';
+import { RecentSignInRequiredError } from '@/lib/errors';
 
 /**
  * API route to create a user session.
@@ -15,14 +16,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
     }
 
-    // createSession handles token verification, cookie creation, and setting it.
-    await createSession(idToken);
+    const { searchParams } = new URL(request.url);
+    const sendVerificationEmail = searchParams.get('sendVerificationEmail') === 'true';
+
+    // createSessionCookie handles token verification, cookie creation, and setting it.
+    await createSessionCookie(idToken, sendVerificationEmail);
 
     return NextResponse.json({ status: 'success' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in session POST route:', error);
+
+    if (error instanceof RecentSignInRequiredError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+
     const errorMessage =
-      error.message || 'An unknown error occurred during session creation.';
+      error instanceof Error ? error.message : 'An unknown error occurred during session creation.';
     return NextResponse.json(
       { error: `Internal Server Error: ${errorMessage}` },
       { status: 500 }
@@ -36,10 +45,10 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE() {
   try {
-    // clearSession handles cookie removal and token revocation.
-    await clearSession();
+    // clearSessionCookie handles cookie removal.
+    await clearSessionCookie();
     return NextResponse.json({ status: 'success' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in session DELETE route:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

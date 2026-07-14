@@ -1,23 +1,9 @@
-
 'use client';
 
-import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, ChevronsUpDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import {
   Form,
   FormControl,
@@ -28,78 +14,91 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { updateUser } from '@/app/actions/user';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { User, Interest } from '@/lib/types';
-import { interests } from '@/lib/static-data';
-import type { updateOnboardingInfo } from '../actions/settings';
+import { toast } from 'sonner';
+import { User, ProjectTag, GlobalTag } from '@/lib/types';
+import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
 
-
-const onboardingSchema = z.object({
-  name: z.string().min(1, { message: 'Name is required.' }),
-  bio: z.string().optional(),
-  interests: z.array(z.string()).min(1, { message: 'Please select at least one interest.' }),
+const OnboardingSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  username: z
+    .string()
+    .min(3, { message: 'Username must be at least 3 characters.' })
+    .regex(/^[a-zA-Z0-9 ]+$/, 'Username can only contain letters, numbers, and spaces.'),
+  bio: z.string().max(160).optional(),
+  interests: z.array(z.object({
+    id: z.string(),
+    display: z.string(),
+    isCategory: z.boolean(),
+  })).optional(),
 });
 
-type OnboardingFormValues = z.infer<typeof onboardingSchema>;
+type OnboardingFormValues = z.infer<typeof OnboardingSchema>;
 
 interface OnboardingFormProps {
-    newUser: User;
-    updateOnboardingInfo: (values: OnboardingFormValues & { id: string }) => Promise<{ success: boolean; error?: string }>;
+  user: User;
+  allTags: GlobalTag[];
 }
 
-export default function OnboardingForm({ newUser, updateOnboardingInfo }: OnboardingFormProps) {
+import { slugify } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
+
+export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
   const router = useRouter();
-  const { toast } = useToast();
-  const [isPending, startTransition] = React.useTransition();
+  
+  const userInterestTags: ProjectTag[] = Array.isArray(user.interests) ? user.interests.map((interest: any) => {
+    const tagId = typeof interest === 'string' ? interest : interest.id;
+    const tagDisplay = typeof interest === 'string' ? interest : interest.display;
+    return {
+      id: tagId,
+      display: tagDisplay,
+      isCategory: Boolean(allTags.find(t => t.id === tagId)?.isCategory),
+    };
+  }) : [];
+
+  const defaultUsername = user.username || (user.name ? slugify(user.name) : '');
 
   const form = useForm<OnboardingFormValues>({
-    resolver: zodResolver(onboardingSchema),
+    resolver: zodResolver(OnboardingSchema),
     defaultValues: {
-      name: newUser.name || '',
-      bio: newUser.bio || '',
-      interests: [],
+      name: user.name || '',
+      username: defaultUsername,
+      bio: user.bio || '',
+      interests: userInterestTags,
     },
   });
 
-  function onSubmit(data: OnboardingFormValues) {
-    startTransition(async () => {
-        const result = await updateOnboardingInfo({ ...data, id: newUser!.id });
+  async function onSubmit(values: OnboardingFormValues) {
+    const dataToUpdate = {
+      ...values,
+      interests: (values.interests || []).map(tag => ({ id: tag.id, display: tag.display })),
+      onboardingCompleted: true,
+    };
 
-        if (result.success) {
-            toast({
-                title: "Welcome to Open for Product!",
-                description: "Your profile has been set up.",
-            });
-            router.push('/');
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Something went wrong.",
-                description: result.error,
-            });
-        }
-    });
+    const result = await updateUser(user.id, dataToUpdate);
+
+    if (result.success) {
+      toast.success('Profile updated successfully!');
+      router.push('/');
+    } else {
+      toast.error(result.error || 'An unexpected error occurred.');
+    }
   }
 
   return (
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold">Welcome aboard!</CardTitle>
-          <CardDescription>
-            Let's get your profile set up so you can start connecting with projects.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+    <div className="w-full max-w-2xl mx-auto space-y-8 bg-card p-8 rounded-xl border shadow-sm">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Quick Setup</h1>
+        <p className="text-muted-foreground">Welcome to Open for Product. Just the essentials to get you started.</p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -107,7 +106,7 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="What should we call you?" {...field} />
+                      <Input placeholder="John Doe" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -115,108 +114,72 @@ export default function OnboardingForm({ newUser, updateOnboardingInfo }: Onboar
               />
               <FormField
                 control={form.control}
-                name="bio"
+                name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Your Bio</FormLabel>
+                    <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Tell us a little about yourself, your skills, and what you're passionate about."
-                        className="resize-none"
-                        rows={4}
-                        {...field}
-                      />
+                      <Input placeholder="john_doe" {...field} />
                     </FormControl>
-                     <FormDescription>
-                      This will be displayed on your public profile.
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-               <FormField
-                control={form.control}
-                name="interests"
-                render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Interests</FormLabel>
-                        <Popover>
-                        <PopoverTrigger asChild>
-                            <FormControl>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                'w-full justify-between',
-                                !field.value?.length && 'text-muted-foreground'
-                                )}
-                            >
-                                <div className="flex gap-1 flex-wrap">
-                                {field.value?.length > 0 ? (
-                                    field.value.map((interest) => (
-                                    <Badge
-                                        variant="secondary"
-                                        key={interest}
-                                        className="mr-1"
-                                    >
-                                        {interests.find(i => i.name === interest)?.name || interest}
-                                    </Badge>
-                                    ))
-                                ) : (
-                                    "Select your interests"
-                                )}
-                                </div>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Search interests..." />
-                                <CommandEmpty>No interest found.</CommandEmpty>
-                                <CommandList>
-                                <CommandGroup>
-                                    {interests.map((interest) => (
-                                    <CommandItem
-                                        value={interest.name}
-                                        key={interest.id}
-                                        onSelect={() => {
-                                            const currentInterests = field.value || [];
-                                            const updatedInterests = currentInterests.includes(interest.name)
-                                            ? currentInterests.filter(i => i !== interest.name)
-                                            : [...currentInterests, interest.name];
-                                            form.setValue('interests', updatedInterests);
-                                        }}
-                                    >
-                                        <Check
-                                        className={cn(
-                                            'mr-2 h-4 w-4',
-                                            field.value?.includes(interest.name)
-                                            ? 'opacity-100'
-                                            : 'opacity-0'
-                                        )}
-                                        />
-                                        {interest.name}
-                                    </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                        </Popover>
-                        <FormDescription>
-                        What topics are you passionate about?
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                )}
-               />
-              <Button type="submit" disabled={isPending} className="w-full">
-                {isPending ? "Saving..." : "Complete Profile"}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Optional Details</h2>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Skip for now</span>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="bio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bio</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="What are you building or looking for?"
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="interests"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Your Interests</FormLabel>
+                  <AdvancedTagSelector
+                    availableTags={allTags}
+                    value={(field.value || []) as ProjectTag[]}
+                    onChange={field.onChange}
+                  />
+                  <FormDescription>
+                    We'll use these to recommend relevant projects.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="pt-4">
+            <Button type="submit" size="lg" className="w-full md:w-auto px-12">
+              Get Started
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

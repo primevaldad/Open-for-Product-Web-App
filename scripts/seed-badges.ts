@@ -1,5 +1,6 @@
 
 const admin = require('firebase-admin');
+import { QueryDocumentSnapshot } from 'firebase-admin/firestore'; // Import the type
 
 // --- INITIALIZE FIREBASE ADMIN ---
 function initializeFirebaseAdmin() {
@@ -50,7 +51,7 @@ const placeholderUserId = 'u-1';
 async function seedBadges() {
     console.log("Starting to seed badges...");
     const badgesCollection = db.collection('badges');
-    const badgeRefs = [];
+    const badgeRefs: Array<{ name: string; learningPathId: string; moduleIds: string[]; id: string; }> = [];
 
     for (const badgeData of badgesData) {
         // Check if badge with the same name already exists
@@ -60,7 +61,7 @@ async function seedBadges() {
             badgeRefs.push({ ...badgeData, id: badgeRef.id });
             console.log(`Added badge: "${badgeData.name}"`);
         } else {
-            snapshot.forEach(doc => badgeRefs.push({ ...badgeData, id: doc.id }));
+            snapshot.forEach((doc: QueryDocumentSnapshot) => badgeRefs.push({ ...badgeData, id: doc.id }));
             console.log(`Skipping badge, already exists: "${badgeData.name}"`);
         }
     }

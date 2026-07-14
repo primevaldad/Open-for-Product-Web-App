@@ -1,139 +1,143 @@
-
-'use server';
+import 'server-only';
 import { cookies } from 'next/headers';
+import * as admin from 'firebase-admin';
+import { getApp, getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from './firebase.server';
-import { findUserById } from './data.server';
-import { UserNotFoundError } from './errors';
-import type { User } from './types';
-
-const SESSION_COOKIE_NAME = '__session';
-const SESSION_DURATION_MS = 60 * 60 * 24 * 5 * 1000; // 5 days
+import { SESSION_COOKIE_NAME } from '@/lib/constants';
+import type { User } from '@/lib/types';
+import { findUserById } from '@/lib/data.server';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
-
-// --- PUBLIC API ---
-
-/**
- * Creates a session cookie for the given ID token and sets it in the cookies.
- * This is a server-only function.
- * @param idToken The Firebase ID token of the user.
- * @returns The UID of the authenticated user.
- */
-export async function createSession(idToken: string): Promise<string> {
-  console.log('[AUTH_TRACE] Creating session...');
-  const adminAuth = getAuth(adminApp);
-  const decodedIdToken = await adminAuth.verifyIdToken(idToken);
-
-  // Security check: ensure the token was issued recently.
-  if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
-    throw new Error('Recent sign-in required! Please try logging in again.');
-  }
-
-  const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-    expiresIn: SESSION_DURATION_MS,
-  });
-
-  // Conditionally set cookie attributes
-  const sameSite = IS_PROD ? 'lax' : 'none';
-
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, sessionCookie, {
-    httpOnly: true,
-    secure: true, // Always true, as dev environments now use HTTPS
-    sameSite,
-    maxAge: SESSION_DURATION_MS,
-    path: '/',
-  });
-  console.log('[AUTH_TRACE] Session cookie set successfully.');
-  return decodedIdToken.uid;
-}
-
-/**
- * Clears the session cookie and revokes the user's refresh tokens.
- * This is a server-only function.
- */
-export async function clearSession(): Promise<void> {
-  console.log('[AUTH_TRACE] Clearing session...');
-  const cookieStore = await cookies();
-  const sessionCookieValue = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  // Clear the cookie from the browser
-  cookieStore.set(SESSION_COOKIE_NAME, '', { maxAge: 0 });
-
-  if (sessionCookieValue) {
-    const adminAuth = getAuth(adminApp);
-    try {
-      const decodedClaims = await adminAuth.verifySessionCookie(
-        sessionCookieValue,
-        IS_PROD // revoke check only in prod
-      );
-      await adminAuth.revokeRefreshTokens(decodedClaims.sub);
-      console.log(`[AUTH_TRACE] Revoked tokens for UID: ${decodedClaims.sub}`);
-    } catch (error) {
-      console.log(
-        '[AUTH_TRACE] Could not revoke tokens; session cookie may have been invalid.'
-      );
-    }
-  }
-}
-
-/**
- * Gets the current user from the session cookie.
- * This is a server-only function.
- * @returns The current user, or null if not logged in.
- * @throws {UserNotFoundError} If the user is authenticated but not in the database.
- */
-export async function getCurrentUser(): Promise<User | null> {
-  console.log('[AUTH_TRACE] Attempting to get current user...');
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
-
-  if (!sessionCookie?.value) {
-    console.log('[AUTH_TRACE] Session cookie not found.');
-    return null;
-  }
-
-  console.log('[AUTH_TRACE] Session cookie found. Verifying...');
+const getServiceAccount = () => {
+  const key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!key || key === 'undefined') return null;
   try {
-    const adminAuth = getAuth(adminApp);
-    const decodedClaims = await adminAuth.verifySessionCookie(
-      sessionCookie.value,
-      IS_PROD // check revoked only in prod
-    );
-    console.log(`[AUTH_TRACE] Session cookie verified for UID: ${decodedClaims.uid}`);
-
-    const currentUser = await findUserById(decodedClaims.uid);
-
-    if (!currentUser) {
-      console.error(
-        `[AUTH_TRACE] Auth successful, but no user found in DB for UID: ${decodedClaims.uid}`
-      );
-      throw new UserNotFoundError(`User with UID ${decodedClaims.uid} not found.`);
-    }
-
-    console.log(`[AUTH_TRACE] Successfully found user in DB: ${currentUser.name}`);
-    return { ...currentUser, id: decodedClaims.uid };
-  } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      throw error;
-    }
-    console.error('[AUTH_TRACE] Session verification failed:', error);
+    return JSON.parse(key);
+  } catch (e) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY in session.server.ts', e);
     return null;
   }
+};
+
+const SERVICE_ACCOUNT = getServiceAccount();
+
+// Ensure the Firebase app is initialized only once.
+if (!getApps().length) {
+  initializeApp({
+    credential: SERVICE_ACCOUNT ? cert(SERVICE_ACCOUNT) : admin.credential.applicationDefault(),
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  });
+} else {
+  getApp();
 }
 
-/**
- * Gets the current user or throws an error if not logged in.
- * This is a server-only function.
- * @returns The current user.
- * @throws {UserNotFoundError} If the user is authenticated but not in the database.
- * @throws {Error} If the user is not authenticated.
- */
-export async function getAuthenticatedUser(): Promise<User> {
-  const user = await getCurrentUser();
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-  return user;
+export const adminAuth = getAuth();
+
+const SESSION_DURATION_MS = 60 * 60 * 24 * 5 * 1000; // 5 days in milliseconds
+const SESSION_DURATION_SECS = SESSION_DURATION_MS / 1000;
+
+export async function createSessionCookie(idToken: string, sendVerificationEmail = false): Promise<string> {
+    try {
+        const decodedIdToken = await adminAuth.verifyIdToken(idToken, true);
+        const uid = decodedIdToken.uid;
+
+        const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+            expiresIn: SESSION_DURATION_MS,
+        });
+
+        const cookieStore = cookies();
+
+        (await cookieStore).set(SESSION_COOKIE_NAME, sessionCookie, {
+            maxAge: SESSION_DURATION_SECS, // seconds, not ms
+            httpOnly: true,
+            secure: IS_PROD,
+            path: '/',
+            sameSite: process.env.FIREBASE_PREVIEW_URL ? 'none' : 'lax',
+        });
+
+        // If requested (i.e. on initial login/signup session establishing), send the verification email.
+        // We use a transaction to throttle it to avoid double sends from client refreshes.
+        if (sendVerificationEmail && decodedIdToken.email && !decodedIdToken.email_verified) {
+            const userRef = admin.firestore().collection('users').doc(uid);
+            try {
+                const throttleResult = await admin.firestore().runTransaction(async (transaction) => {
+                    const userDoc = await transaction.get(userRef);
+                    if (!userDoc.exists) return { allowed: true };
+                    
+                    const userData = userDoc.data();
+                    const lastSent = userData?.verificationEmailSentAt?.toDate?.();
+                    if (lastSent) {
+                        const elapsed = (Date.now() - lastSent.getTime()) / 1000;
+                        if (elapsed < 60) {
+                            return { allowed: false };
+                        }
+                    }
+                    transaction.update(userRef, {
+                        verificationEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                    return { allowed: true };
+                });
+
+                if (throttleResult.allowed) {
+                    // Import dynamically to avoid circular dependencies
+                    const { sendCustomVerificationEmail } = await import('@/app/actions/auth');
+                    await sendCustomVerificationEmail(decodedIdToken.email).catch((err) =>
+                        console.error('[SESSION_SERVER] Failed to send initial verification email:', err)
+                    );
+                }
+            } catch (err) {
+                console.error('[SESSION_SERVER] Failed to execute verification email transaction:', err);
+            }
+        }
+
+        return uid;
+    } catch (error) {
+        console.error('Failed to create session:', error);
+        throw new Error(`Failed to create session: ${error}`);
+    }
+}
+
+export async function clearSessionCookie(): Promise<void> {
+    const cookieStore = cookies();
+    (await cookieStore).set(SESSION_COOKIE_NAME, '', {
+        maxAge: 0,
+        httpOnly: true,
+        secure: IS_PROD,
+        path: '/',
+    });
+}
+
+export async function getAuthenticatedUser(): Promise<User | null> {
+    const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+
+    if (!sessionCookie) {
+        return null;
+    }
+
+    try {
+        const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+        const user = await findUserById(decodedToken.uid);
+        if (!user) {
+            console.warn(`User with ID ${decodedToken.uid} not found in database.`);
+            return null;
+        }
+        user.emailVerified = decodedToken.email_verified;
+        return user;
+    } catch (error: any) {
+        // When a session cookie is invalid or expired, verifySessionCookie throws.
+        // We log this for debugging, but it's not a critical server error.
+        // We return null to indicate no authenticated user.
+        if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
+            // This is likely a Firebase Auth error, log it with details.
+            console.error(
+                `Error verifying session cookie. Code: ${error.code}, Message: ${error.message}`
+            );
+        } else {
+            // The error is not in the expected format, log it as-is to prevent crashing.
+            console.error('An unexpected error occurred during session verification:', error);
+        }
+        
+        // In any error case, the user is not authenticated.
+        return null;
+    }
 }

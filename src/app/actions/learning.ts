@@ -1,9 +1,10 @@
-
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { findUserLearningProgress, updateUserLearningProgress } from '@/lib/data.server'; // Corrected import
+import { updateUserLearningProgress, getAllLearningPaths as getAllLearningPathsFromDb } from '@/lib/data.server';
+import { deepSerialize } from '@/lib/utils.server';
+import { LearningPath } from '@/lib/types';
 
 const CompleteModuleSchema = z.object({
   userId: z.string(),
@@ -11,6 +12,20 @@ const CompleteModuleSchema = z.object({
   moduleId: z.string(),
   completed: z.boolean(),
 });
+
+export type LearningPathsActionResponse = 
+    | { success: true; paths: LearningPath[]; lastVisible: any; }
+    | { success: false; error: string; };
+
+export async function getLearningPathsAction(limit: number, startAfter: any = null): Promise<LearningPathsActionResponse> {
+    try {
+        const { paths, lastVisible } = await getAllLearningPathsFromDb(limit, startAfter);
+        return deepSerialize({ success: true, paths, lastVisible }) as LearningPathsActionResponse;
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return deepSerialize({ success: false, error: `Failed to fetch learning paths: ${errorMessage}` }) as LearningPathsActionResponse;
+    }
+}
 
 export async function completeModule(values: z.infer<typeof CompleteModuleSchema>) {
     const validatedFields = CompleteModuleSchema.safeParse(values);
@@ -22,33 +37,22 @@ export async function completeModule(values: z.infer<typeof CompleteModuleSchema
         };
     }
 
-    const { userId, pathId, moduleId, completed } = validatedFields.data;
+    try {
+        const { userId, pathId, moduleId, completed } = validatedFields.data;
+        await updateUserLearningProgress({ userId, pathId, moduleId, completed });
 
-    let userProgress = await findUserLearningProgress(userId, pathId); // findUserLearningProgress is async
+        // Revalidate relevant paths
+        revalidatePath(`/learning/${validatedFields.data.pathId}/${validatedFields.data.moduleId}`);
+        revalidatePath(`/learning/${validatedFields.data.pathId}`);
+        revalidatePath('/activity');
+        revalidatePath('/learning');
 
-    if (!userProgress) {
-        // This case handles enrolling a user in a path for the first time.
-        userProgress = {
-            userId,
-            pathId,
-            completedModules: completed ? [moduleId] : []
+        return { success: true };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return {
+            success: false,
+            error: `Failed to update module progress: ${errorMessage}`,
         };
-    } else {
-        const moduleIndex = userProgress.completedModules.indexOf(moduleId);
-        if (completed && moduleIndex === -1) {
-            userProgress.completedModules.push(moduleId);
-        } else if (!completed && moduleIndex !== -1) {
-            userProgress.completedModules.splice(moduleIndex, 1);
-        }
     }
-
-    await updateUserLearningProgress(userProgress); // updateUserLearningProgress is async
-
-    // Revalidate all paths that display learning progress
-    revalidatePath(`/learning/${pathId}/${moduleId}`);
-    revalidatePath(`/learning/${pathId}`);
-    revalidatePath('/activity');
-    revalidatePath('/learning');
-
-    return { success: true };
 }

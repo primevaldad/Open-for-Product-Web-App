@@ -6,71 +6,97 @@ const MAX_TAG_LENGTH = 35;
 // --- Base Schemas ---
 
 export const ProjectTagSchema = z.object({
-    id: z.string().max(MAX_TAG_LENGTH),
-    display: z.string().max(MAX_TAG_LENGTH),
-    role: z.enum(['category', 'relational']),
-});
+  id: z.string().min(1, "Tag ID required").max(MAX_TAG_LENGTH),
+  display: z.string().min(1, "Display text required").max(MAX_TAG_LENGTH),
+  isCategory: z.boolean(),
+}).passthrough();
 
 export const ProjectMemberSchema = z.object({
-  userId: z.string(),
-  role: z.enum(['lead', 'contributor', 'participant']),
-});
+	userId: z.string(),
+	// projectId: z.string(), // projectId is not part of the form data for a member
+	role: z.enum(['lead', 'contributor', 'participant']),
+	pendingRole: z.enum(['lead', 'contributor', 'participant']).optional(),
+	createdAt: z.date().optional(),
+	updatedAt: z.date().optional()
+}).passthrough();
+
 
 // Base properties common to both create and edit forms
 export const ProjectBaseSchema = z.object({
   name: z.string().min(1, 'Project name is required.'),
   tagline: z.string().min(1, 'Tagline is required.'),
   description: z.string().min(1, 'Description is required.'),
+  mission: z.string().optional(),
+  currentFocus: z.string().optional(),
+  project_type: z.enum(['public', 'private', 'personal']).default('public'),
+  photoUrl: z.string().url("Please enter a valid URL.").or(z.literal('')).optional(),
   contributionNeeds: z.string().min(1, 'Contribution needs are required.'),
-  tags: z.array(ProjectTagSchema).optional().default([]),
-  team: z.array(ProjectMemberSchema).optional().default([]),
+  tags: z.array(ProjectTagSchema),
+  team: z.array(ProjectMemberSchema),
+});
+
+// --- Task Schema ---
+export const TaskStatusSchema = z.enum(['To Do', 'In Progress', 'Done', 'Archived']);
+
+export const TaskSchema = z.object({
+    id: z.string().optional(),
+    title: z.string().min(1, 'Title is required.'),
+    description: z.string().optional(),
+    status: TaskStatusSchema,
+    assigneeId: z.string().optional(),
+    estimatedHours: z.number().optional(),
+    dueDate: z.date().optional(),
+    isMilestone: z.boolean().optional(),
+    fundingGoalIds: z.array(z.string()).optional(),
 });
 
 
 // --- Refinement Logic ---
 
-// Reusable refinement to check for the number of category tags
-const tagValidationRefinement = (data: { tags: z.infer<typeof ProjectTagSchema>[] }) => {
-    return data.tags.filter(t => t.role === 'category').length <= 3;
+// A single, shared refinement function to be used by both schemas.
+const sharedRefinement = (data: any, ctx: z.RefinementCtx) => {
+  // 1. Validate category tag count
+  if (data.tags && data.tags.filter((t: any) => t.isCategory).length > 3) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "A project can have a maximum of 3 category tags.",
+      path: ["tags"],
+    });
+  }
+
+  // 2. Validate governance total (only if governance exists on the schema)
+  if (data.governance) {
+    const { contributorsShare, communityShare, sustainabilityShare } = data.governance;
+    if (contributorsShare + communityShare + sustainabilityShare !== 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "The sum of all governance shares must be exactly 100%.",
+        path: ["governance"],
+      });
+    }
+  }
 };
 
 
 // --- Final Schemas ---
 
-// Schema for creating a new project, used in the create form and action
-export const CreateProjectSchema = ProjectBaseSchema.refine(tagValidationRefinement, {
-    message: "A project can have a maximum of 3 category tags.",
-    path: ["tags"],
-});
+// Schema for creating a new project, using the base and refinement.
+export const CreateProjectSchema = ProjectBaseSchema.superRefine(sharedRefinement);
 
-// Schema for editing an existing project, used in the edit form and action
+// Schema for editing an existing project, extending the base and using the same refinement.
 export const EditProjectSchema = ProjectBaseSchema.extend({
   id: z.string(),
-  timeline: z.string().min(1, "Timeline is required."),
-  // Governance is optional on the Project type, so it must be optional here too.
   governance: z.object({
     contributorsShare: z.number(),
     communityShare: z.number(),
     sustainabilityShare: z.number(),
   }).optional(),
-})
-.refine(tagValidationRefinement, {
-    message: "A project can have a maximum of 3 category tags.",
-    path: ["tags"],
-})
-.refine(data => {
-    // If governance is not defined, this validation does not apply
-    if (!data.governance) return true;
-    // If it is defined, the shares must sum to 100
-    const { contributorsShare, communityShare, sustainabilityShare } = data.governance;
-    return contributorsShare + communityShare + sustainabilityShare === 100;
-}, {
-    message: "The sum of all governance shares must be exactly 100%.",
-    path: ["governance"], // This will display the error next to the governance section
-});
+}).superRefine(sharedRefinement);
 
 
 // --- Inferred Types ---
 
 export type CreateProjectFormValues = z.infer<typeof CreateProjectSchema>;
 export type EditProjectFormValues = z.infer<typeof EditProjectSchema>;
+export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+export type TaskFormValues = z.infer<typeof TaskSchema>;

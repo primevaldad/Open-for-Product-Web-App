@@ -19,3 +19,23 @@
 - Layout: Card-based UI for projects, learning paths, and profiles.
 - Icons: Minimalist, friendly, category-specific.
 - Animations: Subtle motion cues to guide users through flows and provide feedback.
+
+## URL & Routing Standards:
+
+To maintain SEO friendliness, readability, and backward-compatible lookup, all key entities (projects, collections, learning paths, modules) must standardize on the **Hybrid ID-Slug URL pattern**.
+
+### Pattern Structure
+`/[entity-prefix]/[id]-[slug]`
+
+- **Prefix**: The base category (e.g., `/projects`, `/collections`, `/learning`).
+- **ID**: The unique database document ID (Firestore key).
+- **Slug**: A URL-safe version of the display name (lowercased, space/special character clean-up).
+
+### Code Integration
+Use `src/lib/slug.ts` helpers:
+- `buildHybridUrl(prefix, id, name)`: Generates the hybrid path.
+- `extractId(param)`: Extracts the Firestore ID safely from a dynamic router parameter.
+- `toSlug(name)`: Sanitizes a string for inclusion in the URL.
+
+### Lookup Fallbacks
+When loading resource data, first attempt to parse and query by ID. If not found or if lookup fails, fall back to checking raw parameter values (e.g., slug lookup for legacy semantic urls).

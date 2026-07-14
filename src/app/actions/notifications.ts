@@ -1,0 +1,193 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import * as admin from 'firebase-admin';
+import { getAuthenticatedUser } from '@/lib/session.server';
+import { adminDb, findProjectById, findUsersByIds } from '@/lib/data.server';
+import { deepSerialize } from '@/lib/utils.server';
+import type { Notification, HydratedNotification, Event, User, Project, UserId } from '@/lib/types';
+
+// --- Helper Function for Single Notification Hydration ---
+function hydrateNotification(
+  notification: Notification,
+  eventsMap: Map<string, Event>,
+  actorsMap: Map<UserId, User>,
+  targetsMap: Map<UserId, User>,
+  projectsMap: Map<string, Project>
+): HydratedNotification | null {
+  const event = eventsMap.get(notification.eventId);
+  if (!event) return null;
+
+  const actor = actorsMap.get(event.actorUserId);
+  if (!actor) return null;
+
+  const hydrated: HydratedNotification = {
+    ...notification,
+    event,
+    actor,
+  };
+
+  if (event.targetUserId) {
+    const targetUser = targetsMap.get(event.targetUserId);
+    if (targetUser) {
+      hydrated.targetUser = targetUser;
+    }
+  }
+
+  if (event.projectId) {
+    const project = projectsMap.get(event.projectId);
+    if (project) {
+      hydrated.project = project;
+    }
+  }
+
+  return hydrated;
+}
+
+
+/**
+ * Fetches and hydrates notifications for the authenticated user.
+ */
+export async function getHydratedNotifications(): Promise<{ success: boolean, notifications?: HydratedNotification[], error?: string }> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) {
+    return { success: false, error: "User not authenticated." };
+  }
+
+  try {
+    // 1. Fetch all raw data
+    const notificationsSnapshot = await adminDb
+      .collection('notifications')
+      .where('userId', '==', currentUser.id)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const notifications = notificationsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        let createdAtStr: string;
+        
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            createdAtStr = data.createdAt.toDate().toISOString();
+        } else if (data.createdAt && !isNaN(new Date(data.createdAt).getTime())) {
+            createdAtStr = new Date(data.createdAt).toISOString();
+        } else if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+            createdAtStr = data.timestamp.toDate().toISOString();
+        } else {
+            createdAtStr = new Date().toISOString();
+        }
+
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: createdAtStr,
+        } as Notification;
+    });
+
+    if (notifications.length === 0) {
+        return deepSerialize({ success: true, notifications: [] });
+    }
+
+    // 2. Create Lookup Maps
+    const eventIds = [...new Set(notifications.map(n => n.eventId))];
+    const eventDocs: admin.firestore.QueryDocumentSnapshot[] = [];
+    
+    // Firestore 'in' queries are limited to 30 items
+    for (let i = 0; i < eventIds.length; i += 30) {
+        const chunk = eventIds.slice(i, i + 30);
+        const snapshot = await adminDb.collection('events').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+        eventDocs.push(...snapshot.docs);
+    }
+    
+    const eventsMap = new Map<string, Event>(eventDocs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Event]));
+
+    const actorUserIds = [...new Set(Array.from(eventsMap.values()).map(e => e.actorUserId))];
+    const targetUserIds = [...new Set(Array.from(eventsMap.values()).map(e => e.targetUserId).filter(Boolean) as string[])];
+    const projectIds = [...new Set(Array.from(eventsMap.values()).map(e => e.projectId).filter(Boolean) as string[])];
+
+    const [actors, targets, projects] = await Promise.all([
+        findUsersByIds(actorUserIds),
+        findUsersByIds(targetUserIds),
+        Promise.all(projectIds.map(id => findProjectById(id, currentUser)))
+    ]);
+
+    const actorsMap = new Map<string, User>(actors.map(u => [u.id, u]));
+    const targetsMap = new Map<string, User>(targets.map(u => [u.id, u]));
+    const projectsMap = new Map<string, Project>(projects.filter(Boolean).map(p => [p!.id, p!]));
+
+    // 3. Hydrate using the helper function and filter
+    const hydratedNotifications = notifications
+      .map(notification => hydrateNotification(notification, eventsMap, actorsMap, targetsMap, projectsMap))
+      .filter((n): n is HydratedNotification => n !== null);
+
+    return deepSerialize({ success: true, notifications: hydratedNotifications });
+
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred.";
+    return deepSerialize({ success: false, error: `Failed to fetch notifications: ${errorMessage}` });
+  }
+}
+
+/**
+ * Marks a specific notification as read.
+ */
+export async function markNotificationAsRead(notificationId: string): Promise<{ success: boolean, error?: string }> {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+        return { success: false, error: "User not authenticated." };
+    }
+
+    try {
+        const notificationRef = adminDb.collection('notifications').doc(notificationId);
+        const notificationDoc = await notificationRef.get();
+
+        if (!notificationDoc.exists || notificationDoc.data()?.userId !== currentUser.id) {
+            return { success: false, error: "Notification not found or permission denied." };
+        }
+
+        await notificationRef.update({ isRead: true });
+        
+        revalidatePath('/', 'layout');
+
+        return { success: true };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        return { success: false, error: `Failed to mark notification as read: ${errorMessage}` };
+    }
+}
+
+/**
+ * Marks all unread notifications for the user as read.
+ */
+export async function markAllNotificationsAsRead(): Promise<{ success: boolean, error?: string }> {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+        return { success: false, error: "User not authenticated." };
+    }
+
+    try {
+        const notificationsQuery = adminDb.collection('notifications')
+            .where('userId', '==', currentUser.id)
+            .where('isRead', '==', false);
+        
+        const snapshot = await notificationsQuery.get();
+
+        if (snapshot.empty) {
+            return { success: true }; // Nothing to mark
+        }
+
+        const batch = adminDb.batch();
+        snapshot.docs.forEach(doc => {
+            batch.update(doc.ref, { isRead: true });
+        });
+
+        await batch.commit();
+
+        revalidatePath('/', 'layout');
+
+        return { success: true };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        return { success: false, error: `Failed to mark all notifications as read: ${errorMessage}` };
+    }
+}

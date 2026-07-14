@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, type PropsWithChildren } from 'react';
@@ -17,45 +16,47 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import type { TaskStatus } from '@/lib/types';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { ServerActionResponse } from '@/lib/types';
+import { TaskSchema, type TaskStatus } from '@/lib/schemas';
 import { useToast } from '@/hooks/use-toast';
-import type { addTask } from '@/app/actions/projects';
+import { MarkdownEditor } from '@/components/markdown-editor';
+
+const AddTaskDialogSchema = TaskSchema.extend({
+  projectId: z.string(),
+});
+
+type AddTaskDialogFormValues = z.infer<typeof AddTaskDialogSchema>;
 
 interface AddTaskDialogProps extends PropsWithChildren {
   projectId: string;
   status: TaskStatus;
-  addTask: typeof addTask;
+  addTask: (values: AddTaskDialogFormValues) => Promise<ServerActionResponse>;
+  isLead?: boolean;
+  fundingGoals?: { id: string; title: string }[];
 }
 
-const CreateTaskSchema = z.object({
-  projectId: z.string(),
-  title: z.string().min(1, "Title is required."),
-  description: z.string().optional(),
-  status: z.enum(['To Do', 'In Progress', 'Done']),
-});
-
-type CreateTaskFormValues = z.infer<typeof CreateTaskSchema>;
-
-export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskDialogProps) {
+export function AddTaskDialog({ projectId, status, addTask, children, isLead, fundingGoals }: AddTaskDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
-  const form = useForm<CreateTaskFormValues>({
-    resolver: zodResolver(CreateTaskSchema),
+  const form = useForm<AddTaskDialogFormValues>({
+    resolver: zodResolver(AddTaskDialogSchema),
     defaultValues: {
       projectId: projectId,
       title: '',
       description: '',
       status: status,
+      isMilestone: false,
+      fundingGoalIds: [],
     },
   });
 
-  const onSubmit = (values: CreateTaskFormValues) => {
+  const onSubmit = (values: AddTaskDialogFormValues) => {
     startTransition(async () => {
       const result = await addTask(values);
-      if (result?.error) {
+      if (!result.success) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       } else {
         toast({ title: 'Task Created!', description: 'The new task has been added to the board.' });
@@ -70,7 +71,7 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
       <DialogTrigger asChild onClick={() => setIsOpen(true)}>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Task</DialogTitle>
           <DialogDescription>
@@ -99,12 +100,80 @@ export function AddTaskDialog({ projectId, status, addTask, children }: AddTaskD
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Add more details about the task..." />
+                    <MarkdownEditor
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder="Add more details about the task..."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="isMilestone"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Mark as milestone</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            {isLead && fundingGoals && fundingGoals.length > 0 && (
+              <FormField
+                control={form.control}
+                name="fundingGoalIds"
+                render={() => (
+                  <FormItem>
+                    <div className="mb-4">
+                      <FormLabel className="text-base">Funding Goals</FormLabel>
+                      <DialogDescription>
+                        Select the funding goals this task contributes to.
+                      </DialogDescription>
+                    </div>
+                    {fundingGoals.map((goal) => (
+                      <FormField
+                        key={goal.id}
+                        control={form.control}
+                        name="fundingGoalIds"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={goal.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(goal.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...(field.value || []), goal.id])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value) => value !== goal.id
+                                          )
+                                        )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                {goal.title}
+                              </FormLabel>
+                            </FormItem>
+                          )
+                        }}
+                      />
+                    ))}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={isPending}>
