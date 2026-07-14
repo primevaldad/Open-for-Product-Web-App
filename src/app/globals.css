@@ -5,13 +5,12 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
+    --background: 39 49% 93%;
+    --foreground: 53 12% 14%;
+    --card: 39 49% 93%;
     --card-foreground: 222.2 84% 4.9%;
 
-    --popover: 0 0% 100%;
+    --popover: 39 49% 93%;
     --popover-foreground: 222.2 84% 4.9%;
 
     --primary: 222.2 47.4% 11.2%;
@@ -20,7 +19,7 @@
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 36 43% 90%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
     --accent: 210 40% 93%;
@@ -29,8 +28,8 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 34 45% 73%;
+    --input: 34 45% 73%;
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
@@ -172,4 +171,35 @@
   border-radius: 0 !important;
   font-size: 0.9em !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
+/* react-tabs theme overrides */
+.react-tabs__tab--selected {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  border-bottom: 2px solid hsl(var(--primary)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 0 !important;
+}
+
+.react-tabs__tab {
+  background-color: transparent;
+  border: none;
+  color: hsl(var(--muted-foreground));
+}
+
+.react-tabs__tab-list {
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.react-tabs__tab:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.react-tabs__tab:focus:after {
+  display: none !important;
 }

@@ -332,7 +332,7 @@ function ProjectsClientPageInner({
             {/* ---------------------------------------------------------------- */}
             {/* Search & Filter Panel                                            */}
             {/* ---------------------------------------------------------------- */}
-            <div className="mb-6 flex flex-col gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+            <div className="mb-6 flex flex-col gap-4 rounded-lg border border-[#dcbf9d] bg-slate-50/20 p-4 text-card-foreground shadow-sm">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-3">
                         <h2 className="text-xl font-bold tracking-tight">Search &amp; Filter</h2>

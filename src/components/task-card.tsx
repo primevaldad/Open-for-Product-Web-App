@@ -51,7 +51,7 @@ export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing, 
                 <div 
                   {...attributes} 
                   {...listeners}
-                  className="cursor-grab active:cursor-grabbing hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  className="cursor-grab active:cursor-grabbing hover:bg-muted dark:hover:bg-gray-800 p-1 rounded -ml-2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Drag task"
                 >
                   <GripVertical className="h-5 w-5" />
@@ -63,7 +63,7 @@ export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing, 
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {isSyncing && (
-                <div className="flex items-center text-[10px] text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium tracking-wide">
+                <div className="flex items-center text-[10px] text-primary bg-primary/10 dark:bg-primary/20 dark:text-primary-foreground px-2 py-0.5 rounded-full font-medium tracking-wide">
                   <Loader2 className="w-3 h-3 animate-spin mr-1" /> Syncing...
                 </div>
               )}
@@ -123,7 +123,7 @@ export default function TaskCard({ task, assignee, onEdit, onDelete, isSyncing, 
                       </Tooltip>
                   </TooltipProvider>
               ) : (
-                  <div className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">Unassigned</div>
+                  <div className="text-xs text-muted-foreground bg-muted dark:bg-gray-800 px-2 py-1 rounded">Unassigned</div>
               )}
           </div>
           {canEdit && (

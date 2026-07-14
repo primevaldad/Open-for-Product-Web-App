@@ -147,7 +147,7 @@ return (
 
 export default function HomePage() {
 return (
-<main className="min-h-screen bg-[#f6f0e5] text-[#292820]">
+<main className="min-h-screen">
     <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 lg:px-10">
         <Link href="/" className="rounded-sm focus:outline-none focus:ring-2 focus:ring-[#b8512c] focus:ring-offset-4">
         <BrandMark />
@@ -198,7 +198,7 @@ return (
             </div>
             <div className="mt-12 grid gap-6 md:grid-cols-3">
                 {principles.map(({ icon: Icon, title, copy }) => (
-                <article key={title} className="rounded-2xl border border-[#e1d7c6] bg-white/50 p-7">
+                <article key={title} className="rounded-2xl border border-[#e1d7c6] bg-card p-7">
                     <div
                         className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#b8512c] text-white">
                         <Icon className="h-5 w-5" />
@@ -303,12 +303,12 @@ return (
                     <label className="grid gap-2 text-sm font-medium">
                         What kinds of work sound interesting?
                         <input name="interests" placeholder="Technology, education, writing, community..."
-                            className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
+                            className="rounded-xl border border-input bg-card px-4 py-3 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
                     </label>
                     <label className="grid gap-2 text-sm font-medium">
                         What could you imagine contributing?
                         <input name="contribution" placeholder="Feedback, research, design, testing, not sure yet..."
-                            className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
+                            className="rounded-xl border border-input bg-card px-4 py-3 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
                     </label>
                     <label className="grid gap-2 text-sm font-medium">
                         Email address
@@ -316,7 +316,7 @@ return (
                             <div className="relative flex-1">
                                 <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b7568]" />
                                 <input required type="email" name="email" placeholder="you@example.com"
-                                    className="w-full rounded-xl border border-white/20 bg-white/95 py-3 pl-11 pr-4 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
+                                    className="w-full rounded-xl border border-input bg-card py-3 pl-11 pr-4 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
                             </div>
                             <button type="submit"
                                 className="rounded-xl bg-[#b8512c] px-5 py-3 font-semibold text-white hover:bg-[#9e4323]">

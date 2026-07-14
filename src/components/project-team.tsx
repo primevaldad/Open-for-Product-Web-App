@@ -370,7 +370,7 @@ export default function ProjectTeam({
                                     variant="outline" 
                                     size="icon"
                                     onClick={() => setIsMessageModalOpen(true)}
-                                    className={cn(customMessage && "text-blue-600 border-blue-200 bg-blue-50")}
+                                    className={cn(customMessage && "text-primary border-primary/20 bg-primary/10")}
                                     title="Edit invitation message"
                                 >
                                     <MessageSquare className="h-4 w-4" />
@@ -399,7 +399,7 @@ export default function ProjectTeam({
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {pendingInvites.map(invite => (
-                            <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div key={invite.id} className="flex items-center justify-between p-3 bg-muted/50 dark:bg-gray-800 rounded-lg">
                                 <div>
                                     <p className="font-semibold">{invite.email}</p>
                                     <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
@@ -436,7 +436,7 @@ export default function ProjectTeam({
 
             {isLead && historyInvites.length > 0 && (
                 <Card>
-                    <CardHeader className="cursor-pointer select-none hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors" onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}>
+                    <CardHeader className="cursor-pointer select-none hover:bg-muted/50 dark:hover:bg-gray-800/30 transition-colors" onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}>
                         <div className="flex items-center justify-between">
                             <CardTitle className="flex items-center gap-2 text-muted-foreground">
                                 <Mail className="h-5 w-5" />
@@ -452,7 +452,7 @@ export default function ProjectTeam({
                     {isHistoryExpanded && (
                         <CardContent className="space-y-4">
                             {historyInvites.map(invite => (
-                                <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg opacity-80">
+                                <div key={invite.id} className="flex items-center justify-between p-3 bg-muted/30 dark:bg-gray-800/50 rounded-lg opacity-80">
                                     <div>
                                         <p className="font-semibold text-muted-foreground">{invite.email}</p>
                                         <div className="flex gap-2 text-sm text-gray-500 items-center mt-1">
@@ -526,7 +526,7 @@ export default function ProjectTeam({
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {pendingMembers.map(member => (
-                            <div key={member.userId} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div key={member.userId} className="flex items-center justify-between p-2 bg-muted/50 dark:bg-gray-800 rounded-lg">
                                 <div className="flex items-center space-x-4">
                                     {member.user ? (
                                         <UserAvatar user={member.user} className="h-10 w-10" />
@@ -585,7 +585,7 @@ export default function ProjectTeam({
                     {approvedMembers.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {approvedMembers.map(member => (
-                                <div key={member.userId} className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div key={member.userId} className="flex items-center space-x-4 p-4 bg-muted/50 dark:bg-gray-700 rounded-lg">
                                     {member.user ? (
                                         <UserAvatar user={member.user} className="h-10 w-10" />
                                     ) : (

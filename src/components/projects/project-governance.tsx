@@ -902,7 +902,7 @@ export default function ProjectGovernance({
             {(!renderSection || renderSection === 'governance') && (
                 <>
                     {/* Header Summary Card */}
-                    <Card className="relative overflow-hidden bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-black dark:to-slate-900 border-muted">
+                    <Card className="relative overflow-hidden bg-card dark:from-slate-900 dark:via-black dark:to-slate-900 border-muted">
                 <CardHeader className="pb-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
@@ -1229,7 +1229,7 @@ export default function ProjectGovernance({
                         {valueFlowBuckets.map((bucket) => {
                             const isDefaultBucket = ['contributors', 'commons', 'long_term_stake'].includes(bucket.id);
                             return (
-                                <div key={bucket.id} className="space-y-2 p-4 rounded-lg bg-slate-50/40 dark:bg-slate-950/40 border border-muted/50">
+                                <div key={bucket.id} className="space-y-2 p-4 rounded-lg bg-muted/40 dark:bg-slate-950/40 border border-muted/50">
                                     <div className="flex justify-between items-center">
                                         {isEditing ? (
                                             <div className="flex items-center gap-2 flex-1 mr-4">
@@ -1348,7 +1348,7 @@ export default function ProjectGovernance({
                             { field: 'alreadyDedicated' as const, label: 'Already dedicated', value: financialSnapshot.alreadyDedicated },
                             { field: 'remainingNeed' as const, label: 'Remaining need', value: financialSnapshot.remainingNeed }
                         ].map(snap => (
-                            <div key={snap.field} className="p-4 rounded-lg border bg-slate-50/20 dark:bg-slate-900/20 flex flex-col justify-between">
+                            <div key={snap.field} className="p-4 rounded-lg border bg-muted/20 dark:bg-slate-900/20 flex flex-col justify-between">
                                 <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">{snap.label}</span>
                                 {isEditing ? (
                                     <div className="relative mt-1">
@@ -1409,7 +1409,7 @@ export default function ProjectGovernance({
 
                 {/* Case A: Fundry is Disabled */}
                 {!fundryConfig?.enabled ? (
-                    <Card className="border border-dashed border-muted bg-slate-50/20 dark:bg-slate-900/10">
+                    <Card className="border border-dashed border-muted bg-muted/20 dark:bg-slate-900/10">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-base font-bold flex items-center gap-2">
@@ -1497,22 +1497,22 @@ export default function ProjectGovernance({
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="p-3 border rounded-lg bg-slate-50/30 dark:bg-slate-900/10">
+                                    <div className="p-3 border rounded-lg bg-muted/30 dark:bg-slate-900/10">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Confirmed Pool</span>
                                         <span className="text-xl font-bold block mt-1 text-emerald-600 dark:text-emerald-400">${activePoolValue.toLocaleString()}</span>
                                         <span className="text-[10px] text-muted-foreground">Active display pool value</span>
                                     </div>
-                                    <div className="p-3 border rounded-lg bg-slate-50/30 dark:bg-slate-900/10">
+                                    <div className="p-3 border rounded-lg bg-muted/30 dark:bg-slate-900/10">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Pledged / Pending</span>
                                         <span className="text-xl font-bold block mt-1">${(fundryConfig.pool.pendingCollectionAmount + fundryConfig.pool.pledgedAmount).toLocaleString()}</span>
                                         <span className="text-[10px] text-muted-foreground">Expected contributions</span>
                                     </div>
-                                    <div className="p-3 border rounded-lg bg-slate-50/30 dark:bg-slate-900/10">
+                                    <div className="p-3 border rounded-lg bg-muted/30 dark:bg-slate-900/10">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Placeholder Estimate</span>
                                         <span className="text-xl font-bold block mt-1">${fundryConfig.pool.placeholderAmount.toLocaleString()}</span>
                                         <span className="text-[10px] text-muted-foreground">Demo/planning estimate</span>
                                     </div>
-                                    <div className="p-3 border rounded-lg bg-slate-50/30 dark:bg-slate-900/10">
+                                    <div className="p-3 border rounded-lg bg-muted/30 dark:bg-slate-900/10">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Credit Value</span>
                                         <span className="text-xl font-bold block mt-1 text-primary">${currentCreditValue.toFixed(2)}</span>
                                         <span className="text-[10px] text-muted-foreground">Valuation per active credit</span>

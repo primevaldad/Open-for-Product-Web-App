@@ -114,7 +114,7 @@ export default function ProjectCard({
   return (
     <Card 
       className={cn(
-        'group relative flex flex-col overflow-hidden [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl',
+        'group relative flex flex-col overflow-hidden [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl bg-[#fffaf2] border-[#dfd5c5]',
         isLead && 'border-2 border-yellow-500',
         className
       )}

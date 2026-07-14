@@ -203,7 +203,7 @@ export default function LiftModelAboutPage() {
               whileInView="visible"
               viewport={{ once: true, amount: 0.15 }}
               transition={{ delay: reduceMotion ? 0 : index * 0.06 }}
-              className="group min-h-64 rounded-[2rem] border border-black/10 bg-white p-6 text-left shadow-[0_16px_40px_rgba(0,0,0,0.05)] transition hover:-translate-y-1 hover:border-[#C2401C]/40 hover:shadow-[0_18px_50px_rgba(0,0,0,0.08)] focus:outline-none focus:ring-2 focus:ring-[#C2401C] focus:ring-offset-4"
+              className="group min-h-64 rounded-[2rem] border border-black/10 bg-card p-6 text-left shadow-[0_16px_40px_rgba(0,0,0,0.05)] transition hover:-translate-y-1 hover:border-[#C2401C]/40 hover:shadow-[0_18px_50px_rgba(0,0,0,0.08)] focus:outline-none focus:ring-2 focus:ring-[#C2401C] focus:ring-offset-4"
             >
               <span className="font-mono text-xs text-black/45">
                 0{index + 1}
@@ -409,7 +409,7 @@ function PrincipleSection({
   return (
     <article
       id={item.id}
-      className={`scroll-mt-8 border-t border-black/10 ${index % 2 === 0 ? "bg-[#F5F0E8]" : "bg-white"
+      className={`scroll-mt-8 border-t border-black/10 ${index % 2 === 0 ? "bg-[#F5F0E8]" : "bg-[#f0e8db]"
         }`}
     >
       <div

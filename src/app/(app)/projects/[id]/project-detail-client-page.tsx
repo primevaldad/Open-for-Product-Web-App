@@ -894,7 +894,7 @@ export default function ProjectDetailClientPage({
     const GuestOverlay = () => {
         // use usePathname or window.location.pathname
         return (
-            <div className="flex flex-col items-center justify-center p-8 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col items-center justify-center p-8 bg-muted/50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
                 <h3 className="text-xl font-bold mb-2">Login to View Project Details</h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6 text-center max-w-md">
                     To see the full project description, task board, and participate in discussions, please join the Open for Product community.
@@ -915,7 +915,7 @@ export default function ProjectDetailClientPage({
         if (!inviteToken) return null;
         
         return (
-            <div className="sticky top-0 z-50 w-full bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800 p-4 shadow-sm backdrop-blur-sm">
+            <div className="sticky top-0 z-50 w-full bg-background/95 border-b p-4 shadow-sm backdrop-blur-sm">
                 <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-sm sm:text-base text-blue-900 dark:text-blue-100">
                         <strong>You&apos;ve been invited!</strong> Join {project.name} to collaborate with the team.
@@ -953,11 +953,11 @@ export default function ProjectDetailClientPage({
                         </Link>
                         <span className="text-muted-foreground text-xs">/</span>
                         <h1 className="text-xl font-bold text-foreground">{project.name}</h1>
-                        <Badge variant="outline" className="capitalize text-xs bg-slate-50 dark:bg-slate-900/50">
+                        <Badge variant="outline" className="capitalize text-xs bg-secondary dark:bg-slate-900/50">
                             {project.status}
                         </Badge>
                         {currentUser && (
-                            <Badge variant="secondary" className="capitalize text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400">
+                            <Badge variant="secondary" className="capitalize text-xs bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
                                 {isLead ? 'Project Lead' : isMember ? 'Contributor' : 'Visitor'}
                             </Badge>
                         )}
@@ -1091,7 +1091,7 @@ export default function ProjectDetailClientPage({
                                     <CardHeader className="pb-2">
                                         <CardTitle className="text-sm font-bold flex items-center justify-between">
                                             <span>Fundry Portal</span>
-                                            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400">
+                                            <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20 dark:bg-emerald-950/20 dark:text-emerald-400">
                                                 {project.fundry?.enabled ? 'Active' : 'Planning'}
                                             </Badge>
                                         </CardTitle>
@@ -1162,7 +1162,7 @@ export default function ProjectDetailClientPage({
                                                             {posts.filter(p => p.status !== 'draft').map(post => (
                                                                 <Card 
                                                                     key={post.id} 
-                                                                    className="p-4 space-y-2 relative hover:shadow-md transition-shadow cursor-pointer border-indigo-100 dark:border-indigo-950 bg-indigo-50/5"
+                                                                    className="p-4 space-y-2 relative hover:shadow-md transition-shadow cursor-pointer border-muted/50 bg-muted/20"
                                                                     onClick={() => setSelectedPost(post)}
                                                                 >
                                                                     <div className="flex justify-between items-center text-[10px] text-muted-foreground">
@@ -1192,7 +1192,7 @@ export default function ProjectDetailClientPage({
                                                                 {posts.filter(p => p.status === 'draft').map(post => (
                                                                     <Card 
                                                                         key={post.id} 
-                                                                        className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-slate-50/50 dark:bg-slate-950/20"
+                                                                        className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-muted/30 dark:bg-slate-950/20"
                                                                         onClick={() => setSelectedPost(post)}
                                                                     >
                                                                         <div className="flex justify-between items-center text-[10px] text-muted-foreground">
@@ -1233,7 +1233,7 @@ export default function ProjectDetailClientPage({
                                     </Tabs>
                                 </div>
                                 {!hasReadAccess && (
-                                    <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/30 dark:bg-black/30">
+                                    <div className="absolute inset-0 flex items-center justify-center z-10 bg-background/50 dark:bg-black/30">
                                         <GuestOverlay />
                                     </div>
                                 )}
@@ -1527,7 +1527,7 @@ export default function ProjectDetailClientPage({
             />
             {selectedPost && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-100">
-                    <div className="bg-white dark:bg-gray-900 border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="bg-card dark:bg-gray-900 border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex justify-between items-center border-b p-4">
                             <div className="flex flex-col gap-0.5">
                                 <h3 className="font-bold text-lg text-foreground">{selectedPost.title}</h3>

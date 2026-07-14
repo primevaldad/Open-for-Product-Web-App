@@ -77,12 +77,12 @@ const TaskColumn = ({
   return (
       <div 
         ref={setNodeRef}
-        className={`bg-gray-100 dark:bg-gray-900 rounded-lg p-4 flex-1 min-w-0 w-full lg:max-w-[calc(33.33%-1rem)] flex flex-col min-h-[500px] transition-colors ${isOver ? 'ring-2 ring-blue-400 bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+        className={`bg-muted/50 dark:bg-gray-900 rounded-lg p-4 flex-1 min-w-0 w-full lg:max-w-[calc(33.33%-1rem)] flex flex-col min-h-[500px] transition-colors ${isOver ? 'ring-2 ring-primary bg-primary/10 dark:bg-primary/20' : ''}`}
       >
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 flex justify-between items-center">
           <span className="flex items-center gap-2">
             {title}
-            <span className="text-xs bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded-full text-gray-500 font-medium">{tasks.length}</span>
+            <span className="text-xs bg-muted dark:bg-gray-800 px-2 py-0.5 rounded-full text-muted-foreground font-medium">{tasks.length}</span>
           </span>
           {isMember && projectId && addTask && (
             <AddTaskDialog 
@@ -94,7 +94,7 @@ const TaskColumn = ({
             >
               <button 
                 type="button" 
-                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors flex items-center justify-center cursor-pointer"
+                className="p-1 hover:bg-muted dark:hover:bg-gray-800 rounded text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center cursor-pointer"
                 title={`Add task to ${title}`}
               >
                 <Plus className="w-4 h-4" />
@@ -307,7 +307,7 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col lg:flex-row gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+      <div className="flex flex-col lg:flex-row gap-6 p-4 bg-muted/30 dark:bg-gray-800/50 rounded-lg">
         <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />
         <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />
         <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />

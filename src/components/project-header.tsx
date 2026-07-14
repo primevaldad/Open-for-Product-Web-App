@@ -51,7 +51,7 @@ export default function ProjectHeader({ project, currentUser, onJoin, onLeave }:
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+    <div className="bg-card dark:bg-gray-800 shadow-md rounded-lg p-6">
       {/* Project Image */}
       <div className="w-full h-64 relative mb-4 rounded-lg overflow-hidden">
         <Image 
