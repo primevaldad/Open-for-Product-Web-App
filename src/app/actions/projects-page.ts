@@ -8,7 +8,7 @@ import {
     getAllProjectPathLinks
 } from "@/lib/data.server";
 import { getAuthenticatedUser } from "@/lib/session.server";
-import { HomePageData, HomePageDataResponse, GlobalTag, HydratedProject } from "@/lib/types";
+import { ProjectsPageData, ProjectsPageDataResponse, GlobalTag, HydratedProject } from "@/lib/types";
 import { getSuggestedProjects } from "@/lib/suggestions";
 import { deepSerialize } from "@/lib/utils.server";
 import { cookies } from 'next/headers';
@@ -41,7 +41,7 @@ const convertProjectTimestamps = (project: HydratedProject): HydratedProject => 
 };
 
 
-export async function getHomePageData(): Promise<HomePageDataResponse> {
+export async function getProjectsPageData(): Promise<ProjectsPageDataResponse> {
     try {
         const currentUser = await getAuthenticatedUser();
         const [projects, allTags, learningPathsResponse, allProjectPathLinks] = await Promise.all([
@@ -63,7 +63,7 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
             ? suggestedProjects.map(convertProjectTimestamps) 
             : null;
 
-        const pageData: HomePageData = {
+        const pageData: ProjectsPageData = {
             allPublishedProjects: serializedProjects,
             currentUser,
             allTags: allTags,
@@ -83,7 +83,7 @@ export async function getHomePageData(): Promise<HomePageDataResponse> {
         }
 
         const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        console.error('Error fetching home page data:', e);
+        console.error('Error fetching projects page data:', e);
         
         return {
             success: false,

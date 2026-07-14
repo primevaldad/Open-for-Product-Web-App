@@ -52,7 +52,7 @@ export default function VerifyEmailErrorPage() {
             {isPending ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Verification Email'}
           </Button>
           <Link
-            href="/home"
+            href="/projects"
             className="inline-block text-sm text-muted-foreground underline"
           >
             Go to Home

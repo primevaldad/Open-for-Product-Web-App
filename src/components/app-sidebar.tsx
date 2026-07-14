@@ -39,7 +39,7 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
     const { setOpenMobile } = useSidebar();
 
     const menuItems = [
-        { href: "/home", icon: <Home />, label: "Home" },
+        { href: "/projects", icon: <Home />, label: "Projects" },
         { href: "/create", icon: <FilePlus2 />, label: "Create Project" },
         { href: "/drafts", icon: <FolderKanban />, label: "Drafts" },
         { href: "/collections", icon: <Layers />, label: "Collections" },
@@ -57,7 +57,7 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
     return (
         <Sidebar className="border-r" collapsible="icon">
             <SidebarHeader className="px-4 py-2">
-                <Link href="/home" className="flex items-center gap-3">
+                <Link href="/projects" className="flex items-center gap-3">
                     <Logo />
                     <span className="text-lg font-semibold text-sidebar-foreground text-nowrap">Open for Product</span>
                 </Link>

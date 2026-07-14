@@ -15,7 +15,7 @@ export default async function LoginPage() {
   // If the user has a valid session and is NOT a guest, redirect them away.
   // A guest user should be able to see this page to log in.
   if (currentUser && currentUser.role !== 'guest') {
-    redirect('/home');
+    redirect('/projects');
   }
 
   // If there is no valid session, or if the user is a guest, render the client-side login form.

@@ -337,7 +337,7 @@ export default function LiftModelAboutPage() {
               without surrendering what makes the work theirs.
             </p>
             <a
-              href="/home"
+              href="/projects"
               className="mt-10 inline-flex rounded-full bg-[#F5F0E8] px-7 py-4 font-semibold text-[#151515] transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-4 focus:ring-offset-[#C2401C]"
             >
               See our projects

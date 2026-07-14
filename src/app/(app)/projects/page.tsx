@@ -1,20 +1,20 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Home | Open for Product',
+  title: 'Projects | Open for Product',
 };
 
-import { getHomePageData } from '@/app/actions/home';
-import { HomePageDataResponse } from '@/lib/types';
-import HomeClientPage from './home-client-page';
+import { getProjectsPageData } from '@/app/actions/projects-page';
+import { ProjectsPageDataResponse } from '@/lib/types';
+import ProjectsClientPage from './projects-client-page';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Force dynamic rendering because this page depends on user sessions (cookies)
 export const dynamic = 'force-dynamic';
 
-async function HomeFeed() {
-  const data: HomePageDataResponse = await getHomePageData();
+async function ProjectsFeed() {
+  const data: ProjectsPageDataResponse = await getProjectsPageData();
 
   if ('error' in data) {
     return (
@@ -24,10 +24,10 @@ async function HomeFeed() {
     );
   }
 
-  return <HomeClientPage {...data} />;
+  return <ProjectsClientPage {...data} />;
 }
 
-function HomeSkeleton() {
+function ProjectsSkeleton() {
   return (
     <div className="p-6 md:p-12 space-y-6 w-full max-w-7xl mx-auto">
       {/* Search Header Skeleton */}
@@ -53,10 +53,10 @@ function HomeSkeleton() {
   );
 }
 
-export default function HomePage() {
+export default function ProjectsPage() {
   return (
-    <Suspense fallback={<HomeSkeleton />}>
-      <HomeFeed />
+    <Suspense fallback={<ProjectsSkeleton />}>
+      <ProjectsFeed />
     </Suspense>
   );
 }

@@ -948,7 +948,7 @@ export default function ProjectDetailClientPage({
                 {/* Compact Persistent Header Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 mb-6 gap-4">
                     <div className="flex flex-wrap items-center gap-3">
-                        <Link href="/home" className="text-xs text-muted-foreground hover:text-foreground">
+                        <Link href="/projects" className="text-xs text-muted-foreground hover:text-foreground">
                             &larr; Projects
                         </Link>
                         <span className="text-muted-foreground text-xs">/</span>

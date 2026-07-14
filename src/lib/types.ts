@@ -277,7 +277,7 @@ export interface ServerActionResponse<T = any> {
 
 // --- Discriminated Union Types for Page Data Responses ---
 
-export interface HomePageData {
+export interface ProjectsPageData {
     allPublishedProjects: HydratedProject[];
     currentUser: User | null;
     allTags: GlobalTag[];
@@ -287,13 +287,13 @@ export interface HomePageData {
     aiEnabled: boolean;
 }
 
-// --- HomePageData (Refactored for consistency) ---
-export type HomePageDataSuccess = { success: true } & HomePageData;
-export interface HomePageDataError {
+// --- ProjectsPageData (Refactored for consistency) ---
+export type ProjectsPageDataSuccess = { success: true } & ProjectsPageData;
+export interface ProjectsPageDataError {
     success: false;
     error: string;
 }
-export type HomePageDataResponse = HomePageDataSuccess | HomePageDataError;
+export type ProjectsPageDataResponse = ProjectsPageDataSuccess | ProjectsPageDataError;
 
 // --- CreateProjectPageData ---
 export interface CreateProjectPageDataSuccess {

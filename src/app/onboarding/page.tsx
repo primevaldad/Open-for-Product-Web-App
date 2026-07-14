@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
   }
 
   if (currentUser?.onboardingCompleted) {
-    redirect('/home');
+    redirect('/projects');
   }
 
   const allTags = await getAllTags();

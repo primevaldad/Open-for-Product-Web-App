@@ -38,7 +38,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/home';
+  const redirectTo = searchParams.get('redirectTo') || '/projects';
   const { currentUser } = useAuth(); // Use auth context
   const { toast } = useToast();
 
@@ -210,7 +210,7 @@ function LoginForm() {
           </p>
           <p className="mt-2">
             Or,{' '}
-            <Link href="/home" className="font-semibold text-primary hover:underline">
+            <Link href="/projects" className="font-semibold text-primary hover:underline">
               take a peek
             </Link>
             {' '}

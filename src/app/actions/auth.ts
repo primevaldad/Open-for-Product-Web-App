@@ -42,7 +42,7 @@ export async function login(values: z.infer<typeof LoginSchema>): Promise<{ succ
         await adminDb.collection('users').doc(uid).update({
             updatedAt: FieldValue.serverTimestamp()
         });
-        revalidatePath('/home');
+        revalidatePath('/projects');
         return { success: true };
     } else {
         // Handle case where user has Auth account but no Firestore doc

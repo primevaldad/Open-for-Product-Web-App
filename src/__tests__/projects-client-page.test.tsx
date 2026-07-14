@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import HomeClientPage from '@/app/(app)/home/home-client-page';
+import ProjectsClientPage from '@/app/(app)/projects/projects-client-page';
 import type { HydratedProject, GlobalTag, User } from '@/lib/types';
 
 // Mock the necessary components and hooks
@@ -61,13 +61,13 @@ const mockProjects: HydratedProject[] = [
   } as any,
 ];
 
-describe('HomeClientPage', () => {
+describe('ProjectsClientPage', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
     user = userEvent.setup();
     render(
-      <HomeClientPage
+      <ProjectsClientPage
         allPublishedProjects={mockProjects}
         currentUser={mockUser}
         allTags={mockTags}

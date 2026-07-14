@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 // Types
 // ---------------------------------------------------------------------------
 
-interface HomeClientPageProps {
+interface ProjectsClientPageProps {
     allPublishedProjects: HydratedProject[];
     currentUser: User | null;
     allTags: GlobalTag[];
@@ -119,7 +119,7 @@ const ProjectList = ({
 // Main inner component (uses useSearchParams — must be inside Suspense)
 // ---------------------------------------------------------------------------
 
-function HomeClientPageInner({
+function ProjectsClientPageInner({
     allPublishedProjects,
     currentUser,
     allTags,
@@ -127,7 +127,7 @@ function HomeClientPageInner({
     allLearningPaths,
     suggestedProjects,
     aiEnabled,
-}: HomeClientPageProps) {
+}: ProjectsClientPageProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -691,14 +691,14 @@ function HomeClientPageInner({
 // Default export — wraps inner component in Suspense (required for useSearchParams)
 // ---------------------------------------------------------------------------
 
-export default function HomeClientPage(props: HomeClientPageProps) {
+export default function ProjectsClientPage(props: ProjectsClientPageProps) {
     return (
         <Suspense fallback={
             <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
         }>
-            <HomeClientPageInner {...props} />
+            <ProjectsClientPageInner {...props} />
         </Suspense>
     );
 }

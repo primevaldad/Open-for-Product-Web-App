@@ -33,7 +33,7 @@ export default function VerifyEmailClientPage({ email, isVerified, lastSentAt }:
     // Auto-redirect if already verified
     useEffect(() => {
         if (isVerified) {
-            router.push('/home');
+            router.push('/projects');
         }
     }, [isVerified, router]);
 
@@ -105,7 +105,7 @@ export default function VerifyEmailClientPage({ email, isVerified, lastSentAt }:
                         </Button>
                     </div>
                     <div className="text-sm">
-                        <Link href="/home" className="text-muted-foreground underline">
+                        <Link href="/projects" className="text-muted-foreground underline">
                             Continue browsing as unverified user
                         </Link>
                     </div>

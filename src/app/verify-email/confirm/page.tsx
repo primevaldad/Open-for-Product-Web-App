@@ -102,7 +102,7 @@ function ConfirmEmailContent() {
                         Your email address has been successfully verified. You now have full access to Open for Product.
                     </p>
                     <Link
-                        href="/home"
+                        href="/projects"
                         className="inline-block rounded-md bg-[#2E73FF] px-6 py-3 font-semibold text-white transition-colors hover:bg-[#1a5bed]"
                     >
                         Go to Home
@@ -126,7 +126,7 @@ function ConfirmEmailContent() {
                         Request New Verification Email
                     </Link>
                     <Link
-                        href="/home"
+                        href="/projects"
                         className="inline-block text-sm text-muted-foreground underline"
                     >
                         Go to Home
