@@ -35,6 +35,7 @@ yarn-error.log*
 
 # Other
 .DS_Store
+*.tsbuildinfo
 *.pem
 
 # Service account key
