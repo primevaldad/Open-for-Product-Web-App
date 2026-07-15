@@ -389,7 +389,7 @@ function AddToCollectionButton({
                         </ScrollArea>
                     </>
                 )}
-                <div className="border-t px-3 py-2 bg-muted/30 flex items-center justify-between">
+                <div className="border-t px-3 py-2 bg-transparent border-t flex items-center justify-between">
                     <a
                         href="/collections/new"
                         className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
@@ -915,7 +915,7 @@ export default function ProjectDetailClientPage({
         if (!inviteToken) return null;
         
         return (
-            <div className="sticky top-0 z-50 w-full bg-background/95 border-b p-4 shadow-sm backdrop-blur-sm">
+            <div className="sticky top-0 z-50 w-full bg-[#FDFBF7]/95 dark:bg-gray-900/95 border-b p-4 shadow-sm backdrop-blur-sm">
                 <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-sm sm:text-base text-blue-900 dark:text-blue-100">
                         <strong>You&apos;ve been invited!</strong> Join {project.name} to collaborate with the team.
@@ -979,9 +979,9 @@ export default function ProjectDetailClientPage({
 
                 <div className="mt-8">
                     <Tabs selectedIndex={tabIndex} onSelect={handleTabChange}>
-                    <TabList>
+                    <TabList className="flex space-x-6 border-b border-border/50 mb-6 text-sm font-medium text-muted-foreground pb-2">
                         {activeTabs.map(t => (
-                            <Tab key={t.key}>{t.label}</Tab>
+                            <Tab key={t.key} className="cursor-pointer pb-2 hover:text-foreground outline-none transition-colors" selectedClassName="text-primary border-b-2 border-primary font-semibold">{t.label}</Tab>
                         ))}
                     </TabList>
 
@@ -1120,14 +1120,14 @@ export default function ProjectDetailClientPage({
                             </div>
 
                             {/* Project details tabs (description, mission & vision, current focus) */}
-                            <div className="border rounded-xl p-6 bg-card relative">
+                            <div className="border rounded-xl p-6 bg-transparent relative">
                                 <div className={!hasReadAccess ? "blur-md pointer-events-none select-none" : ""}>
                                     <Tabs>
-                                        <TabList className="flex space-x-4 border-b mb-6 text-sm font-medium text-muted-foreground pb-2">
-                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Description</Tab>
-                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Mission & Vision</Tab>
-                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Current Focus</Tab>
-                                            <Tab className="cursor-pointer hover:text-foreground outline-none ui-selected:text-primary ui-selected:border-b-2 ui-selected:border-primary">Recent Activity</Tab>
+                                        <TabList className="flex space-x-6 border-b border-border/50 mb-6 text-sm font-medium text-muted-foreground pb-2">
+                                            <Tab className="cursor-pointer pb-2 hover:text-foreground outline-none transition-colors" selectedClassName="text-primary border-b-2 border-primary font-semibold">Description</Tab>
+                                            <Tab className="cursor-pointer pb-2 hover:text-foreground outline-none transition-colors" selectedClassName="text-primary border-b-2 border-primary font-semibold">Mission & Vision</Tab>
+                                            <Tab className="cursor-pointer pb-2 hover:text-foreground outline-none transition-colors" selectedClassName="text-primary border-b-2 border-primary font-semibold">Current Focus</Tab>
+                                            <Tab className="cursor-pointer pb-2 hover:text-foreground outline-none transition-colors" selectedClassName="text-primary border-b-2 border-primary font-semibold">Recent Activity</Tab>
                                         </TabList>
 
                                         <TabPanel className="prose dark:prose-invert max-w-none">
@@ -1192,7 +1192,7 @@ export default function ProjectDetailClientPage({
                                                                 {posts.filter(p => p.status === 'draft').map(post => (
                                                                     <Card 
                                                                         key={post.id} 
-                                                                        className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-muted/30 dark:bg-slate-950/20"
+                                                                        className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-transparent border-t dark:bg-slate-950/20"
                                                                         onClick={() => setSelectedPost(post)}
                                                                     >
                                                                         <div className="flex justify-between items-center text-[10px] text-muted-foreground">
@@ -1248,7 +1248,7 @@ export default function ProjectDetailClientPage({
                                             <a
                                                 key={child.id}
                                                 href={buildHybridUrl('/projects', child.id, child.name)}
-                                                className="group flex flex-col gap-1.5 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                                                className="group flex flex-col gap-1.5 rounded-xl border bg-transparent p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <FolderOpen className="w-4 h-4 text-primary shrink-0" />
@@ -1392,7 +1392,7 @@ export default function ProjectDetailClientPage({
                             </div>
 
                             {/* Recommended Learning Paths */}
-                            <div className="p-4 bg-card border rounded-xl">
+                            <div className="p-4 bg-transparent border rounded-xl">
                                 <h3 className="text-lg font-bold mb-4">Recommended Learning Paths</h3>
                                 {learningPaths.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1527,7 +1527,7 @@ export default function ProjectDetailClientPage({
             />
             {selectedPost && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-100">
-                    <div className="bg-card dark:bg-gray-900 border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="bg-transparent dark:bg-gray-900 border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex justify-between items-center border-b p-4">
                             <div className="flex flex-col gap-0.5">
                                 <h3 className="font-bold text-lg text-foreground">{selectedPost.title}</h3>

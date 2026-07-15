@@ -184,6 +184,45 @@ export interface ProjectInvite {
     expiresAt: Timestamp | string;
 }
 
+export interface ProjectMatchThread {
+    id: string;
+    email: string;
+    status: 'open' | 'finalized' | 'archived' | 'expired';
+    interests: string;
+    contribution: string;
+    notes?: string;
+    leadMessage?: string;
+    inviteEmailSnapshot?: string;
+    internalNote?: string;
+    requesterMessage?: string;
+    requesterName?: string;
+    tokenHash?: string | null;
+    tokenIssuedAt?: Timestamp | string;
+    tokenExpiresAt?: Timestamp | string;
+    tokenConsumedAt?: Timestamp | string;
+    lastAccessAt?: Timestamp | string;
+    lastActivityAt?: Timestamp | string;
+    finalizedAt?: Timestamp | string;
+    archivedAt?: Timestamp | string;
+    expiresAt?: Timestamp | string;
+    createdAt: Timestamp | string;
+    updatedAt: Timestamp | string;
+    createdByUserId?: string | null;
+    updatedByUserId?: string | null;
+}
+
+export interface ProjectMatchMessage {
+    id: string;
+    threadId: string;
+    senderType: 'requester' | 'admin' | 'system';
+    senderUserId?: string | null;
+    senderEmail?: string | null;
+    body: string;
+    kind?: 'message' | 'note' | 'system';
+    createdAt: Timestamp | string;
+    updatedAt?: Timestamp | string;
+}
+
 export interface Discussion {
     id: string;
     projectId: ProjectId;
@@ -927,4 +966,3 @@ export interface FundryLedgerEntry {
     createdBy: string | "system";
     createdAt: Timestamp | string;
 }
-

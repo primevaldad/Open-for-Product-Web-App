@@ -174,14 +174,6 @@
 }
 
 /* react-tabs theme overrides */
-.react-tabs__tab--selected {
-  background-color: transparent !important;
-  border-color: transparent !important;
-  border-bottom: 2px solid hsl(var(--primary)) !important;
-  color: hsl(var(--foreground)) !important;
-  border-radius: 0 !important;
-}
-
 .react-tabs__tab {
   background-color: transparent;
   border: none;

@@ -87,6 +87,16 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
                     </SidebarMenuItem>
                     {user?.role === 'admin' && (
                         <SidebarMenuItem>
+                            <Link href="/admin/project-match" onClick={() => setOpenMobile(false)}>
+                                <SidebarMenuButton isActive={pathname.startsWith('/admin/project-match')}>
+                                    <Rss />
+                                    Project Matches
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )}
+                    {user?.role === 'admin' && (
+                        <SidebarMenuItem>
                             <Link href="/admin" onClick={() => setOpenMobile(false)}>
                                 <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
                                     <Settings />

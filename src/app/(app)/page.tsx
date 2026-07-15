@@ -7,10 +7,12 @@ Compass,
 Heart,
 Leaf,
 Mail,
+Shield,
 Sparkles,
 Sprout,
 Users,
 } from "lucide-react";
+import { ProjectMatchForm } from '@/components/project-match-form';
 
 const projects = [
 {
@@ -299,34 +301,7 @@ return (
                     Tell us what interests you, what kind of contribution feels realistic, and what you hope to find.
                     We’ll send a small set of thoughtful project introductions. No account required.
                 </p>
-                <form className="mt-8 grid gap-4" action="/api/project-match" method="post">
-                    <label className="grid gap-2 text-sm font-medium">
-                        What kinds of work sound interesting?
-                        <input name="interests" placeholder="Technology, education, writing, community..."
-                            className="rounded-xl border border-input bg-card px-4 py-3 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
-                    </label>
-                    <label className="grid gap-2 text-sm font-medium">
-                        What could you imagine contributing?
-                        <input name="contribution" placeholder="Feedback, research, design, testing, not sure yet..."
-                            className="rounded-xl border border-input bg-card px-4 py-3 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
-                    </label>
-                    <label className="grid gap-2 text-sm font-medium">
-                        Email address
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                            <div className="relative flex-1">
-                                <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b7568]" />
-                                <input required type="email" name="email" placeholder="you@example.com"
-                                    className="w-full rounded-xl border border-input bg-card py-3 pl-11 pr-4 text-[#292820] outline-none placeholder:text-[#857f72] focus:ring-2 focus:ring-[#f1d3b2]" />
-                            </div>
-                            <button type="submit"
-                                className="rounded-xl bg-[#b8512c] px-5 py-3 font-semibold text-white hover:bg-[#9e4323]">
-                                Find my way in
-                            </button>
-                        </div>
-                    </label>
-                    <p className="text-xs text-[#e9e5d9]">We’ll use this to send your introductions—not to toss you into
-                        a generic funnel.</p>
-                </form>
+                <ProjectMatchForm />
             </div>
 
             <div id="support" className="scroll-mt-24 rounded-3xl bg-[#b8512c] p-8 text-white lg:p-10">

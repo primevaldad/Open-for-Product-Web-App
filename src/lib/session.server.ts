@@ -6,6 +6,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { SESSION_COOKIE_NAME } from '@/lib/constants';
 import type { User } from '@/lib/types';
 import { findUserById } from '@/lib/data.server';
+import { clearProjectMatchSessionCookie } from '@/lib/project-match';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 const getServiceAccount = () => {
@@ -40,6 +41,12 @@ export async function createSessionCookie(idToken: string, sendVerificationEmail
     try {
         const decodedIdToken = await adminAuth.verifyIdToken(idToken, true);
         const uid = decodedIdToken.uid;
+        
+        // Clear anonymous-only thread access before establishing a real authenticated session.
+        // We MUST NOT do this for anonymous sign-ins, otherwise the unauthenticated flow breaks.
+        if (decodedIdToken.firebase.sign_in_provider !== 'anonymous') {
+            await clearProjectMatchSessionCookie();
+        }
 
         const sessionCookie = await adminAuth.createSessionCookie(idToken, {
             expiresIn: SESSION_DURATION_MS,
@@ -105,6 +112,7 @@ export async function clearSessionCookie(): Promise<void> {
         secure: IS_PROD,
         path: '/',
     });
+    await clearProjectMatchSessionCookie();
 }
 
 export async function getAuthenticatedUser(): Promise<User | null> {
