@@ -4,6 +4,7 @@ import { getProjectMatchThreadAdminAction, addProjectMatchMessageAction, finaliz
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { AdminProjectMatchThreadClient } from '@/components/admin-project-match-thread-client';
 
 export default async function ProjectMatchThreadAdminPage({ params }: { params: { threadId: string } }) {
   const currentUser = await getAuthenticatedUser();
@@ -53,7 +54,7 @@ export default async function ProjectMatchThreadAdminPage({ params }: { params: 
         <p><strong>Contribution:</strong> {thread.contribution}</p>
       </div>
 
-      <form action={notesAction} className="mt-6 grid gap-4 rounded-2xl border bg-card p-6">
+      <form action={notesAction} className="mt-6 grid gap-4 rounded-2xl border bg-card p-6 shadow-sm">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Internal note</span>
           <Textarea name="internalNote" defaultValue={thread.internalNote || ''} rows={3} placeholder="Lead-only note for the intro..." />
@@ -71,23 +72,11 @@ export default async function ProjectMatchThreadAdminPage({ params }: { params: 
         </div>
       </form>
 
-      <div className="mt-8 space-y-4">
-        {messages.map((message: any) => (
-          <article key={message.id} className="rounded-2xl border bg-background p-5">
-            <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{message.senderType}</div>
-            <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p>
-          </article>
-        ))}
-      </div>
-
-      <form action={replyAction} className="mt-8 grid gap-4 rounded-2xl border bg-card p-6">
-        <Textarea name="body" rows={5} placeholder="Write an admin response..." />
-        <div className="flex gap-3">
-          <Button type="submit">Send reply</Button>
-          <Button type="submit" formAction={finalizeAction} variant="outline">Finalize</Button>
-          <Button type="submit" formAction={archiveAction} variant="secondary">Archive</Button>
-        </div>
-      </form>
+      <AdminProjectMatchThreadClient
+        threadId={params.threadId}
+        initialMessages={messages}
+        threadStatus={thread.status}
+      />
     </main>
   );
 }

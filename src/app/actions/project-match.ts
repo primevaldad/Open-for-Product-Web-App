@@ -251,8 +251,13 @@ export async function addProjectMatchMessageAction(values: {
   const currentUser = await getAuthenticatedUser();
   const isAdmin = currentUser?.role === 'admin';
 
-  if (values.senderType === 'admin' && !isAdmin) {
-    return { success: false, error: 'Unauthorized.' };
+  if (values.senderType === 'admin') {
+    if (!isAdmin) {
+      return { success: false, error: 'Unauthorized.' };
+    }
+    if (thread.status === 'finalized') {
+      return { success: false, error: 'This thread is finalized and cannot receive new messages.' };
+    }
   }
 
   if (values.senderType === 'requester') {
@@ -280,7 +285,7 @@ export async function addProjectMatchMessageAction(values: {
   await threadRef.update({
     lastActivityAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
-    status: thread.status === 'finalized' ? 'finalized' : 'open',
+    status: (thread.status === 'finalized' || thread.status === 'archived') ? thread.status : 'open',
   });
 
   // revalidatePath(`/match/${values.threadId}`);
