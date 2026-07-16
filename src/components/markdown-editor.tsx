@@ -11,7 +11,7 @@ import {
   ChevronDown,
   FolderKanban
 } from 'lucide-react';
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Editor, EditorContent, ReactRenderer, useEditor, InputRule } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -126,6 +126,10 @@ export function MarkdownEditor({
   steemFlavor = false
 }: MarkdownEditorProps) {
   const isUpdatingFromEditor = useRef(false);
+  const isUpdatingFromRaw = useRef(false);
+  // For the uncontrolled raw textarea: store the current value and cursor position
+  const rawTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const rawCursorRef = useRef<{ start: number; end: number } | null>(null);
 
   // States to hold dynamically fetched users and projects
   const [fetchedUsers, setFetchedUsers] = useState<User[]>([]);
@@ -203,49 +207,45 @@ export function MarkdownEditor({
           ...this.parent?.(),
           mentionType: { default: 'user', parseHTML: (el: HTMLElement) => el.getAttribute('data-mention-type') || 'user', renderHTML: (attrs: any) => ({ 'data-mention-type': attrs.mentionType }) },
           uid: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute('data-uid'), renderHTML: (attrs: any) => attrs.uid ? { 'data-uid': attrs.uid } : {} },
+          // Stores the exact href the user provided (path-only or full URL).
+          // This lets edits made in the Markup tab survive the round-trip through Tiptap.
+          href: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute('href') || el.getAttribute('data-href') || null, renderHTML: (attrs: any) => attrs.href ? { 'data-href': attrs.href } : {} },
         };
       },
       parseHTML() {
         return [
           ...this.parent?.() || [],
+          // Single flexible rule: matches <a> tags whose href contains /projects/ or /profile/
+          // anywhere in the path — handles both path-only (/projects/abc) and full URLs
+          // (https://app.openforproduct.com/projects/abc).
           {
-            tag: 'a[href^="/projects/"]',
+            tag: 'a',
             getAttrs: (node: string | HTMLElement) => {
               if (typeof node === 'string') return false;
               const text = node.textContent || '';
               if (!text.startsWith('@')) return false;
-              
+
               const href = node.getAttribute('href') || '';
-              const slugPart = href.substring('/projects/'.length);
-              const id = extractId(slugPart);
               const label = text.substring(1);
-              
-              return {
-                id,
-                label,
-                mentionType: 'project',
-              };
-            },
-          },
-          {
-            tag: 'a[href^="/profile/"]',
-            getAttrs: (node: string | HTMLElement) => {
-              if (typeof node === 'string') return false;
-              const text = node.textContent || '';
-              if (!text.startsWith('@')) return false;
-              
-              const href = node.getAttribute('href') || '';
-              const slugPart = href.substring('/profile/'.length);
-              const uid = extractId(slugPart);
-              const label = text.substring(1);
-              
-              const usernameSlug = slugPart.substring(uid.length + 1); // "johndoe" from "uid123-johndoe"
-              return {
-                id: usernameSlug || label,
-                label,
-                mentionType: 'user',
-                uid,
-              };
+
+              // Project mention: href contains /projects/<slug>
+              const projectMatch = href.match(/\/projects\/([^/?#\s)]+)/);
+              if (projectMatch) {
+                const slugPart = projectMatch[1];
+                const id = extractId(slugPart);
+                return { id, label, mentionType: 'project', href };
+              }
+
+              // User mention: href contains /profile/<slug>
+              const profileMatch = href.match(/\/profile\/([^/?#\s)]+)/);
+              if (profileMatch) {
+                const slugPart = profileMatch[1];
+                const uid = extractId(slugPart);
+                const usernameSlug = slugPart.substring(uid.length + 1);
+                return { id: usernameSlug || label, label, mentionType: 'user', uid, href };
+              }
+
+              return false;
             },
           },
         ];
@@ -255,12 +255,18 @@ export function MarkdownEditor({
       addStorage() {
         return {
           markdown: {
-            serialize(state: any, node: any) {
+          serialize(state: any, node: any) {
               const label = node.attrs.label ?? node.attrs.id;
               const mType = node.attrs.mentionType || 'user';
               const id = node.attrs.id;
-              // For users, build hybrid URL using uid (Firebase UID) if available, else id
-              // For projects, use the project id directly
+
+              // If the user manually edited the URL in the Markup tab, preserve it exactly.
+              if (node.attrs.href) {
+                state.write(`[@${label}](${node.attrs.href})`);
+                return;
+              }
+
+              // Otherwise build the path-based URL (new mentions from the WYSIWYG picker).
               if (mType === 'project') {
                 const href = buildHybridUrl('/projects', id, label);
                 state.write(`[@${label}](${href})`);
@@ -373,14 +379,19 @@ export function MarkdownEditor({
   ], [steemFlavor]);
 
   const [, forceUpdate] = useState(0);
+  const [activeTab, setActiveTab] = useState<'write' | 'markup'>('write');
 
   const processedValue = useMemo(() => {
     if (!value) return value;
-    // Pre-process markdown mention links into HTML <a> tags so Tiptap's parseHTML catches them
-    // Match [@Name](/profile/uid-slug) or [@Name](/projects/id-slug)
-    return value.replace(/\[@([^\]]+)\]\((\/(?:profile|projects)\/[^)]+)\)/g, (match, label, href) => {
-      return `<a href="${href}">@${label}</a>`;
-    });
+    // Pre-process markdown mention links into HTML <a> tags so Tiptap's parseHTML catches them.
+    // Matches any [@Name](url) where the url contains /projects/ or /profile/ — handles:
+    //   [@Name](/projects/abc)                              path-only
+    //   [@Name](https://app.openforproduct.com/projects/abc)  full URL with scheme
+    //   [@Name](app.openforproduct.com/projects/abc)        schemeless hostname
+    return value.replace(
+      /\[@([^\]]+)\]\(([^)]*\/(?:profile|projects)\/[^)]+)\)/g,
+      (_, label, href) => `<a href="${href}">@${label}</a>`
+    );
   }, [value]);
 
   const editor = useEditor({
@@ -403,6 +414,15 @@ export function MarkdownEditor({
     },
     immediatelyRender: false,
   });
+
+  // Sync Tiptap from the textarea's value when switching back to Write tab.
+  // Since the textarea is controlled, `value` / `processedValue` are always current.
+  const handleTabChange = (tab: string) => {
+    if (tab === 'write' && activeTab === 'markup' && editor) {
+      editor.commands.setContent(processedValue ?? value);
+    }
+    setActiveTab(tab as 'write' | 'markup');
+  };
 
   const formattingTools = [
     { name: 'bold', action: () => editor?.chain().focus().toggleBold().run(), icon: Bold, tooltip: 'Bold', shortcut: 'Mod+B' },
@@ -446,20 +466,40 @@ export function MarkdownEditor({
       isUpdatingFromEditor.current = false;
       return;
     }
+    if (isUpdatingFromRaw.current) {
+      // User is typing in the raw textarea — don't push back into Tiptap on every keystroke;
+      // the Tiptap editor will sync when the user switches back to the Write tab.
+      isUpdatingFromRaw.current = false;
+      return;
+    }
     if (editor) {
       // Retain the current selection if possible when updating externally
       const { from, to } = editor.state.selection;
-      editor.commands.setContent(value);
+      // Use processedValue (HTML form) so mention links survive the round-trip
+      editor.commands.setContent(processedValue ?? value);
       try {
         editor.commands.setTextSelection({ from, to });
       } catch (e) {
         // Ignore selection restoration errors
       }
     }
-  }, [value, editor]);
+  }, [value, editor, processedValue]);
+
+  // After each render, restore the cursor position in the raw textarea.
+  // This is needed because React's controlled textarea resets selectionStart/End on re-render.
+  useLayoutEffect(() => {
+    const ta = rawTextareaRef.current;
+    if (!ta || !rawCursorRef.current) return;
+    const { start, end } = rawCursorRef.current;
+    ta.setSelectionRange(start, end);
+    rawCursorRef.current = null;
+  });
 
   const handleRawChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // We don't set isUpdatingFromEditor because we *want* the editor to sync from this value
+    // Save cursor position before React's re-render resets it
+    rawCursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+    // Signal that this change came from the raw textarea so we skip the Tiptap re-sync
+    isUpdatingFromRaw.current = true;
     onChange(e.target.value);
   };
 
@@ -524,11 +564,11 @@ export function MarkdownEditor({
 
   return (
     <div className="flex flex-col w-full border rounded-md overflow-hidden bg-background">
-      <Tabs defaultValue="write" className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
         <div className="flex items-center justify-between bg-muted/10 pr-1">
           <TabsList className="bg-transparent h-10">
             <TabsTrigger value="write" className="data-[state=active]:bg-background">Write</TabsTrigger>
-            <TabsTrigger value="markup" className="data-[state=active]:bg-background">Markup</TabsTrigger>
+            <TabsTrigger value="markup" className="data-[state=active]:bg-background">Markdown</TabsTrigger>
           </TabsList>
         </div>
         
@@ -541,6 +581,7 @@ export function MarkdownEditor({
         
         <TabsContent value="markup" className="m-0 flex-1 data-[state=active]:flex flex-col min-h-[300px] outline-none">
           <textarea
+            ref={rawTextareaRef}
             value={value}
             onChange={handleRawChange}
             placeholder={placeholder || "Enter markdown here..."}
