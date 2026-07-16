@@ -415,7 +415,7 @@ export async function listProjectMatchThreadsAction() {
     return { success: false, error: 'Unauthorized.' };
   }
 
-  const snapshot = await adminDb.collection(THREAD_COLLECTION).orderBy('updatedAt', 'desc').limit(50).get();
+  const snapshot = await adminDb.collection(THREAD_COLLECTION).orderBy('updatedAt', 'desc').limit(500).get();
   const threads = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as ProjectMatchThread[];
   return { success: true, data: deepSerialize(threads) };
 }

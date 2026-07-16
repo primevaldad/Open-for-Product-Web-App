@@ -1,8 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/session.server';
 import { listProjectMatchThreadsAction } from '@/app/actions/project-match';
 import { PageHeader } from '@/components/page-header';
+import { ProjectMatchAdminClient } from '@/components/project-match-admin-client';
+import type { ProjectMatchThread } from '@/lib/types';
 
 export default async function ProjectMatchAdminPage() {
   const currentUser = await getAuthenticatedUser();
@@ -16,23 +17,13 @@ export default async function ProjectMatchAdminPage() {
     return <div className="p-8">Unable to load project match threads.</div>;
   }
 
-  const threads = result.data as any[];
+  const threads = result.data as ProjectMatchThread[];
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <PageHeader title="Project match threads" />
-      <div className="mt-8 grid gap-4">
-        {threads.map((thread) => (
-          <Link key={thread.id} href={`/admin/project-match/${thread.id}`} className="rounded-2xl border bg-card p-5 hover:bg-accent">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{thread.email}</p>
-                <p className="text-sm text-muted-foreground">{thread.interests}</p>
-              </div>
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">{thread.status}</span>
-            </div>
-          </Link>
-        ))}
+      <div className="mt-8">
+        <ProjectMatchAdminClient threads={threads} />
       </div>
     </main>
   );
