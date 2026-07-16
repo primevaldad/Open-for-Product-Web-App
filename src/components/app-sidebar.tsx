@@ -2,15 +2,15 @@
 'use client';
 
 import {
-  BookOpen,
-  FilePlus2,
-  FolderKanban,
-  Home,
-  Layers,
-  Settings,
-  Library,
-  Rss,
-  Info,
+    BookOpen,
+    FilePlus2,
+    FolderKanban,
+    Home,
+    Layers,
+    Settings,
+    Library,
+    Rss,
+    Info,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,13 +18,13 @@ import type { User } from "@/lib/types";
 import { buildHybridUrl } from "@/lib/slug";
 
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  useSidebar,
+    Sidebar,
+    SidebarContent,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuItem,
+    SidebarMenuButton,
+    useSidebar,
 } from "@/components/ui/sidebar";
 import { Logo } from "./logo";
 import { UserAvatar } from "./user-avatar";
@@ -45,11 +45,11 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
         { href: "/collections", icon: <Layers />, label: "Collections" },
         { href: "/learning", icon: <BookOpen />, label: "Learning Paths" },
         { href: "/resources", icon: <Library />, label: "Free Resources" },
-        { 
-            href: "/feed", 
-            icon: <Rss />, 
+        {
+            href: "/feed",
+            icon: <Rss />,
             label: "Feed",
-            showIndicator: hasNewCommunityContent 
+            showIndicator: hasNewCommunityContent
         },
         { href: "/about", icon: <Info />, label: "About" },
     ];
@@ -57,7 +57,7 @@ export function AppSidebar({ user, hasNewCommunityContent }: AppSidebarProps) {
     return (
         <Sidebar className="border-r" collapsible="icon">
             <SidebarHeader className="px-4 py-2">
-                <Link href="/projects" className="flex items-center gap-3">
+                <Link href="/" className="flex items-center gap-3">
                     <Logo />
                     <span className="text-lg font-semibold text-sidebar-foreground text-nowrap">Open for Product</span>
                 </Link>
