@@ -1189,21 +1189,42 @@ export default function ProjectDetailClientPage({
                                                             <p className="text-xs text-muted-foreground italic">No draft updates.</p>
                                                         ) : (
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                {posts.filter(p => p.status === 'draft').map(post => (
-                                                                    <Card 
-                                                                        key={post.id} 
-                                                                        className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-transparent border-t dark:bg-slate-950/20"
-                                                                        onClick={() => setSelectedPost(post)}
-                                                                    >
-                                                                        <div className="flex justify-between items-center text-[10px] text-muted-foreground">
-                                                                            <span className="font-semibold text-amber-600 dark:text-amber-400">Draft</span>
-                                                                            <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
-                                                                        </div>
-                                                                        <h4 className="font-bold text-sm text-foreground/85">{post.title}</h4>
-                                                                        <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
-                                                                        <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">Preview draft &rarr;</span>
-                                                                    </Card>
-                                                                ))}
+                                                                {posts.filter(p => p.status === 'draft').map(post => {
+                                                                    const isAuthor = currentUser && post.userId === currentUser.id;
+
+                                                                    const cardInner = (
+                                                                        <Card
+                                                                            key={post.id}
+                                                                            className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-card border-amber-200 dark:border-amber-800"
+                                                                            onClick={!isAuthor ? () => setSelectedPost(post) : undefined}
+                                                                        >
+                                                                            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                                                                                <span className="font-semibold text-amber-600 dark:text-amber-400">Draft</span>
+                                                                                <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
+                                                                            </div>
+                                                                            <h4 className="font-bold text-sm text-foreground">{post.title}</h4>
+                                                                            <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
+                                                                            <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">
+                                                                                {isAuthor ? 'Edit draft →' : 'Preview draft →'}
+                                                                            </span>
+                                                                        </Card>
+                                                                    );
+
+                                                                    if (isAuthor) {
+                                                                        return (
+                                                                            <CreatePostDialog
+                                                                                key={post.id}
+                                                                                project={project}
+                                                                                currentUser={currentUser}
+                                                                                post={post}
+                                                                                onPostSaved={handlePostSaved}
+                                                                                trigger={cardInner}
+                                                                            />
+                                                                        );
+                                                                    }
+
+                                                                    return cardInner;
+                                                                })}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1527,19 +1548,22 @@ export default function ProjectDetailClientPage({
             />
             {selectedPost && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-100">
-                    <div className="bg-transparent dark:bg-gray-900 border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                        <div className="flex justify-between items-center border-b p-4">
+                    <div className="bg-background border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex justify-between items-center border-b p-4 bg-muted/30">
                             <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Draft</span>
+                                </div>
                                 <h3 className="font-bold text-lg text-foreground">{selectedPost.title}</h3>
                                 <span className="text-xs text-muted-foreground">
-                                    Posted on {new Date(selectedPost.createdAt as string).toLocaleString()} by {users.find(u => u.id === selectedPost.userId)?.username || 'Unknown User'}
+                                    Draft created {new Date(selectedPost.createdAt as string).toLocaleString()} by {users.find(u => u.id === selectedPost.userId)?.name || users.find(u => u.id === selectedPost.userId)?.username || 'Unknown'}
                                 </span>
                             </div>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedPost(null)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setSelectedPost(null)}>
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
-                        <div className="p-6 overflow-y-auto prose dark:prose-invert max-w-none text-sm text-foreground/90">
+                        <div className="p-6 overflow-y-auto prose dark:prose-invert max-w-none text-sm">
                             <Markdown content={selectedPost.content} />
                         </div>
                         <div className="border-t p-3 bg-muted/20 flex justify-end">
