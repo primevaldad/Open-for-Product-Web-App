@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAvatar } from './user-avatar';
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { HydratedProjectMember, User } from '@/lib/types';
 import { getInitials, toDate } from '@/lib/utils';
-import { getProjectInvitesAction, acceptInviteAction, getCollaboratorsAction, cancelInviteAction, resendInviteAction, sendProjectInviteAction } from '@/app/actions/invite';
+import { acceptInviteAction, getCollaboratorsAction, cancelInviteAction, resendInviteAction, sendProjectInviteAction, rejectInviteAction } from '@/app/actions/invite';
 import type { ProjectInvite } from '@/lib/types';
+import { subscribeToProjectInvites, subscribeToMyProjectInvites } from '@/lib/data.client';
 import { getProjectFollowersAction } from '@/app/actions/projects';
 import { buildHybridUrl } from '@/lib/slug';
 import { useRouter } from 'next/navigation';
@@ -46,7 +47,6 @@ export default function ProjectTeam({
 }: ProjectTeamProps) {
     const [loading, setLoading] = useState<Record<string, boolean>>({});
     const [emailInvites, setEmailInvites] = useState<ProjectInvite[]>([]);
-    const [loadingInvites, setLoadingInvites] = useState(false);
     const [collaborators, setCollaborators] = useState<{id: string, name: string, email: string, username?: string}[]>([]);
     const [isInviting, setIsInviting] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
@@ -79,17 +79,23 @@ export default function ProjectTeam({
     const { toast } = useToast();
     const router = useRouter();
 
-    const fetchInvites = useCallback(() => {
-        setLoadingInvites(true);
-        getProjectInvitesAction(projectId).then(res => {
-            if (res.success && res.data) {
-                setEmailInvites(res.data);
-            }
-        }).finally(() => setLoadingInvites(false));
-    }, [projectId]);
+    // Real-time invite subscription — mirrors the tasks/fundingGoals pattern.
+    // Leads subscribe to all invites for the project; non-leads subscribe to their own.
+    useEffect(() => {
+        if (!currentUser) return;
+
+        let unsub: (() => void) | undefined;
+
+        if (isLead) {
+            unsub = subscribeToProjectInvites(projectId, setEmailInvites);
+        } else {
+            unsub = subscribeToMyProjectInvites(projectId, currentUser.email, setEmailInvites);
+        }
+
+        return () => unsub?.();
+    }, [projectId, isLead, currentUser]);
 
     useEffect(() => {
-        fetchInvites();
         if (isLead) {
             getCollaboratorsAction().then(res => {
                 if (res.success && res.data) {
@@ -97,7 +103,7 @@ export default function ProjectTeam({
                 }
             });
         }
-    }, [projectId, isLead, fetchInvites]);
+    }, [projectId, isLead]);
 
     const { pendingMembers, approvedMembers } = useMemo(() => {
         const pending = team.filter(member => member.pendingRole);
@@ -158,13 +164,26 @@ export default function ProjectTeam({
             const res = await acceptInviteAction(token);
             if (res.success) {
                 toast({ title: 'Success', description: 'You have joined the project team!' });
-                router.refresh(); 
-                fetchInvites();
+                router.refresh();
             } else {
                 toast({ title: 'Error', description: res.error, variant: 'destructive' });
             }
         } finally {
             setLoading({ 'accept-invite': false });
+        }
+    };
+
+    const handleRejectInvite = async (inviteId: string) => {
+        setLoading({ 'reject-invite': true });
+        try {
+            const res = await rejectInviteAction(inviteId);
+            if (res.success) {
+                toast({ title: 'Invitation declined', description: 'You have declined the project invitation.' });
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } finally {
+            setLoading({ 'reject-invite': false });
         }
     };
 
@@ -182,7 +201,6 @@ export default function ProjectTeam({
                 toast({ title: 'Success', description: `Invitation sent to ${inviteEmail}` });
                 setInviteEmail('');
                 setCustomMessage('');
-                fetchInvites();
             } else {
                 toast({ title: 'Error', description: res.error, variant: 'destructive' });
             }
@@ -197,7 +215,6 @@ export default function ProjectTeam({
             const res = await cancelInviteAction(id);
             if (res.success) {
                 toast({ title: 'Success', description: 'Invitation cancelled' });
-                fetchInvites();
             }
         } finally {
             setLoading({ [id]: false });
@@ -210,7 +227,6 @@ export default function ProjectTeam({
             const res = await resendInviteAction(id, customMessage);
             if (res.success) {
                 toast({ title: 'Success', description: 'Invitation resent' });
-                fetchInvites();
             }
         } finally {
             setLoading({ [id]: false });
@@ -220,7 +236,7 @@ export default function ProjectTeam({
     const myInvite = useMemo(() => {
         if (!currentUser) return null;
         if (isCurrentUserMember) return null;
-        return emailInvites.find(i => i.email === currentUser.email && i.status === 'pending');
+        return emailInvites.find(i => i.email === currentUser.email && (i.status === 'pending' || i.status === 'declined'));
     }, [emailInvites, currentUser, isCurrentUserMember]);
 
     const filteredCollaborators = useMemo(() => {
@@ -258,14 +274,29 @@ export default function ProjectTeam({
                         <p className="text-amber-700 dark:text-amber-300 mb-4">
                             You have been invited to join this project as a <strong>{myInvite.role}</strong>.
                         </p>
-                        <Button 
-                            onClick={() => handleAcceptInvite(myInvite.token)} 
-                            disabled={loading['accept-invite']}
-                            className="bg-amber-600 hover:bg-amber-700 text-white"
-                        >
-                            {loading['accept-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Accept Invitation
-                        </Button>
+                        {myInvite.status === 'pending' ? (
+                            <div className="flex items-center gap-3">
+                                <Button 
+                                    onClick={() => handleAcceptInvite(myInvite.token)} 
+                                    disabled={loading['accept-invite'] || loading['reject-invite']}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                    {loading['accept-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Accept Invitation
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleRejectInvite(myInvite.id)}
+                                    disabled={loading['accept-invite'] || loading['reject-invite']}
+                                    className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                                >
+                                    {loading['reject-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Reject Invitation
+                                </Button>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-red-500 dark:text-red-400 font-medium">You have declined this invitation.</p>
+                        )}
                     </CardContent>
                 </Card>
             )}

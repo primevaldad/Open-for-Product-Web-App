@@ -44,7 +44,7 @@ export async function sendProjectInviteAction(data: {
         }
 
         const projectData = projectDoc.data() as Project;
-        
+
         // Verify caller is a lead or owner
         const isOwner = projectData.ownerId === currentUser.id;
         const isLead = projectData.team.some(
@@ -86,9 +86,9 @@ export async function sendProjectInviteAction(data: {
         // Prepare email content
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         const inviteLink = `${baseUrl}/projects/${projectId}?tab=team&inviteToken=${token}`;
-        
+
         const subject = `You've been invited to join ${projectData.name}`;
-        
+
         const inviterName = currentUser.name || 'A member';
         const senderDisplayName = `${inviterName} via Open for Product`;
 
@@ -98,7 +98,7 @@ export async function sendProjectInviteAction(data: {
                 <p><strong>${inviterName}</strong> has invited you to join the project <strong>${projectData.name}</strong> as a ${role}.</p>
                 ${customMessage ? `<div style="background-color: #f4f4f4; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;">${customMessage}</div>` : ''}
                 <div style="margin: 30px 0;">
-                    <a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Accept Invitation</a>
+                    <a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Invitation</a>
                 </div>
                 <p>If the button doesn't work, copy and paste this link into your browser:</p>
                 <p><a href="${inviteLink}">${inviteLink}</a></p>
@@ -149,7 +149,7 @@ export async function acceptInviteAction(token: string): Promise<ServerActionRes
 
         // Find invite by token
         const inviteQuery = await adminDb.collection('projectInvites').where('token', '==', token).limit(1).get();
-        
+
         if (inviteQuery.empty) {
             return { success: false, error: 'Invalid or missing invitation token.' };
         }
@@ -186,7 +186,7 @@ export async function acceptInviteAction(token: string): Promise<ServerActionRes
         }
 
         const projectData = projectDoc.data() as Project;
-        
+
         // Check if user is already a member
         const memberIndex = projectData.team.findIndex(m => m.userId === currentUser.id);
         if (memberIndex !== -1) {
@@ -253,9 +253,9 @@ export async function getProjectInvitesAction(projectId: string): Promise<Server
         const isLead = projectData.ownerId === currentUser.id || projectData.team.some(m => m.userId === currentUser.id && m.role === 'lead');
 
         let invitesQuery = adminDb.collection('projectInvites').where('projectId', '==', projectId);
-        
+
         if (!isLead) {
-            invitesQuery = invitesQuery.where('email', '==', currentUser.email.trim().toLowerCase()).where('status', '==', 'pending');
+            invitesQuery = invitesQuery.where('email', '==', currentUser.email.trim().toLowerCase());
         }
 
         const snapshot = await invitesQuery.get();
@@ -342,14 +342,14 @@ export async function resendInviteAction(inviteId: string, customMessage?: strin
         const inviteLink = `${baseUrl}/projects/${inviteData.projectId}/join?token=${token}`;
         const subject = `Reminder: You've been invited to join ${projectData.name}`;
         const inviterName = currentUser.name || 'A member';
-        
+
         const htmlBody = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2>Invitation Reminder</h2>
                 <p>This is a reminder that <strong>${inviterName}</strong> has invited you to join the project <strong>${projectData.name}</strong>.</p>
                 ${customMessage ? `<div style="background-color: #f4f4f4; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;">${customMessage}</div>` : ''}
                 <div style="margin: 30px 0;">
-                    <a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Accept Invitation</a>
+                    <a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Invitation</a>
                 </div>
                 <p>If the button doesn't work, copy and paste this link into your browser:</p>
                 <p><a href="${inviteLink}">${inviteLink}</a></p>
@@ -365,20 +365,100 @@ export async function resendInviteAction(inviteId: string, customMessage?: strin
     }
 }
 
-export async function getCollaboratorsAction(): Promise<ServerActionResponse<{id: string, name: string, email: string, username?: string}[]>> {
+export async function rejectInviteAction(inviteId: string): Promise<ServerActionResponse> {
+    try {
+        const currentUser = await getAuthenticatedUser();
+        if (!currentUser) return { success: false, error: 'Unauthorized' };
+
+        const inviteRef = adminDb.collection('projectInvites').doc(inviteId);
+        const inviteSnap = await inviteRef.get();
+        if (!inviteSnap.exists) return { success: false, error: 'Invitation not found' };
+
+        const inviteData = inviteSnap.data() as ProjectInvite;
+
+        // Only the recipient can reject
+        if (currentUser.email !== inviteData.email) {
+            return { success: false, error: 'You are not the recipient of this invitation.' };
+        }
+
+        if (inviteData.status !== 'pending') {
+            return { success: false, error: 'This invitation is no longer pending.' };
+        }
+
+        await inviteRef.update({ status: 'declined' });
+
+        // Log event
+        await createAndDispatchEvent({
+            type: EventType.INVITE_REJECTED,
+            actorUserId: currentUser.id,
+            projectId: inviteData.projectId,
+            payload: { email: currentUser.email, role: inviteData.role }
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function rejectInviteByTokenAction(token: string): Promise<ServerActionResponse> {
+    try {
+        // Find invite by token (no auth required — token is the proof of identity)
+        const inviteQuery = await adminDb.collection('projectInvites').where('token', '==', token).limit(1).get();
+        if (inviteQuery.empty) return { success: false, error: 'Invalid or missing invitation token.' };
+
+        const inviteDoc = inviteQuery.docs[0];
+        const inviteData = inviteDoc.data() as ProjectInvite;
+
+        if (inviteData.status !== 'pending') {
+            return { success: false, error: 'This invitation is no longer pending.' };
+        }
+
+        // Check expiry
+        const now = new Date();
+        const expiresAt = (inviteData.expiresAt as unknown as Timestamp)?.toDate?.() || new Date(inviteData.expiresAt as string);
+        if (now > expiresAt) {
+            await inviteDoc.ref.update({ status: 'expired' });
+            return { success: false, error: 'This invitation has expired.' };
+        }
+
+        await inviteDoc.ref.update({ status: 'declined' });
+
+        // Try to log event if there's an authenticated user, otherwise skip silently
+        try {
+            const currentUser = await getAuthenticatedUser();
+            if (currentUser) {
+                await createAndDispatchEvent({
+                    type: EventType.INVITE_REJECTED,
+                    actorUserId: currentUser.id,
+                    projectId: inviteData.projectId,
+                    payload: { email: inviteData.email, role: inviteData.role }
+                });
+            }
+        } catch {
+            // Non-fatal — event logging failure shouldn't block rejection
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getCollaboratorsAction(): Promise<ServerActionResponse<{ id: string, name: string, email: string, username?: string }[]>> {
     try {
         const currentUser = await getAuthenticatedUser();
         if (!currentUser) return { success: false, error: 'Unauthorized' };
 
         // 1. Fetch all projects (using the same pattern as data.server.ts)
         const projectsSnap = await adminDb.collection('projects').get();
-        
+
         const allMemberIds = new Set<string>();
-        
+
         projectsSnap.docs.forEach(doc => {
             const data = doc.data() as Project;
             const isMember = data.ownerId === currentUser.id || (data.team && data.team.some(m => m.userId === currentUser.id));
-            
+
             if (isMember) {
                 if (data.ownerId) allMemberIds.add(data.ownerId);
                 if (data.team) data.team.forEach(m => allMemberIds.add(m.userId));
@@ -391,14 +471,14 @@ export async function getCollaboratorsAction(): Promise<ServerActionResponse<{id
 
         // 2. Fetch user details in batches
         const memberIds = Array.from(allMemberIds);
-        const users: {id: string, name: string, email: string, username?: string}[] = [];
+        const users: { id: string, name: string, email: string, username?: string }[] = [];
 
         for (let i = 0; i < memberIds.length; i += 30) {
             const chunk = memberIds.slice(i, i + 30);
             const userSnap = await adminDb.collection('users')
                 .where(FieldPath.documentId(), 'in', chunk)
                 .get();
-            
+
             userSnap.docs.forEach(doc => {
                 const data = doc.data();
                 users.push({ id: doc.id, name: data.name, email: data.email, username: data.username });

@@ -492,6 +492,8 @@ export default function ProjectDetailClientPage({
     const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [acceptingInvite, setAcceptingInvite] = useState(false);
+    const [rejectingInvite, setRejectingInvite] = useState(false);
+    const [inviteRejected, setInviteRejected] = useState(false);
 
     const router = useRouter();
     const { toast } = useToast();
@@ -678,6 +680,23 @@ export default function ProjectDetailClientPage({
             }
         } finally {
             setAcceptingInvite(false);
+        }
+    };
+
+    const handleRejectInviteByToken = async () => {
+        if (!inviteToken) return;
+        setRejectingInvite(true);
+        try {
+            const { rejectInviteByTokenAction } = await import('@/app/actions/invite');
+            const res = await rejectInviteByTokenAction(inviteToken);
+            if (res.success) {
+                setInviteRejected(true);
+                toast({ title: 'Invitation declined', description: 'You have declined the project invitation.' });
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } finally {
+            setRejectingInvite(false);
         }
     };
 
@@ -913,6 +932,16 @@ export default function ProjectDetailClientPage({
 
     const renderInviteBanner = () => {
         if (!inviteToken) return null;
+
+        if (inviteRejected) {
+            return (
+                <div className="sticky top-0 z-50 w-full bg-[#FDFBF7]/95 dark:bg-gray-900/95 border-b p-4 shadow-sm backdrop-blur-sm">
+                    <div className="container mx-auto flex items-center justify-center gap-3 text-sm text-muted-foreground">
+                        <span>You have declined the invitation to <strong>{project.name}</strong>.</span>
+                    </div>
+                </div>
+            );
+        }
         
         return (
             <div className="sticky top-0 z-50 w-full bg-[#FDFBF7]/95 dark:bg-gray-900/95 border-b p-4 shadow-sm backdrop-blur-sm">
@@ -920,19 +949,43 @@ export default function ProjectDetailClientPage({
                     <div className="text-sm sm:text-base text-blue-900 dark:text-blue-100">
                         <strong>You&apos;ve been invited!</strong> Join {project.name} to collaborate with the team.
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
                         {!currentUser ? (
-                            <Button 
-                                size="sm" 
-                                onClick={() => router.push(`/login?redirectTo=${encodeURIComponent(`/projects/${project.id}?tab=team&inviteToken=${inviteToken}`)}`)}
-                            >
-                                Sign up to Accept
-                            </Button>
+                            <>
+                                <Button 
+                                    size="sm" 
+                                    onClick={() => router.push(`/login?redirectTo=${encodeURIComponent(`/projects/${project.id}?tab=team&inviteToken=${inviteToken}`)}`)} 
+                                >
+                                    Sign up to Accept
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleRejectInviteByToken}
+                                    disabled={rejectingInvite}
+                                    className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                                >
+                                    {rejectingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Reject Invitation
+                                </Button>
+                            </>
                         ) : (
-                            <Button size="sm" onClick={handleAcceptInvite} disabled={acceptingInvite}>
-                                {acceptingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Accept Invitation
-                            </Button>
+                            <>
+                                <Button size="sm" onClick={handleAcceptInvite} disabled={acceptingInvite || rejectingInvite}>
+                                    {acceptingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Accept Invitation
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleRejectInviteByToken}
+                                    disabled={acceptingInvite || rejectingInvite}
+                                    className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                                >
+                                    {rejectingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Reject Invitation
+                                </Button>
+                            </>
                         )}
                     </div>
                 </div>

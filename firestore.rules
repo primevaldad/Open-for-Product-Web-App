@@ -64,5 +64,17 @@ service cloud.firestore {
     match /userLearningProgress/{progressId} {
         allow read, write: if request.auth.uid == resource.data.userId;
     }
+
+    // --- Project Invites Collection ---
+    match /projectInvites/{inviteId} {
+      // A lead/owner of the project can read any invite for that project.
+      // A user can always read their own invite (matched by email).
+      allow read: if isSignedIn() && (
+        get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid ||
+        request.auth.token.email == resource.data.email
+      );
+      // Writes are handled exclusively by server-side Admin SDK actions.
+      allow write: if false;
+    }
   }
 }

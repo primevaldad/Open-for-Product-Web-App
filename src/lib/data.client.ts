@@ -1,7 +1,7 @@
 import 'client-only';
 import { db } from './firebase';
-import { collection, doc, getDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
-import type { Project, User, Task, LearningPath, UserLearningProgress, FundryFundingGoal } from './types';
+import { collection, doc, getDoc, getDocs, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import type { Project, User, Task, LearningPath, UserLearningProgress, FundryFundingGoal, ProjectInvite } from './types';
 
 // This file contains read-only, client-side data access functions.
 
@@ -75,4 +75,67 @@ export async function findUserLearningProgress(userId: string, pathId: string): 
         return { ...progressSnap.data() } as UserLearningProgress;
     }
     return undefined;
+}
+
+// --- Project Invites Real-time Subscriptions ---
+
+/**
+ * For project leads: subscribes to ALL invites for a given project.
+ * Requires the caller to be the project owner (enforced by Firestore rules via get() lookup).
+ */
+export function subscribeToProjectInvites(
+    projectId: string,
+    callback: (invites: ProjectInvite[]) => void
+): () => void {
+    const q = query(
+        collection(db, 'projectInvites'),
+        where('projectId', '==', projectId)
+    );
+    return onSnapshot(q, (snapshot) => {
+        const now = new Date();
+        const invites = snapshot.docs.map(docSnap => {
+            const data = { id: docSnap.id, ...docSnap.data() } as ProjectInvite;
+            // Mirror server-side expiry detection
+            if (data.status === 'pending') {
+                const expiresAt = (data.expiresAt as unknown as Timestamp)?.toDate?.() ||
+                    new Date(data.expiresAt as string);
+                if (now > expiresAt) {
+                    data.status = 'expired';
+                }
+            }
+            return data;
+        });
+        callback(invites);
+    });
+}
+
+/**
+ * For invitees: subscribes to invites sent to a specific email for a project.
+ * Firestore rules permit this because request.auth.token.email matches resource.data.email.
+ */
+export function subscribeToMyProjectInvites(
+    projectId: string,
+    email: string,
+    callback: (invites: ProjectInvite[]) => void
+): () => void {
+    const q = query(
+        collection(db, 'projectInvites'),
+        where('projectId', '==', projectId),
+        where('email', '==', email)
+    );
+    return onSnapshot(q, (snapshot) => {
+        const now = new Date();
+        const invites = snapshot.docs.map(docSnap => {
+            const data = { id: docSnap.id, ...docSnap.data() } as ProjectInvite;
+            if (data.status === 'pending') {
+                const expiresAt = (data.expiresAt as unknown as Timestamp)?.toDate?.() ||
+                    new Date(data.expiresAt as string);
+                if (now > expiresAt) {
+                    data.status = 'expired';
+                }
+            }
+            return data;
+        });
+        callback(invites);
+    });
 }
