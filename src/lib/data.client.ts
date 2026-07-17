@@ -1,7 +1,7 @@
 import 'client-only';
 import { db } from './firebase';
 import { collection, doc, getDoc, getDocs, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
-import type { Project, User, Task, LearningPath, UserLearningProgress, FundryFundingGoal, ProjectInvite } from './types';
+import type { Project, User, Task, LearningPath, UserLearningProgress, FundryFundingGoal, ProjectInvite, ProjectMember } from './types';
 
 // This file contains read-only, client-side data access functions.
 
@@ -66,7 +66,31 @@ export function subscribeToProjectFundingGoals(projectId: string, callback: (goa
     });
 }
 
-// --- Learning Progress Data Access ---
+// --- Project Team Real-time Subscription ---
+
+/**
+ * Subscribes to the project document and emits the raw team array whenever it changes.
+ * The caller is responsible for hydrating ProjectMember[] with User objects.
+ * Access requires the project to be published OR the caller to be the project owner
+ * (enforced by Firestore security rules).
+ */
+export function subscribeToProjectTeam(
+    projectId: string,
+    callback: (team: ProjectMember[]) => void
+): () => void {
+    const projectRef = doc(db, 'projects', projectId);
+    return onSnapshot(projectRef, (docSnap) => {
+        if (docSnap.exists()) {
+            callback((docSnap.data().team || []) as ProjectMember[]);
+        }
+    }, (error) => {
+        // Silently ignore permission errors (e.g., non-published projects
+        // where the viewer is not yet a team member)
+        if (error.code !== 'permission-denied') {
+            console.error('[subscribeToProjectTeam] Snapshot error:', error);
+        }
+    });
+}
 export async function findUserLearningProgress(userId: string, pathId: string): Promise<UserLearningProgress | undefined> {
     const docId = `${userId}_${pathId}`;
     const progressRef = doc(db, 'userLearningProgress', docId);

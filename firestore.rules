@@ -14,7 +14,12 @@ service cloud.firestore {
     }
 
     function isTeamMember(project) {
-      return request.auth.uid in project.data.team;
+      // Check ownerId directly (works for map/scalar).
+      // The `uid in team` check is kept for forward-compat but only works if team
+      // is restructured as a {uid: true} map. For array-of-objects, ownerId is the
+      // reliable signal for leads.
+      return request.auth.uid == project.data.ownerId ||
+             request.auth.uid in project.data.team;
     }
 
     // --- Projects Collection ---

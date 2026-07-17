@@ -26,6 +26,7 @@ import { Check, ChevronsUpDown, X, Send, Trash2, RefreshCw, MessageSquare, Mail,
 
 interface ProjectTeamProps {
     projectId: string;
+    projectName?: string;
     team: HydratedProjectMember[];
     users: User[];
     currentUser: User | null;
@@ -38,6 +39,7 @@ interface ProjectTeamProps {
 
 export default function ProjectTeam({
     projectId,
+    projectName,
     team,
     currentUser,
     isLead,
@@ -47,6 +49,7 @@ export default function ProjectTeam({
 }: ProjectTeamProps) {
     const [loading, setLoading] = useState<Record<string, boolean>>({});
     const [emailInvites, setEmailInvites] = useState<ProjectInvite[]>([]);
+    const [inviteDismissed, setInviteDismissed] = useState(false);
     const [collaborators, setCollaborators] = useState<{id: string, name: string, email: string, username?: string}[]>([]);
     const [isInviting, setIsInviting] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
@@ -262,7 +265,8 @@ export default function ProjectTeam({
 
     return (
         <div className="space-y-6">
-            {myInvite && (
+            {/* Pending invite — Accept / Reject buttons */}
+            {myInvite?.status === 'pending' && (
                 <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-900">
                     <CardHeader>
                         <CardTitle className="text-amber-800 dark:text-amber-200 flex items-center gap-2">
@@ -274,29 +278,50 @@ export default function ProjectTeam({
                         <p className="text-amber-700 dark:text-amber-300 mb-4">
                             You have been invited to join this project as a <strong>{myInvite.role}</strong>.
                         </p>
-                        {myInvite.status === 'pending' ? (
-                            <div className="flex items-center gap-3">
-                                <Button 
-                                    onClick={() => handleAcceptInvite(myInvite.token)} 
-                                    disabled={loading['accept-invite'] || loading['reject-invite']}
-                                    className="bg-amber-600 hover:bg-amber-700 text-white"
-                                >
-                                    {loading['accept-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Accept Invitation
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleRejectInvite(myInvite.id)}
-                                    disabled={loading['accept-invite'] || loading['reject-invite']}
-                                    className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                                >
-                                    {loading['reject-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Reject Invitation
-                                </Button>
+                        <div className="flex items-center gap-3">
+                            <Button 
+                                onClick={() => handleAcceptInvite(myInvite.token)} 
+                                disabled={loading['accept-invite'] || loading['reject-invite']}
+                                className="bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                                {loading['accept-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Accept Invitation
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => handleRejectInvite(myInvite.id)}
+                                disabled={loading['accept-invite'] || loading['reject-invite']}
+                                className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                            >
+                                {loading['reject-invite'] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Reject Invitation
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Declined invite — thank you card, dismissible */}
+            {myInvite?.status === 'declined' && !inviteDismissed && (
+                <Card className="border-green-100 bg-green-50/60 dark:bg-green-900/10 dark:border-green-900/40">
+                    <CardContent className="pt-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="font-semibold text-green-800 dark:text-green-200 mb-1">
+                                    Thanks for taking a look{projectName ? ` at ${projectName}` : ''}.
+                                </p>
+                                <p className="text-sm text-green-700 dark:text-green-300">
+                                    We appreciate you considering this project. You&apos;re always welcome back if your situation changes.
+                                </p>
                             </div>
-                        ) : (
-                            <p className="text-sm text-red-500 dark:text-red-400 font-medium">You have declined this invitation.</p>
-                        )}
+                            <button
+                                onClick={() => setInviteDismissed(true)}
+                                className="shrink-0 text-green-600/60 hover:text-green-700 dark:text-green-400/60 dark:hover:text-green-300 transition-colors mt-0.5"
+                                aria-label="Dismiss"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
                     </CardContent>
                 </Card>
             )}

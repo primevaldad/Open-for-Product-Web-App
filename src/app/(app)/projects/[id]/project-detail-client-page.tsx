@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-import type { User, HydratedProject, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post, Activity, FundryFundingGoal, FundryAllocation, FundryContribution } from '@/lib/types';
+import type { User, HydratedProject, HydratedProjectMember, ProjectMember, Task, Discussion, LearningPath, HydratedDiscussion, ProjectCollection, Post, Activity, FundryFundingGoal, FundryAllocation, FundryContribution } from '@/lib/types';
 import { type TaskFormValues } from '@/lib/schemas';
 import ProjectHeader from '@/components/project-header';
 import TaskBoard from '@/components/task-board';
@@ -47,7 +47,7 @@ import {
     getCollectionsContainingProject,
 } from '@/app/actions/collections';
 import { deletePostAction } from '@/app/actions/post';
-import { subscribeToProjectTasks, subscribeToProjectFundingGoals } from '@/lib/data.client';
+import { subscribeToProjectTasks, subscribeToProjectFundingGoals, subscribeToProjectTeam, findUserById } from '@/lib/data.client';
 import { AddTaskDialog } from '@/components/add-task-dialog';
 import { EditTaskDialog } from '@/components/edit-task-dialog';
 import { LeadDashboardTab } from '@/components/projects/lead-dashboard-tab';
@@ -453,12 +453,45 @@ export default function ProjectDetailClientPage({
         };
     }, [project.id]);
 
+
     const [syncingTasks, setSyncingTasks] = useState<Set<string>>(new Set());
     const [discussions, setDiscussions] = useState(initialDiscussions);
     const [posts, setPosts] = useState(initialPosts);
     const [learningPaths, setLearningPaths] = useState(initialLearningPaths);
     const [users, setUsers] = useState(allUsers);
     const [childProjects, setChildProjects] = useState(initialChildProjects);
+
+    // Keep a stable ref to users so the team subscription callback can access
+    // the latest snapshot without being re-registered on every users state change.
+    const usersRef = useRef<User[]>(users);
+    useEffect(() => { usersRef.current = users; }, [users]);
+
+    // Real-time project team subscription — fires for all open tabs/devices when
+    // any user accepts an invitation or a lead approves an application.
+    useEffect(() => {
+        const unsub = subscribeToProjectTeam(project.id, async (rawTeam: ProjectMember[]) => {
+            const usersMap = new Map(usersRef.current.map(u => [u.id, u]));
+
+            const hydratedTeam: HydratedProjectMember[] = await Promise.all(
+                rawTeam.map(async (member) => {
+                    let user = usersMap.get(member.userId);
+                    if (!user) {
+                        const fetched = await findUserById(member.userId);
+                        if (fetched) {
+                            user = fetched;
+                            setUsers(prev =>
+                                prev.some(u => u.id === fetched.id) ? prev : [...prev, fetched]
+                            );
+                        }
+                    }
+                    return { ...member, user: user! };
+                })
+            );
+
+            setProject(prev => ({ ...prev, team: hydratedTeam }));
+        });
+        return () => unsub();
+    }, [project.id]);
 
     const getHighestProjectRole = useCallback((userId: string) => {
         const roles = project.team.filter(m => m.userId === userId).map(m => m.role);
@@ -494,6 +527,7 @@ export default function ProjectDetailClientPage({
     const [acceptingInvite, setAcceptingInvite] = useState(false);
     const [rejectingInvite, setRejectingInvite] = useState(false);
     const [inviteRejected, setInviteRejected] = useState(false);
+    const [inviteAccepted, setInviteAccepted] = useState(false);
 
     const router = useRouter();
     const { toast } = useToast();
@@ -673,6 +707,7 @@ export default function ProjectDetailClientPage({
             const { acceptInviteAction } = await import('@/app/actions/invite');
             const res = await acceptInviteAction(inviteToken);
             if (res.success) {
+                setInviteAccepted(true);
                 toast({ title: 'Success', description: 'You have joined the project!' });
                 setIsOnboardDialogOpen(true);
             } else {
@@ -931,7 +966,7 @@ export default function ProjectDetailClientPage({
     };
 
     const renderInviteBanner = () => {
-        if (!inviteToken) return null;
+        if (!inviteToken || inviteAccepted) return null;
 
         if (inviteRejected) {
             return (
@@ -1415,6 +1450,7 @@ export default function ProjectDetailClientPage({
                             {hasReadAccess ? (
                                 <ProjectTeam 
                                     projectId={project.id}
+                                    projectName={project.name}
                                     team={project.team}
                                     users={users}
                                     currentUser={currentUser}
