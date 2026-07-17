@@ -92,7 +92,7 @@ export async function signup(values: z.infer<typeof SignUpSchema>): Promise<{ su
           email,
           role: '',
           username: name,
-          avatarUrl: `https://i.pravatar.cc/150?u=${uid}`,
+          avatarUrl: '',
           bio: 'Just joined Open for Product!',
           onboardingCompleted: false,
         };

@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { User, ProjectTag, GlobalTag } from '@/lib/types';
 import AdvancedTagSelector from '@/components/tags/advanced-tag-selector';
+import { AvatarUpload } from '@/components/avatar-upload';
 
 const OnboardingSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -98,6 +99,10 @@ export function OnboardingForm({ user, allTags }: OnboardingFormProps) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           
           <div className="space-y-6">
+            <div className="flex justify-center mb-8">
+              <AvatarUpload user={user} />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}

@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User as UserIcon } from "lucide-react";
 import { SteemLogo } from "./steem-logo";
 import { cn, getInitials } from "@/lib/utils";
 import type { User } from "@/lib/types";
@@ -26,7 +27,9 @@ export function UserAvatar({ user, className, badgeSize = "sm" }: UserAvatarProp
     <div className={cn("relative inline-block transform-gpu [transform:translateZ(0)] will-change-transform", className)}>
       <Avatar className={cn("h-full w-full", className)}>
         {(user.photoUrl || user.avatarUrl) && <AvatarImage src={user.photoUrl || user.avatarUrl} alt={user.name || user.username || 'User'} />}
-        <AvatarFallback>{getInitials(user.name || user.username || 'U')}</AvatarFallback>
+        <AvatarFallback>
+          <UserIcon className="h-1/2 w-1/2 text-muted-foreground" />
+        </AvatarFallback>
       </Avatar>
       
       {user.steemIconOverlay && (
