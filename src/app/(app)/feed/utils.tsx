@@ -25,9 +25,34 @@ export type HydratedActivityItem = {
   context: any;
 };
 
+export function getActivityTabQuery(type: ActivityType | string, context?: any): string {
+    if (context?.tab) return `?tab=${context.tab}`;
+    const t = type as string;
+    switch (t) {
+        case 'governance-edited':
+            return '?tab=governance';
+        case 'fundry-toggled':
+        case 'funding-goal-milestone':
+            return '?tab=fundry';
+        case 'task-created':
+        case 'task-status-updated':
+        case 'task-assigned':
+            return '?tab=tasks';
+        case 'discussion-posted':
+        case 'discussion-reply-posted':
+            return '?tab=discussions';
+        case 'project-member-added':
+        case 'project-member-role-updated':
+            return '?tab=team';
+        default:
+            return '';
+    }
+}
+
 export function renderActivityMessage(item: HydratedActivityItem) {
+    const tabQuery = getActivityTabQuery(item.type, item.context);
     const projectLink = item.project ? (
-        <Link href={`/projects/${item.project.id}`} className="font-semibold text-blue-600 hover:underline">
+        <Link href={`/projects/${item.project.id}${tabQuery}`} className="font-semibold text-blue-600 hover:underline">
             {item.project.name}
         </Link>
     ) : (

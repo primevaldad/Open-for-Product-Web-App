@@ -15,6 +15,44 @@ interface NotificationCardProps {
     onClick?: () => void;
 }
 
+export function getProjectTabQuery(eventType?: EventType, payload?: any): string {
+    if (payload?.tab) return `?tab=${payload.tab}`;
+    if (!eventType) return '';
+    switch (eventType) {
+        case EventType.FUNDRY_TOGGLED:
+        case EventType.FUNDING_GOAL_MILESTONE:
+            return '?tab=fundry';
+        case EventType.GOVERNANCE_EDITED:
+            return '?tab=governance';
+        case EventType.PROJECT_POST_PUBLISHED:
+        case EventType.POST_EDITED:
+        case EventType.POST_DELETED:
+            return '?tab=posts';
+        case EventType.DISCUSSION_COMMENT_POSTED:
+        case EventType.DISCUSSION_COMMENT_REPLIED:
+        case EventType.DISCUSSION_COMMENT_EDITED:
+        case EventType.DISCUSSION_COMMENT_DELETED:
+            return '?tab=discussions';
+        case EventType.TASK_CREATED:
+        case EventType.TASK_UPDATED:
+        case EventType.TASK_COMPLETED:
+        case EventType.TASK_DELETED:
+            return '?tab=tasks';
+        case EventType.MEMBER_ROLE_APPLIED:
+        case EventType.MEMBER_ROLE_APPROVED:
+        case EventType.USER_INVITED_TO_PROJECT:
+        case EventType.PROJECT_JOINED:
+        case EventType.PROJECT_LEFT:
+        case EventType.INVITE_ACCEPTED:
+        case EventType.INVITE_REJECTED:
+            return '?tab=team';
+        case EventType.AGENT_UPDATE_READY:
+            return '?tab=lead';
+        default:
+            return '';
+    }
+}
+
 function renderNotificationMessage(notification: HydratedNotification): React.ReactNode {
     const { event, actor, project } = notification;
 
@@ -29,9 +67,10 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
             {actor.name || actor.username || 'User'}
         </Link>
     );
+    const projectTabQuery = getProjectTabQuery(event.type, event.payload);
     const projectName = project ? (
         <Link 
-            href={`/projects/${project.id}`} 
+            href={`/projects/${project.id}${projectTabQuery}`} 
             className="font-semibold hover:underline" 
             onClick={(e) => e.stopPropagation()}
         >
@@ -81,6 +120,10 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
             return <p>{actorName} changed the visibility of {projectName}.</p>;
         case EventType.GOVERNANCE_EDITED:
             return <p>{actorName} updated the governance for {projectName}.</p>;
+        case EventType.FUNDRY_TOGGLED: {
+            const isEnabled = event.payload?.enabled;
+            return <p>{actorName} {isEnabled ? 'activated' : 'deactivated'} Fundry for {projectName}.</p>;
+        }
         case EventType.FUNDING_GOAL_MILESTONE:
             return <p>{projectName} reached a funding milestone!</p>;
         case EventType.PROJECT_POST_PUBLISHED:
@@ -175,7 +218,12 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
             await markNotificationAsRead(notification.id);
             setIsRead(true);
         }
-        router.push(`/feed`);
+        if (notification.project) {
+            const tabQuery = getProjectTabQuery(notification.event?.type, notification.event?.payload);
+            router.push(`/projects/${notification.project.id}${tabQuery}`);
+        } else {
+            router.push(`/feed`);
+        }
     };
 
     return (

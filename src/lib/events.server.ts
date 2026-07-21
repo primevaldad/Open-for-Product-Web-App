@@ -147,6 +147,7 @@ async function dispatchEvent(event: Event): Promise<void> {
         case EventType.TASK_DELETED:
         case EventType.PROJECT_DETAILS_UPDATED:
         case EventType.GOVERNANCE_EDITED:
+        case EventType.FUNDRY_TOGGLED:
         case EventType.FUNDING_GOAL_MILESTONE:
         case EventType.PROJECT_POST_PUBLISHED:
         case EventType.PROJECT_PHOTO_UPDATED:

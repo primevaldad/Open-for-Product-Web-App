@@ -5,6 +5,7 @@ import { getAuthenticatedUser } from '@/lib/session.server';
 import { findProjectById } from '@/lib/data.server';
 import { revalidatePath } from 'next/cache';
 import { toDate } from '@/lib/fundry';
+import { createAndDispatchEvent } from '@/lib/events.server';
 import type { 
     ServerActionResponse, 
     FundryConfig, 
@@ -13,6 +14,7 @@ import type {
     FundryContribution,
     FundryLedgerEntry
 } from '@/lib/types';
+import { EventType } from '@/lib/types';
 
 // Helper to check lead or admin authorization
 async function checkAuthAndLeadStatus(projectId: string): Promise<{ authorized: boolean; error?: string; currentUser?: any; project?: any }> {
@@ -101,6 +103,14 @@ export async function toggleFundryAction(projectId: string, enabled: boolean): P
         }
 
         await adminDb.collection('projects').doc(projectId).update(updateData);
+
+        await createAndDispatchEvent({
+            type: EventType.FUNDRY_TOGGLED,
+            actorUserId: auth.currentUser.id,
+            projectId,
+            payload: { enabled }
+        });
+
         revalidatePath(`/projects/${projectId}`);
         return { success: true };
     } catch (e: any) {

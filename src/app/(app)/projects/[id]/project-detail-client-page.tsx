@@ -615,22 +615,23 @@ export default function ProjectDetailClientPage({
         return tabs;
     }, [showLeadDashboard]);
 
+    const tabAliases: Record<string, string> = useMemo(() => ({
+        about: 'overview',
+        posts: 'overview',
+        tasks: 'work',
+        discussion: 'team',
+        'learning paths': 'learning',
+        'collected projects': 'overview',
+        'lead dashboard': 'lead'
+    }), []);
+
     const initialTabIndex = useMemo(() => {
         if (!initialTab) return 0;
-        const aliases: Record<string, string> = {
-            about: 'overview',
-            posts: 'overview',
-            tasks: 'work',
-            discussion: 'team',
-            'learning paths': 'learning',
-            'collected projects': 'overview',
-            'lead dashboard': 'lead'
-        };
         const normalized = initialTab.toLowerCase();
-        const resolved = aliases[normalized] || normalized;
+        const resolved = tabAliases[normalized] || normalized;
         const idx = activeTabs.findIndex(t => t.key === resolved);
         return idx !== -1 ? idx : 0;
-    }, [initialTab, activeTabs]);
+    }, [initialTab, activeTabs, tabAliases]);
 
     const [tabIndex, setTabIndex] = useState(initialTabIndex);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -645,15 +646,17 @@ export default function ProjectDetailClientPage({
     useEffect(() => {
         const handlePopState = () => {
             const params = new URLSearchParams(window.location.search);
-            const tab = params.get('tab') || 'overview';
-            const idx = activeTabs.findIndex(t => t.key === tab.toLowerCase());
+            const rawTab = params.get('tab') || 'overview';
+            const normalized = rawTab.toLowerCase();
+            const resolved = tabAliases[normalized] || normalized;
+            const idx = activeTabs.findIndex(t => t.key === resolved);
             if (idx !== -1) {
                 setTabIndex(idx);
             }
         };
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, [activeTabs]);
+    }, [activeTabs, tabAliases]);
 
     const isGuest = !currentUser || currentUser.role === 'guest';
     const hasReadAccess = !isGuest || !!inviteToken;

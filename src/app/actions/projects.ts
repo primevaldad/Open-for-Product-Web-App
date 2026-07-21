@@ -1182,6 +1182,14 @@ export async function saveProjectGovernanceConfigAction(
         // Cascading Updates! Recursively update all child projects that inherit from this project.
         await cascadeGovernanceUpdates(projectId, config);
 
+        const { createAndDispatchEvent } = await import('@/lib/events.server');
+        await createAndDispatchEvent({
+            type: EventType.GOVERNANCE_EDITED,
+            actorUserId: currentUser.id,
+            projectId,
+            payload: { tab: 'governance' }
+        });
+
         revalidatePath(`/projects/${projectId}`);
         return { success: true };
     } catch (error) {

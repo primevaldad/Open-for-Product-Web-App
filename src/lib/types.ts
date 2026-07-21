@@ -413,6 +413,7 @@ export enum EventType {
     TASK_DELETED = 'task-deleted',
     PROJECT_DETAILS_UPDATED = 'project-details-updated',
     GOVERNANCE_EDITED = 'governance-edited',
+    FUNDRY_TOGGLED = 'fundry-toggled',
     FUNDING_GOAL_MILESTONE = 'funding-goal-milestone',
     PROJECT_POST_PUBLISHED = 'project-post-published',
     AGENT_UPDATE_READY = 'agent-update-ready',
