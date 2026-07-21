@@ -221,6 +221,23 @@ export async function POST(req: NextRequest) {
                 createdAt: new Date().toISOString()
             };
             await ledgerRef.set(ledgerEntry);
+
+            try {
+                const { createAndDispatchEvent } = await import('@/lib/events.server');
+                const { EventType } = await import('@/lib/types');
+                await createAndDispatchEvent({
+                    type: EventType.FUNDING_CONTRIBUTION_ADDED,
+                    actorUserId: contributionData.contributorId || 'system',
+                    projectId,
+                    payload: {
+                        amount: contributionData.amount,
+                        contributorName: contributionData.contributorName || 'A contributor',
+                        tab: 'fundry'
+                    }
+                });
+            } catch (eventErr) {
+                console.error(`[webhook] Failed to dispatch FUNDING_CONTRIBUTION_ADDED event:`, eventErr);
+            }
         }
 
         // 6. Recalculate Fundry Pool

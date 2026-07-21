@@ -382,6 +382,17 @@ export async function addContributionAction(
             'fundry.pool.placeholderAmount': placeholder
         });
 
+        await createAndDispatchEvent({
+            type: EventType.FUNDING_CONTRIBUTION_ADDED,
+            actorUserId: auth.currentUser.id,
+            projectId,
+            payload: {
+                amount: newContribution.amount,
+                contributorName: newContribution.contributorName || auth.currentUser.name || 'A contributor',
+                tab: 'fundry'
+            }
+        });
+
         revalidatePath(`/projects/${projectId}`);
         return { success: true };
     } catch (e: any) {

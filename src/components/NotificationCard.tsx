@@ -20,6 +20,7 @@ export function getProjectTabQuery(eventType?: EventType, payload?: any): string
     if (!eventType) return '';
     switch (eventType) {
         case EventType.FUNDRY_TOGGLED:
+        case EventType.FUNDING_CONTRIBUTION_ADDED:
         case EventType.FUNDING_GOAL_MILESTONE:
             return '?tab=fundry';
         case EventType.GOVERNANCE_EDITED:
@@ -123,6 +124,10 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
         case EventType.FUNDRY_TOGGLED: {
             const isEnabled = event.payload?.enabled;
             return <p>{actorName} {isEnabled ? 'activated' : 'deactivated'} Fundry for {projectName}.</p>;
+        }
+        case EventType.FUNDING_CONTRIBUTION_ADDED: {
+            const amount = event.payload?.amount ? `$${event.payload.amount}` : 'a contribution';
+            return <p>{actorName} added {amount} to the project pool for {projectName}.</p>;
         }
         case EventType.FUNDING_GOAL_MILESTONE:
             return <p>{projectName} reached a funding milestone!</p>;
