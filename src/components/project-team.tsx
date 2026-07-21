@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAvatar } from './user-avatar';
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { HydratedProjectMember, User } from '@/lib/types';
@@ -51,7 +51,7 @@ export default function ProjectTeam({
     const [loading, setLoading] = useState<Record<string, boolean>>({});
     const [emailInvites, setEmailInvites] = useState<ProjectInvite[]>([]);
     const [inviteDismissed, setInviteDismissed] = useState(false);
-    const [collaborators, setCollaborators] = useState<{id: string, name: string, email: string, username?: string}[]>([]);
+    const [collaborators, setCollaborators] = useState<{ id: string, name: string, email: string, username?: string }[]>([]);
     const [isInviting, setIsInviting] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<'lead' | 'contributor' | 'participant'>('participant');
@@ -162,7 +162,7 @@ export default function ProjectTeam({
         await denyRoleApplication(userId);
     };
 
-    const handleUpdateNotificationLevel = async (level: 1 | 2 | 3) => {
+    const handleUpdateNotificationLevel = async (level: 0 | 1 | 2 | 3) => {
         if (!currentUser) return;
         setLoading({ 'update-notif-level': true });
         try {
@@ -261,8 +261,8 @@ export default function ProjectTeam({
     const filteredCollaborators = useMemo(() => {
         if (!inviteEmail) return [];
         const search = inviteEmail.toLowerCase();
-        return collaborators.filter(c => 
-            (c.name && c.name.toLowerCase().includes(search)) || 
+        return collaborators.filter(c =>
+            (c.name && c.name.toLowerCase().includes(search)) ||
             (c.email && c.email.toLowerCase().includes(search)) ||
             (c.username && c.username.toLowerCase().includes(search))
         ).slice(0, 5); // Limit to top 5 suggestions
@@ -295,8 +295,8 @@ export default function ProjectTeam({
                             You have been invited to join this project as a <strong>{myInvite.role}</strong>.
                         </p>
                         <div className="flex items-center gap-3">
-                            <Button 
-                                onClick={() => handleAcceptInvite(myInvite.token)} 
+                            <Button
+                                onClick={() => handleAcceptInvite(myInvite.token)}
                                 disabled={loading['accept-invite'] || loading['reject-invite']}
                                 className="bg-amber-600 hover:bg-amber-700 text-white"
                             >
@@ -438,8 +438,8 @@ export default function ProjectTeam({
                             </Select>
 
                             <div className="flex gap-2">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     size="icon"
                                     onClick={() => setIsMessageModalOpen(true)}
                                     className={cn(customMessage && "text-primary border-primary/20 bg-primary/10")}
@@ -447,8 +447,8 @@ export default function ProjectTeam({
                                 >
                                     <MessageSquare className="h-4 w-4" />
                                 </Button>
-                                <Button 
-                                    onClick={handleSendInvite} 
+                                <Button
+                                    onClick={handleSendInvite}
                                     disabled={isInviting || !inviteEmail}
                                     className="flex-1 sm:flex-none"
                                 >
@@ -480,18 +480,18 @@ export default function ProjectTeam({
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         onClick={() => handleResendInvite(invite.id)}
                                         disabled={loading[invite.id]}
                                         title="Resend Invitation"
                                     >
                                         <RefreshCw className={cn("h-4 w-4", loading[invite.id] && "animate-spin")} />
                                     </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                         onClick={() => handleCancelInvite(invite.id)}
                                         disabled={loading[invite.id]}
@@ -533,17 +533,17 @@ export default function ProjectTeam({
                                                 Status: <span className={cn(
                                                     "font-medium",
                                                     invite.status === 'accepted' ? 'text-green-500' :
-                                                    invite.status === 'declined' ? 'text-red-500' : 
-                                                    invite.status === 'cancelled' ? 'text-gray-500' : 'text-gray-500'
+                                                        invite.status === 'declined' ? 'text-red-500' :
+                                                            invite.status === 'cancelled' ? 'text-gray-500' : 'text-gray-500'
                                                 )}>{invite.status}</span>
                                             </span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         {invite.status === 'expired' && (
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
                                                 onClick={() => handleResendInvite(invite.id)}
                                                 disabled={loading[invite.id]}
                                                 title="Renew and Resend"
@@ -569,7 +569,7 @@ export default function ProjectTeam({
                         <p className="text-sm text-muted-foreground mb-3">
                             Add a custom message that will appear in the invitation email.
                         </p>
-                        <Textarea 
+                        <Textarea
                             placeholder="e.g., Hey! We'd love to have your expertise on this project..."
                             value={customMessage}
                             onChange={(e) => setCustomMessage(e.target.value)}
@@ -577,7 +577,7 @@ export default function ProjectTeam({
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => {setCustomMessage(''); setIsMessageModalOpen(false)}}>Clear</Button>
+                        <Button variant="ghost" onClick={() => { setCustomMessage(''); setIsMessageModalOpen(false) }}>Clear</Button>
                         <Button onClick={() => setIsMessageModalOpen(false)}>Save Message</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -642,9 +642,9 @@ export default function ProjectTeam({
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle>Team Members</CardTitle>
                     {isCurrentUserMember && (
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
+                        <Button
+                            variant="outline"
+                            size="sm"
                             className="flex items-center gap-1.5"
                             onClick={handleOpenFollowers}
                         >
@@ -656,44 +656,61 @@ export default function ProjectTeam({
                 <CardContent>
                     {approvedMembers.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {approvedMembers.map(member => (
-                                <div key={member.userId} className="flex items-center space-x-4 p-4 bg-muted/50 dark:bg-gray-700 rounded-lg">
-                                    {member.user ? (
-                                        <UserAvatar user={member.user} className="h-10 w-10" />
-                                    ) : (
-                                        <Avatar>
-                                            <AvatarFallback>{getInitials(member.user?.name)}</AvatarFallback>
-                                        </Avatar>
-                                    )}
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-semibold">{member.user?.name || 'Unknown User'}</p>
-                                            {member.user?.updatedAt && (Date.now() - toDate(member.user.updatedAt).getTime() > 180 * 24 * 60 * 60 * 1000) && (
-                                                <Badge variant="secondary" className="text-[10px] h-4 px-1">Inactive</Badge>
+                            {approvedMembers.map(member => {
+                                const currentLevel = member.notificationLevel !== undefined
+                                    ? member.notificationLevel
+                                    : (currentUser?.globalNotificationLevel !== undefined ? currentUser.globalNotificationLevel : 1);
+
+                                return (
+                                    <div key={member.userId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/50 dark:bg-gray-700 rounded-lg">
+                                        <div className="flex items-center space-x-4 shrink-0">
+                                            {member.user ? (
+                                                <UserAvatar user={member.user} className="h-10 w-10 shrink-0" />
+                                            ) : (
+                                                <Avatar className="shrink-0">
+                                                    <AvatarFallback>{getInitials(member.user?.name)}</AvatarFallback>
+                                                </Avatar>
                                             )}
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-semibold">{member.user?.name || 'Unknown User'}</p>
+                                                    {member.user?.updatedAt && (Date.now() - toDate(member.user.updatedAt).getTime() > 180 * 24 * 60 * 60 * 1000) && (
+                                                        <Badge variant="secondary" className="text-[10px] h-4 px-1">Inactive</Badge>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-gray-500 capitalize">{member.role}</p>
+                                            </div>
                                         </div>
-                                        <p className="text-sm text-gray-500 capitalize">{member.role}</p>
+                                        {currentUser && member.userId === currentUser.id && (
+                                            <div className="text-xs sm:ml-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40">
+                                                <Select
+                                                    value={currentLevel.toString()}
+                                                    onValueChange={(val) => handleUpdateNotificationLevel(parseInt(val, 10) as 0 | 1 | 2 | 3)}
+                                                    disabled={loading['update-notif-level']}
+                                                >
+                                                    <SelectTrigger className="h-auto p-0 border-0 bg-transparent shadow-none focus:ring-0 text-xs font-normal text-muted-foreground hover:text-foreground flex flex-col items-start text-left gap-0.5 whitespace-normal">
+                                                        <span className="text-muted-foreground">Notification preferences:</span>
+                                                        <span className="font-medium text-primary underline underline-offset-2">
+                                                            <SelectValue />
+                                                        </span>
+                                                    </SelectTrigger>
+                                                    <SelectContent align="start" className="w-[300px]">
+                                                        <SelectGroup>
+                                                            <SelectLabel className="text-xs font-semibold text-muted-foreground px-2 py-1.5">
+                                                                Notify me for:
+                                                            </SelectLabel>
+                                                            <SelectItem value="0" className="text-xs">none</SelectItem>
+                                                            <SelectItem value="1" className="text-xs">1. Goal milestones, and published Posts</SelectItem>
+                                                            <SelectItem value="2" className="text-xs">1 &amp; 2. Completed tasks</SelectItem>
+                                                            <SelectItem value="3" className="text-xs">2 &amp; 3. All task and general project updates</SelectItem>
+                                                        </SelectGroup>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
                                     </div>
-                                    {currentUser && member.userId === currentUser.id && (
-                                        <div className="ml-auto">
-                                            <Select 
-                                                value={(member.notificationLevel || currentUser.globalNotificationLevel || 1).toString()} 
-                                                onValueChange={(val) => handleUpdateNotificationLevel(parseInt(val, 10) as 1 | 2 | 3)}
-                                                disabled={loading['update-notif-level']}
-                                            >
-                                                <SelectTrigger className="w-[140px] h-8 text-xs">
-                                                    <SelectValue placeholder="Notifications" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="1">Level 1 - Low</SelectItem>
-                                                    <SelectItem value="2">Level 2 - Med</SelectItem>
-                                                    <SelectItem value="3">Level 3 - High</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <p>No approved team members yet.</p>

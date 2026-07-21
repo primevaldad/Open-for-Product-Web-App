@@ -66,9 +66,13 @@ async function shouldNotifyUser(userId: string, projectId: string | undefined, e
     const member = project.team.find(m => m.userId === userId);
     
     // Evaluate based on preference level
-    const prefLevel = member?.notificationLevel || user.globalNotificationLevel || 1;
+    const prefLevel = member?.notificationLevel !== undefined 
+        ? member.notificationLevel 
+        : (user.globalNotificationLevel !== undefined ? user.globalNotificationLevel : 1);
 
     switch (prefLevel) {
+        case 0:
+            return false;
         case 1:
             return [
                 EventType.FUNDING_GOAL_MILESTONE,

@@ -94,7 +94,7 @@ export async function denyRoleApplication({ projectId, userId }: { projectId: st
     }
 }
 
-export async function updateProjectNotificationLevelAction({ projectId, notificationLevel }: { projectId: string, notificationLevel: 1 | 2 | 3 }) {
+export async function updateProjectNotificationLevelAction({ projectId, notificationLevel }: { projectId: string, notificationLevel: 0 | 1 | 2 | 3 }) {
     const currentUser = await getAuthenticatedUser();
     if (!currentUser) return deepSerialize({ success: false, error: 'User not authenticated.' });
 

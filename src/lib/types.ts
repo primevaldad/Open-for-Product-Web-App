@@ -41,7 +41,7 @@ export interface User {
     emailVerified?: boolean;
     // Timestamp of when verification email was last sent
     verificationEmailSentAt?: Timestamp | FieldValue;
-    globalNotificationLevel?: 1 | 2 | 3;
+    globalNotificationLevel?: 0 | 1 | 2 | 3;
 }
 
 export interface Project {
@@ -128,7 +128,7 @@ export interface ProjectMember {
     pendingRole?: 'lead' | 'contributor' | 'participant';
     createdAt?: Timestamp | string;
     updatedAt?: Timestamp | string;
-    notificationLevel?: 1 | 2 | 3;
+    notificationLevel?: 0 | 1 | 2 | 3;
 }
 
 // This is a more explicit definition of a hydrated project to avoid type inference issues.
@@ -172,7 +172,7 @@ export interface HydratedProjectMember {
     pendingRole?: 'lead' | 'contributor' | 'participant';
     createdAt?: Timestamp | string;
     updatedAt?: Timestamp | string;
-    notificationLevel?: 1 | 2 | 3;
+    notificationLevel?: 0 | 1 | 2 | 3;
 }
 
 export interface ProjectInvite {

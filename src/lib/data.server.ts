@@ -381,7 +381,7 @@ export async function updateProjectInDb(projectId: string, project: Partial<Proj
     await adminDb.collection('projects').doc(projectId).update(project);
 }
 
-export async function updateProjectMemberRole({ projectId, userId, role, pendingRole, notificationLevel }: { projectId: string; userId: string; role?: ProjectMember['role']; pendingRole?: ProjectMember['role'] | null; notificationLevel?: 1 | 2 | 3 }): Promise<void> {
+export async function updateProjectMemberRole({ projectId, userId, role, pendingRole, notificationLevel }: { projectId: string; userId: string; role?: ProjectMember['role']; pendingRole?: ProjectMember['role'] | null; notificationLevel?: 0 | 1 | 2 | 3 }): Promise<void> {
     const projectRef = adminDb.collection('projects').doc(projectId);
     await adminDb.runTransaction(async (transaction) => {
         const projectSnap = await transaction.get(projectRef);
