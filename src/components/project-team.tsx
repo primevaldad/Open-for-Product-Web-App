@@ -13,6 +13,7 @@ import { acceptInviteAction, getCollaboratorsAction, cancelInviteAction, resendI
 import type { ProjectInvite } from '@/lib/types';
 import { subscribeToProjectInvites, subscribeToMyProjectInvites } from '@/lib/data.client';
 import { getProjectFollowersAction } from '@/app/actions/projects';
+import { updateProjectNotificationLevelAction } from '@/app/actions/roles';
 import { buildHybridUrl } from '@/lib/slug';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
@@ -159,6 +160,21 @@ export default function ProjectTeam({
     const handleDeny = async (userId: string) => {
         setLoading({ [userId]: true });
         await denyRoleApplication(userId);
+    };
+
+    const handleUpdateNotificationLevel = async (level: 1 | 2 | 3) => {
+        if (!currentUser) return;
+        setLoading({ 'update-notif-level': true });
+        try {
+            const res = await updateProjectNotificationLevelAction({ projectId, notificationLevel: level });
+            if (res.success) {
+                toast({ title: 'Success', description: 'message' in res ? res.message : 'Updated' });
+            } else {
+                toast({ title: 'Error', description: 'error' in res ? res.error : 'Failed', variant: 'destructive' });
+            }
+        } finally {
+            setLoading({ 'update-notif-level': false });
+        }
     };
 
     const handleAcceptInvite = async (token: string) => {
@@ -658,6 +674,24 @@ export default function ProjectTeam({
                                         </div>
                                         <p className="text-sm text-gray-500 capitalize">{member.role}</p>
                                     </div>
+                                    {currentUser && member.userId === currentUser.id && (
+                                        <div className="ml-auto">
+                                            <Select 
+                                                value={(member.notificationLevel || currentUser.globalNotificationLevel || 1).toString()} 
+                                                onValueChange={(val) => handleUpdateNotificationLevel(parseInt(val, 10) as 1 | 2 | 3)}
+                                                disabled={loading['update-notif-level']}
+                                            >
+                                                <SelectTrigger className="w-[140px] h-8 text-xs">
+                                                    <SelectValue placeholder="Notifications" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="1">Level 1 - Low</SelectItem>
+                                                    <SelectItem value="2">Level 2 - Med</SelectItem>
+                                                    <SelectItem value="3">Level 3 - High</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

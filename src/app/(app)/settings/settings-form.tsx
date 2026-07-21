@@ -52,6 +52,7 @@ const SettingsSchema = z.object({
   steemFeedPreference: z.enum(['all', 'blog', 'none']).optional(),
   steemIconOverlay: z.boolean().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
+  globalNotificationLevel: z.number().int().min(1).max(3).optional(),
 });
 
 type SettingsFormValues = z.infer<typeof SettingsSchema>;
@@ -85,6 +86,7 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
       steemFeedPreference: currentUser.steemFeedPreference || 'all',
       steemIconOverlay: currentUser.steemIconOverlay || false,
       aiFeaturesEnabled: currentUser.aiFeaturesEnabled || false,
+      globalNotificationLevel: currentUser.globalNotificationLevel || 1,
     },
   });
 
@@ -455,6 +457,39 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
                             onCheckedChange={field.onChange}
                         />
                     </FormControl>
+                </FormItem>
+            )}
+        />
+
+        <FormField
+            control={form.control}
+            name="globalNotificationLevel"
+            render={({ field }) => (
+                <FormItem className="flex flex-col justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5 mb-4">
+                        <FormLabel className="text-base">
+                            Default Notification Level
+                        </FormLabel>
+                        <FormDescription>
+                            Choose what types of project notifications you want to receive by default. You can override this per project.
+                        </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Select 
+                        value={field.value?.toString()} 
+                        onValueChange={(val) => field.onChange(parseInt(val, 10))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select notification level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Level 1 - Milestones & Published Posts (Low Noise)</SelectItem>
+                          <SelectItem value="2">Level 2 - Includes Task Completions (Medium Noise)</SelectItem>
+                          <SelectItem value="3">Level 3 - All Updates & Details (High Noise)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
                 </FormItem>
             )}
         />

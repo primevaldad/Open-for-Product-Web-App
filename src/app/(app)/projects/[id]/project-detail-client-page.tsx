@@ -967,6 +967,7 @@ export default function ProjectDetailClientPage({
 
     const renderInviteBanner = () => {
         if (!inviteToken || inviteAccepted) return null;
+        if (currentUser && project.team.some(m => m.userId === currentUser.id)) return null;
 
         if (inviteRejected) {
             return (

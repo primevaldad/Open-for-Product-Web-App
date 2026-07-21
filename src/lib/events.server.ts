@@ -41,6 +41,52 @@ async function createEvent(event: Omit<Event, 'id' | 'createdAt'>): Promise<Even
     return { id: eventRef.id, ...event } as Event;
 }
 
+async function shouldNotifyUser(userId: string, projectId: string | undefined, eventType: EventType): Promise<boolean> {
+    // Some events ALWAYS notify, regardless of project settings.
+    const ALWAYS_NOTIFY = [
+        EventType.USER_INVITED_TO_PROJECT,
+        EventType.MEMBER_ROLE_APPROVED,
+        EventType.INVITE_ACCEPTED,
+        EventType.INVITE_REJECTED,
+        EventType.MEMBER_ROLE_APPLIED,
+        EventType.AGENT_UPDATE_READY,
+        EventType.DISCUSSION_COMMENT_REPLIED, // If someone replies to your thread, you should know
+        EventType.PROJECT_JOINED,
+        EventType.PROJECT_LEFT
+    ];
+    if (ALWAYS_NOTIFY.includes(eventType)) return true;
+
+    if (!projectId) return true; // Non-project events
+
+    const user = await findUserById(userId);
+    if (!user) return false;
+    const project = await findProjectById(projectId, null);
+    if (!project) return false;
+
+    const member = project.team.find(m => m.userId === userId);
+    
+    // Evaluate based on preference level
+    const prefLevel = member?.notificationLevel || user.globalNotificationLevel || 1;
+
+    switch (prefLevel) {
+        case 1:
+            return [
+                EventType.FUNDING_GOAL_MILESTONE,
+                EventType.PROJECT_POST_PUBLISHED
+            ].includes(eventType);
+        case 2:
+            return [
+                EventType.FUNDING_GOAL_MILESTONE,
+                EventType.PROJECT_POST_PUBLISHED,
+                EventType.TASK_COMPLETED
+            ].includes(eventType);
+        case 3:
+            return true; // All updates
+        default:
+            return true;
+    }
+}
+
 /**
  * Dispatches an event to the appropriate users.
  *
@@ -59,13 +105,17 @@ async function dispatchEvent(event: Event): Promise<void> {
         case EventType.PROJECT_JOINED:
         case EventType.PROJECT_LEFT:
         case EventType.MEMBER_ROLE_APPLIED:
-        case EventType.INVITE_ACCEPTED: {
+        case EventType.INVITE_ACCEPTED:
+        case EventType.INVITE_REJECTED:
+        case EventType.AGENT_UPDATE_READY: {
             const { projectId } = event;
             if (projectId) {
                 const project = await findProjectById(projectId, null);
                 if (project) {
                     for (const userId of getProjectLeads(project)) {
-                        await createNotification({ userId, eventId: event.id });
+                        if (await shouldNotifyUser(userId, projectId, event.type)) {
+                            await createNotification({ userId, eventId: event.id });
+                        }
                     }
                 }
             }
@@ -74,17 +124,29 @@ async function dispatchEvent(event: Event): Promise<void> {
 
         case EventType.MEMBER_ROLE_APPROVED:
         case EventType.USER_INVITED_TO_PROJECT: {
-            const { targetUserId } = event;
+            const { targetUserId, projectId } = event;
             if (targetUserId) {
-                await createNotification({
-                    userId: targetUserId,
-                    eventId: event.id,
-                });
+                if (await shouldNotifyUser(targetUserId, projectId, event.type)) {
+                    await createNotification({
+                        userId: targetUserId,
+                        eventId: event.id,
+                    });
+                }
             }
             break;
         }
 
-        case EventType.DISCUSSION_COMMENT_POSTED: {
+        case EventType.DISCUSSION_COMMENT_POSTED:
+        case EventType.TASK_CREATED:
+        case EventType.TASK_UPDATED:
+        case EventType.TASK_COMPLETED:
+        case EventType.TASK_DELETED:
+        case EventType.PROJECT_DETAILS_UPDATED:
+        case EventType.GOVERNANCE_EDITED:
+        case EventType.FUNDING_GOAL_MILESTONE:
+        case EventType.PROJECT_POST_PUBLISHED:
+        case EventType.PROJECT_PHOTO_UPDATED:
+        case EventType.PROJECT_VISIBILITY_UPDATED: {
             const { projectId, actorUserId } = event;
             if (projectId) {
                 const project = await findProjectById(projectId, null);
@@ -100,10 +162,12 @@ async function dispatchEvent(event: Event): Promise<void> {
                     const uniqueRecipientIds = [...new Set(recipientIds)];
 
                     for (const userId of uniqueRecipientIds) {
-                        await createNotification({
-                            userId,
-                            eventId: event.id,
-                        });
+                        if (await shouldNotifyUser(userId, projectId, event.type)) {
+                            await createNotification({
+                                userId,
+                                eventId: event.id,
+                            });
+                        }
                     }
                 }
             }
@@ -111,12 +175,21 @@ async function dispatchEvent(event: Event): Promise<void> {
         }
 
         case EventType.DISCUSSION_COMMENT_REPLIED: {
-            const { projectId, actorUserId, targetUserId } = event;
-            if (projectId && targetUserId && actorUserId !== targetUserId) {
-                await createNotification({
-                    userId: targetUserId,
-                    eventId: event.id,
-                });
+            const { projectId, actorUserId, targetUserId, payload } = event;
+            const recipientIds = new Set<string>();
+            if (targetUserId) recipientIds.add(targetUserId);
+            if (payload?.threadParticipantIds) {
+                payload.threadParticipantIds.forEach((id: string) => recipientIds.add(id));
+            }
+            recipientIds.delete(actorUserId);
+
+            for (const userId of recipientIds) {
+                if (await shouldNotifyUser(userId, projectId, event.type)) {
+                    await createNotification({
+                        userId,
+                        eventId: event.id,
+                    });
+                }
             }
             break;
         }
@@ -162,10 +235,12 @@ async function dispatchEvent(event: Event): Promise<void> {
             recipientIds.add(actorUserId);
 
             for (const userId of recipientIds) {
-                await createNotification({
-                    userId,
-                    eventId: event.id,
-                });
+                if (await shouldNotifyUser(userId, projectId, event.type)) {
+                    await createNotification({
+                        userId,
+                        eventId: event.id,
+                    });
+                }
             }
             break;
         }

@@ -41,6 +41,7 @@ export interface User {
     emailVerified?: boolean;
     // Timestamp of when verification email was last sent
     verificationEmailSentAt?: Timestamp | FieldValue;
+    globalNotificationLevel?: 1 | 2 | 3;
 }
 
 export interface Project {
@@ -127,6 +128,7 @@ export interface ProjectMember {
     pendingRole?: 'lead' | 'contributor' | 'participant';
     createdAt?: Timestamp | string;
     updatedAt?: Timestamp | string;
+    notificationLevel?: 1 | 2 | 3;
 }
 
 // This is a more explicit definition of a hydrated project to avoid type inference issues.
@@ -170,6 +172,7 @@ export interface HydratedProjectMember {
     pendingRole?: 'lead' | 'contributor' | 'participant';
     createdAt?: Timestamp | string;
     updatedAt?: Timestamp | string;
+    notificationLevel?: 1 | 2 | 3;
 }
 
 export interface ProjectInvite {
@@ -406,8 +409,13 @@ export enum EventType {
     DISCUSSION_COMMENT_REPLIED = 'discussion-comment-replied',
     TASK_CREATED = 'task-created',
     TASK_UPDATED = 'task-updated',
+    TASK_COMPLETED = 'task-completed',
     TASK_DELETED = 'task-deleted',
     PROJECT_DETAILS_UPDATED = 'project-details-updated',
+    GOVERNANCE_EDITED = 'governance-edited',
+    FUNDING_GOAL_MILESTONE = 'funding-goal-milestone',
+    PROJECT_POST_PUBLISHED = 'project-post-published',
+    AGENT_UPDATE_READY = 'agent-update-ready',
     PROJECT_PHOTO_UPDATED = 'project-photo-updated',
     PROJECT_VISIBILITY_UPDATED = 'project-visibility-updated',
     INVITE_ACCEPTED = 'invite-accepted',

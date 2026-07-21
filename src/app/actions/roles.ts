@@ -93,3 +93,16 @@ export async function denyRoleApplication({ projectId, userId }: { projectId: st
         return deepSerialize({ success: false, error: 'Failed to deny application.' });
     }
 }
+
+export async function updateProjectNotificationLevelAction({ projectId, notificationLevel }: { projectId: string, notificationLevel: 1 | 2 | 3 }) {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) return deepSerialize({ success: false, error: 'User not authenticated.' });
+
+    try {
+        await updateProjectMemberRole({ projectId, userId: currentUser.id, notificationLevel });
+        revalidatePath(`/projects/${projectId}`);
+        return deepSerialize({ success: true, message: 'Project notification preferences updated.' });
+    } catch (error) {
+        return deepSerialize({ success: false, error: 'Failed to update notification preferences.' });
+    }
+}

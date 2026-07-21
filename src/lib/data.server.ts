@@ -381,7 +381,7 @@ export async function updateProjectInDb(projectId: string, project: Partial<Proj
     await adminDb.collection('projects').doc(projectId).update(project);
 }
 
-export async function updateProjectMemberRole({ projectId, userId, role, pendingRole }: { projectId: string; userId: string; role?: ProjectMember['role']; pendingRole?: ProjectMember['role'] | null }): Promise<void> {
+export async function updateProjectMemberRole({ projectId, userId, role, pendingRole, notificationLevel }: { projectId: string; userId: string; role?: ProjectMember['role']; pendingRole?: ProjectMember['role'] | null; notificationLevel?: 1 | 2 | 3 }): Promise<void> {
     const projectRef = adminDb.collection('projects').doc(projectId);
     await adminDb.runTransaction(async (transaction) => {
         const projectSnap = await transaction.get(projectRef);
@@ -409,6 +409,11 @@ export async function updateProjectMemberRole({ projectId, userId, role, pending
                 } else {
                     updatedMember.pendingRole = pendingRole;
                 }
+                needsUpdate = true;
+            }
+
+            if (notificationLevel !== undefined) {
+                updatedMember.notificationLevel = notificationLevel;
                 needsUpdate = true;
             }
 
@@ -1026,6 +1031,44 @@ export async function getFeedPosts(projectIds: string[]): Promise<Post[]> {
     return allPosts.sort((a, b) => 
         new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()
     ).slice(0, 100);
+}
+
+export async function getRecentPublishedPosts(limitCount: number = 50): Promise<Post[]> {
+    const snapshot = await adminDb.collection('posts')
+        .where('status', '!=', 'draft')
+        .orderBy('status')
+        .orderBy('createdAt', 'desc')
+        .limit(limitCount)
+        .get();
+        
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt)
+        } as Post;
+    }).sort((a, b) => 
+        new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()
+    );
+}
+
+export async function getRecentDiscussions(limitCount: number = 50): Promise<Discussion[]> {
+    const snapshot = await adminDb.collection('discussions')
+        .orderBy('createdAt', 'desc')
+        .limit(limitCount)
+        .get();
+        
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: serializeTimestamp(data.createdAt),
+            updatedAt: serializeTimestamp(data.updatedAt)
+        } as Discussion;
+    });
 }
 
 // --- Following Data Access ---

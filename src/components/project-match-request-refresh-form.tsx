@@ -39,10 +39,10 @@ export function ProjectMatchRequestRefreshForm({ threadId }: { threadId: string 
         });
       } else {
         setStatus('error');
-        setMessage(response.error || 'Unable to send a new link.');
+        setMessage('error' in response ? (response as any).error : 'Unable to send a new link.');
         toast({
           title: 'Could not send link',
-          description: response.error || 'Unable to send a new link.',
+          description: 'error' in response ? (response as any).error : 'Unable to send a new link.',
           variant: 'destructive',
         });
       }

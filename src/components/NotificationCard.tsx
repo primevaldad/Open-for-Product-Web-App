@@ -20,8 +20,24 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
 
     if (!event || !actor) return <p>Corrupted notification data.</p>;
 
-    const actorName = <strong>{actor.name || actor.username || 'User'}</strong>;
-    const projectName = project ? <strong>{project.name}</strong> : 'a project';
+    const actorName = (
+        <Link 
+            href={`/profile/${actor.id}`} 
+            className="font-semibold hover:underline" 
+            onClick={(e) => e.stopPropagation()}
+        >
+            {actor.name || actor.username || 'User'}
+        </Link>
+    );
+    const projectName = project ? (
+        <Link 
+            href={`/projects/${project.id}`} 
+            className="font-semibold hover:underline" 
+            onClick={(e) => e.stopPropagation()}
+        >
+            {project.name}
+        </Link>
+    ) : 'a project';
 
     switch (event.type) {
         // --- Membership & Role Events ---
@@ -30,11 +46,11 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
         case EventType.PROJECT_LEFT:
             return <p>{actorName} left {projectName}.</p>;
         case EventType.MEMBER_ROLE_APPLIED:
-            return <p>{actorName} applied for the <strong>{event.payload?.role}</strong> role in {projectName}.</p>;
+            return <p>{actorName} applied for the <span className="font-semibold">{event.payload?.role}</span> role in {projectName}.</p>;
         case EventType.MEMBER_ROLE_APPROVED:
-            return <p>Your application for <strong>{event.payload?.role}</strong> in {projectName} was approved.</p>;
+            return <p>Your application for <span className="font-semibold">{event.payload?.role}</span> in {projectName} was approved.</p>;
         case EventType.USER_INVITED_TO_PROJECT:
-            return <p>You have been invited to join {projectName} as a <strong>{event.payload?.role}</strong>.</p>;
+            return <p>You have been invited to join {projectName} as a <span className="font-semibold">{event.payload?.role}</span>.</p>;
 
         // --- Discussion Events ---
         case EventType.DISCUSSION_COMMENT_POSTED:
@@ -63,18 +79,28 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
             return <p>{actorName} updated the photo for {projectName}.</p>;
         case EventType.PROJECT_VISIBILITY_UPDATED:
             return <p>{actorName} changed the visibility of {projectName}.</p>;
+        case EventType.GOVERNANCE_EDITED:
+            return <p>{actorName} updated the governance for {projectName}.</p>;
+        case EventType.FUNDING_GOAL_MILESTONE:
+            return <p>{projectName} reached a funding milestone!</p>;
+        case EventType.PROJECT_POST_PUBLISHED:
+            return <p>{actorName} published a new post in {projectName}.</p>;
+        case EventType.AGENT_UPDATE_READY:
+            return <p>{actorName} has an update ready for review in {projectName}.</p>;
 
         // --- Task Events ---
         case EventType.TASK_CREATED:
             return <p>{actorName} created a new task{event.payload?.taskTitle ? `: "${event.payload.taskTitle}"` : ''} in {projectName}.</p>;
         case EventType.TASK_UPDATED:
             return <p>{actorName} updated a task{event.payload?.taskTitle ? `: "${event.payload.taskTitle}"` : ''} in {projectName}.</p>;
+        case EventType.TASK_COMPLETED:
+            return <p>{actorName} completed a task{event.payload?.taskTitle ? `: "${event.payload.taskTitle}"` : ''} in {projectName}.</p>;
         case EventType.TASK_DELETED:
             return <p>{actorName} deleted a task{event.payload?.taskTitle ? `: "${event.payload.taskTitle}"` : ''} in {projectName}.</p>;
 
         // --- Tag Events ---
         case EventType.TAG_CREATED:
-            return <p>{actorName} created a new tag: <strong>{event.payload?.tagName}</strong>.</p>;
+            return <p>{actorName} created a new tag: <span className="font-semibold">{event.payload?.tagName}</span>.</p>;
 
         // --- Learning Path Events ---
         case EventType.LEARNING_PATH_STARTED:
@@ -89,7 +115,7 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
         case EventType.COLLECTION_CREATED: {
             const collectionName = event.payload?.collectionName || 'a collection';
             const collectionLink = (
-                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                     {collectionName}
                 </Link>
             );
@@ -98,23 +124,23 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
         case EventType.COLLECTION_UPDATED: {
             const collectionName = event.payload?.collectionName || 'a collection';
             const collectionLink = (
-                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                     {collectionName}
                 </Link>
             );
             return <p>Your collection {collectionLink} was updated successfully.</p>;
         }
         case EventType.COLLECTION_DELETED: {
-            return <p>Your collection <strong>{event.payload?.collectionName || 'a collection'}</strong> was deleted successfully.</p>;
+            return <p>Your collection <span className="font-semibold">{event.payload?.collectionName || 'a collection'}</span> was deleted successfully.</p>;
         }
         case EventType.PROJECT_ADDED_TO_COLLECTION: {
             const collectionName = event.payload?.collectionName || 'a collection';
             const collectionLink = event.payload?.isProjectCollection ? (
-                <Link href={`/projects/${event.payload.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                <Link href={`/projects/${event.payload.collectionId}`} className="font-semibold text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                     {collectionName}
                 </Link>
             ) : (
-                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                     {collectionName}
                 </Link>
             );
@@ -123,11 +149,11 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
         case EventType.PROJECT_REMOVED_FROM_COLLECTION: {
             const collectionName = event.payload?.collectionName || 'a collection';
             const collectionLink = event.payload?.isProjectCollection ? (
-                <Link href={`/projects/${event.payload.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                <Link href={`/projects/${event.payload.collectionId}`} className="font-semibold text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                     {collectionName}
                 </Link>
             ) : (
-                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-blue-600 hover:underline">
+                <Link href={`/collections/${event.payload?.collectionSlug || event.payload?.collectionId}`} className="font-semibold text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                     {collectionName}
                 </Link>
             );
@@ -149,20 +175,18 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
             await markNotificationAsRead(notification.id);
             setIsRead(true);
         }
-        if (notification.event.projectId) {
-            router.push(`/projects/${notification.event.projectId}`);
-        }
+        router.push(`/feed`);
     };
 
     return (
         <div 
             className={cn(
-                "p-4 flex items-start gap-4 border-b last:border-b-0 hover:bg-gray-50 cursor-pointer",
-                !isRead && "bg-blue-50"
+                "p-4 flex items-start gap-4 border-b last:border-b-0 cursor-pointer transition-colors",
+                !isRead ? "bg-accent/30 dark:bg-accent/40 hover:bg-accent/40 dark:hover:bg-accent/50" : "hover:bg-muted/50 dark:hover:bg-muted/20"
             )}
             onClick={handleClick}
         >
-            <Avatar className="w-10 h-10 border">
+            <Avatar className="w-10 h-10 border bg-background">
                 <AvatarImage src={notification.actor?.avatarUrl || notification.actor?.photoUrl} alt={notification.actor?.name || notification.actor?.username || 'User'} />
                 <AvatarFallback>{getInitials(notification.actor?.name || notification.actor?.username || 'U')}</AvatarFallback>
             </Avatar>
@@ -170,12 +194,12 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
                 <div className="text-sm">
                     {renderNotificationMessage(notification)}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                     {timeAgo(toDate(notification.createdAt))}
                 </p>
             </div>
             {!isRead && (
-                <div className="w-2.5 h-2.5 bg-blue-500 rounded-full self-center"></div>
+                <div className="w-2.5 h-2.5 bg-primary rounded-full self-center flex-shrink-0"></div>
             )}
         </div>
     );
