@@ -620,6 +620,7 @@ export default function ProjectDetailClientPage({
         posts: 'overview',
         tasks: 'work',
         discussion: 'team',
+        discussions: 'team',
         'learning paths': 'learning',
         'collected projects': 'overview',
         'lead dashboard': 'lead'

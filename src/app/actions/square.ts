@@ -210,8 +210,46 @@ export async function getContributionStatusAction(
         if (!doc.exists) {
             return { success: false, error: 'Contribution not found.' };
         }
+
+        const contribution = doc.data() as FundryContribution;
+
+        // Fallback: If contribution is still pending_checkout, verify directly with Square API
+        if (contribution.status === 'pending_checkout' && contribution.squareOrderId) {
+            try {
+                const client = getSquareClient();
+                const response = await client.orders.get({ orderId: contribution.squareOrderId });
+                const order = response.order;
+                if (order && order.state === 'COMPLETED') {
+                    await doc.ref.update({
+                        status: 'confirmed',
+                        processorStatus: 'COMPLETED',
+                        confirmedAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                    contribution.status = 'confirmed';
+                    contribution.processorStatus = 'COMPLETED';
+
+                    await recalculateFundryPool(projectId);
+
+                    const { createAndDispatchEvent } = await import('@/lib/events.server');
+                    const { EventType } = await import('@/lib/types');
+                    await createAndDispatchEvent({
+                        type: EventType.FUNDING_CONTRIBUTION_ADDED,
+                        actorUserId: contribution.contributorId || 'system',
+                        projectId,
+                        payload: {
+                            amount: contribution.amount,
+                            contributorName: contribution.contributorName || 'A contributor',
+                            tab: 'fundry'
+                        }
+                    });
+                }
+            } catch (squareErr) {
+                console.warn('[square] Direct Square order check failed:', squareErr);
+            }
+        }
         
-        return { success: true, data: doc.data() as FundryContribution };
+        return { success: true, data: contribution };
     } catch (e: any) {
         return { success: false, error: e.message };
     }

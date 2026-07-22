@@ -109,17 +109,15 @@ export async function POST(req: NextRequest) {
                 }
             }
         } else if (event.type === 'order.updated') {
-            const order = eventData?.order;
-            if (order) {
-                squareOrderId = order.id || null;
-                referenceId = order.reference_id || order.metadata?.fundryContributionId || null;
-                processorStatus = order.state || null;
+            const orderObj = eventData?.order_updated || eventData?.order;
+            squareOrderId = orderObj?.order_id || orderObj?.id || eventData?.order_id || event.data?.id || null;
+            referenceId = orderObj?.reference_id || orderObj?.metadata?.fundryContributionId || null;
+            processorStatus = orderObj?.state || null;
 
-                if (order.state === 'COMPLETED') {
-                    status = 'confirmed';
-                } else if (order.state === 'CANCELED') {
-                    status = 'cancelled';
-                }
+            if (orderObj?.state === 'COMPLETED') {
+                status = 'confirmed';
+            } else if (orderObj?.state === 'CANCELED') {
+                status = 'cancelled';
             }
         }
 
@@ -151,8 +149,9 @@ export async function POST(req: NextRequest) {
                 reason: 'no_matching_contribution',
                 eventType: event.type,
                 eventId,
-                referenceId,
-                squareOrderId,
+                referenceId: referenceId || null,
+                squareOrderId: squareOrderId || null,
+                details: `Ref: ${referenceId || ''}, Order: ${squareOrderId || ''}`,
                 timestamp: new Date().toISOString()
             });
             return new Response('Success (no matching contribution)', { status: 200 });

@@ -64,11 +64,13 @@ async function shouldNotifyUser(userId: string, projectId: string | undefined, e
     if (!project) return false;
 
     const member = project.team.find(m => m.userId === userId);
+    const isLeadOrOwner = member?.role === 'lead' || project.owner?.id === userId;
+    const defaultLevel = isLeadOrOwner ? 3 : 1;
     
     // Evaluate based on preference level
     const prefLevel = member?.notificationLevel !== undefined 
         ? member.notificationLevel 
-        : (user.globalNotificationLevel !== undefined ? user.globalNotificationLevel : 1);
+        : (user.globalNotificationLevel !== undefined ? user.globalNotificationLevel : defaultLevel);
 
     switch (prefLevel) {
         case 0:
