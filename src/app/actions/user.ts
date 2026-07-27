@@ -3,37 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, updateUser as updateUserInDb, findUserById } from '@/lib/data.server';
-import type { ServerActionResponse, User, Event, Notification, EventType, ProfileTag, GlobalTag } from '@/lib/types';
+import { createAndDispatchEvent } from '@/lib/events.server';
+import { EventType, type ServerActionResponse, type User, type ProfileTag, type GlobalTag } from '@/lib/types';
 
-async function createEvent(type: EventType, actorUserId: string, targetUserId?: string, projectId?: string, payload?: any): Promise<Event> {
-    const eventRef = adminDb.collection('events').doc();
-    
-    const eventData: any = {
-        id: eventRef.id,
-        type,
-        actorUserId,
-        createdAt: FieldValue.serverTimestamp(),
-    };
 
-    if (targetUserId) eventData.targetUserId = targetUserId;
-    if (projectId) eventData.projectId = projectId;
-    if (payload) eventData.payload = payload;
-
-    await eventRef.set(eventData);
-    
-    return eventData as Event;
-}
-
-async function createNotification(userId: string, eventId: string): Promise<void> {
-    const notificationRef = adminDb.collection('notifications').doc();
-    const notification: Omit<Notification, 'id'> = {
-        userId,
-        eventId,
-        isRead: false,
-        createdAt: FieldValue.serverTimestamp() as any,
-    };
-    await notificationRef.set(notification);
-}
 
 const MAX_TAG_LENGTH = 35;
 const normalizeTag = (tag: string): string => {
@@ -122,8 +95,11 @@ export async function updateUser(userId: string, userData: Partial<User>): Promi
     }
 
     // --- Event and Notification Creation ---
-    const event = await createEvent('profile-updated' as EventType, userId, userId, undefined, { updatedFields: Object.keys(userData) });
-    await createNotification(userId, event.id);
+    await createAndDispatchEvent({
+        type: EventType.PROFILE_UPDATED,
+        actorUserId: userId,
+        payload: { updatedFields: Object.keys(userData) },
+    });
     // -------------------------------------
 
     revalidatePath('/', 'layout'); // Revalidate all paths to reflect user changes

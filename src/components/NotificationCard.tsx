@@ -85,12 +85,51 @@ function renderNotificationMessage(notification: HydratedNotification): React.Re
             return <p>{actorName} joined {projectName}.</p>;
         case EventType.PROJECT_LEFT:
             return <p>{actorName} left {projectName}.</p>;
-        case EventType.MEMBER_ROLE_APPLIED:
-            return <p>{actorName} applied for the <span className="font-semibold">{event.payload?.role}</span> role in {projectName}.</p>;
-        case EventType.MEMBER_ROLE_APPROVED:
-            return <p>Your application for <span className="font-semibold">{event.payload?.role}</span> in {projectName} was approved.</p>;
+        case EventType.MEMBER_ROLE_APPLIED: {
+            const role = <span className="font-semibold">{event.payload?.role}</span>;
+            // Actor's own silent notification in My Activity
+            if (notification.userId === event.actorUserId) {
+                return <p>You applied for the {role} role in {projectName}.</p>;
+            }
+            return <p>{actorName} applied for the {role} role in {projectName}.</p>;
+        }
+        case EventType.MEMBER_ROLE_APPROVED: {
+            const role = <span className="font-semibold">{event.payload?.role}</span>;
+            const applicantName = notification.targetUser ? (
+                <Link
+                    href={`/profile/${notification.targetUser.id}`}
+                    className="font-semibold hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {notification.targetUser.name || notification.targetUser.username || 'Someone'}
+                </Link>
+            ) : 'someone';
+            // The applicant: "Your application was approved"
+            if (notification.userId === event.targetUserId) {
+                return <p>Your application for {role} in {projectName} was approved.</p>;
+            }
+            // The approver's own silent notification in My Activity
+            if (notification.userId === event.actorUserId) {
+                return <p>You approved {applicantName}'s application for {role} in {projectName}.</p>;
+            }
+            // Another lead watching: "{Lead} approved {Applicant}'s application"
+            return <p>{actorName} approved {applicantName}'s application for {role} in {projectName}.</p>;
+        }
         case EventType.USER_INVITED_TO_PROJECT:
             return <p>You have been invited to join {projectName} as a <span className="font-semibold">{event.payload?.role}</span>.</p>;
+        case EventType.INVITE_ACCEPTED: {
+            // Actor's own silent notification
+            if (notification.userId === event.actorUserId) {
+                return <p>You accepted an invitation to join {projectName}.</p>;
+            }
+            return <p>{actorName} accepted an invitation to join {projectName}.</p>;
+        }
+        case EventType.INVITE_REJECTED: {
+            if (notification.userId === event.actorUserId) {
+                return <p>You declined an invitation to join {projectName}.</p>;
+            }
+            return <p>{actorName} declined an invitation to join {projectName}.</p>;
+        }
 
         // --- Discussion Events ---
         case EventType.DISCUSSION_COMMENT_POSTED:

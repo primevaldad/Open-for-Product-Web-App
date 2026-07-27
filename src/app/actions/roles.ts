@@ -2,20 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { getAuthenticatedUser } from '@/lib/session.server';
-import { updateProjectMemberRole, findProjectById, adminDb } from '@/lib/data.server';
-import type { ProjectMember, User } from '@/lib/types';
+import { updateProjectMemberRole, findProjectById } from '@/lib/data.server';
+import { createAndDispatchEvent } from '@/lib/events.server';
+import { EventType, type ProjectMember, type User } from '@/lib/types';
 import { deepSerialize } from '@/lib/utils.server';
-import { FieldValue } from 'firebase-admin/firestore';
 
 export type ApplyForRoleAction = typeof applyForRole;
 export type ApproveRoleApplicationAction = typeof approveRoleApplication;
 export type DenyRoleApplicationAction = typeof denyRoleApplication;
-
-async function getProjectLeads(projectId: string): Promise<User[]> {
-    const project = await findProjectById(projectId, null);
-    if (!project) return [];
-    return project.team.filter(m => m.role === 'lead').map(m => m.user as User);
-}
 
 async function canManageMembers(projectId: string, user: User): Promise<boolean> {
     const project = await findProjectById(projectId, null);
@@ -33,25 +27,12 @@ export async function applyForRole({ projectId, userId, role }: { projectId: str
     try {
         await updateProjectMemberRole({ projectId, userId, pendingRole: role });
 
-        const projectLeads = await getProjectLeads(projectId);
-        for (const lead of projectLeads) {
-            // Create the event record
-            const eventRef = await adminDb.collection('events').add({
-                type: 'member-role-applied',
-                actorUserId: user.id,
-                targetUserId: lead.id,
-                projectId,
-                payload: { role },
-                createdAt: FieldValue.serverTimestamp(),
-            });
-            // Create the notification pointing to the event
-            await adminDb.collection('notifications').add({
-                userId: lead.id,
-                eventId: eventRef.id,
-                isRead: false,
-                createdAt: FieldValue.serverTimestamp(),
-            });
-        }
+        await createAndDispatchEvent({
+            type: EventType.MEMBER_ROLE_APPLIED,
+            actorUserId: user.id,
+            projectId,
+            payload: { role },
+        });
 
         revalidatePath(`/projects/${projectId}`);
         return deepSerialize({ success: true, message: 'Your application has been submitted and is pending approval.' });
@@ -70,6 +51,15 @@ export async function approveRoleApplication({ projectId, userId, role }: { proj
 
     try {
         await updateProjectMemberRole({ projectId, userId, role, pendingRole: null });
+        
+        await createAndDispatchEvent({
+            type: EventType.MEMBER_ROLE_APPROVED,
+            actorUserId: currentUser.id,
+            targetUserId: userId,
+            projectId,
+            payload: { role },
+        });
+
         revalidatePath(`/projects/${projectId}`);
         return deepSerialize({ success: true, message: 'Role application approved.' });
     } catch (error) {

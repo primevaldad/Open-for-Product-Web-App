@@ -21,9 +21,13 @@ export function NotificationBellContent({ notifications }: NotificationBellConte
         setIsOpen(false);
     }, [pathname]);
 
-    const unreadCount = useMemo(() => {
-        return notifications.filter(n => !n.isRead).length;
+    const bellNotifications = useMemo(() => {
+        return notifications.filter(n => !n.isSilent);
     }, [notifications]);
+
+    const unreadCount = useMemo(() => {
+        return bellNotifications.filter(n => !n.isRead).length;
+    }, [bellNotifications]);
 
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -38,7 +42,7 @@ export function NotificationBellContent({ notifications }: NotificationBellConte
             </PopoverTrigger>
             <PopoverContent className="w-[calc(100vw-2rem)] md:w-96 p-0" align="end" sideOffset={8}>
                 <NotificationList 
-                    notifications={notifications} 
+                    notifications={bellNotifications} 
                     onItemClick={() => setIsOpen(false)} 
                 />
             </PopoverContent>

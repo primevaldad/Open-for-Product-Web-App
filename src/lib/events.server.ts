@@ -128,7 +128,28 @@ async function dispatchEvent(event: Event): Promise<void> {
             break;
         }
 
-        case EventType.MEMBER_ROLE_APPROVED:
+        case EventType.MEMBER_ROLE_APPROVED: {
+            const { targetUserId, projectId, actorUserId } = event;
+            // Notify the applicant
+            if (targetUserId && await shouldNotifyUser(targetUserId, projectId, event.type)) {
+                await createNotification({ userId: targetUserId, eventId: event.id });
+            }
+            // Also notify other project leads so they're aware of the approval
+            if (projectId) {
+                const project = await findProjectById(projectId, null);
+                if (project) {
+                    for (const userId of getProjectLeads(project)) {
+                        if (userId !== actorUserId && userId !== targetUserId) {
+                            if (await shouldNotifyUser(userId, projectId, event.type)) {
+                                await createNotification({ userId, eventId: event.id });
+                            }
+                        }
+                    }
+                }
+            }
+            break;
+        }
+
         case EventType.USER_INVITED_TO_PROJECT: {
             const { targetUserId, projectId } = event;
             if (targetUserId) {
@@ -253,8 +274,26 @@ async function dispatchEvent(event: Event): Promise<void> {
             break;
         }
     }
-}
 
+
+    // Always generate a silent notification for the actor, so it shows up in their activity feed.
+    // Skip if it's an event type where the actor is explicitly already added to recipientIds or self-notified.
+    const typesWithExplicitActorNotification = [
+        EventType.COLLECTION_CREATED,
+        EventType.COLLECTION_UPDATED,
+        EventType.COLLECTION_DELETED,
+        EventType.PROJECT_ADDED_TO_COLLECTION,
+        EventType.PROJECT_REMOVED_FROM_COLLECTION,
+    ];
+
+    if (event.actorUserId && !typesWithExplicitActorNotification.includes(event.type)) {
+        await createNotification({
+            userId: event.actorUserId,
+            eventId: event.id,
+            isSilent: true,
+        });
+    }
+}
 /**
  * Creates a new notification in the database.
  *
@@ -264,7 +303,7 @@ async function dispatchEvent(event: Event): Promise<void> {
 async function createNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>): Promise<string> {
     const notificationWithTimestamp = {
         ...notification,
-        isRead: false,
+        isRead: notification.isSilent ? true : false,
         createdAt: FieldValue.serverTimestamp(),
     };
     const notificationRef = await adminDb.collection('notifications').add(notificationWithTimestamp);

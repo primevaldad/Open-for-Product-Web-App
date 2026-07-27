@@ -74,7 +74,8 @@ export function FeedClientPage({
   );
 
   const myActivityNotifications = notifications.filter(n => 
-    ![EventType.DISCUSSION_COMMENT_POSTED, EventType.DISCUSSION_COMMENT_REPLIED].includes(n.event.type)
+    ![EventType.DISCUSSION_COMMENT_POSTED, EventType.DISCUSSION_COMMENT_REPLIED].includes(n.event.type) &&
+    (n.event.actorUserId === currentUser.id || n.event.targetUserId === currentUser.id)
   );
 
   // Infinite Scroll Hooks
@@ -97,8 +98,14 @@ export function FeedClientPage({
         </TabsList>
 
         <TabsContent value="my" className="space-y-6">
-          <Tabs defaultValue="all" className="w-full">
+          <Tabs defaultValue="activity" className="w-full">
             <TabsList className="bg-transparent border-b rounded-none h-auto p-0 mb-6 w-full justify-start gap-6 overflow-x-auto flex-nowrap">
+              <TabsTrigger 
+                value="activity" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2 whitespace-nowrap"
+              >
+                My Activity
+              </TabsTrigger>
               <TabsTrigger 
                 value="all" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2 whitespace-nowrap"
@@ -117,13 +124,20 @@ export function FeedClientPage({
               >
                 Discussions
               </TabsTrigger>
-              <TabsTrigger 
-                value="activity" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2 whitespace-nowrap"
-              >
-                My Activity
-              </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="activity">
+              <div className="space-y-0 rounded-lg border bg-card overflow-hidden">
+                {myActivityNotifications.length === 0 ? (
+                  <EmptyState message="No recent activity found." />
+                ) : (
+                  <>
+                    {visibleActivity.map(n => <NotificationCard key={n.id} notification={n} />)}
+                    {hasMoreActivity && <div ref={activityTarget} className="h-4" />}
+                  </>
+                )}
+              </div>
+            </TabsContent>
 
             <TabsContent value="all">
               <div className="space-y-0 rounded-lg border bg-card overflow-hidden">
@@ -153,19 +167,6 @@ export function FeedClientPage({
                   <>
                     {visibleDiscNotifs.map(n => <NotificationCard key={n.id} notification={n} />)}
                     {hasMoreDiscNotifs && <div ref={discNotifsTarget} className="h-4" />}
-                  </>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="activity">
-              <div className="space-y-0 rounded-lg border bg-card overflow-hidden">
-                {myActivityNotifications.length === 0 ? (
-                  <EmptyState message="No recent activity found." />
-                ) : (
-                  <>
-                    {visibleActivity.map(n => <NotificationCard key={n.id} notification={n} />)}
-                    {hasMoreActivity && <div ref={activityTarget} className="h-4" />}
                   </>
                 )}
               </div>

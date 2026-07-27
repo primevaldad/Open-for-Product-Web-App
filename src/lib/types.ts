@@ -449,6 +449,7 @@ export interface Notification {
     userId: UserId;
     eventId: string;
     isRead: boolean;
+    isSilent?: boolean;
     createdAt: Timestamp | string;
 }
 
