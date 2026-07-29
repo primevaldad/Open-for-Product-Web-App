@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import type { Post, User, HydratedProject } from '@/lib/types';
+import { formatSteemUrl } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Markdown from '@/components/ui/markdown';
 import { toSafeDate } from '@/app/(app)/activity/utils';
@@ -242,7 +243,7 @@ export function ProjectPostsTab({
                               Broadcasted
                             </span>
                             <a
-                              href={`https://steemit.com/@${post.steemAuthor}/${post.steemPermlink}`}
+                              href={formatSteemUrl(`@${post.steemAuthor}/${post.steemPermlink}`)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="ml-1 hover:text-blue-800"

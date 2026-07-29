@@ -1,6 +1,7 @@
-
 import React from 'react';
 import Link from 'next/link';
+import { formatSteemUrl } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 import type { Activity, User, Project, ActivityType } from '@/lib/types';
 
 /**
@@ -178,7 +179,7 @@ export function renderActivityMessage(item: HydratedActivityItem) {
                 <>
                     published a post in <span className="font-semibold text-[#3c4fe0]">{item.context.steemCommunity}</span>: 
                     <a 
-                        href={`https://steemit.com${item.context.steemUrl}`} 
+                        href={formatSteemUrl(item.context.steemUrl)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="ml-1 font-semibold text-blue-600 hover:underline"

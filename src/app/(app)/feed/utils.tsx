@@ -49,6 +49,8 @@ export function getActivityTabQuery(type: ActivityType | string, context?: any):
     }
 }
 
+import { formatSteemUrl } from '@/lib/utils';
+
 export function renderActivityMessage(item: HydratedActivityItem) {
     const tabQuery = getActivityTabQuery(item.type, item.context);
     const projectLink = item.project ? (
@@ -81,7 +83,7 @@ export function renderActivityMessage(item: HydratedActivityItem) {
                 <>
                     published a post in <span className="font-semibold text-[#3c4fe0]">{item.context.steemCommunity}</span>: 
                     <a 
-                        href={`https://steemit.com${item.context.steemUrl}`} 
+                        href={formatSteemUrl(item.context.steemUrl)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="ml-1 font-semibold text-blue-600 hover:underline"

@@ -7,6 +7,7 @@ import { EventType } from '@/lib/types';
 import { ProjectPostsTab } from '@/components/projects/project-posts-tab';
 import { FeedDiscussionItem } from '@/components/projects/feed-discussion-item';
 import { NotificationCard } from '@/components/NotificationCard';
+import { SteemExternalFeed } from '@/components/steem/steem-external-feed';
 import { markCommunityFeedAsSeenAction } from '@/app/actions/user';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -92,9 +93,10 @@ export function FeedClientPage({
       </div>
 
       <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-8">
+        <TabsList className="grid w-full grid-cols-3 max-w-[500px] mb-8">
           <TabsTrigger value="my">My Feed</TabsTrigger>
           <TabsTrigger value="community">Community</TabsTrigger>
+          <TabsTrigger value="external">External</TabsTrigger>
         </TabsList>
 
         <TabsContent value="my" className="space-y-6">
@@ -213,6 +215,10 @@ export function FeedClientPage({
               </div>
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        <TabsContent value="external" className="space-y-6">
+          <SteemExternalFeed currentUser={currentUser} />
         </TabsContent>
       </Tabs>
     </div>

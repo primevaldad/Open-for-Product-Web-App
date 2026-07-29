@@ -10,6 +10,7 @@ import ProjectCard from '@/components/project-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { formatSteemUrl } from '@/lib/utils';
 import type { User, HydratedProject, LearningPath, ProjectPathLink, SteemAccount, SteemPost } from '@/lib/types';
 import { getSteemUserAction, syncSteemPostsAction } from '@/app/actions/steem';
 import Markdown from '@/components/ui/markdown';
@@ -283,14 +284,14 @@ export default function UserProfilePageClient({
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="flex items-center space-x-4">
-                            <Avatar>
-                              <AvatarImage src={`https://steemitimages.com/u/${steemUser.name}/avatar`} />
+                            <Avatar className="h-10 w-10 shrink-0 rounded-full overflow-hidden relative">
+                              <AvatarImage src={`https://steemitimages.com/u/${steemUser.name}/avatar`} className="object-cover object-center h-full w-full" />
                               <AvatarFallback>{steemUser.name[0].toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
                               <div className="flex items-center gap-2">
                                 <a
-                                  href={`https://steemit.com/@${steemUser.name}`}
+                                  href={formatSteemUrl(`@${steemUser.name}`, user.steemPreferredDomain)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xl font-bold text-primary hover:underline"
@@ -357,7 +358,7 @@ export default function UserProfilePageClient({
                           <Card key={post.post_id}>
                             <CardHeader>
                               <CardTitle className="text-lg">
-                                <a href={`https://steemit.com${post.url}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                <a href={formatSteemUrl(post.url, user.steemPreferredDomain)} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                   {post.title}
                                 </a>
                               </CardTitle>

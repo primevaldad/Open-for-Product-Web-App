@@ -33,6 +33,7 @@ export interface User {
     steemVerified?: boolean;
     steemVerificationCode?: string;
     steemFeedPreference?: 'all' | 'blog' | 'none';
+    steemPreferredDomain?: string;
     steemIconOverlay?: boolean;
     steemTestnetEnabled?: boolean;
     followedProjectIds?: string[];
@@ -616,6 +617,7 @@ export interface SteemAccount {
     name: string;
     post_count: number;
     posting_json_metadata: string;
+    json_metadata?: string;
     reputation: string;
     voting_power: number;
     balance: string;
@@ -639,6 +641,15 @@ export interface SteemPost {
     curator_payout_value: string;
     pending_payout_value: string;
     community_title?: string;
+}
+
+export interface SteemNotification {
+    id: number;
+    date: string;
+    type: string;
+    msg: string;
+    url: string;
+    score?: number;
 }
 
 // --- Project Collections ---

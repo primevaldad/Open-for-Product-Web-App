@@ -50,6 +50,7 @@ const SettingsSchema = z.object({
   website: z.string().optional(),
   steemUsername: z.string().optional(),
   steemFeedPreference: z.enum(['all', 'blog', 'none']).optional(),
+  steemPreferredDomain: z.string().optional(),
   steemIconOverlay: z.boolean().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
   globalNotificationLevel: z.number().int().min(1).max(3).optional(),
@@ -84,6 +85,7 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
       website: currentUser.website || '',
       steemUsername: currentUser.steemUsername || '',
       steemFeedPreference: currentUser.steemFeedPreference || 'all',
+      steemPreferredDomain: currentUser.steemPreferredDomain || 'steemit.com',
       steemIconOverlay: currentUser.steemIconOverlay || false,
       aiFeaturesEnabled: currentUser.aiFeaturesEnabled || false,
       globalNotificationLevel: currentUser.globalNotificationLevel || 1,
@@ -387,6 +389,52 @@ export default function SettingsForm({ currentUser, allTags, updateUserSettings 
                       <SelectItem value="none">Don't Show Steem Posts</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="steemPreferredDomain"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Preferred Steem Frontend / Condenser</FormLabel>
+                  <FormDescription className="text-xs">
+                    Choose which Steem frontend domain outbound post & profile links should open.
+                  </FormDescription>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="steemit.com, steempro.com, etc." 
+                    />
+                  </FormControl>
+                  <div className="flex gap-2 text-xs text-muted-foreground pt-1">
+                    <span>Quick presets:</span>
+                    <button 
+                      type="button" 
+                      onClick={() => form.setValue('steemPreferredDomain', 'steemit.com')}
+                      className="text-primary underline hover:opacity-80"
+                    >
+                      steemit.com
+                    </button>
+                    <span>•</span>
+                    <button 
+                      type="button" 
+                      onClick={() => form.setValue('steemPreferredDomain', 'steempro.com')}
+                      className="text-primary underline hover:opacity-80"
+                    >
+                      steempro.com
+                    </button>
+                    <span>•</span>
+                    <button 
+                      type="button" 
+                      onClick={() => form.setValue('steemPreferredDomain', 'steemblocks.com')}
+                      className="text-primary underline hover:opacity-80"
+                    >
+                      steemblocks.com
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

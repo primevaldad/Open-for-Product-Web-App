@@ -2,7 +2,14 @@
 'use server';
 
 import * as admin from 'firebase-admin';
-import { getSteemAccount, syncAndGetSteemPosts, verifySteemPost } from '@/lib/steem.server';
+import { 
+    getSteemAccount, 
+    getSteemUserPosts, 
+    getSteemAccountNotifications, 
+    getSteemAccountValueUSD,
+    syncAndGetSteemPosts, 
+    verifySteemPost 
+} from '@/lib/steem.server';
 import { getAuthenticatedUser as getCurrentUser } from '@/lib/session.server';
 import { findUserById, updateUser } from '@/lib/data.server';
 
@@ -11,6 +18,27 @@ import { findUserById, updateUser } from '@/lib/data.server';
  */
 export async function getSteemUserAction(username: string) {
     return getSteemAccount(username);
+}
+
+/**
+ * Server Action to fetch Steem posts directly by sort ('blog' or 'posts').
+ */
+export async function getSteemPostsAction(username: string, sort: 'blog' | 'posts' = 'blog', limit: number = 10) {
+    return getSteemUserPosts(username, sort, limit);
+}
+
+/**
+ * Server Action to fetch Steem notifications for an account.
+ */
+export async function getSteemNotificationsAction(username: string, limit: number = 50, lastId?: number) {
+    return getSteemAccountNotifications(username, limit, lastId);
+}
+
+/**
+ * Server Action to compute the estimated USD value of a Steem account.
+ */
+export async function getSteemAccountValueAction(username: string) {
+    return getSteemAccountValueUSD(username);
 }
 
 /**

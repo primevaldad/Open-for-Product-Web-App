@@ -120,3 +120,37 @@ export function slugify(text: string): string {
         .replace(/^-+/, "")              // Trim - from start of text
         .replace(/-+$/, "");             // Trim - from end of text
 }
+
+/**
+ * Formats an outbound link to a Steem frontend (condenser), replacing steemit.com or relative paths
+ * with the user's preferred domain (defaulting to 'steemit.com').
+ */
+export function formatSteemUrl(pathOrUrl?: string, preferredDomain?: string): string {
+    const domain = (preferredDomain || 'steemit.com')
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '')
+        .trim() || 'steemit.com';
+
+    if (!pathOrUrl) {
+        return `https://${domain}`;
+    }
+
+    let input = pathOrUrl.trim();
+
+    // If input is an absolute URL (e.g. https://steemit.com/category/@author/permlink)
+    if (input.startsWith('http://') || input.startsWith('https://')) {
+        try {
+            const urlObj = new URL(input);
+            return `https://${domain}${urlObj.pathname}${urlObj.search}${urlObj.hash}`;
+        } catch {
+            return input.replace(/^https?:\/\/[^\/]+/, `https://${domain}`);
+        }
+    }
+
+    // Ensure leading slash for relative paths
+    if (!input.startsWith('/')) {
+        input = `/${input}`;
+    }
+
+    return `https://${domain}${input}`;
+}
