@@ -291,7 +291,7 @@ export default function UserProfilePageClient({
                             <div>
                               <div className="flex items-center gap-2">
                                 <a
-                                  href={formatSteemUrl(`@${steemUser.name}`, user.steemPreferredDomain)}
+                                  href={formatSteemUrl(`@${steemUser.name}`, currentUser?.steemPreferredDomain || user.steemPreferredDomain)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xl font-bold text-primary hover:underline"
@@ -358,7 +358,7 @@ export default function UserProfilePageClient({
                           <Card key={post.post_id}>
                             <CardHeader>
                               <CardTitle className="text-lg">
-                                <a href={formatSteemUrl(post.url, user.steemPreferredDomain)} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                <a href={formatSteemUrl(post.url, currentUser?.steemPreferredDomain || user.steemPreferredDomain)} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                   {post.title}
                                 </a>
                               </CardTitle>

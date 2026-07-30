@@ -156,7 +156,7 @@ export function FeedClientPage({
 
             <TabsContent value="posts">
               <div className="space-y-4">
-                <ProjectPostsTab posts={visibleMemberPosts} users={users} />
+                <ProjectPostsTab posts={visibleMemberPosts} users={users} currentUser={currentUser} />
                 {hasMoreMemberPosts && <div ref={memberPostsTarget} className="h-4" />}
               </div>
             </TabsContent>
@@ -195,7 +195,7 @@ export function FeedClientPage({
 
             <TabsContent value="posts">
               <div className="space-y-4">
-                <ProjectPostsTab posts={visibleGlobalPosts} users={users} />
+                <ProjectPostsTab posts={visibleGlobalPosts} users={users} currentUser={currentUser} />
                 {hasMoreGlobalPosts && <div ref={globalPostsTarget} className="h-4" />}
               </div>
             </TabsContent>

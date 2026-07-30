@@ -243,7 +243,7 @@ export function ProjectPostsTab({
                               Broadcasted
                             </span>
                             <a
-                              href={formatSteemUrl(`@${post.steemAuthor}/${post.steemPermlink}`)}
+                              href={formatSteemUrl(`@${post.steemAuthor}/${post.steemPermlink}`, currentUser?.steemPreferredDomain)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="ml-1 hover:text-blue-800"

@@ -139,7 +139,7 @@ export function getActivityTabQuery(type: ActivityType | string, context?: any):
     }
 }
 
-export function renderActivityMessage(item: HydratedActivityItem) {
+export function renderActivityMessage(item: HydratedActivityItem, currentUser?: User) {
     const tabQuery = getActivityTabQuery(item.type, item.context);
     const projectLink = item.project ? (
         <Link href={`/projects/${item.project.id}${tabQuery}`} className="font-semibold text-blue-600 hover:underline">
@@ -160,7 +160,7 @@ export function renderActivityMessage(item: HydratedActivityItem) {
             return <>joined the project {projectLink}</>;
 
         case 'project-member-role-updated':
-            return <>updated a member\'s role in {projectLink} to <strong>{item.context.newMemberRole}</strong></>;
+            return <>updated a member's role in {projectLink} to <strong>{item.context.newMemberRole}</strong></>;
 
         case 'task-created':
             return <>created a new task in {projectLink}: "{item.context.taskTitle}"</>;
@@ -179,7 +179,7 @@ export function renderActivityMessage(item: HydratedActivityItem) {
                 <>
                     published a post in <span className="font-semibold text-[#3c4fe0]">{item.context.steemCommunity}</span>: 
                     <a 
-                        href={formatSteemUrl(item.context.steemUrl)} 
+                        href={formatSteemUrl(item.context.steemUrl, currentUser?.steemPreferredDomain)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="ml-1 font-semibold text-blue-600 hover:underline"

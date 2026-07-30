@@ -19,9 +19,10 @@ interface ProjectHeaderProps {
 }
 
 export default function ProjectHeader({ project, currentUser, onJoin, onLeave }: ProjectHeaderProps) {
-  const isMember = currentUser ? project.team.some(member => member.user.id === currentUser.id) : false;
-  const isLead = currentUser ? project.team.some(member => member.user.id === currentUser.id && member.role === 'lead') : false;
-  const leadCount = project.team.filter(m => m.role === 'lead').length;
+  const team = project.team || [];
+  const isMember = currentUser ? team.some(member => (member?.user?.id || member?.userId) === currentUser.id) : false;
+  const isLead = currentUser ? team.some(member => (member?.user?.id || member?.userId) === currentUser.id && member?.role === 'lead') : false;
+  const leadCount = team.filter(m => m?.role === 'lead').length;
   const fallbackImage = getDeterministicPlaceholder(project.id);
   const { toast } = useToast();
 
