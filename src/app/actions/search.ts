@@ -40,12 +40,11 @@ export async function searchProjectsSemantic(query: string): Promise<ServerActio
 
     const projects = searchResult.docs.map((doc) => {
       const data = doc.data();
-      // Embedding is already handled by doc.data() destructuring or similar if we wanted, 
-      // but let's be explicit.
       const { embedding, ...rest } = data;
       
       return toHydratedProject({
         ...rest,
+        team: rest.team || [],
         id: doc.id,
         createdAt: serializeTimestamp(data.createdAt),
         updatedAt: serializeTimestamp(data.updatedAt),
@@ -57,6 +56,6 @@ export async function searchProjectsSemantic(query: string): Promise<ServerActio
     return deepSerialize({ success: true, data: projects });
   } catch (error) {
     console.error('Semantic search failed:', error);
-    return { success: false, error: 'An unexpected error occurred during semantic search.' };
+    return deepSerialize({ success: false, error: 'An unexpected error occurred during semantic search.' });
   }
 }

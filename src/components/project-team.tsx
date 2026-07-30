@@ -111,7 +111,7 @@ export default function ProjectTeam({
 
     const { pendingMembers, approvedMembers } = useMemo(() => {
         const pending = team.filter(member => member.pendingRole);
-        const approved = team.filter(member => !member.pendingRole);
+        const approved = team;
         return { pendingMembers: pending, approvedMembers: approved };
     }, [team]);
 
@@ -672,10 +672,15 @@ export default function ProjectTeam({
                                                 </Avatar>
                                             )}
                                             <div>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 flex-wrap">
                                                     <p className="font-semibold">{member.user?.name || 'Unknown User'}</p>
                                                     {member.user?.updatedAt && (Date.now() - toDate(member.user.updatedAt).getTime() > 180 * 24 * 60 * 60 * 1000) && (
                                                         <Badge variant="secondary" className="text-[10px] h-4 px-1">Inactive</Badge>
+                                                    )}
+                                                    {member.pendingRole && (
+                                                        <Badge variant="outline" className="text-[10px] h-4 px-1 text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400 capitalize">
+                                                            Pending {member.pendingRole}
+                                                        </Badge>
                                                     )}
                                                 </div>
                                                 <p className="text-sm text-gray-500 capitalize">{member.role}</p>

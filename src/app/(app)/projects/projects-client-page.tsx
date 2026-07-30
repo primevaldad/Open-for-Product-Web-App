@@ -27,7 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Search, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { searchProjectsSemantic } from "@/app/actions/search";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
 // ---------------------------------------------------------------------------
@@ -132,6 +132,7 @@ function ProjectsClientPageInner({
     const router = useRouter();
     const pathname = usePathname();
 
+    const { toast } = useToast();
     const isGuest = !currentUser || currentUser.role === 'guest';
 
     // -------------------------------------------------------------------------
@@ -235,15 +236,14 @@ function ProjectsClientPageInner({
         setIsSearching(true);
         try {
             const response = await searchProjectsSemantic(query);
-            if (response.success && response.data) {
+            if (response && response.success && response.data) {
                 setSemanticResults(response.data);
                 setSuggestionsOpen([]);
             } else {
-                toast.error(response.error || 'Failed to perform semantic search');
+                console.warn('Semantic search notice:', response?.error);
             }
         } catch (error) {
             console.error('Search error:', error);
-            toast.error('An unexpected error occurred during search');
         } finally {
             setIsSearching(false);
         }
@@ -279,14 +279,12 @@ function ProjectsClientPageInner({
         if (showMine && currentUser) {
             pool = pool.filter(p =>
                 p.owner?.id === currentUser.id ||
-                p.team.some(m => m.userId === currentUser.id)
+                (p.team || []).some(m => (m?.user?.id || m?.userId) === currentUser.id)
             );
         }
 
-        // 2. Keyword filter (client-side when AI is off, or as an additional pass when AI is on)
-        //    When AI is on, `semanticResults` handles the search UI; we still apply keyword
-        //    filter here so the "Browse Projects" section stays consistent.
-        if (searchQuery.trim() && !aiEnabled) {
+        // 2. Keyword filter
+        if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
             pool = pool.filter(p =>
                 p.name?.toLowerCase().includes(q) ||
@@ -307,7 +305,7 @@ function ProjectsClientPageInner({
 
         // 4. Sort
         return sortProjects(pool, sortBy);
-    }, [cleanAndUniqueProjects, showMine, currentUser, searchQuery, aiEnabled, selectedTags, matchAllTags, sortBy]);
+    }, [cleanAndUniqueProjects, showMine, currentUser, searchQuery, selectedTags, matchAllTags, sortBy]);
 
     const sortedSemanticResults = useMemo(() => {
         if (!semanticResults) return null;
