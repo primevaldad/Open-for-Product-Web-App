@@ -309,3 +309,112 @@ export async function resendVerificationEmail(): Promise<{ success: boolean; err
         return { success: false, error: 'An unexpected error occurred.' };
     }
 }
+
+/**
+ * Server Action to generate and send a custom password reset email via Fastmail SMTP.
+ */
+export async function sendCustomPasswordResetEmail(email: string): Promise<{ success: boolean; error?: string }> {
+    if (!email || !email.trim()) {
+        return { success: false, error: 'Please enter your email address.' };
+    }
+
+    try {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const actionCodeSettings = {
+            url: `${baseUrl}/login`,
+            handleCodeInApp: true,
+        };
+
+        const firebaseLink = await adminAuth.generatePasswordResetLink(email.trim(), actionCodeSettings);
+        const firebaseLinkUrl = new URL(firebaseLink);
+        const oobCode = firebaseLinkUrl.searchParams.get('oobCode');
+        const apiKey = firebaseLinkUrl.searchParams.get('apiKey');
+        const link = `${baseUrl}/login?mode=resetPassword&oobCode=${oobCode}&apiKey=${apiKey}`;
+
+        const htmlBody = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    background-color: #FFFDF6;
+                    color: #1B1B1B;
+                    margin: 0;
+                    padding: 0;
+                }
+                .container {
+                    max-width: 600px;
+                    margin: 40px auto;
+                    background: #ffffff;
+                    border-radius: 12px;
+                    padding: 40px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+                }
+                h1 {
+                    color: #1B1B1B;
+                    font-size: 24px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                }
+                p {
+                    font-size: 16px;
+                    line-height: 1.5;
+                    margin-bottom: 24px;
+                    color: #1B1B1B;
+                }
+                .btn-container {
+                    text-align: center;
+                    margin: 32px 0;
+                }
+                .btn {
+                    background-color: #2E73FF;
+                    color: #ffffff !important;
+                    text-decoration: none;
+                    padding: 14px 28px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 16px;
+                    display: inline-block;
+                }
+                .footer {
+                    text-align: center;
+                    font-size: 14px;
+                    color: #666666;
+                    margin-top: 40px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Reset Your Password</h1>
+                <p>Hi there,</p>
+                <p>We received a request to reset your password for Open for Product. Click the button below to choose a new password.</p>
+                
+                <div class="btn-container">
+                    <a href="${link}" target="_blank" rel="noopener noreferrer" class="btn">Reset Password</a>
+                </div>
+                
+                <p>If you didn't request a password reset, you can safely ignore this email.</p>
+                
+                <div class="footer">
+                    <p>&copy; ${new Date().getFullYear()} Open for Product. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+
+        await sendFastmailEmail(
+            email.trim(),
+            'Reset your password for Open for Product',
+            htmlBody,
+            'Open for Product'
+        );
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('[AUTH_ACTION_TRACE] Failed to send password reset email:', error);
+        return { success: false, error: error.message || 'Failed to send password reset email.' };
+    }
+}

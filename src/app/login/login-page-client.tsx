@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 
 import { auth } from '@/lib/firebase';
+import { login, sendCustomPasswordResetEmail } from '@/app/actions/auth';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/components/auth-provider';
 
@@ -73,12 +74,21 @@ function LoginForm() {
     setIsResetting(true);
     setError(null);
     try {
-      const { sendPasswordResetEmail } = await import('firebase/auth');
-      await sendPasswordResetEmail(auth, email);
-      toast({
-        title: "Password reset email sent",
-        description: "Check your inbox for a link to reset your password.",
-      });
+      const serverRes = await sendCustomPasswordResetEmail(email);
+      if (serverRes.success) {
+        toast({
+          title: "Password reset email sent",
+          description: "Check your inbox for a link to reset your password.",
+        });
+      } else {
+        // Fallback to client-side Firebase reset
+        const { sendPasswordResetEmail } = await import('firebase/auth');
+        await sendPasswordResetEmail(auth, email);
+        toast({
+          title: "Password reset email sent",
+          description: "Check your inbox (and spam folder) for a link to reset your password.",
+        });
+      }
     } catch (error: any) {
       console.error("Password reset error:", error);
       if (error.code === 'auth/user-not-found') {
