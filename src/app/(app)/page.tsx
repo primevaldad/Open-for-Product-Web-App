@@ -13,6 +13,7 @@ Sprout,
 Users,
 } from "lucide-react";
 import { ProjectMatchForm } from '@/components/project-match-form';
+import { Logo } from '@/components/logo';
 
 const projects = [
 {
@@ -69,11 +70,7 @@ const communityValues = [
 function BrandMark() {
 return (
 <div className="flex items-center gap-3" aria-label="Open for Product">
-    <div className="relative h-10 w-10 shrink-0">
-        <span className="absolute inset-0 rounded-full border-2 border-[#b8512c]" />
-        <span className="absolute inset-[6px] rounded-full border-2 border-[#b8512c]" />
-        <span className="absolute bottom-[2px] left-[2px] h-5 w-5 rounded-full border-2 border-[#b8512c]" />
-    </div>
+    <Logo className="h-12 w-12 shrink-0 text-[#b8512c]" />
     <div className="font-serif text-[17px] leading-[0.95] tracking-[-0.02em] text-[#25251f]">
         <div>OPEN</div>
         <div className="pl-3 text-[10px] italic">for</div>
