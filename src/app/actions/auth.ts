@@ -321,7 +321,7 @@ export async function sendCustomPasswordResetEmail(email: string): Promise<{ suc
     try {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const actionCodeSettings = {
-            url: `${baseUrl}/login`,
+            url: `${baseUrl}/auth/action`,
             handleCodeInApp: true,
         };
 
@@ -329,7 +329,7 @@ export async function sendCustomPasswordResetEmail(email: string): Promise<{ suc
         const firebaseLinkUrl = new URL(firebaseLink);
         const oobCode = firebaseLinkUrl.searchParams.get('oobCode');
         const apiKey = firebaseLinkUrl.searchParams.get('apiKey');
-        const link = `${baseUrl}/login?mode=resetPassword&oobCode=${oobCode}&apiKey=${apiKey}`;
+        const link = `${baseUrl}/auth/action?mode=resetPassword&oobCode=${oobCode}&apiKey=${apiKey}`;
 
         const htmlBody = `
         <!DOCTYPE html>

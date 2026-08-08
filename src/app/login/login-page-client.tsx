@@ -62,12 +62,20 @@ function LoginForm() {
   });
 
   const [isResetting, setIsResetting] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resetCooldown > 0) {
+      const timer = setTimeout(() => setResetCooldown((prev) => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resetCooldown]);
 
   const handleResetPassword = async () => {
+    if (resetCooldown > 0) return;
     const email = form.getValues('email');
     if (!email) {
       form.setError('email', { type: 'manual', message: 'Please enter your email address first to reset your password.' });
-      // Use setTimeout to ensure the error message is visible if we want to focus, or just return
       return;
     }
 
@@ -76,6 +84,7 @@ function LoginForm() {
     try {
       const serverRes = await sendCustomPasswordResetEmail(email);
       if (serverRes.success) {
+        setResetCooldown(60);
         toast({
           title: "Password reset email sent",
           description: "Check your inbox for a link to reset your password.",
@@ -84,6 +93,7 @@ function LoginForm() {
         // Fallback to client-side Firebase reset
         const { sendPasswordResetEmail } = await import('firebase/auth');
         await sendPasswordResetEmail(auth, email);
+        setResetCooldown(60);
         toast({
           title: "Password reset email sent",
           description: "Check your inbox (and spam folder) for a link to reset your password.",
@@ -192,15 +202,24 @@ function LoginForm() {
                     <button 
                       type="button" 
                       onClick={handleResetPassword} 
-                      disabled={isPending || isResetting}
+                      disabled={isPending || isResetting || resetCooldown > 0}
                       className="text-sm text-primary hover:underline disabled:opacity-50"
                     >
-                      {isResetting ? "Sending..." : "Forgot password?"}
+                      {isResetting 
+                        ? "Sending..." 
+                        : resetCooldown > 0 
+                          ? `Resend in ${resetCooldown}s` 
+                          : "Forgot password?"}
                     </button>
                   </div>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} disabled={isPending || isResetting}/>
                   </FormControl>
+                  {resetCooldown > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Password reset email sent! Check your inbox. You can resend in {resetCooldown}s.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

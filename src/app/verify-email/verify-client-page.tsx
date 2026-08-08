@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ export default function VerifyEmailClientPage({ email, isVerified, lastSentAt }:
     const router = useRouter();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
+    const hasAutoSent = useRef(false);
 
     // Initialize cooldown from the server-side timestamp so it survives page reloads
     const [cooldown, setCooldown] = useState(() => {
@@ -62,6 +63,14 @@ export default function VerifyEmailClientPage({ email, isVerified, lastSentAt }:
         });
     };
 
+    // Auto-send verification email on load if not currently in cooldown
+    useEffect(() => {
+        if (!isVerified && email && cooldown === 0 && !hasAutoSent.current) {
+            hasAutoSent.current = true;
+            handleResend();
+        }
+    }, [isVerified, email]);
+
     return (
         <div className="flex min-h-[calc(100vh-80px)] items-center justify-center p-4">
             <Card className="w-full max-w-md text-center">
@@ -71,22 +80,14 @@ export default function VerifyEmailClientPage({ email, isVerified, lastSentAt }:
                     </div>
                     <CardTitle className="text-2xl font-bold">Verify Your Email</CardTitle>
                     <CardDescription className="pt-2 text-base">
-                        {cooldown > 0 ? (
-                            <span>
-                                We recently sent a verification link to <span className="font-medium text-[#1B1B1B]">{email}</span>.
-                            </span>
-                        ) : (
-                            <span>
-                                A verification email was sent to <span className="font-medium text-[#1B1B1B]">{email}</span>, but the request may have expired.
-                            </span>
-                        )}
+                        <span>
+                            We sent a verification link to <span className="font-medium text-[#1B1B1B]">{email}</span>.
+                        </span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <p className="text-sm text-muted-foreground">
-                        {cooldown > 0 
-                            ? "Please check your inbox (and spam folder) for the verification link to unlock all features."
-                            : "If you haven't received it or if the link expired, please click the button below to send a fresh verification email."}
+                        Please check your inbox (and spam folder) for the verification link to unlock all features.
                     </p>
                     <div className="flex flex-col gap-3">
                         <Button 
