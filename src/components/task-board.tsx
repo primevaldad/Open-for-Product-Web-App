@@ -77,7 +77,7 @@ const TaskColumn = ({
   return (
       <div 
         ref={setNodeRef}
-        className={`bg-muted/50 dark:bg-gray-900 rounded-lg p-4 flex-1 min-w-0 w-full lg:max-w-[calc(33.33%-1rem)] flex flex-col min-h-[500px] transition-colors ${isOver ? 'ring-2 ring-primary bg-primary/10 dark:bg-primary/20' : ''}`}
+        className={`bg-muted/50 dark:bg-gray-900 rounded-lg p-4 min-w-[260px] flex-1 flex flex-col min-h-[500px] transition-colors ${isOver ? 'ring-2 ring-primary bg-primary/10 dark:bg-primary/20' : ''}`}
       >
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 flex justify-between items-center">
           <span className="flex items-center gap-2">
@@ -307,7 +307,7 @@ export default function TaskBoard({ tasks: initialTasks, users, onEditTask, onDe
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col lg:flex-row gap-6 p-4 bg-muted/30 dark:bg-gray-800/50 rounded-lg">
+      <div className="flex flex-row gap-4 p-4 bg-muted/30 dark:bg-gray-800/50 rounded-lg">
         <TaskColumn title="To Do" status="To Do" tasks={columns['To Do']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />
         <TaskColumn title="In Progress" status="In Progress" tasks={columns['In Progress']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />
         <TaskColumn title="Done" status="Done" tasks={columns['Done']} users={users} onEditTask={onEditTask} onDeleteTask={onDeleteTask} syncingTasks={syncingTasks} canEditTask={canEditTask} projectId={projectId} addTask={addTask} isMember={isMember} isLead={isLead} fundingGoals={fundingGoals} selectableFundingGoals={selectableFundingGoals} />

@@ -123,11 +123,13 @@ function Accordion({
     children,
     defaultOpen = false,
     badge,
+    signal,
 }: {
     title: string;
     children: React.ReactNode;
     defaultOpen?: boolean;
     badge?: React.ReactNode;
+    signal?: string;
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
@@ -138,9 +140,16 @@ function Accordion({
                 className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-muted/30 transition-colors gap-3"
                 aria-expanded={open}
             >
-                <span className="flex items-center gap-3 font-semibold text-sm text-foreground">
-                    {title}
-                    {badge}
+                <span className="flex flex-col gap-0.5 min-w-0">
+                    <span className="flex items-center gap-3 font-semibold text-sm text-foreground">
+                        {title}
+                        {badge}
+                    </span>
+                    {signal && (
+                        <span className="text-[11px] text-muted-foreground font-normal tracking-wide">
+                            {signal}
+                        </span>
+                    )}
                 </span>
                 <ChevronRight
                     className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
@@ -1104,7 +1113,10 @@ export default function ProjectDetailClientPage({
 
                     {/* Top row: breadcrumb (left) + Edit / Leave (right) */}
                     <div className="flex items-center justify-between">
-                        <Link href="/projects" className="text-xs text-white/60 hover:text-white/90 transition-colors">
+                        <Link
+                            href="/projects"
+                            className="inline-flex items-center text-xs text-white font-medium bg-black/40 backdrop-blur-sm hover:bg-black/55 transition-colors rounded-md px-2.5 py-1.5 gap-1"
+                        >
                             ← Projects
                         </Link>
 
@@ -1115,7 +1127,7 @@ export default function ProjectDetailClientPage({
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-7 text-xs text-white/70 hover:text-white hover:bg-white/10 px-2.5"
+                                        className="h-7 text-xs text-white font-medium bg-black/40 backdrop-blur-sm hover:bg-black/55 px-2.5"
                                     >
                                         <FilePenLine className="h-3.5 w-3.5 mr-1" />
                                         Edit
@@ -1126,7 +1138,7 @@ export default function ProjectDetailClientPage({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-7 text-xs text-red-300/80 hover:text-red-200 hover:bg-red-900/20 px-2.5"
+                                    className="h-7 text-xs text-red-200 font-medium bg-black/40 backdrop-blur-sm hover:bg-red-900/60 px-2.5"
                                     onClick={handleLeaveProject}
                                 >
                                     Leave Project
@@ -1137,21 +1149,28 @@ export default function ProjectDetailClientPage({
 
                     {/* Bottom row: title + badges (left) + main actions (right) */}
                     <div className="flex items-end justify-between gap-4 flex-wrap">
-                        {/* Title + badges */}
-                        <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-                            <h1 className="text-2xl font-bold text-white truncate leading-tight drop-shadow-sm">
-                                {project.name}
-                            </h1>
-                            <Badge
-                                variant="outline"
-                                className="capitalize text-xs border-white/30 text-white/80 bg-white/10 backdrop-blur-sm shrink-0"
-                            >
-                                {project.status}
-                            </Badge>
-                            {currentUser && (
-                                <Badge className="capitalize text-xs bg-amber-500/80 text-white border-0 backdrop-blur-sm shrink-0">
-                                    {isLead ? 'Project Lead' : isMember ? 'Contributor' : 'Visitor'}
+                        {/* Title + tagline + badges */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                <h1 className="text-2xl font-bold text-white truncate leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+                                    {project.name}
+                                </h1>
+                                <Badge
+                                    variant="outline"
+                                    className="capitalize text-xs border-white/30 text-white/80 bg-white/10 backdrop-blur-sm shrink-0"
+                                >
+                                    {project.status}
                                 </Badge>
+                                {currentUser && (
+                                    <Badge className="capitalize text-xs bg-amber-500/80 text-white border-0 backdrop-blur-sm shrink-0">
+                                        {isLead ? 'Project Lead' : isMember ? 'Contributor' : 'Visitor'}
+                                    </Badge>
+                                )}
+                            </div>
+                            {project.tagline && (
+                                <p className="text-sm text-white/80 leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}>
+                                    {project.tagline}
+                                </p>
                             )}
                         </div>
 
@@ -1258,30 +1277,32 @@ export default function ProjectDetailClientPage({
                 {/* ── OVERVIEW ─────────────────────────────────────────────── */}
                 {activeSection === 'overview' && (
                     <div className="space-y-4 max-w-4xl">
-                        {project.tagline && (
-                            <p className="text-muted-foreground italic text-sm">{project.tagline}</p>
-                        )}
-
-                        {/* Tags */}
-                        {project.tags && project.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 pb-2">
-                                {project.tags.map(tag => (
-                                    <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'}>{tag.display}</Badge>
-                                ))}
-                            </div>
-                        )}
-
                         {/* Gated content wrapper */}
                         <div className={!hasReadAccess ? 'relative' : ''}>
                             <div className={!hasReadAccess ? 'blur-md pointer-events-none select-none space-y-4' : 'space-y-4'}>
 
-                                <Accordion title="Description" defaultOpen={true}>
+                                <Accordion
+                                    title="Description"
+                                    defaultOpen={true}
+                                    signal="About this project"
+                                >
+                                    {/* Tags — first element inside accordion */}
+                                    {project.tags && project.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {project.tags.map(tag => (
+                                                <Badge key={tag.id} variant={tag.isCategory ? 'secondary' : 'outline'}>{tag.display}</Badge>
+                                            ))}
+                                        </div>
+                                    )}
                                     <div className="prose dark:prose-invert max-w-none text-sm">
                                         <Markdown content={project.description} />
                                     </div>
                                 </Accordion>
 
-                                <Accordion title="Mission & Vision">
+                                <Accordion
+                                    title="Mission & Vision"
+                                    signal="Project Context"
+                                >
                                     <div className="prose dark:prose-invert max-w-none text-sm">
                                         {project.mission ? (
                                             <p>{project.mission}</p>
@@ -1291,7 +1312,10 @@ export default function ProjectDetailClientPage({
                                     </div>
                                 </Accordion>
 
-                                <Accordion title="Current Focus">
+                                <Accordion
+                                    title="Current Focus"
+                                    signal={project.currentFocus ? 'Now' : 'Not defined'}
+                                >
                                     <div className="prose dark:prose-invert max-w-none text-sm">
                                         {project.currentFocus ? (
                                             <p>{project.currentFocus}</p>
@@ -1339,19 +1363,24 @@ export default function ProjectDetailClientPage({
 
                 {/* ── ACTIVITY ─────────────────────────────────────────────── */}
                 {activeSection === 'activity' && (
-                    <div className="space-y-10">
+                    <div className="space-y-4">
 
-                        {/* Work / Tasks */}
-                        <section>
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h2 className="text-lg font-bold">Work &amp; Tasks</h2>
-                                    <p className="text-xs text-muted-foreground">What needs doing, and what is ready to move?</p>
-                                </div>
-                            </div>
-
-                            {/* Stat cards */}
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+                        {/* Tasks accordion — expanded by default */}
+                        <Accordion
+                            title="Tasks"
+                            defaultOpen={true}
+                            signal={tasks.length > 0
+                                ? `${tasks.filter(t => t.status === 'Done').length} of ${tasks.length} done`
+                                : 'No tasks yet'
+                            }
+                            badge={
+                                <Badge variant="outline" className="text-[9px]">
+                                    {tasks.filter(t => t.status !== 'Done').length} active
+                                </Badge>
+                            }
+                        >
+                            {/* Stat row — always visible inside accordion, not scrolled */}
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
                                 <Card className="p-3 text-center">
                                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Active</span>
                                     <span className="text-2xl font-bold">{tasks.filter(t => t.status !== 'Done').length}</span>
@@ -1376,185 +1405,203 @@ export default function ProjectDetailClientPage({
                                 </Card>
                             </div>
 
-                            {hasReadAccess ? (
-                                <TaskBoard
-                                    tasks={tasks}
-                                    users={users}
-                                    onEditTask={handleOpenEditTaskDialog}
-                                    onDeleteTask={handleDeleteTask}
-                                    onMoveTask={handleMoveTask}
-                                    syncingTasks={syncingTasks}
-                                    canEditTask={canEditTask}
-                                    projectId={project.id}
-                                    addTask={handleAddTask}
-                                    isMember={isMember}
-                                    isLead={isLead || currentUser?.role === 'admin'}
-                                    fundingGoals={liveFundingGoals}
-                                    selectableFundingGoals={selectableFundingGoals}
-                                />
-                            ) : (
-                                <div className="relative h-64 flex items-center justify-center">
-                                    <div className="absolute inset-0 blur-sm pointer-events-none opacity-50">
-                                        <TaskBoard tasks={tasks.slice(0, 2)} users={users} onEditTask={() => {}} onDeleteTask={() => {}} />
-                                    </div>
-                                    <GuestOverlay router={router} />
-                                </div>
-                            )}
-                        </section>
-
-                        <div className="border-t" />
-
-                        {/* Team */}
-                        <section>
-                            <div className="mb-4">
-                                <h2 className="text-lg font-bold">Team</h2>
-                                <p className="text-xs text-muted-foreground">Who is here, and how can people participate?</p>
-                            </div>
-                            {hasReadAccess ? (
-                                <ProjectTeam
-                                    projectId={project.id}
-                                    projectName={project.name}
-                                    team={project.team}
-                                    users={users}
-                                    currentUser={currentUser}
-                                    addTeamMember={() => {}}
-                                    isLead={isLead || false}
-                                    applyForRole={handleApplyForRole}
-                                    approveRoleApplication={handleApproveRoleApplication}
-                                    denyRoleApplication={handleDenyRoleApplication}
-                                />
-                            ) : (
-                                <div className="relative py-12 flex justify-center border rounded-xl">
-                                    <GuestOverlay router={router} />
-                                </div>
-                            )}
-                        </section>
-
-                        <div className="border-t" />
-
-                        {/* Learning Paths */}
-                        <section>
-                            <div className="mb-4">
-                                <h2 className="text-lg font-bold">Learning Paths</h2>
-                                <p className="text-xs text-muted-foreground">What can I learn to contribute with more confidence?</p>
-                            </div>
-                            {learningPaths.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {learningPaths.map(path => (
-                                        <Card key={path.pathId} className="p-4 shadow-sm hover:shadow-md transition-shadow">
-                                            <h3 className="font-bold text-base">{path.title}</h3>
-                                            <p className="text-sm text-muted-foreground mt-2">{path.description}</p>
-                                            <div className="mt-4">
-                                                <Link href={`/learning/${path.pathId}`}>
-                                                    <Button variant="outline" size="sm" className="h-8 text-xs font-semibold">
-                                                        Start Path
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-muted-foreground text-sm italic">No recommended learning paths for this project yet.</p>
-                            )}
-                        </section>
-
-                        <div className="border-t" />
-
-                        {/* Recent Updates (posts) */}
-                        <section>
-                            <div className="mb-4">
-                                <h2 className="text-lg font-bold">Recent Updates</h2>
-                                <p className="text-xs text-muted-foreground">Published announcements and project updates.</p>
-                            </div>
-
-                            {publishedPosts.length === 0 ? (
-                                <p className="text-sm text-muted-foreground italic">No updates published yet.</p>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {publishedPosts.map(post => (
-                                        <Card
-                                            key={post.id}
-                                            className="p-4 space-y-2 relative hover:shadow-md transition-shadow cursor-pointer border-muted/50 bg-muted/20"
-                                            onClick={() => setSelectedPost(post)}
-                                        >
-                                            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
-                                                <span className="font-semibold text-indigo-600 dark:text-indigo-400">Published Update</span>
-                                                <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
-                                            </div>
-                                            <h4 className="font-bold text-sm text-foreground/90">{post.title}</h4>
-                                            <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
-                                            <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">Read full update &rarr;</span>
-                                        </Card>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Draft Updates — members/leads only */}
-                            {(isLead || isMember || currentUser?.role === 'admin') && draftPosts.length > 0 && (
-                                <div className="space-y-3 pt-6 border-t mt-6">
-                                    <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                        Draft Updates
-                                        <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-semibold">Lead/Contributor Only</Badge>
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {draftPosts.map(post => {
-                                            const isAuthor = currentUser && post.userId === currentUser.id;
-                                            const cardInner = (
-                                                <Card
-                                                    key={post.id}
-                                                    className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-card border-amber-200 dark:border-amber-800"
-                                                    onClick={!isAuthor ? () => setSelectedPost(post) : undefined}
-                                                >
-                                                    <div className="flex justify-between items-center text-[10px] text-muted-foreground">
-                                                        <span className="font-semibold text-amber-600 dark:text-amber-400">Draft</span>
-                                                        <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
-                                                    </div>
-                                                    <h4 className="font-bold text-sm text-foreground">{post.title}</h4>
-                                                    <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
-                                                    <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">
-                                                        {isAuthor ? 'Edit draft →' : 'Preview draft →'}
-                                                    </span>
-                                                </Card>
-                                            );
-                                            if (isAuthor) {
-                                                return (
-                                                    <CreatePostDialog
-                                                        key={post.id}
-                                                        project={project}
-                                                        currentUser={currentUser}
-                                                        post={post}
-                                                        onPostSaved={handlePostSaved}
-                                                        trigger={cardInner}
-                                                    />
-                                                );
-                                            }
-                                            return cardInner;
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-                        </section>
-
-                        <div className="border-t" />
-
-                        {/* Event Logs */}
-                        <section>
-                            <h2 className="text-lg font-bold mb-2">Event Logs</h2>
-                            <p className="text-xs text-muted-foreground mb-4">Event telemetry context utilized by Jester for daily briefings.</p>
-                            {activities && activities.length > 0 ? (
-                                <div className="space-y-2">
-                                    {activities.map(activity => (
-                                        <div key={activity.id} className="flex flex-col text-xs border-l-2 pl-3 pb-1 border-slate-200 dark:border-slate-800">
-                                            <span className="font-medium text-foreground/80 capitalize">{activity.type.replace(/-/g, ' ')}</span>
-                                            <span className="text-muted-foreground text-[10px]">{new Date(activity.timestamp as string).toLocaleString()}</span>
+                            {/* Scrollable task board */}
+                            <div className="overflow-y-auto overflow-x-auto max-h-[65vh] pr-1 rounded-lg">
+                                {hasReadAccess ? (
+                                    <TaskBoard
+                                        tasks={tasks}
+                                        users={users}
+                                        onEditTask={handleOpenEditTaskDialog}
+                                        onDeleteTask={handleDeleteTask}
+                                        onMoveTask={handleMoveTask}
+                                        syncingTasks={syncingTasks}
+                                        canEditTask={canEditTask}
+                                        projectId={project.id}
+                                        addTask={handleAddTask}
+                                        isMember={isMember}
+                                        isLead={isLead || currentUser?.role === 'admin'}
+                                        fundingGoals={liveFundingGoals}
+                                        selectableFundingGoals={selectableFundingGoals}
+                                    />
+                                ) : (
+                                    <div className="relative h-64 flex items-center justify-center">
+                                        <div className="absolute inset-0 blur-sm pointer-events-none opacity-50">
+                                            <TaskBoard tasks={tasks.slice(0, 2)} users={users} onEditTask={() => {}} onDeleteTask={() => {}} />
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-muted-foreground text-xs italic">No event logs recorded.</p>
-                            )}
-                        </section>
+                                        <GuestOverlay router={router} />
+                                    </div>
+                                )}
+                            </div>
+                        </Accordion>
+
+                        {/* Team accordion */}
+                        <Accordion
+                            title="Team"
+                            signal={(() => {
+                                const leads = project.team.filter(m => m.role === 'lead').length;
+                                return leads > 0 ? `${leads} lead${leads !== 1 ? 's' : ''}` : 'No leads assigned';
+                            })()}
+                            badge={
+                                <Badge variant="outline" className="text-[9px]">
+                                    {project.team.length} {project.team.length === 1 ? 'member' : 'members'}
+                                </Badge>
+                            }
+                        >
+                            <div className="overflow-y-auto max-h-[65vh] pr-1">
+                                {hasReadAccess ? (
+                                    <ProjectTeam
+                                        projectId={project.id}
+                                        projectName={project.name}
+                                        team={project.team}
+                                        users={users}
+                                        currentUser={currentUser}
+                                        addTeamMember={() => {}}
+                                        isLead={isLead || false}
+                                        applyForRole={handleApplyForRole}
+                                        approveRoleApplication={handleApproveRoleApplication}
+                                        denyRoleApplication={handleDenyRoleApplication}
+                                    />
+                                ) : (
+                                    <div className="relative py-12 flex justify-center border rounded-xl">
+                                        <GuestOverlay router={router} />
+                                    </div>
+                                )}
+                            </div>
+                        </Accordion>
+
+                        {/* Learning accordion */}
+                        <Accordion
+                            title="Learning"
+                            signal="Skill Paths"
+                            badge={
+                                <Badge variant="outline" className="text-[9px]">
+                                    {learningPaths.length} {learningPaths.length === 1 ? 'path' : 'paths'}
+                                </Badge>
+                            }
+                        >
+                            <div className="overflow-y-auto max-h-[65vh] pr-1">
+                                {learningPaths.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {learningPaths.map(path => (
+                                            <Card key={path.pathId} className="p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <h3 className="font-bold text-base">{path.title}</h3>
+                                                <p className="text-sm text-muted-foreground mt-2">{path.description}</p>
+                                                <div className="mt-4">
+                                                    <Link href={`/learning/${path.pathId}`}>
+                                                        <Button variant="outline" size="sm" className="h-8 text-xs font-semibold">
+                                                            Start Path
+                                                        </Button>
+                                                    </Link>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-muted-foreground text-sm italic">No recommended learning paths for this project yet.</p>
+                                )}
+                            </div>
+                        </Accordion>
+
+                        {/* Recent Updates + Event Logs accordion */}
+                        <Accordion
+                            title="Recent"
+                            signal={publishedPosts.length > 0
+                                ? `Last update ${new Date(publishedPosts[publishedPosts.length - 1]?.createdAt as string).toLocaleDateString()}`
+                                : 'Activity Feed'
+                            }
+                            badge={
+                                <Badge variant="outline" className="text-[9px]">
+                                    {publishedPosts.length} {publishedPosts.length === 1 ? 'update' : 'updates'}
+                                </Badge>
+                            }
+                        >
+                            <div className="overflow-y-auto max-h-[65vh] pr-1 space-y-6">
+
+                                {/* Published posts */}
+                                {publishedPosts.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground italic">No updates published yet.</p>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {publishedPosts.map(post => (
+                                            <Card
+                                                key={post.id}
+                                                className="p-4 space-y-2 relative hover:shadow-md transition-shadow cursor-pointer border-muted/50 bg-muted/20"
+                                                onClick={() => setSelectedPost(post)}
+                                            >
+                                                <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                                                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">Published Update</span>
+                                                    <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
+                                                </div>
+                                                <h4 className="font-bold text-sm text-foreground/90">{post.title}</h4>
+                                                <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
+                                                <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">Read full update &rarr;</span>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Draft Updates — members/leads only */}
+                                {(isLead || isMember || currentUser?.role === 'admin') && draftPosts.length > 0 && (
+                                    <div className="space-y-3 pt-4 border-t">
+                                        <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                            Draft Updates
+                                            <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-semibold">Lead/Contributor Only</Badge>
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {draftPosts.map(post => {
+                                                const isAuthor = currentUser && post.userId === currentUser.id;
+                                                const cardInner = (
+                                                    <Card
+                                                        key={post.id}
+                                                        className="p-4 space-y-2 relative border-dashed hover:shadow-sm cursor-pointer bg-card border-amber-200 dark:border-amber-800"
+                                                        onClick={!isAuthor ? () => setSelectedPost(post) : undefined}
+                                                    >
+                                                        <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                                                            <span className="font-semibold text-amber-600 dark:text-amber-400">Draft</span>
+                                                            <span>{new Date(post.createdAt as string).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <h4 className="font-bold text-sm text-foreground">{post.title}</h4>
+                                                        <p className="text-xs text-muted-foreground line-clamp-2">{post.content}</p>
+                                                        <span className="text-[10px] text-primary font-semibold hover:underline block pt-1">
+                                                            {isAuthor ? 'Edit draft →' : 'Preview draft →'}
+                                                        </span>
+                                                    </Card>
+                                                );
+                                                if (isAuthor) {
+                                                    return (
+                                                        <CreatePostDialog
+                                                            key={post.id}
+                                                            project={project}
+                                                            currentUser={currentUser}
+                                                            post={post}
+                                                            onPostSaved={handlePostSaved}
+                                                            trigger={cardInner}
+                                                        />
+                                                    );
+                                                }
+                                                return cardInner;
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Event Logs */}
+                                {activities && activities.length > 0 && (
+                                    <div className="space-y-2 pt-4 border-t">
+                                        <h3 className="text-sm font-semibold text-muted-foreground">Event Logs</h3>
+                                        <p className="text-xs text-muted-foreground">Event telemetry context utilized by Jester for daily briefings.</p>
+                                        <div className="space-y-2 mt-2">
+                                            {activities.map(activity => (
+                                                <div key={activity.id} className="flex flex-col text-xs border-l-2 pl-3 pb-1 border-slate-200 dark:border-slate-800">
+                                                    <span className="font-medium text-foreground/80 capitalize">{activity.type.replace(/-/g, ' ')}</span>
+                                                    <span className="text-muted-foreground text-[10px]">{new Date(activity.timestamp as string).toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </Accordion>
                     </div>
                 )}
 
@@ -1595,6 +1642,7 @@ export default function ProjectDetailClientPage({
                         {/* Governance accordion */}
                         <Accordion
                             title="Governance"
+                            signal="Rules & Authority"
                             badge={
                                 <Badge variant="outline" className="text-[9px] capitalize">
                                     {project.governanceConfig?.decisionModel?.replace(/_/g, ' ') || 'Lead-based'}
@@ -1616,6 +1664,7 @@ export default function ProjectDetailClientPage({
                         <Accordion
                             title="Fundry Portal"
                             defaultOpen={true}
+                            signal={`${liveFundingGoals.length} funding goal${liveFundingGoals.length !== 1 ? 's' : ''}`}
                             badge={
                                 <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px] dark:bg-emerald-950/20 dark:text-emerald-400 border">
                                     {project.fundry?.enabled ? 'Active' : 'Planning'}
@@ -1640,6 +1689,15 @@ export default function ProjectDetailClientPage({
                         {showLeadDashboard ? (
                             <Accordion
                                 title="Lead Console"
+                                signal={(() => {
+                                    const blocked = tasks.filter(t =>
+                                        t.title.toLowerCase().includes('blocked') ||
+                                        t.description?.toLowerCase().includes('blocked')
+                                    ).length;
+                                    const funded = liveFundingGoals.filter(g => g.fundingStatus === 'funded' && g.workStatus === 'not_started').length;
+                                    const total = blocked + funded;
+                                    return total > 0 ? `${total} item${total !== 1 ? 's' : ''} need attention` : 'No immediate action needed';
+                                })()}
                                 badge={
                                     <Badge className="bg-amber-100 text-amber-800 text-[9px] uppercase tracking-wide border-0 dark:bg-amber-950 dark:text-amber-300">
                                         Admin
