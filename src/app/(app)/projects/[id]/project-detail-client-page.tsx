@@ -1305,7 +1305,7 @@ export default function ProjectDetailClientPage({
                                 >
                                     <div className="prose dark:prose-invert max-w-none text-sm">
                                         {project.mission ? (
-                                            <p>{project.mission}</p>
+                                            <Markdown content={project.mission} />
                                         ) : (
                                             <p className="text-muted-foreground italic">No mission statement provided yet.</p>
                                         )}
@@ -1318,7 +1318,7 @@ export default function ProjectDetailClientPage({
                                 >
                                     <div className="prose dark:prose-invert max-w-none text-sm">
                                         {project.currentFocus ? (
-                                            <p>{project.currentFocus}</p>
+                                            <Markdown content={project.currentFocus} />
                                         ) : (
                                             <p className="text-muted-foreground italic">No current focus provided yet.</p>
                                         )}
