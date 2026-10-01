@@ -14,9 +14,14 @@ serviceAccountKey.json
 
 # debug
 firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Firebase local cache (CLI deploy artifacts)
+.firebase/
 
 # Build and Production
 /.next/
