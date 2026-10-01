@@ -27,6 +27,7 @@ const UserSettingsSchema = z.object({
   steemTestnetEnabled: z.boolean().optional(),
   steemIconOverlay: z.boolean().optional(),
   aiFeaturesEnabled: z.boolean().optional(),
+  globalNotificationLevel: z.number().int().min(1).max(3).optional(),
 });
 
 

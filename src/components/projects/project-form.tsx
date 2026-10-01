@@ -260,14 +260,14 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
             <FormItem>
               <FormLabel>Mission & Vision</FormLabel>
               <FormControl>
-                <Textarea
-                  {...field}
+                <MarkdownEditor
+                  value={field.value}
+                  onChange={field.onChange}
                   placeholder="What is the overarching mission and vision of this project?"
-                  className="min-h-[100px]"
                 />
               </FormControl>
               <FormDescription>
-                Briefly describe the ultimate goal or purpose of the project.
+                Briefly describe the ultimate goal or purpose of the project. Supports Markdown.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -281,14 +281,14 @@ export function ProjectForm({ initialData, users, tags }: ProjectFormProps) {
             <FormItem>
               <FormLabel>Current Focus</FormLabel>
               <FormControl>
-                <Textarea
-                  {...field}
+                <MarkdownEditor
+                  value={field.value}
+                  onChange={field.onChange}
                   placeholder="What is the immediate priority right now?"
-                  className="min-h-[100px]"
                 />
               </FormControl>
               <FormDescription>
-                Describe what the team is focusing on right now to help Jester understand the current state.
+                Describe what the team is focusing on right now to help Jester understand the current state. Supports Markdown.
               </FormDescription>
               <FormMessage />
             </FormItem>
