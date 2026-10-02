@@ -76,6 +76,7 @@ export interface Project {
     isCollection?: boolean; // Whether this project acts as a collection (has children)
     governanceConfig?: ProjectGovernanceConfig;
     fundry?: FundryConfig;
+    featured?: boolean;
 }
 
 export interface Post {
@@ -164,6 +165,7 @@ export interface HydratedProject {
     isCollection?: boolean; // Whether this project acts as a collection (has children)
     governanceConfig?: ProjectGovernanceConfig;
     fundry?: FundryConfig;
+    featured?: boolean;
 }
 
 export interface HydratedProjectMember {

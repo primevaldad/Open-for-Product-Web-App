@@ -25,7 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import ProjectCard from "@/components/project-card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Search, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Sparkles, Search, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star } from "lucide-react";
 import { searchProjectsSemantic } from "@/app/actions/search";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -92,11 +92,13 @@ const ProjectList = ({
     currentUser,
     allProjectPathLinks,
     allLearningPaths,
+    onFeaturedToggle,
 }: {
     projects: HydratedProject[];
     currentUser: User | null;
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
+    onFeaturedToggle?: (projectId: string, isFeatured: boolean) => void;
 }) => {
     if (!projects || projects.length === 0) return null;
     return (
@@ -109,6 +111,7 @@ const ProjectList = ({
                     allProjectPathLinks={allProjectPathLinks}
                     allLearningPaths={allLearningPaths}
                     priority={index < 2}
+                    onFeaturedToggle={onFeaturedToggle}
                 />
             ))}
         </div>
@@ -150,8 +153,18 @@ function ProjectsClientPageInner({
     const [matchAllTags, setMatchAllTags] = useState(searchParams.get('match') === 'all');
     const [sortBy, setSortBy] = useState(searchParams.get('sort') ?? 'latest');
     const [showMine, setShowMine] = useState(!isGuest && searchParams.get('mine') === 'true');
+    const [showFeatured, setShowFeatured] = useState(searchParams.get('featured') === 'true');
+    const [projectsList, setProjectsList] = useState<HydratedProject[]>(allPublishedProjects);
     const [currentPage, setCurrentPage] = useState(Math.max(1, parseInt(searchParams.get('page') ?? '1', 10)));
     const [pageSize, setPageSize] = useState(10);
+
+    useEffect(() => {
+        setProjectsList(allPublishedProjects);
+    }, [allPublishedProjects]);
+
+    const handleFeaturedToggle = useCallback((projectId: string, isFeatured: boolean) => {
+        setProjectsList(prev => prev.map(p => p.id === projectId ? { ...p, featured: isFeatured } : p));
+    }, []);
 
     // Sync state to URL purely for shareability (avoids Next.js server refetch lag)
     useEffect(() => {
@@ -161,12 +174,13 @@ function ProjectsClientPageInner({
         if (matchAllTags) params.set('match', 'all');
         if (sortBy !== 'latest') params.set('sort', sortBy);
         if (showMine) params.set('mine', 'true');
+        if (showFeatured) params.set('featured', 'true');
         if (currentPage > 1) params.set('page', currentPage.toString());
 
         const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`;
         // replaceState does not trigger Next.js navigation, keeping UI instant
         window.history.replaceState(null, '', newUrl);
-    }, [searchQuery, selectedTags, matchAllTags, sortBy, showMine, currentPage, pathname]);
+    }, [searchQuery, selectedTags, matchAllTags, sortBy, showMine, showFeatured, currentPage, pathname]);
 
     // Listen to browser Back/Forward to update state
     useEffect(() => {
@@ -182,6 +196,7 @@ function ProjectsClientPageInner({
             setMatchAllTags(params.get('match') === 'all');
             setSortBy(params.get('sort') ?? 'latest');
             setShowMine(!isGuest && params.get('mine') === 'true');
+            setShowFeatured(params.get('featured') === 'true');
             setCurrentPage(Math.max(1, parseInt(params.get('page') ?? '1', 10)));
         };
         window.addEventListener('popstate', handlePopState);
@@ -223,6 +238,7 @@ function ProjectsClientPageInner({
         setSelectedTags([]);
         setMatchAllTags(false);
         setShowMine(false);
+        setShowFeatured(false);
         setSortBy('latest');
         setCurrentPage(1);
     }, []);
@@ -263,9 +279,9 @@ function ProjectsClientPageInner({
     // -------------------------------------------------------------------------
 
     const cleanAndUniqueProjects = useMemo(() => {
-        const valid = (allPublishedProjects || []).filter(p => p && p.id);
+        const valid = (projectsList || []).filter(p => p && p.id);
         return Array.from(new Map(valid.map(p => [p.id, p])).values());
-    }, [allPublishedProjects]);
+    }, [projectsList]);
 
     const cleanSuggestedProjects = useMemo(() => {
         const valid = (suggestedProjects || []).filter(p => p && typeof p === 'object' && p.id);
@@ -283,7 +299,12 @@ function ProjectsClientPageInner({
             );
         }
 
-        // 2. Keyword filter
+        // 2. Featured Projects filter
+        if (showFeatured) {
+            pool = pool.filter(p => !!p.featured);
+        }
+
+        // 3. Keyword filter
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
             pool = pool.filter(p =>
@@ -293,7 +314,7 @@ function ProjectsClientPageInner({
             );
         }
 
-        // 3. Tag filter
+        // 4. Tag filter
         if (selectedTags.length > 0) {
             pool = pool.filter(p => {
                 const projectTagIds = new Set((p.tags || []).map(t => t.id));
@@ -303,9 +324,9 @@ function ProjectsClientPageInner({
             });
         }
 
-        // 4. Sort
+        // 5. Sort
         return sortProjects(pool, sortBy);
-    }, [cleanAndUniqueProjects, showMine, currentUser, searchQuery, selectedTags, matchAllTags, sortBy]);
+    }, [cleanAndUniqueProjects, showMine, currentUser, showFeatured, searchQuery, selectedTags, matchAllTags, sortBy]);
 
     const sortedSemanticResults = useMemo(() => {
         if (!semanticResults) return null;
@@ -445,6 +466,22 @@ function ProjectsClientPageInner({
                                 <Label htmlFor="show-mine">My Projects</Label>
                             </div>
                         )}
+
+                        {/* Featured filter toggle */}
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="show-featured"
+                                checked={showFeatured}
+                                onCheckedChange={(checked) => {
+                                    setShowFeatured(checked);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                            <Label htmlFor="show-featured" className="flex items-center gap-1.5 cursor-pointer">
+                                <Star className={cn("w-3.5 h-3.5", showFeatured ? "fill-amber-500 text-amber-500" : "text-muted-foreground")} />
+                                Featured Only
+                            </Label>
+                        </div>
 
                         {/* Suggestions toggle */}
                         <div className={cn('flex items-center space-x-2', !shouldShowSuggestions && 'opacity-50 cursor-not-allowed')}>
@@ -610,6 +647,7 @@ function ProjectsClientPageInner({
                                 currentUser={currentUser}
                                 allProjectPathLinks={allProjectPathLinks}
                                 allLearningPaths={allLearningPaths}
+                                onFeaturedToggle={handleFeaturedToggle}
                             />
 
                             {/* Pagination */}
