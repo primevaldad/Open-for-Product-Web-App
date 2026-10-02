@@ -1208,6 +1208,21 @@ export async function toggleProjectFeaturedAction(
     }
 
     try {
+        const project = await findProjectById(projectId);
+        if (!project) {
+            return { success: false, error: 'Project not found.' };
+        }
+
+        if (featured) {
+            const isPublic = (project.project_type === 'public' || !project.project_type) && project.status === 'published';
+            if (!isPublic) {
+                return {
+                    success: false,
+                    error: 'Only published, public projects can be featured. Private, personal, or draft projects cannot be featured.',
+                };
+            }
+        }
+
         await updateProjectInDb(projectId, {
             featured,
             updatedAt: new Date().toISOString(),

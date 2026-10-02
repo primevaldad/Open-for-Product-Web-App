@@ -41,6 +41,7 @@ export default function ProjectCard({
   const router = useRouter();
   const { toast } = useToast();
   const isAdmin = currentUser?.role === 'admin';
+  const isPublic = (project.project_type === 'public' || !project.project_type) && project.status === 'published';
   const [isFeatured, setIsFeatured] = useState(!!project.featured);
   const [isTogglingFeatured, setIsTogglingFeatured] = useState(false);
 
@@ -54,6 +55,15 @@ export default function ProjectCard({
     if (isTogglingFeatured) return;
 
     const nextState = !isFeatured;
+    if (nextState && !isPublic) {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot Feature Project',
+        description: 'Only published, public projects can be featured on the marketing site.',
+      });
+      return;
+    }
+
     setIsFeatured(nextState);
     setIsTogglingFeatured(true);
 
@@ -229,30 +239,47 @@ export default function ProjectCard({
               {/* Header Badges & Admin Actions */}
               <div className="absolute top-2 right-2 flex items-center gap-1.5 z-30">
                   {isAdmin && (
-                      <Tooltip>
-                          <TooltipTrigger asChild>
-                              <button
-                                  type="button"
-                                  onClick={handleToggleFeatured}
-                                  disabled={isTogglingFeatured}
-                                  className={cn(
-                                      "pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-md transition-all duration-200 backdrop-blur-md cursor-pointer",
-                                      isFeatured
-                                          ? "bg-amber-500 text-white hover:bg-amber-600 border border-amber-300"
-                                          : "bg-black/60 text-slate-200 hover:bg-black/80 hover:text-white border border-white/20"
-                                  )}
-                                  aria-label={isFeatured ? "Unfeature project" : "Feature project"}
-                              >
-                                  <Star className={cn("h-3.5 w-3.5", isFeatured ? "fill-white text-white" : "text-slate-300")} />
-                                  <span>{isFeatured ? "Featured" : "Feature"}</span>
-                              </button>
-                          </TooltipTrigger>
-                          <TooltipContent className="pointer-events-none">
-                              <p>{isFeatured ? "Click to remove from marketing site" : "Click to feature on marketing site"}</p>
-                          </TooltipContent>
-                      </Tooltip>
+                      isPublic || isFeatured ? (
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <button
+                                      type="button"
+                                      onClick={handleToggleFeatured}
+                                      disabled={isTogglingFeatured}
+                                      className={cn(
+                                          "pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-md transition-all duration-200 backdrop-blur-md cursor-pointer",
+                                          isFeatured
+                                              ? "bg-amber-500 text-white hover:bg-amber-600 border border-amber-300"
+                                              : "bg-black/60 text-slate-200 hover:bg-black/80 hover:text-white border border-white/20"
+                                      )}
+                                      aria-label={isFeatured ? "Unfeature project" : "Feature project"}
+                                  >
+                                      <Star className={cn("h-3.5 w-3.5", isFeatured ? "fill-white text-white" : "text-slate-300")} />
+                                      <span>{isFeatured ? "Featured" : "Feature"}</span>
+                                  </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="pointer-events-none">
+                                  <p>{isFeatured ? "Click to remove from marketing site" : "Click to feature on marketing site"}</p>
+                              </TooltipContent>
+                          </Tooltip>
+                      ) : (
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <div
+                                      className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-md backdrop-blur-md bg-black/40 text-slate-400 border border-white/10 opacity-60 cursor-not-allowed"
+                                      aria-label="Cannot feature non-public project"
+                                  >
+                                      <Star className="h-3.5 w-3.5 text-slate-400" />
+                                      <span>Feature</span>
+                                  </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="pointer-events-none">
+                                  <p>Only published, public projects can be featured ({project.status !== 'published' ? project.status : project.project_type || 'non-public'})</p>
+                              </TooltipContent>
+                          </Tooltip>
+                      )
                   )}
-                  {!isAdmin && isFeatured && (
+                  {!isAdmin && isFeatured && isPublic && (
                       <Badge className="bg-amber-500/90 text-white border-none shadow-sm flex items-center gap-1 text-[11px] px-2 py-0.5">
                           <Star className="h-3 w-3 fill-white text-white" />
                           Featured

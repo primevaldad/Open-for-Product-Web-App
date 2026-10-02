@@ -44,8 +44,14 @@ export async function GET(request: NextRequest) {
       .limit(12)
       .get();
 
+    // Filter to ensure only published, public projects are ever exposed publicly
+    const publicDocs = featuredSnap.docs.filter(doc => {
+      const data = doc.data();
+      return (data.project_type === 'public' || !data.project_type) && data.status === 'published';
+    });
+
     // Format public-safe JSON payload
-    const projects = featuredSnap.docs.map(doc => {
+    const projects = publicDocs.map(doc => {
       const data = doc.data();
       const tags = Array.isArray(data.tags)
         ? data.tags.slice(0, 3).map((t: any) => ({
