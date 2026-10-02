@@ -14,7 +14,7 @@ export default async function RootPage() {
   }
 
   const marketingUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
+    ? (process.env.NEXT_PUBLIC_MARKETING_URL || 'http://localhost:3001')
     : 'https://openforproduct.com';
 
   redirect(marketingUrl);
