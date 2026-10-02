@@ -1197,3 +1197,30 @@ export async function saveProjectGovernanceConfigAction(
         return { success: false, error: message };
     }
 }
+
+export async function toggleProjectFeaturedAction(
+    projectId: string,
+    featured: boolean
+): Promise<ServerActionResponse<{ featured: boolean }>> {
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'admin') {
+        return { success: false, error: 'Unauthorized: Admin access required.' };
+    }
+
+    try {
+        await updateProjectInDb(projectId, {
+            featured,
+            updatedAt: new Date().toISOString(),
+        });
+
+        revalidatePath('/projects');
+        revalidatePath(`/projects/${projectId}`);
+
+        return { success: true, data: { featured } };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to update featured status.';
+        console.error('Error in toggleProjectFeaturedAction:', error);
+        return { success: false, error: message };
+    }
+}
+

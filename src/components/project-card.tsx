@@ -1,8 +1,9 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle, Sparkles, User as UserIcon } from 'lucide-react';
+import { BookOpen, CheckCircle, Sparkles, Star, User as UserIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { HydratedProject, HydratedProjectMember, User, ProjectTag, ProjectPathLink, LearningPath } from '@/lib/types';
 import { cn, getInitials, getDeterministicPlaceholder } from '@/lib/utils';
 import { buildHybridUrl } from '@/lib/slug';
+import { useToast } from '@/hooks/use-toast';
+import { toggleProjectFeaturedAction } from '@/app/actions/projects';
 
 interface ProjectCardProps {
   project: HydratedProject;
@@ -20,6 +23,7 @@ interface ProjectCardProps {
   allLearningPaths: LearningPath[];
   suggestionText?: string;
   priority?: boolean;
+  onFeaturedToggle?: (projectId: string, isFeatured: boolean) => void;
 }
 
 const MAX_VISIBLE_MEMBERS = 4;
@@ -32,8 +36,55 @@ export default function ProjectCard({
     allLearningPaths, 
     suggestionText,
     priority = false,
+    onFeaturedToggle,
 }: ProjectCardProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const isAdmin = currentUser?.role === 'admin';
+  const [isFeatured, setIsFeatured] = useState(!!project.featured);
+  const [isTogglingFeatured, setIsTogglingFeatured] = useState(false);
+
+  useEffect(() => {
+    setIsFeatured(!!project.featured);
+  }, [project.featured]);
+
+  const handleToggleFeatured = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isTogglingFeatured) return;
+
+    const nextState = !isFeatured;
+    setIsFeatured(nextState);
+    setIsTogglingFeatured(true);
+
+    try {
+      const res = await toggleProjectFeaturedAction(project.id, nextState);
+      if (!res.success) {
+        setIsFeatured(!nextState);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: res.error || 'Failed to update featured status.',
+        });
+      } else {
+        toast({
+          title: nextState ? 'Project Featured' : 'Project Unfeatured',
+          description: `"${project.name}" is ${nextState ? 'now featured on the marketing site.' : 'no longer featured.'}`,
+        });
+        onFeaturedToggle?.(project.id, nextState);
+      }
+    } catch {
+      setIsFeatured(!nextState);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+      });
+    } finally {
+      setIsTogglingFeatured(false);
+    }
+  };
+
   
   const team = Array.isArray(project.team) ? project.team : [];
   const tags = Array.isArray(project.tags) ? project.tags : [];
@@ -175,18 +226,49 @@ export default function ProjectCard({
                     </CardDescription>
                   </div>
               </div>
-              {project.isExpertReviewed && (
-                  <div className="absolute top-2 right-2">
-                          <Tooltip>
-                              <TooltipTrigger asChild>
-                                  <span className="cursor-default pointer-events-auto relative z-30">
-                                      <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
-                                  </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="pointer-events-none"><p>Expert Reviewed</p></TooltipContent>
-                          </Tooltip>
-                  </div>
-              )}
+              {/* Header Badges & Admin Actions */}
+              <div className="absolute top-2 right-2 flex items-center gap-1.5 z-30">
+                  {isAdmin && (
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <button
+                                  type="button"
+                                  onClick={handleToggleFeatured}
+                                  disabled={isTogglingFeatured}
+                                  className={cn(
+                                      "pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-md transition-all duration-200 backdrop-blur-md cursor-pointer",
+                                      isFeatured
+                                          ? "bg-amber-500 text-white hover:bg-amber-600 border border-amber-300"
+                                          : "bg-black/60 text-slate-200 hover:bg-black/80 hover:text-white border border-white/20"
+                                  )}
+                                  aria-label={isFeatured ? "Unfeature project" : "Feature project"}
+                              >
+                                  <Star className={cn("h-3.5 w-3.5", isFeatured ? "fill-white text-white" : "text-slate-300")} />
+                                  <span>{isFeatured ? "Featured" : "Feature"}</span>
+                              </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="pointer-events-none">
+                              <p>{isFeatured ? "Click to remove from marketing site" : "Click to feature on marketing site"}</p>
+                          </TooltipContent>
+                      </Tooltip>
+                  )}
+                  {!isAdmin && isFeatured && (
+                      <Badge className="bg-amber-500/90 text-white border-none shadow-sm flex items-center gap-1 text-[11px] px-2 py-0.5">
+                          <Star className="h-3 w-3 fill-white text-white" />
+                          Featured
+                      </Badge>
+                  )}
+                  {project.isExpertReviewed && (
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <span className="cursor-default pointer-events-auto relative">
+                                  <CheckCircle className='h-5 w-5 text-green-400 bg-gray-800/50 rounded-full p-0.5' />
+                              </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="pointer-events-none"><p>Expert Reviewed</p></TooltipContent>
+                      </Tooltip>
+                  )}
+              </div>
           </CardHeader>
           <CardContent className='relative z-20 pointer-events-none flex-grow p-4'>
             <div className='mb-4'>
