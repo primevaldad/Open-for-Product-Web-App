@@ -37,36 +37,15 @@ export async function GET(request: NextRequest) {
   try {
     const projectsRef = adminDb.collection('projects');
     
-    // 1. Fetch explicitly featured published projects
+    // Fetch explicitly featured published projects
     const featuredSnap = await projectsRef
       .where('status', '==', 'published')
       .where('featured', '==', true)
       .limit(12)
       .get();
 
-    const featuredDocs = featuredSnap.docs;
-
-    // 2. If fewer than 3 featured projects exist, backfill with recent published public projects
-    let allDocs = [...featuredDocs];
-    if (allDocs.length < 3) {
-      const existingIds = new Set(allDocs.map(d => d.id));
-      const fallbackSnap = await projectsRef
-        .where('status', '==', 'published')
-        .limit(10)
-        .get();
-
-      for (const doc of fallbackSnap.docs) {
-        const data = doc.data();
-        if (!existingIds.has(doc.id) && (data.project_type === 'public' || !data.project_type)) {
-          allDocs.push(doc);
-          existingIds.add(doc.id);
-          if (allDocs.length >= 6) break;
-        }
-      }
-    }
-
     // Format public-safe JSON payload
-    const projects = allDocs.map(doc => {
+    const projects = featuredSnap.docs.map(doc => {
       const data = doc.data();
       const tags = Array.isArray(data.tags)
         ? data.tags.slice(0, 3).map((t: any) => ({
@@ -85,19 +64,27 @@ export async function GET(request: NextRequest) {
       }
 
       const team = Array.isArray(data.team) ? data.team : [];
+      const projectName = data.name || data.title || 'Untitled Project';
+      const categoryTag = tags.find(t => t.isCategory)?.display || tags[0]?.display || 'Community';
+      const collaboratorsText = contributionNeeds.length > 0 
+        ? contributionNeeds.slice(0, 2).join(', ') 
+        : `${Math.max(team.length, 1)} collaborator${team.length === 1 ? '' : 's'}`;
 
       return {
         id: doc.id,
-        name: data.name || 'Untitled Project',
-        tagline: data.tagline || '',
-        description: data.description || '',
+        name: projectName,
+        title: projectName,
+        tagline: data.tagline || data.description || '',
+        description: data.tagline || data.description || '',
+        category: categoryTag,
+        collaborators: collaboratorsText,
         photoUrl: data.photoUrl || null,
         tags,
         contributionNeeds,
         memberCount: Math.max(team.length, 1),
         progress: typeof data.progress === 'number' ? data.progress : 0,
-        featured: !!data.featured,
-        urlPath: buildHybridUrl('/projects', doc.id, data.name || ''),
+        featured: true,
+        urlPath: buildHybridUrl('/projects', doc.id, projectName),
       };
     });
 
