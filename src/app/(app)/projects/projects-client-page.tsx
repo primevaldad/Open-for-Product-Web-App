@@ -98,7 +98,7 @@ const ProjectList = ({
     currentUser: User | null;
     allProjectPathLinks: ProjectPathLink[];
     allLearningPaths: LearningPath[];
-    onFeaturedToggle?: (projectId: string, isFeatured: boolean) => void;
+    onFeaturedToggle?: (projectId: string, isFeatured: boolean, featuredCardUpdatedAt?: string) => void;
 }) => {
     if (!projects || projects.length === 0) return null;
     return (
@@ -162,8 +162,12 @@ function ProjectsClientPageInner({
         setProjectsList(allPublishedProjects);
     }, [allPublishedProjects]);
 
-    const handleFeaturedToggle = useCallback((projectId: string, isFeatured: boolean) => {
-        setProjectsList(prev => prev.map(p => p.id === projectId ? { ...p, featured: isFeatured } : p));
+    const handleFeaturedToggle = useCallback((projectId: string, isFeatured: boolean, featuredCardUpdatedAt?: string) => {
+        setProjectsList(prev => prev.map(p => p.id === projectId ? {
+            ...p,
+            featured: isFeatured,
+            ...(featuredCardUpdatedAt ? { featuredCardUpdatedAt } : {}),
+        } : p));
     }, []);
 
     // Sync state to URL purely for shareability (avoids Next.js server refetch lag)

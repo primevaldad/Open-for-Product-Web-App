@@ -1208,7 +1208,7 @@ export async function toggleProjectFeaturedAction(
     }
 
     try {
-        const project = await findProjectById(projectId);
+        const project = await findProjectById(projectId, user);
         if (!project) {
             return { success: false, error: 'Project not found.' };
         }
@@ -1225,6 +1225,7 @@ export async function toggleProjectFeaturedAction(
 
         await updateProjectInDb(projectId, {
             featured,
+            ...(featured ? { featuredCardUpdatedAt: new Date().toISOString() } : {}),
             updatedAt: new Date().toISOString(),
         });
 
