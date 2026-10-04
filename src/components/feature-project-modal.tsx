@@ -15,6 +15,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Star,
   Users,
   Sparkles,
@@ -32,6 +38,40 @@ import {
   unfeatureProjectAction,
 } from '@/app/actions/featured-projects';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+function FieldResetButton({
+  onClick,
+  isDiff,
+  tooltipText = 'reset this',
+}: {
+  onClick: () => void;
+  isDiff: boolean;
+  tooltipText?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          className={cn(
+            'inline-flex items-center justify-center h-5 w-5 rounded-md transition-all cursor-pointer',
+            isDiff
+              ? 'text-amber-600 hover:text-amber-700 bg-amber-500/10 hover:bg-amber-500/20 ring-1 ring-amber-500/30'
+              : 'text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/50'
+          )}
+          aria-label={tooltipText}
+        >
+          <RotateCcw className={cn('h-3 w-3', isDiff && 'stroke-[2.5px] text-amber-600')} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs py-1 px-2">
+        <p>{isDiff ? tooltipText : 'Matches project value (click to re-sync)'}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface FeatureProjectModalProps {
   isOpen: boolean;
@@ -57,10 +97,11 @@ export default function FeatureProjectModal({
     'Community';
 
   const defaultCollaborators =
-    (Array.isArray(project.contributionNeeds) && project.contributionNeeds[0]) ||
-    (Array.isArray(project.team) && project.team.length > 0
+    Array.isArray(project.contributionNeeds) && project.contributionNeeds.length > 0
+      ? project.contributionNeeds.slice(0, 2).join(', ')
+      : Array.isArray(project.team) && project.team.length > 0
       ? `${project.team.length} contributor${project.team.length === 1 ? '' : 's'}`
-      : 'Early contributors welcome');
+      : 'Early contributors welcome';
 
   // Form states
   const [title, setTitle] = useState(project.name || '');
@@ -240,8 +281,9 @@ export default function FeatureProjectModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden sm:rounded-2xl max-h-[92vh] flex flex-col">
-        {/* Modal Header */}
-        <DialogHeader className="p-6 pb-4 border-b bg-card">
+        <TooltipProvider delayDuration={150}>
+          {/* Modal Header */}
+          <DialogHeader className="p-6 pb-4 border-b bg-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
@@ -381,15 +423,24 @@ export default function FeatureProjectModal({
                     title="Reset all inputs back to original project values"
                   >
                     <RotateCcw className="h-3 w-3 mr-1" />
-                    Reset Defaults
+                    Reset All
                   </Button>
                 </div>
 
                 {/* Display Title */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="feature-title" className="text-xs font-medium">
-                    Display Title <span className="text-destructive">*</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="feature-title" className="text-xs font-medium">
+                      Display Title <span className="text-destructive">*</span>
+                    </Label>
+                    <FieldResetButton
+                      isDiff={title !== project.name}
+                      onClick={() => {
+                        setTitle(project.name);
+                        toast({ description: 'Title reset to project name.' });
+                      }}
+                    />
+                  </div>
                   <Input
                     id="feature-title"
                     value={title}
@@ -403,9 +454,18 @@ export default function FeatureProjectModal({
                 {/* Tagline / Hook */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <Label htmlFor="feature-tagline" className="text-xs font-medium">
-                      Marketing Catchphrase / Tagline
-                    </Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="feature-tagline" className="text-xs font-medium">
+                        Marketing Catchphrase / Tagline
+                      </Label>
+                      <FieldResetButton
+                        isDiff={tagline !== (project.tagline || project.description || '')}
+                        onClick={() => {
+                          setTagline(project.tagline || project.description || '');
+                          toast({ description: 'Tagline reset to project tagline.' });
+                        }}
+                      />
+                    </div>
                     <span className="text-[10px] text-muted-foreground">
                       {tagline.length}/140 chars recommended
                     </span>
@@ -423,9 +483,18 @@ export default function FeatureProjectModal({
                 {/* Category & Collaborators Grid */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="feature-category" className="text-xs font-medium">
-                      Category Tag
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="feature-category" className="text-xs font-medium">
+                        Category Tag
+                      </Label>
+                      <FieldResetButton
+                        isDiff={category !== defaultCategory}
+                        onClick={() => {
+                          setCategory(defaultCategory);
+                          toast({ description: 'Category reset to project category.' });
+                        }}
+                      />
+                    </div>
                     <Input
                       id="feature-category"
                       value={category}
@@ -436,9 +505,18 @@ export default function FeatureProjectModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="feature-collab" className="text-xs font-medium">
-                      Collaborators Hook
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="feature-collab" className="text-xs font-medium">
+                        Collaborators Hook
+                      </Label>
+                      <FieldResetButton
+                        isDiff={collaborators !== defaultCollaborators}
+                        onClick={() => {
+                          setCollaborators(defaultCollaborators);
+                          toast({ description: 'Collaborators hook reset to project details.' });
+                        }}
+                      />
+                    </div>
                     <Input
                       id="feature-collab"
                       value={collaborators}
@@ -452,14 +530,26 @@ export default function FeatureProjectModal({
                 {/* Photo URL */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="feature-photo" className="text-xs font-medium">
-                      Card Cover Image URL
-                    </Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="feature-photo" className="text-xs font-medium">
+                        Card Cover Image URL
+                      </Label>
+                      <FieldResetButton
+                        isDiff={photoUrl !== (project.photoUrl || '')}
+                        onClick={() => {
+                          setPhotoUrl(project.photoUrl || '');
+                          toast({ description: 'Cover image reset to project photo.' });
+                        }}
+                      />
+                    </div>
                     {project.photoUrl && photoUrl !== project.photoUrl && (
                       <button
                         type="button"
-                        onClick={() => setPhotoUrl(project.photoUrl || '')}
-                        className="text-[11px] text-primary hover:underline"
+                        onClick={() => {
+                          setPhotoUrl(project.photoUrl || '');
+                          toast({ description: 'Cover image reset to project photo.' });
+                        }}
+                        className="text-[11px] text-primary hover:underline cursor-pointer"
                       >
                         Use Project Cover
                       </button>
@@ -542,7 +632,8 @@ export default function FeatureProjectModal({
             </Button>
           </div>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </TooltipProvider>
+    </DialogContent>
+  </Dialog>
   );
 }
