@@ -31,6 +31,9 @@ const convertProjectTimestamps = (project: HydratedProject): HydratedProject => 
     newProject.updatedAt = toISO(newProject.updatedAt);
     newProject.startDate = toISO(newProject.startDate);
     newProject.endDate = toISO(newProject.endDate);
+    if ('featuredCardUpdatedAt' in newProject && newProject.featuredCardUpdatedAt) {
+        newProject.featuredCardUpdatedAt = toISO(newProject.featuredCardUpdatedAt);
+    }
 
     // Delete non-serializable Firestore Vector field before sending to client
     if ('embedding' in newProject) {

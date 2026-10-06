@@ -264,7 +264,8 @@ export async function getAllPublishedProjects(currentUser: User | null): Promise
             createdAt: serializeTimestamp(data.createdAt),
             updatedAt: serializeTimestamp(data.updatedAt),
             startDate: serializeTimestamp(data.startDate),
-            endDate: serializeTimestamp(data.endDate)
+            endDate: serializeTimestamp(data.endDate),
+            featuredCardUpdatedAt: serializeTimestamp(data.featuredCardUpdatedAt),
         } as Project;
 
         if (project.tags && Array.isArray(project.tags)) {
@@ -321,7 +322,8 @@ export async function findProjectById(projectId: string, currentUser: User | nul
         createdAt: serializeTimestamp(data.createdAt),
         updatedAt: serializeTimestamp(data.updatedAt),
         startDate: serializeTimestamp(data.startDate),
-        endDate: serializeTimestamp(data.endDate)
+        endDate: serializeTimestamp(data.endDate),
+        featuredCardUpdatedAt: serializeTimestamp(data.featuredCardUpdatedAt),
     };
 
     if (projectData.tags && Array.isArray(projectData.tags)) {

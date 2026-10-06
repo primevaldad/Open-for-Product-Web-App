@@ -9,11 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { HydratedProject, HydratedProjectMember, User, ProjectTag, ProjectPathLink, LearningPath } from '@/lib/types';
+import type { HydratedProject, HydratedProjectMember, User, ProjectTag, ProjectPathLink, LearningPath, FeaturedProjectCard } from '@/lib/types';
 import { cn, getInitials, getDeterministicPlaceholder } from '@/lib/utils';
 import { buildHybridUrl } from '@/lib/slug';
 import { useToast } from '@/hooks/use-toast';
-import { toggleProjectFeaturedAction } from '@/app/actions/projects';
+import FeatureProjectModal from '@/components/feature-project-modal';
 
 interface ProjectCardProps {
   project: HydratedProject;
@@ -23,7 +23,7 @@ interface ProjectCardProps {
   allLearningPaths: LearningPath[];
   suggestionText?: string;
   priority?: boolean;
-  onFeaturedToggle?: (projectId: string, isFeatured: boolean) => void;
+  onFeaturedToggle?: (projectId: string, isFeatured: boolean, featuredCardUpdatedAt?: string) => void;
 }
 
 const MAX_VISIBLE_MEMBERS = 4;
@@ -43,19 +43,43 @@ export default function ProjectCard({
   const isAdmin = currentUser?.role === 'admin';
   const isPublic = (project.project_type === 'public' || !project.project_type) && project.status === 'published';
   const [isFeatured, setIsFeatured] = useState(!!project.featured);
-  const [isTogglingFeatured, setIsTogglingFeatured] = useState(false);
+  const [featuredCardUpdatedAt, setFeaturedCardUpdatedAt] = useState<string | undefined>(
+    typeof project.featuredCardUpdatedAt === 'string' ? project.featuredCardUpdatedAt : undefined
+  );
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
 
   useEffect(() => {
     setIsFeatured(!!project.featured);
-  }, [project.featured]);
+    if (typeof project.featuredCardUpdatedAt === 'string') {
+      setFeaturedCardUpdatedAt(project.featuredCardUpdatedAt);
+    }
+  }, [project.featured, project.featuredCardUpdatedAt]);
 
-  const handleToggleFeatured = async (e: React.MouseEvent) => {
+  const parseDateToMillis = (val: any): number => {
+    if (!val) return 0;
+    if (typeof val === 'string' || typeof val === 'number') {
+      const t = new Date(val).getTime();
+      return isNaN(t) ? 0 : t;
+    }
+    if (typeof val.toDate === 'function') return val.toDate().getTime();
+    if (val instanceof Date) return val.getTime();
+    return 0;
+  };
+
+  const projectUpdatedAt = parseDateToMillis(project.updatedAt);
+  const cardUpdatedAt = parseDateToMillis(featuredCardUpdatedAt);
+
+  // If featured, check if project was edited after the feature card was saved
+  const needsReFeature = Boolean(
+    isFeatured &&
+      (!cardUpdatedAt || (projectUpdatedAt > 0 && projectUpdatedAt > cardUpdatedAt))
+  );
+
+  const handleOpenFeatureModal = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isTogglingFeatured) return;
 
-    const nextState = !isFeatured;
-    if (nextState && !isPublic) {
+    if (!isPublic && !isFeatured) {
       toast({
         variant: 'destructive',
         title: 'Cannot Feature Project',
@@ -64,35 +88,16 @@ export default function ProjectCard({
       return;
     }
 
-    setIsFeatured(nextState);
-    setIsTogglingFeatured(true);
+    setIsFeatureModalOpen(true);
+  };
 
-    try {
-      const res = await toggleProjectFeaturedAction(project.id, nextState);
-      if (!res.success) {
-        setIsFeatured(!nextState);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: res.error || 'Failed to update featured status.',
-        });
-      } else {
-        toast({
-          title: nextState ? 'Project Featured' : 'Project Unfeatured',
-          description: `"${project.name}" is ${nextState ? 'now featured on the marketing site.' : 'no longer featured.'}`,
-        });
-        onFeaturedToggle?.(project.id, nextState);
-      }
-    } catch {
-      setIsFeatured(!nextState);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-      });
-    } finally {
-      setIsTogglingFeatured(false);
+  const handleModalSuccess = (card: FeaturedProjectCard | null, newFeaturedState: boolean) => {
+    setIsFeatured(newFeaturedState);
+    const updatedTimestamp = card?.updatedAt ? String(card.updatedAt) : undefined;
+    if (updatedTimestamp) {
+      setFeaturedCardUpdatedAt(updatedTimestamp);
     }
+    onFeaturedToggle?.(project.id, newFeaturedState, updatedTimestamp);
   };
 
   
@@ -173,7 +178,8 @@ export default function ProjectCard({
   };
 
   return (
-    <Card 
+    <>
+      <Card 
       className={cn(
         'group relative flex flex-col overflow-hidden [isolation:isolate] [-webkit-font-smoothing:subpixel-antialiased] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl bg-[#fffaf2] border-[#dfd5c5]',
         isLead && 'border-2 border-yellow-500',
@@ -244,22 +250,29 @@ export default function ProjectCard({
                               <TooltipTrigger asChild>
                                   <button
                                       type="button"
-                                      onClick={handleToggleFeatured}
-                                      disabled={isTogglingFeatured}
+                                      onClick={handleOpenFeatureModal}
                                       className={cn(
                                           "pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-md transition-all duration-200 backdrop-blur-md cursor-pointer",
-                                          isFeatured
+                                          needsReFeature
+                                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 border border-amber-300 ring-2 ring-amber-400/40 shadow-amber-500/20"
+                                              : isFeatured
                                               ? "bg-amber-500 text-white hover:bg-amber-600 border border-amber-300"
                                               : "bg-black/60 text-slate-200 hover:bg-black/80 hover:text-white border border-white/20"
                                       )}
-                                      aria-label={isFeatured ? "Unfeature project" : "Feature project"}
+                                      aria-label={needsReFeature ? "Re-feature project" : isFeatured ? "Edit feature card" : "Feature project"}
                                   >
                                       <Star className={cn("h-3.5 w-3.5", isFeatured ? "fill-white text-white" : "text-slate-300")} />
-                                      <span>{isFeatured ? "Featured" : "Feature"}</span>
+                                      <span>{needsReFeature ? "Re-Feature?" : isFeatured ? "Featured" : "Feature"}</span>
                                   </button>
                               </TooltipTrigger>
                               <TooltipContent className="pointer-events-none">
-                                  <p>{isFeatured ? "Click to remove from marketing site" : "Click to feature on marketing site"}</p>
+                                  <p>
+                                      {needsReFeature
+                                          ? "Project was edited after being featured. Click to review and re-feature."
+                                          : isFeatured
+                                          ? "Featured on marketing site. Click to edit card or unfeature."
+                                          : "Click to configure and feature on marketing site"}
+                                  </p>
                               </TooltipContent>
                           </Tooltip>
                       ) : (
@@ -336,5 +349,20 @@ export default function ProjectCard({
             </div>
           </CardFooter>
       </Card>
+
+      {isAdmin && (
+        <FeatureProjectModal
+          isOpen={isFeatureModalOpen}
+          onClose={() => setIsFeatureModalOpen(false)}
+          project={{
+            ...project,
+            featured: isFeatured,
+            featuredCardUpdatedAt,
+          }}
+          currentUser={currentUser}
+          onSuccess={handleModalSuccess}
+        />
+      )}
+    </>
   );
 }

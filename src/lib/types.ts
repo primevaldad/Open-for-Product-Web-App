@@ -77,6 +77,25 @@ export interface Project {
     governanceConfig?: ProjectGovernanceConfig;
     fundry?: FundryConfig;
     featured?: boolean;
+    featuredCardUpdatedAt?: Timestamp | string;
+}
+
+export interface FeaturedProjectCard {
+    id: string; // Same as projectId
+    projectId: string;
+    title: string;
+    tagline: string;
+    description?: string;
+    category: string;
+    collaborators: string;
+    photoUrl?: string | null;
+    visual?: string | null;
+    urlPath?: string;
+    published: boolean;
+    projectUpdatedAt?: string;
+    createdAt?: Timestamp | string;
+    updatedAt?: Timestamp | string;
+    featuredBy?: string;
 }
 
 export interface Post {
@@ -166,6 +185,7 @@ export interface HydratedProject {
     governanceConfig?: ProjectGovernanceConfig;
     fundry?: FundryConfig;
     featured?: boolean;
+    featuredCardUpdatedAt?: Timestamp | string;
 }
 
 export interface HydratedProjectMember {
