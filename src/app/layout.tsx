@@ -18,6 +18,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Open for Product',
   description: 'A collaborative platform for projects and professionals whose lives do not fit into traditional work structures.',
+  icons: {
+    icon: [
+      { url: '/images/favicon.jpg', type: 'image/jpeg' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    shortcut: '/images/favicon.jpg',
+    apple: '/images/favicon.jpg',
+  },
 };
 
 export default function RootLayout({
